@@ -15,6 +15,7 @@ void trsv<double>(char uplo, char trans, char diag, int n, const double* a, int 
 }
 
 /* _GEMV */
+// y = alpha.A*x + beta.y
 template <typename T>
 void gemv(char trans, int m, int n, double alpha, const T* a, int lda, const T* x, int incx, double beta, T* y, int incy);
 template <>

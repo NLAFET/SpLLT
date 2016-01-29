@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <stdlib.h>
+#include <chrono>
 
 #include "problem.hh"
 #include "qr.hh"
@@ -24,8 +25,13 @@ int main(void) {
    double *r = (double *)aligned_alloc(32, N*N*sizeof(double));  
    pbl->r = r;
    pbl->ldr = N;
-   
+
+   auto begin = std::chrono::high_resolution_clock::now();   
    qr_mgs(pbl->m, pbl->n, pbl->a, pbl->lda, pbl->r, pbl->ldr);
+   auto end = std::chrono::high_resolution_clock::now();
+   long ttotal = std::chrono::duration_cast<std::chrono::nanoseconds>(end-begin).count();
+   printf("[bench] facto took %ld ns\n", ttotal);
+
    pbl->q = a;
    pbl->ldq = pbl->lda;
 

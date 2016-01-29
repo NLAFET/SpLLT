@@ -101,7 +101,8 @@ public:
          // y = Q^T.b
          gemv<double>('T', m, n, 1.0, q, ldq, rhs_, 1, 0.0, x, 1);
          printf("m  : %d, n: %d\n", m, n);
-         printf("ldq  : %d\n", ldq);
+         printf("||Q||  : %e\n", calc_ainf());
+         printf("||b||  : %e\n", max_absval(m, rhs_));
          printf("||Q^T.b||  : %e\n", max_absval(n, x));
 
          // solve Rx = y
