@@ -1,21 +1,14 @@
 program spllt_test
   use hsl_ma87_double
+  use spllt_mod
   implicit none
 
-  integer, parameter :: wp = kind(0d0)
-
   integer n, nnz
-
-  type :: matrix_type
-     integer :: n, ne
-     integer, dimension(:), allocatable :: ptr, row, col
-     real(wp), dimension(:), allocatable :: val
-  end type matrix_type
   
-  write(*,*) "[spllt test]"
+  write(*,'("[spllt test]")')
 
   n   = 100
-  nnz = 1000
+  nnz = 400
 
   call spllt_test_rand(n, nnz)
 
@@ -24,9 +17,7 @@ program spllt_test
 contains
 
   subroutine spllt_test_rand(n, nnz)
-    use spral_random
-    use spral_random_matrix, only : random_matrix_generate
-    use spral_matrix_util, only : SPRAL_MATRIX_REAL_SYM_PSDEF
+    use spllt_stf_mod
     implicit none
     
     integer :: n, nnz
@@ -36,29 +27,37 @@ contains
     type(ma87_control) :: control
     type(ma87_info) :: info
 
-    type(random_state) :: state
-    type(matrix_type) :: a
-    integer :: flag
-    integer :: i
+
+    ! type(matrix_type) :: a
+    integer :: iseed
+    type(zd11_type) :: a
+    real(wp), dimension(:), allocatable :: b, x
+    integer :: i, nrhs
     integer, dimension(:), allocatable :: order
-    real(wp) :: num_flops
+    real(wp) :: num_flops, resid
 
-
+    a%m = n
     a%n = n
     a%ne = nnz
     
     allocate(a%ptr(n+1))
-    allocate(a%row(a%ne), a%col(a%ne), a%val(a%ne))
+    allocate(a%row(2*a%ne), a%col(2*a%ne), a%val(2*a%ne))
 
-    write(*,*) "[spllt test rand] generate random matrix"
+    write(*,'("[spllt test rand] generate random matrix")')
+
+    call fa14id(iseed)
 
     ! generate matrix
     ! with spral
-    call random_matrix_generate(state, SPRAL_MATRIX_REAL_SYM_PSDEF, & 
-         & a%n, a%n, nnz, &
-         & a%ptr, a%row, &
-         & flag, &
-         & val=a%val)
+!!    call random_matrix_generate(state, SPRAL_MATRIX_REAL_SYM_PSDEF, & 
+!!         & a%n, a%n, nnz, &
+!!         & a%ptr, a%row, &
+!!         & flag, &
+!!         & val=a%val)
+
+    call gen_random_posdef(a, a%ne, iseed)    
+
+    write(*,'("[>] generate ordering")')
 
     ! ordering
     allocate(order(a%n))
@@ -68,17 +67,53 @@ contains
        order(i) = i
     end do
 
+    write(*,'("[>] analyse")')
+
     ! analysis
     call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
-    if(info%flag .lt. MA87_SUCCESS) then
+    if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        goto 9999
     endif
 
+    write(*,'("[>] [analysis] num flops: ", es10.3)') num_flops    
+    write(*,'("[>] [analysis] num nodes: ", i10)') info%num_nodes    
+
+    ! generate rhs
+    nrhs = 1
+    allocate(b(a%m), x(a%n))
+    call random_number(b)
+
+    write(*,'("[>] factorize")')
+    ! factorize matrix
+    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+    ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+    if(info%flag .lt. spllt_success) then
+       write(*, "(a)") "fail on factor"
+    endif
+
+! goto 9999 ! no solve
+
+    write(*,'("[>] solve")')
+
+    x = b
+    ! solve
+    call MA87_solve(x, order, keep, control, info)
+    if(info%flag .lt. spllt_success) then
+       write(*, "(a,i4)") " fail on 1d solve", &
+            info%flag
+    endif
+    
+    call spllt_bwerr(a, x, b, resid)
+    
+    write(*,'("[>] [solve] bwderr ||Ax-b|| / (||A||||x|| + ||b||): ", es10.3)') resid    
+
+    call MA87_finalise(keep, control)
+    
 9999 continue
 
     return
   end subroutine spllt_test_rand
-
+  
 end program spllt_test

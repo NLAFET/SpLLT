@@ -1,5 +1,6 @@
 module spllt_mod
   use hsl_zd11_double
+  implicit none
 
   ! type :: matrix_type
   !    integer :: n, ne
@@ -8,12 +9,15 @@ module spllt_mod
   ! end type matrix_type
 
   integer, parameter :: wp = kind(0d0)
+  integer, parameter :: long = selected_int_kind(18)
+
   real(wp), parameter :: one = 1.0_wp
   real(wp), parameter :: zero = 0.0_wp
 
   ! error flags
-  integer, parameter :: spllt_success       = 0 
-  integer, parameter :: spllt_error_unknown = 0 
+  integer, parameter :: spllt_success           = 0 
+  integer, parameter :: spllt_error_allocation  = -1
+  integer, parameter :: spllt_error_unknown     = -99 
 
   interface gen_random_posdef
      module procedure gen_random_posdef
@@ -25,7 +29,24 @@ module spllt_mod
 
 contains
 
+  ! subroutine spllt_realloc_1d(a, n)
+  !   implicit none
+
+  !   if (.not. allocated(a)) then
+  !      allocate(a(n))
+  !      return
+  !   else
+  !      if (size(a) .lt. n) then
+  !         deallocate(a)
+  !         allocate(a(n))
+  !      end if
+  !   end if
+    
+  !   return
+  ! end subroutine spllt_realloc_1d
+
   subroutine gen_random_posdef(matrix, nza, iseed)
+    implicit none
     type(zd11_type), intent(inout) :: matrix
     integer, intent(in) :: nza
     integer, intent(inout) :: iseed
@@ -149,5 +170,24 @@ contains
     end do
 
   end subroutine compute_resid
+
+  subroutine spllt_print_err(iflag, control, context, st)
+    use hsl_ma87_double
+    implicit none
+    
+    integer, intent(in) :: iflag
+    type(ma87_control), intent(in) :: control
+    character (len=*), optional, intent(in) :: context
+    integer, intent(in), optional :: st
+
+    select case(iflag)
+    case(spllt_error_allocation)
+       write(*,*) 'allocation error'
+    case default
+       write(*,*) 'unknown error'
+    end select
+
+    return
+  end subroutine spllt_print_err
 
 end module spllt_mod

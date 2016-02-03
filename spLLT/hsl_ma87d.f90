@@ -26,6 +26,9 @@ module hsl_MA87_double
       ma87_sparse_fwd_solve, ma87_finalise
    public :: ma87_get_n__
 
+   public :: factorize_posdef, factor_diag_block, solv_col_block, update_block_block
+   public :: copy_a_to_l, get_dest_block 
+
    ! Parameters
    ! Data kinds
    integer, parameter :: wp   = kind(0d0)
@@ -275,7 +278,7 @@ module hsl_MA87_double
 
    ! Data type for communication between threads and routines
    type ma87_keep
-      private
+ !     private
       type(block_type), dimension(:), allocatable :: blocks ! block info
       integer, dimension(:), allocatable :: flag_array ! allocated to
          ! have size equal to the number of threads. For each thread, holds
