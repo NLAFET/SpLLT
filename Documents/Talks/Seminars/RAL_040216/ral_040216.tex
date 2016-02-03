@@ -1,0 +1,255 @@
+
+\documentclass{beamer}
+
+\usetheme{qrmMMXV}
+\usecolortheme{qrmMMXV}
+
+\usepackage{textcomp}
+\usepackage{mathtools}
+\usepackage{xspace}
+\usepackage{fancybox}
+\usepackage{fancyvrb}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{pgf}
+\usepackage{color,colortbl,booktabs}
+\usepackage{amssymb,amsmath,amsthm}
+\usepackage[misc]{ifsym}
+
+\newcommand{\otoprule}{\midrule[\heavyrulewidth]}
+\usetikzlibrary{arrows,automata}
+
+%% Biblio
+\usepackage[maxcitenames=1,maxbibnames=10,defernumbers=true,style=authoryear,natbib,backend=biber,style=numeric,firstinits=true]{biblatex} % style=numeric
+% \usepackage[sorting=none, backend=biber]{biblatex} % load the package
+\addbibresource{qrmbib.bib} % add a bib-reference file
+
+\DeclareSourcemap{
+  \maps[datatype=bibtex]{
+    \map[overwrite=true]{
+      \step[fieldsource=author, match=Lopez, final=true]
+      \step[fieldset=keywords,  fieldvalue={, lopez}, append] 
+    }
+  }
+}
+
+\renewcommand*{\bibfont}{\footnotesize}
+
+\defbibheading{bibss}[\bibname]{%
+\subsection{#1}%
+\markboth{#1}{#1}}
+
+% \setbeamertemplate{bibliography item}[triangle]
+
+% \renewcommand{\bibfont}{\normalfont\scriptsize}
+% \setbeamerfont{bibliography item}{family=\ttfamily}
+% \setbeamercolor{bibliography entry title}{fg=mred}
+% \setbeamertemplate{bibliography item}{\insertbiblabel}
+
+\newcommand{\mycite}[1]{[{\scriptsize #1}]}
+
+\newtheorem{lp}{Linear Program}
+
+
+\newcommand{\qrm}{\texttt{qr\_mumps}\xspace}
+\newcommand{\qrs}{\texttt{qr\_starpu}\xspace}
+\newcommand{\spqr}{\texttt{SPQR}\xspace}
+\newcommand{\spqrgpu}{\texttt{SPQRGPU}\xspace}
+\newcommand\ignore[1]{{}}
+\newcommand{\starpu}{{StarPU}\xspace}
+
+%% For additional slides 
+\newcommand{\AdditionalSlidesBegin}{
+   \newcounter{framenumbervorappendix}
+   \setcounter{framenumbervorappendix}{\value{framenumber}}
+}
+\newcommand{\AdditionalSlidesEnd}{
+   \addtocounter{framenumbervorappendix}{-\value{framenumber}}
+   \addtocounter{framenumber}{\value{framenumbervorappendix}} 
+}
+
+\author{Florent~Lopez} 
+\institute{Universit\'e Paul Sabatier-IRIT}
+
+\title{Task-based multifrontal QR solver for heterogeneous
+  architectures}
+
+\date{Ph.D. defense, 2015}
+
+% \makeatletter
+% \AtBeginPart{%
+  % \addtocontents{toc}{\protect\beamer@partintoc{\the\c@part}{\beamer@partnameshort}{\the\c@page}}%
+% }
+% %% number, shortname, page.
+% \providecommand\beamer@partintoc[3]{%
+  % \ifnum\c@tocdepth=-1\relax
+    % % requesting onlyparts.
+    % \makebox[6em]{PART #1:} #2
+    % \vspace{0.5cm}
+    % \par
+  % \fi
+% }
+% \define@key{beamertoc}{onlyparts}[]{%
+  % \c@tocdepth=-1\relax
+% }
+% \makeatother%
+
+% \ifxetex
+% % if you use xelatex for compiling, then you can set a FreeType font
+% % like this
+% \usepackage{fontspec}
+% % \setmainfont[Mapping=tex-text]{Gill Sans MT Std}
+ % \setmainfont[Mapping=tex-text]{Bryant Pro}
+% % \setmainfont[Mapping=tex-text]{Ubuntu}
+% \let\sfdefault\rmdefault
+% \fi
+
+\definecolor{gray98}{rgb}{0.98,0.98,0.98}
+\definecolor{gray20}{rgb}{0.20,0.20,0.20}
+\definecolor{gray25}{rgb}{0.25,0.25,0.25}
+\definecolor{gray16}{rgb}{0.161,0.161,0.161}
+\definecolor{gray60}{rgb}{0.6,0.6,0.6}
+\definecolor{gray30}{rgb}{0.3,0.3,0.3}
+\definecolor{bgray}{RGB}{248, 248, 248}
+
+\newcommand{\dg}[1]{\textcolor{mgreen}{#1\xspace}}
+\newcommand{\dr}[1]{\textcolor{mred}{#1\xspace}}
+\newcommand{\db}[1]{\textcolor{mblue}{#1\xspace}}
+\newcommand{\dd}[1]{\textcolor{gray!70}{#1\xspace}}
+\newcommand{\gn}[1]{\textcolor{gray!110}{#1\xspace}}
+\newcommand{\gs}[1]{\textcolor{gray!50}{#1\xspace}}
+\newcommand{\gt}[1]{\textcolor{gray!20}{#1\xspace}}
+\newcommand{\dk}[1]{\textcolor{black}{#1\xspace}}
+
+\definecolor{amgreen}{RGB}{77, 175, 74}
+% \definecolor{amblu}{RGB}{72, 88, 102}
+\definecolor{amblu}{RGB}{55, 126, 184}
+\definecolor{amred}{RGB}{228,26,28}
+\definecolor{amyellow}{RGB}{237,177,32}
+\definecolor{ampurple}{RGB}{126,47,142}
+
+\newcommand{\mye}[1]{\textcolor{amyellow}{#1}\xspace}
+\newcommand{\mgr}[1]{\textcolor{amgreen}{#1}\xspace}
+\newcommand{\mbl}[1]{\textcolor{amblu}{#1}\xspace}
+\newcommand{\mre}[1]{\textcolor{amred}{#1}\xspace}
+\newcommand{\mbk}[1]{\textcolor{black}{#1}\xspace}
+\newcommand{\mbp}[1]{\textcolor{ampurple}{#1}\xspace}
+
+% \newcommand<>{\blue}[1]{{\color#2{blue!100!black!100}#1}}
+% \newcommand<>{\green}[1]{{\color#2{green!100!black!100}#1}}
+% \newcommand<>{\red}[1]{{\color#2{red!100!black!100}#1}}
+\usepackage{wasysym}        % for smileys
+%smileys % green - red
+%%%%% Colors
+\def\smiley{\dg{\wasyfamily\char44}\xspace}
+\def\frownie{\dr{\wasyfamily\char47}\xspace}
+
+%% \graphicspath{
+%%   {../../../presentations/SOLHAR/Reunion_Lyon_0314/}
+%%   {../../../presentations/SOLHAR/Kickoff_1113/}
+%%   {../../../presentations/SOLHAR/Reunion_Lyon_0314/}
+%%   {../../../presentations/EuroPar2013/}
+%%   {../../../presentations/StGirons/}
+%%   {../figures/}
+%%   {../data/}}
+
+\usepackage[procnames]{listings}
+\lstset{ %
+  backgroundcolor=\color{gray98},    % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\tt\tiny, % \prettysmall      % the size of the fonts that are used for the code
+  breakatwhitespace=false,          % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                  % sets automatic line breaking
+  showlines=false,                  % sets automatic line breaking
+  captionpos=b,                     % sets the caption-position to bottom
+  commentstyle=\color{gray30},      % comment style
+  extendedchars=true,               % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                     % adds a frame around the code
+  keepspaces=true,                  % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{amblu},       % keyword style
+  procnamestyle=\color{amred},      % procedures style
+  language=[95]fortran,             % the language of the code
+  numbers=none,                     % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                    % how far the line-numbers are from the code
+  numberstyle=\tiny\color{gray20},  % the style that is used for the line-numbers
+  rulecolor=\color{gray20},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                 % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,           % underline spaces within strings only
+  showtabs=false,                   % show tabs within strings adding particular underscores
+  stepnumber=2,                     % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{amblu},        % string literal style
+  tabsize=2,                        % sets default tabsize to 2 spaces
+  title=\xspace,                    % show the filename of files included with \lstinputlisting; also try caption instead of title
+  procnamekeys={call}
+}
+
+
+\begin{document}
+
+% published papers
+\nocite{a.b.g.l.:15,a.b.g.l.:14,a.b.g.l.:13,s.a.b.g.ea:15,a.a.b.b.ea:15,a.b.g.l:15*1,a.b.g.l:15*2,a.b.g.l:14*1,a.b.g.l:13*1,d.l:12}
+% cited papers
+\nocite{a.b.c.d.ea:14, e.m.s.v:15}
+
+\begin{frame}[t,plain]
+\titlepage
+
+\end{frame}
+
+\section{Introduction}
+\input{introduction}
+% \section{Performance analysis approach}
+% \input{analysis}
+\section{Task-based multifrontal QR method}
+\input{mf-task}
+\section{STF-based parallel multifrontal QR method for multicore architectures}
+\input{mf-stf-mul}
+\section{STF-based parallel multifrontal QR method for heterogeneous architectures}
+\input{mf-stf-het}
+\section{Memory-aware multifrontal method}
+\input{memory-aware}
+\section{Conclusion and Future Work}
+\input{conclusion}
+
+%% Thanks
+
+\begin{frame}[plain]{}
+  \begin{center}
+    \vspace{2cm}
+
+    {\Huge Thanks!}
+
+    \vspace{1cm}
+
+    {\huge Questions?}
+
+    \vspace{2cm}
+
+  \end{center}
+\end{frame}
+
+\appendix
+
+\AdditionalSlidesBegin
+
+\begin{frame}[allowframebreaks]{Bibliography}
+  \printbibliography[prefixnumbers=S, title={Submitted articles}, keyword=lopezsubmittedjournal]
+  \printbibliography[prefixnumbers=C, title={Conference proceedings}, keyword=lopezconference]
+  \printbibliography[prefixnumbers=P, title={Posters}, keyword=lopezposter]
+  \printbibliography[prefixnumbers=T, title={Conference talks}, keyword=lopezpresentation]
+\end{frame}
+
+\begin{frame}[allowframebreaks]
+  \printbibliography[title={References}, resetnumbers=true, notkeyword=lopez]
+\end{frame}
+
+\input{appendix}
+
+\AdditionalSlidesEnd
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% TeX-engine: xetex
+%%% End:

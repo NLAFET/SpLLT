@@ -1,0 +1,362 @@
+% Beamer qrmMMXV
+%
+% Copyright 2014 Matthias Vogelgesang
+% Licensed under CC-BY-SA 4.0 International.
+%
+% The initial template comes from the HSRM beamer theme by Benjamin Weiss, which
+% you can find at https://github.com/hsrmbeamertheme/hsrmbeamertheme.
+%
+
+\ProvidesPackage{beamerthemeqrmMMXV}
+
+%{{{ --- Options ----------------------
+
+\newif\if@useTitleProgressBar
+\newif\if@protectFrameTitle
+
+\@useTitleProgressBarfalse
+\@protectFrameTitlefalse
+
+% Lengths.
+\newlength{\beamer@fancy@lineup}
+\setlength{\beamer@fancy@lineup}{.025\paperheight}
+\newlength{\beamer@fancy@linemid}
+\setlength{\beamer@fancy@linemid}{.015\paperheight}
+\newlength{\beamer@fancy@linebottom}
+\setlength{\beamer@fancy@linebottom}{.01\paperheight}
+
+% Margins.
+\newlength{\beamer@fancy@normalmargin}
+\setlength{\beamer@fancy@normalmargin}{.06\paperwidth}
+\setbeamersize{text margin left=\beamer@fancy@normalmargin}
+\setbeamersize{text margin right=\beamer@fancy@normalmargin}
+\setlength\leftmargini{.6\beamer@fancy@normalmargin}
+\setlength\leftmarginii{.6\beamer@fancy@normalmargin}
+\setlength\leftmarginiii{.6\beamer@fancy@normalmargin}
+
+
+\DeclareOptionBeamer{usetitleprogressbar}{\@useTitleProgressBartrue}
+\DeclareOptionBeamer{protectframetitle}{\@protectFrameTitletrue}
+\DeclareOptionBeamer{blockbg}{%
+  \PassOptionsToPackage{blockbg}{beamercolortheqrmMMXV}%
+}
+
+\DeclareOptionBeamer*{%
+  \PackageWarning{beamerthemeqrmMMXV}{Unknown option `\CurrentOption'}%
+}
+
+\ProcessOptionsBeamer
+
+%}}}
+
+\mode<presentation>
+
+%{{{ --- Packages ---------------------
+
+\RequirePackage{etoolbox}
+\RequirePackage{pgfplots}
+
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{calc}
+
+\usecolortheme{qrmMMXV}
+\usefonttheme{qrmMMXV}
+
+%}}}
+%{{{ --- Titlepage --------------------
+
+\def\maketitle{\ifbeamer@inframe\titlepage\else\frame[plain]{\titlepage}\fi}
+
+\def\titlepage{\usebeamertemplate{title page}}
+\setbeamertemplate{title page}
+{
+  \begin{minipage}[b][\paperheight]{\textwidth}
+    \vfill
+    \ifx\inserttitle\@empty%
+    \else%
+    {\raggedright\linespread{1.0}\usebeamerfont{title}\usebeamercolor[fg]{title}\scshape\MakeLowercase{\inserttitle}\par}%
+    \vspace*{0.5em}
+    \fi%
+    \ifx\insertsubtitle\@empty%
+    \else%
+    {\usebeamerfont{subtitle}\usebeamercolor[fg]{subtitle}\insertsubtitle\par}%
+    \vspace*{0.5em}
+    \fi%
+    \begin{tikzpicture}\draw[alerted text.fg] (0, 0) -- (\textwidth, 0);\end{tikzpicture}%
+    \vspace*{1em}
+    \ifx\insertauthor\@empty%
+    \else%
+    {\usebeamerfont{author}\usebeamercolor[fg]{author}\insertauthor\par}%
+    \vspace*{0.25em}
+    \fi%
+    \ifx\insertdate\@empty%
+    \else%
+    {\usebeamerfont{date}\usebeamercolor[fg]{date}\insertdate\par}%
+    \fi%
+    \ifx\insertinstitut\@empty%
+    \else%
+    \vspace*{3mm}
+    {\usebeamerfont{institute}\usebeamercolor[fg]{institute}\insertinstitute\par}%
+    \fi%
+    \vfill
+    \vspace*{5mm}
+  \end{minipage}
+}
+
+%}}}
+%{{{ --- Progressbar ------------------
+
+\makeatletter
+\def\progressbar@sectionprogressbar{}
+\def\progressbar@titleprogressbar{}
+\newcount\progressbar@tmpcounta % auxiliary counter
+\newcount\progressbar@tmpcountb % auxiliary counter
+\newdimen\progressbar@pbht      % progressbar height
+\newdimen\progressbar@pbwd      % progressbar width
+\newdimen\progressbar@tmpdim    % auxiliary dimension
+
+\progressbar@pbwd=22em
+\progressbar@pbht=0.4pt
+
+% the progress bar
+\def\progressbar@sectionprogressbar{%
+  {\usebeamercolor{palette primary}%
+    \progressbar@tmpcounta=\insertframenumber
+    \progressbar@tmpcountb=\inserttotalframenumber
+    \progressbar@tmpdim=\progressbar@pbwd
+    \divide\progressbar@tmpdim by 100
+    \multiply\progressbar@tmpdim by \progressbar@tmpcounta
+    \divide\progressbar@tmpdim by \progressbar@tmpcountb
+    \multiply\progressbar@tmpdim by 100
+
+    \makebox[\textwidth][c]{
+      \begin{tikzpicture}[tight background]
+
+        \node[anchor=west, fg, inner sep=0pt, text width=\textwidth] at (0pt, 0pt) {\insertsectionHEAD};
+
+        \draw[anchor=west, fg!20, fill=fg!20, inner sep=0pt]
+        (2pt, -16pt) rectangle ++ (\progressbar@pbwd, \progressbar@pbht);
+
+        \draw[anchor=west, fg, fill=fg, inner sep=0pt]
+        (2pt, -16pt) rectangle ++ (\progressbar@tmpdim, \progressbar@pbht);
+      \end{tikzpicture}%
+    }
+  } % end usebeamercolor{palette primary}
+}
+
+\if@useTitleProgressBar
+\def\progressbar@titleprogressbar{%
+  \progressbar@tmpcounta=\insertframenumber
+  \progressbar@tmpcountb=\inserttotalframenumber
+  \progressbar@tmpdim=\paperwidth
+  \divide\progressbar@tmpdim by 100
+  \multiply\progressbar@tmpdim by \progressbar@tmpcounta
+  \divide\progressbar@tmpdim by \progressbar@tmpcountb
+  \multiply\progressbar@tmpdim by 100
+  {%
+    \usebeamercolor{palette quaternary}%
+    \usebeamercolor{alerted text}%
+    \begin{tikzpicture}[tight background]
+      \draw[palette quaternary.fg, fill=palette quaternary.fg] (0, 0) rectangle ($(\paperwidth, 0.6pt) - (0.4pt, 0)$);
+      \draw[alerted text.fg, fill=alerted text.fg] (0, 0) rectangle (\progressbar@tmpdim, 0.6pt);
+    \end{tikzpicture}%
+  }%
+}
+\fi
+%}}}
+%{{{ --- Commands ---------------------
+
+\newcommand{\insertsectionHEAD}{%
+  \expandafter\insertsectionHEADaux\insertsectionhead}
+  \newcommand{\insertsectionHEADaux}[3]{\textsc{\MakeLowercase{#3}}
+}
+
+\newcommand{\plain}[2][]{%
+  \begingroup
+  \setbeamercolor{background canvas}{use=palette primary,bg=palette primary.fg}
+  \begin{frame}{#1}
+    \centering
+    \vfill\vspace{1em}\usebeamerfont{section title}\textcolor{white}{\scshape #2}\vfill
+  \end{frame}
+  \endgroup
+}
+
+%}}}
+
+%{{{ --- Itemize ----------------------
+% Items.
+\defbeamertemplate{itemize item}{squarealt}%
+{\tiny\raise.5ex\hbox{\donotcoloroutermaths$\blacksquare$}}
+\defbeamertemplate{itemize subitem}{squarealt}%
+{\tiny\raise.4ex\hbox{\donotcoloroutermaths$\square$}}
+\defbeamertemplate{itemize subsubitem}{squarealt}%
+{\tiny\raise.3ex\hbox{\donotcoloroutermaths$\blacksquare$}}
+
+\defbeamertemplate{itemize item}{circlealt}%
+{\small\raise.2ex\hbox{\donotcoloroutermaths$\bullet$}}
+\defbeamertemplate{itemize subitem}{circlealt}%
+{\small\raise.1ex\hbox{\donotcoloroutermaths$\circ$}}
+\defbeamertemplate{itemize subsubitem}{circlealt}%
+{\scriptsize\raise.1ex\hbox{\donotcoloroutermaths$\bullet$}}
+
+\setbeamertemplate{items}[circlealt]
+%}}}
+
+
+%{{{ --- Sections ---------------------
+
+% Insert frame with section title at every section start
+\AtBeginSection[]
+{
+  \begingroup
+  \setbeamercolor{background canvas}{parent=palette primary}
+  \begin{frame}[plain]
+    \vspace{2em}\usebeamerfont{section title}
+    \progressbar@sectionprogressbar%
+  \end{frame}
+  \endgroup
+}
+
+%}}}
+%{{{ --- Captions ---------------------
+
+\setbeamertemplate{caption label separator}{: }
+\setbeamertemplate{caption}[numbered]
+
+%}}}
+%{{{ --- Footline/footnote ------------
+
+\usenavigationsymbolstemplate{}
+\setbeamertemplate{footline}
+{%
+\begin{beamercolorbox}[wd=\textwidth,ht=3ex,dp=3ex,leftskip=0.3cm,rightskip=0.3cm]{structure}%
+  \hfill\usebeamerfont{page number in head/foot}%
+  \insertframenumber%
+\end{beamercolorbox}%
+}
+
+\setbeamertemplate{footnote}
+{%
+  \parindent 0em\noindent%
+  \raggedright
+  \usebeamercolor{footnote}\hbox to 0.8em{\hfil\insertfootnotemark}\insertfootnotetext\par%
+}
+
+%}}}
+%{{{ --- Frametitle -------------------
+
+\setbeamertemplate{frametitle}{%
+\nointerlineskip
+\begin{beamercolorbox}[wd=\paperwidth,leftskip=0.3cm,rightskip=0.3cm,ht=2.5ex,dp=1.5ex]{frametitle}
+\if@protectFrameTitle
+  \usebeamerfont{frametitle}{\protect\insertframetitle}%
+\else
+  \usebeamerfont{frametitle}{\insertframetitle}%
+\fi
+\end{beamercolorbox}%
+}
+
+%}}}
+
+
+\defbeamertemplate*{block begin}{qrmMMXV}
+{
+  \par\vskip\medskipamount%
+  \begin{beamercolorbox}[colsep*=.75ex]{block title}
+    \usebeamerfont*{block title}\insertblocktitle%
+  \end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \ifbeamercolorempty[bg]{block title}
+  {}
+  {\ifbeamercolorempty[bg]{block body}{}{\nointerlineskip\vskip-0.5pt}}%
+  \usebeamerfont{block body}%
+  \begin{beamercolorbox}[colsep*=.75ex]{block body}%
+    \vspace{-\baselineskip}\ifbeamercolorempty[bg]{block body}{\vskip-.25ex}{\vskip-.75ex}\vbox{}%
+}
+\defbeamertemplate*{block end}{qrmMMXV}  
+{\end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \ifbeamercolorempty[bg]{block title}
+  {}
+  {\ifbeamercolorempty[bg]{block body}{}{\nointerlineskip\vskip-0.5pt}}%
+  \usebeamerfont{block body}%
+  \begin{beamercolorbox}[colsep*=.75ex,ht=0.05cm]{block title}
+    ~
+  \end{beamercolorbox}
+\vskip\smallskipamount}
+
+
+\defbeamertemplate*{block example begin}{qrmMMXV}
+{
+  \par\vskip\medskipamount%
+  \begin{beamercolorbox}[colsep*=.75ex]{block title example}
+    \usebeamerfont*{block title}\insertblocktitle%
+  \end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \ifbeamercolorempty[bg]{block title}
+  {}
+  {\ifbeamercolorempty[bg]{block body}{}{\nointerlineskip\vskip-0.5pt}}%
+  \usebeamerfont{block body}%
+  \begin{beamercolorbox}[colsep*=.75ex]{block body example}%
+    \vspace{-\baselineskip}\ifbeamercolorempty[bg]{block body}{\vskip-.25ex}{\vskip-.75ex}\vbox{}%
+}
+\defbeamertemplate*{block example end}{qrmMMXV} 
+{\end{beamercolorbox}%
+  {\parskip0pt\par}%
+  \ifbeamercolorempty[bg]{block title}
+  {}
+  {\ifbeamercolorempty[bg]{block body}{}{\nointerlineskip\vskip-0.5pt}}%
+  \usebeamerfont{block body}%
+  \begin{beamercolorbox}[colsep*=.75ex,ht=0.05cm]{block title example}
+    ~
+  \end{beamercolorbox}
+\vskip\smallskipamount}
+
+
+
+\setbeamertemplate{bibliography item}{\insertbiblabel}
+
+
+
+
+
+
+\mode<all>
+
+%{{{ misc
+\let\otp\titlepage
+\renewcommand{\titlepage}{\otp\addtocounter{framenumber}{-1}}
+\newcommand{\mreducelistspacing}{\vspace{-\topsep}}
+
+%}}}
+
+
+
+\usepackage[procnames]{listings}
+\lstset{ %
+  backgroundcolor=\color{black!3},   % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\code\footnotesize,      % the size of the fonts that are used for the code
+  breakatwhitespace=false,          % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                  % sets automatic line breaking
+  captionpos=b,                     % sets the caption-position to bottom
+  commentstyle=\color{black!70},      % comment style
+  extendedchars=true,               % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                     % adds a frame around the code
+  keepspaces=true,                  % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{mDarkTeal},       % keyword style
+  procnamestyle=\color{mred},       % procedures style
+  language=[95]fortran,             % the language of the code
+  numbers=none,                     % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                    % how far the line-numbers are from the code
+  numberstyle=\tiny\color{black!20}, % the style that is used for the line-numbers
+  rulecolor=\color{mDarkTeal},          % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                 % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,           % underline spaces within strings only
+  showtabs=false,                   % show tabs within strings adding particular underscores
+  stepnumber=2,                     % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{mgreen},       % string literal style
+  tabsize=2,                        % sets default tabsize to 2 spaces
+  title=\lstname,                    % show the filename of files included with \lstinputlisting; also try caption instead of title
+  procnamekeys={call}
+}
+

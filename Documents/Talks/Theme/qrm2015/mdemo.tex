@@ -1,0 +1,247 @@
+\documentclass[10pt, compress]{beamer}
+
+\usetheme{qrmMMXV}
+
+\usepackage{gnuplottex}
+\usepackage{tikz,pgfplots}
+\usepackage{booktabs}
+\usepackage[scale=2]{ccicons}
+
+
+
+\title{A new beamer theme for \texttt{qr\_mumps}}
+\subtitle{}
+\date{\today}
+\author{Alfredo Buttari}
+\institute{Institute or miscellaneous information}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}[fragile]
+  \frametitle{mtheme}
+
+  The \emph{mtheme} is a Beamer theme with minimal visual noise inspired by the
+  \href{https://github.com/hsrmbeamertheme/hsrmbeamertheme}{\textsc{hsrm} Beamer
+  Theme} by Benjamin Weiss.
+
+  Enable the theme by loading
+
+
+  \begin{block}{pigliatela}
+    nderculo
+  \end{block}
+
+  \begin{exampleblock}{pigliatela}
+    nderculo
+  \end{exampleblock}
+
+  Note, that you have to have Mozilla's \emph{Fira Sans} font and XeTeX
+  installed to enjoy this wonderful typography.
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Sections}
+  Sections group slides of the same topic
+
+\begin{verbatim}
+    \section{Elements}
+\end{verbatim}
+
+  for which the \emph{mtheme} provides a nice progress indicator \ldots
+\end{frame}
+
+\section{Elements}
+
+\begin{frame}[fragile]
+  \frametitle{Typography}
+
+The theme provides sensible defaults to \emph{emphasize}
+text, \alert{accent} parts or show \textbf{bold} results.
+
+
+  \begin{center}becomes\end{center}
+
+  The theme provides sensible defaults to \emph{emphasize} text,
+  \alert{accent} parts or show \textbf{bold} results.
+\end{frame}
+\begin{frame}{Lists}
+  \begin{columns}[onlytextwidth]
+    \column{0.5\textwidth}
+      Items
+      \begin{itemize}
+        \item Milk \item Eggs \item Potatos
+      \end{itemize}
+
+    \column{0.5\textwidth}
+      Enumerations
+      \begin{enumerate}
+        \item First, \item Second and \item Last.
+      \end{enumerate}
+  \end{columns}
+\end{frame}
+\begin{frame}{Descriptions}
+  \begin{description}
+    \item[PowerPoint] Meeh.
+    \item[Beamer] Yeeeha.
+  \end{description}
+\end{frame}
+\begin{frame}{Animation}
+  \begin{itemize}[<+- | alert@+>]
+    \item \alert<4>{This is\only<4>{ really} important}
+    \item Now this
+    \item And now this
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Tables}
+  \begin{table}
+    \caption{Largest cities in the world (source: Wikipedia)}
+    \begin{tabular}{lr}
+      \toprule
+      City & Population\\
+      \midrule
+      Mexico City & 20,116,842\\
+      Shanghai & 19,210,000\\
+      Peking & 15,796,450\\
+      Istanbul & 14,160,467\\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+\end{frame}
+\begin{frame}{Blocks}
+
+  \begin{block}{This is a block title}
+    This is soothing.
+  \end{block}
+
+\end{frame}
+\begin{frame}{Math}
+  \begin{equation*}
+    e = \lim_{n\to \infty} \left(1 + \frac{1}{n}\right)^n
+  \end{equation*}
+\end{frame}
+
+% \begin{frame}{Line plots}
+  % \begin{figure}
+    % \begin{tikzpicture}
+      % \begin{axis}[
+        % mlineplot,
+        % width=0.9\textwidth,
+        % height=6cm,
+      % ]
+
+        % \addplot {sin(deg(x))};
+        % \addplot+[samples=100] {sin(deg(2*x))};
+
+      % \end{axis}
+    % \end{tikzpicture}
+  % \end{figure}
+% \end{frame}
+
+
+% \begin{frame}[fragile]{Bar charts}
+% aaa bbb
+% \begin{center}
+% \begin{gnuplot}[terminal=pdf, scale=0.7]
+% set style line 1 lt 1 lc rgb '#0072bd' # blue
+% set style line 2 lt 1 lc rgb '#d95319' # orange
+% set style line 3 lt 1 lc rgb '#edb120' # yellow
+% set style line 4 lt 1 lc rgb '#7e2f8e' # purple
+% set style line 5 lt 1 lc rgb '#77ac30' # green
+% set style line 6 lt 1 lc rgb '#4dbeee' # light-blue
+% set style line 7 lt 1 lc rgb '#a2142f' # red
+
+% # Axes
+% set style line 101 lc rgb '#808080' lt 1
+% set border 3 back ls 101
+% set tics nomirror out scale 0.75
+% # Grid
+% set style line 102 lc rgb'#808080' lt 0 lw 1
+% set grid back ls 102
+
+% set xrange [0:15]
+% unset key
+
+% # Bessel functions (after Bronstein 2001, eq. 9.54a)
+% besj2(x) = 2*1/x * besj1(x) - besj0(x)
+% besj3(x) = 2*2/x * besj2(x) - besj1(x)
+% besj4(x) = 2*3/x * besj3(x) - besj2(x)
+% besj5(x) = 2*4/x * besj4(x) - besj3(x)
+% besj6(x) = 2*5/x * besj5(x) - besj4(x)
+% besj0_(x) = x<5 ? besj0(x) : 1/0
+
+% set label 'J_0' at 1.4,0.90 center tc ls 1
+% set label 'J_1' at 1.9,0.67 center tc ls 2
+% set label 'J_2' at 3.2,0.57 center tc ls 3
+% set label 'J_3' at 4.3,0.51 center tc ls 4
+% set label 'J_4' at 5.4,0.48 center tc ls 5
+% set label 'J_5' at 6.5,0.45 center tc ls 6
+% set label 'J_6' at 7.6,0.43 center tc ls 7
+
+% plot besj0(x) ls 1 lw 2, \
+%      besj1(x) ls 2 lw 2, \
+%      besj2(x) ls 3 lw 2, \
+%      besj3(x) ls 4 lw 2, \
+%      besj4(x) ls 5 lw 2, \
+%      besj5(x) ls 6 lw 2, \
+%      besj6(x) ls 7 lw 2
+% \end{gnuplot}
+% \end{center}
+
+% \end{frame}
+
+
+
+\begin{frame}[fragile]{Code}
+
+  I love Fortran!
+  
+  \vspace{0.5cm}
+
+\begin{lstlisting}[basicstyle=\tt\scriptsize, showlines=true]
+program pippo
+
+  integer, parameter            :: m=10, n=5
+  real(kind(1.d0)), allocatable :: a(:,:)
+
+  allocate(a(m,n))      ! allocate the matrix
+
+  call random_number(a) ! fill it up
+
+  call do_something(a)  ! do something on it
+
+  write(*,'("Hello world")')
+  stop
+
+end program pippo
+\end{lstlisting}
+
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Summary}
+
+  Get the source of this theme and the demo presentation from
+
+  \begin{center}\url{github.com/matze/mtheme}\end{center}
+
+  The theme \emph{itself} is licensed under a
+  \href{http://creativecommons.org/licenses/by-sa/4.0/}{Creative Commons
+  Attribution-ShareAlike 4.0 International License}.
+
+  \begin{center}\ccbysa\end{center}
+
+\end{frame}
+
+\plain{Questions?}
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
