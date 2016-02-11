@@ -29,7 +29,7 @@ contains
 
     ! shortcuts
     type(node_type), pointer :: node ! node in the atree    
-    type(block_type), pointer :: bc_kk, bc ! node in the atree    
+    type(block_type), pointer :: bc_kk, bc_ik, bc ! node in the atree    
     type(lfactor), dimension(:), pointer :: lfact! block columns in L factor    
     type(block_type), dimension(:), pointer :: blocks ! block info. 
     type(node_type), dimension(:), pointer :: nodes 
@@ -204,25 +204,9 @@ contains
              
              ! A_mk
              blk = dblk+mm-kk
-             bc => keep%blocks(blk)
+             bc_ik => keep%blocks(blk)
 
-             ! write(*,*)'blk: ', blk
-
-             blkn  = bc%blkn
-             blkm  = bc%blkm
-             sa    = bc%sa
-             id    = bc%id
-
-             ! bcol is block column that blk and dblk belong to
-             bcol = bc%bcol
-
-             ! solve_block task
-             call solv_col_block(blkm, blkn, id, & 
-                  & keep%lfact(bcol)%lcol(sa:sa+blkn*blkm-1), &
-                  & bc_kk%id, keep%lfact(bcol)%lcol(bc_kk%sa:bc_kk%sa+blkn*bc_kk%blkm), &
-                  & control)
-
-
+             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact, control)
           end do
 
           do nn = kk+1,nbcol

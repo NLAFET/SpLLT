@@ -44,23 +44,29 @@ contains
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
     type(MA87_control), intent(in) :: control     
     
-    integer :: m, n, bcol, sa
+    integer :: m, n, bcol, sa 
+    integer :: d_m, d_n, d_sa 
+    integer(long) :: id, d_id
 
     ! bc_kk
-    
+    d_m  = bc_kk%blkm
+    d_n  = bc_kk%blkn
+    d_sa = bc_kk%sa
+    d_id = bc_kk%id
+
     ! bc_ik
     n  = bc_ik%blkn
     m  = bc_ik%blkm
-    sa    = bc_ik%sa
-    id    = bc_ik%id
+    sa = bc_ik%sa
+    id = bc_ik%id
     
     ! bcol is block column that blk and dblk belong to
-    bcol = bc%bcol    
+    bcol = bc_kk%bcol    
 
     ! solve_block task
     call solv_col_block(m, n, id, & 
          & lfact(bcol)%lcol(sa:sa+n*m-1), &
-         & bc_kk%id, keep%lfact(bcol)%lcol(bc_kk%sa:bc_kk%sa+blkn*bc_kk%blkm), &
+         & d_id, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m), &
          & control)
 
     return
