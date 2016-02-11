@@ -26,8 +26,12 @@ module hsl_MA87_double
       ma87_sparse_fwd_solve, ma87_finalise
    public :: ma87_get_n__
 
-   public :: factorize_posdef, factor_diag_block, solv_col_block, update_block_block
+   ! factorization kernels
+   public :: factorize_posdef, factor_diag_block, solv_col_block, update_block_block, &
+        & update_between
    public :: copy_a_to_l, get_dest_block 
+   ! derived types
+   public :: node_type, block_type, lfactor
 
    ! Parameters
    ! Data kinds
