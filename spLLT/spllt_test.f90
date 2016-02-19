@@ -7,8 +7,8 @@ program spllt_test
   
   write(*,'("[spllt test]")')
 
-  n   = 100
-  nnz = 400
+  n   = 256
+  nnz = 10000
 
   call spllt_test_rand(n, nnz)
 
@@ -44,6 +44,8 @@ contains
     allocate(a%row(2*a%ne), a%col(2*a%ne), a%val(2*a%ne))
 
     write(*,'("[spllt test rand] generate random matrix")')
+
+    control%nb = 128
 
     call fa14id(iseed)
 

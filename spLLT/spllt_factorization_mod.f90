@@ -97,7 +97,6 @@ contains
     n1  = bc_ik%blkn
     m1  = bc_ik%blkm
     sa1 = bc_ik%sa
-
     bcol1 = bc_ik%bcol
     
     ! bc_jk
@@ -111,7 +110,14 @@ contains
     sa = bc_ij%sa
     
     bcol = bc_ij%bcol
+
+    write(*,*)"bc_ik id: ", bc_ik%id
+    write(*,*)"bc_jk id: ", bc_jk%id
+    write(*,*)"bc_ij id: ", bc_ij%id
     
+    write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
+    write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1
+
     call update_block_block(m, n, &
          & lfact(bcol)%lcol(sa:sa+n*m-1),  &
          & bc_ij, n1, &
@@ -138,7 +144,7 @@ contains
     integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     integer, dimension(:), allocatable  :: row_list, col_list
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-    type(block_type), dimension(:), pointer :: blocks ! block info. 
+    type(block_type), dimension(:)      :: blocks ! block info. 
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
     type(MA87_control), intent(in) :: control     
     integer, intent(out) :: st
