@@ -8,7 +8,7 @@ program spllt_test
   write(*,'("[spllt test]")')
 
   n   = 256
-  nnz = 10000
+  nnz = 1000
 
   call spllt_test_rand(n, nnz)
 
@@ -82,6 +82,8 @@ contains
     write(*,'("[>] [analysis] num flops: ", es10.3)') num_flops    
     write(*,'("[>] [analysis] num nodes: ", i10)') info%num_nodes    
 
+    call spllt_print_atree(keep)
+    
     ! generate rhs
     nrhs = 1
     allocate(b(a%m), x(a%n))

@@ -45,6 +45,32 @@ contains
   !   return
   ! end subroutine spllt_realloc_1d
 
+  subroutine spllt_print_atree(keep)
+    use hsl_ma87_double
+    implicit none    
+
+    type(MA87_keep), intent(in) :: keep
+
+    integer :: snode, num_nodes
+
+    num_nodes = keep%info%num_nodes
+
+    open(2, file="atree.dot")
+
+    write(2, '("graph atree {")')
+    
+    do snode=1,num_nodes
+       write(2, '(i10)')snode
+       if(keep%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')keep%nodes(snode)%parent, snode
+    end do
+
+    write(2, '("}")')
+
+    close(2)
+    
+    return
+  end subroutine spllt_print_atree
+  
   subroutine gen_random_posdef(matrix, nza, iseed)
     implicit none
     type(zd11_type), intent(inout) :: matrix
