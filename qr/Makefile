@@ -9,7 +9,8 @@ CXXFLAGS = -std=c++11 -Wall -g -O2 -march=native# -mavx2 -mfma
 FC = ifort
 FCFLAGS = -g -O3 -ip -march=native -opt-report
 
-LIBS = -llapack -lblas
+# LIBS = $(LTMG) -llapack -lblas
+LIBS = $(LTMG) $(LLAPACK) $(LBLAS) -lgfortran
 
 # VTUNE_DIR = /opt/intel/vtune_amplifier_xe
 # CXXFLAGS += -I $(VTUNE_DIR)/include

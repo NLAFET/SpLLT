@@ -10,11 +10,11 @@
 template <typename T>
 class Problem {
 public:
-   int const m;
-   int const n;
-   T *const a;
-   int const lda;
-
+   int m;
+   int n;
+   T * a;
+   int lda;
+   
    // factors. dedicated class? 
    T *q;
    int ldq;
@@ -24,10 +24,15 @@ public:
    Problem(int m, int n, T *a, int lda)
       : m(m), n(n), a(a), lda(lda),
         q(nullptr), ldq(0), r(nullptr), ldr(0),
-        aorig_(nullptr), rhs_(nullptr) {
+        aorig_(nullptr), rhs_(nullptr),
+        d_(nullptr){
+
+      // array containing singular/eigen values
+      d_ = new T[std::min(m,n)];  
       
       // generate random pbl
-      gen_rand_pbl();
+      // gen_rand_pbl();
+      gen_rand_rr_pbl();
 
       // Take a copy for verficiation purposes
       ldaorig_ = m;
@@ -135,6 +140,47 @@ public:
       return bwderr;
    }
 
+   void gen_rand_pbl() {
+
+      for(int col=0; col<n; ++col) {
+         for(int row=0; row<m; ++row)
+            a[col*lda+row] = 2 * ((T) std::rand()) / RAND_MAX - 1.0;
+      }
+   }
+
+   void gen_rand_rr_pbl() {
+
+      int k = std::min(m,n);
+      // T *d = new T[k];
+      T *work = new T[m+n];
+      int iseed[4] = {0,0,0,1};
+      int info;
+
+      // first k-l values equal to 1.0
+      for(int i=0; i<k; ++i) d_[i] = 1.0;
+
+      // last l values equal to 1.0/1e12
+      int l = 5;
+      for(int i=0; i<l; ++i) d_[k-1-i] = 1e-9;
+      
+      
+      // lagge<double>(m, n, m-1, n-1, d, a, lda, iseed, work, &info);
+      int kl = m-1;
+      int ku = n-1;
+
+      dlagge_(&m, &n, &kl, &ku, d_, a, &lda, iseed, work, &info);
+      // latms<double>(m, n, 'U', iseed, 'N', );
+   }
+
+   void print() {
+      for(int i=0; i<m; ++i) {
+         for(int j=0; j<n; ++j) {
+            printf(" %f ", a[i+lda*j]);
+         }
+         printf("\n");
+      }
+   }
+   
 private:
 
    T calc_ainf() {
@@ -153,15 +199,6 @@ private:
       return best;
    }
 
-
-   void gen_rand_pbl() {
-
-      for(int col=0; col<n; ++col) {
-         for(int row=0; row<m; ++row)
-            a[col*lda+row] = 2 * ((T) std::rand()) / RAND_MAX - 1.0;
-      }
-   }
-
    void cpy_orig() {
       
       for(int col=0; col<n; ++col) {
@@ -177,10 +214,12 @@ private:
       return v;
    }
 
-
    T *aorig_;
    int ldaorig_;
-   T *rhs_;   
+   T *rhs_;
+   // singular/eigenvalues
+   T *d_;
+
 };
 
 #endif // PROBLEM_H

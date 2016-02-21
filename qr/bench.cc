@@ -18,6 +18,8 @@ int main(void) {
    
    Problem<double> *pbl = new Problem<double>(M, N, a, LDA);
 
+   // pbl->print();
+   
    printf("[bench] starting tests\n");
 
    printf("[bench] facto\n");
@@ -40,8 +42,8 @@ int main(void) {
    double bwderr_lsq = pbl->bwderr_lsq();
    double bwderr = pbl->bwderr();
 
-   printf("[bench] bwderr_lsq = %e\n", bwderr_lsq);
-   printf("[bench] bwderr     = %e\n", bwderr);
+   printf("[bench] ||A^Tr|| / ||r||                = %e\n", bwderr_lsq);
+   printf("[bench] ||Ax-b|| / (||A||||x|| + ||b||) = %e\n", bwderr);
 
    // if(bwderr_lsq >= 1e-14 || bwderr_lsq!=bwderr_lsq)
    //    printf("[bench] Failed bwderr_lsq = %e\n", bwderr_lsq);
