@@ -8,7 +8,7 @@ program spllt_test
   write(*,'("[spllt test]")')
 
   n   = 256
-  nnz = 1000
+  nnz = 10000
 
   call spllt_test_rand(n, nnz)
 
@@ -45,7 +45,11 @@ contains
 
     write(*,'("[spllt test rand] generate random matrix")')
 
-    control%nb = 128
+    ! control%nb = 32
+    ! control%nb = 64
+    control%nb = 80
+    ! control%nb = 128
+    ! control%nb = 256
 
     call fa14id(iseed)
 

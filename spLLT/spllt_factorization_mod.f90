@@ -82,6 +82,7 @@ contains
   end subroutine spllt_solve_block_task
 
   ! syrk/gemm (same node)
+  ! A_ij <- A_ij - A_ik A_jk^T
   subroutine spllt_update_block_task(bc_ik, bc_jk, bc_ij, lfact, control)
     use hsl_ma87_double
     implicit none
@@ -91,7 +92,7 @@ contains
     type(MA87_control), intent(in) :: control     
 
     integer :: n1, m1, sa1, n2, m2, sa2, n, m, sa
-    integer :: bcol1, bcol
+    integer :: bcol1, bcol, bcol2
 
     ! bc_ik    
     n1  = bc_ik%blkn
@@ -103,17 +104,18 @@ contains
     n2  = bc_jk%blkn
     m2  = bc_jk%blkm
     sa2 = bc_jk%sa
+    bcol2 = bc_jk%bcol
     
-    ! bc_kk
+    ! bc_ij
     n  = bc_ij%blkn
     m  = bc_ij%blkm
     sa = bc_ij%sa
     
     bcol = bc_ij%bcol
 
-    write(*,*)"bc_ik id: ", bc_ik%id
-    write(*,*)"bc_jk id: ", bc_jk%id
-    write(*,*)"bc_ij id: ", bc_ij%id
+    write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1, ", bcol: ", bcol1
+    write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2, ", bcol: ", bcol2
+    write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n, ", bcol: ", bcol
     
     write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
     write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1
@@ -121,8 +123,8 @@ contains
     call update_block_block(m, n, &
          & lfact(bcol)%lcol(sa:sa+n*m-1),  &
          & bc_ij, n1, &
-         & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1), &
          & lfact(bcol1)%lcol(sa2:sa2+n1*m2-1), &
+         & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1), &
          & control)
 
     return
@@ -165,7 +167,7 @@ contains
     n1  = bc%blkn
     id1 = bc%id
     bcol1 = bc%bcol
-
+    ! write(*,*) "update_between_task"
     call update_between(m, n, id, anode, &
          & n1, id1, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &

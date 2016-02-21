@@ -1,7 +1,7 @@
 #Select compiler and options from below
 ############################
 FC = gfortran
-FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp
+FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
 #FFLAGS += -fprofile-arcs -ftest-coverage
 ############################
