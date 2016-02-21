@@ -113,9 +113,9 @@ contains
     
     bcol = bc_ij%bcol
 
-    write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1, ", bcol: ", bcol1
-    write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2, ", bcol: ", bcol2
-    write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n, ", bcol: ", bcol
+    write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
+    write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
+    write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n
     
     write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
     write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1

@@ -45,10 +45,10 @@ contains
 
     write(*,'("[spllt test rand] generate random matrix")')
 
-    ! control%nb = 32
+    control%nb = 32
     ! control%nb = 64
-    control%nb = 80
-    ! control%nb = 128
+    ! control%nb = 80
+    ! control%nb = 120
     ! control%nb = 256
 
     call fa14id(iseed)

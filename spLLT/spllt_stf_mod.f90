@@ -188,7 +188,8 @@ contains
                 bc_ik => keep%blocks(blk1)
                 
                 ! A_ij
-                blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+                ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+                blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
                 bc_ij => keep%blocks(blk)
                 
                 call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, control)
