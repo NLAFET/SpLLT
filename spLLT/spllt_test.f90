@@ -7,8 +7,11 @@ program spllt_test
   
   write(*,'("[spllt test]")')
 
-  n   = 256
-  nnz = 10000
+  ! n   = 256
+  ! nnz = 1000
+
+  n   = 128
+  nnz = 500
 
   call spllt_test_rand(n, nnz)
 
@@ -45,11 +48,17 @@ contains
 
     write(*,'("[spllt test rand] generate random matrix")')
 
-    control%nb = 32
+    ! control%nb = 10
+    ! control%nb = 32
+    ! control%nb = 39
     ! control%nb = 64
-    ! control%nb = 80
+    ! control%nb = 119
     ! control%nb = 120
     ! control%nb = 256
+
+    ! control%nemin = 10
+
+    control%nb = 40
 
     call fa14id(iseed)
 
@@ -98,7 +107,7 @@ contains
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
-       write(*, "(a)") "fail on factor"
+       write(*, "(a)") "failed factorization"
     endif
 
 ! goto 9999 ! no solve
