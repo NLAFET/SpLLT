@@ -436,16 +436,6 @@ contains
     a_nr = size(node%index)
     a_nb = node%nb
 
-
-    ! rr = 1
-    ! do row = 1, size_anode, a_nb
-    !    do i = row, min(i+a_nb-1, size_anode) ! size_anode
-    !       arow = anode%index(i)
-    !       map(arow) = rr
-    !    end do
-    !    rr = rr + 1 
-    ! end do
-
     rr = 1
     do row = 1, a_nr, a_nb
        do i = row, min(row+a_nb-1, a_nr)
