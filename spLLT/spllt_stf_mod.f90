@@ -124,6 +124,10 @@ contains
 
     call copy_a_to_l(n,num_nodes,val,map,keep)
 
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_init_c(1)
+#endif
+
     ! factorize nodes
     ! blk = 1
     do snode = 1, num_nodes
@@ -208,7 +212,7 @@ contains
           !  Initialize cptr to correspond to the first row of the rectangular part of 
           !  the snode matrix.
           cptr = 1 + numcol
-          write(*,*)"numrow: ", numrow
+          ! write(*,*)"numrow: ", numrow
           do while(a_num.gt.0)
              anode => keep%nodes(a_num) 
              
@@ -282,7 +286,7 @@ contains
 
                       rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                       rsrc(2) = (i - ilast)*blocks(blk)%blkn
-                      write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
+                      ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                       ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
                       call spllt_update_between_task(bc, node, a_bc, anode, &
                            & csrc, rsrc, &
@@ -302,7 +306,7 @@ contains
                 rsrc(2) = (i - ilast)*blocks(blk)%blkn
                 ! write(*,*)"i: ", i 
                 ! write(*,*)"size lcol", size(keep%lfact(keep%blocks(blk)%bcol)%lcol), ", rsrc(1)+rsrc(2)-1: ", rsrc(1)+rsrc(2)-1
-                write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
+                ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                 ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
                 call spllt_update_between_task(bc, node, a_bc, anode, &
                      & csrc, rsrc, &
@@ -396,6 +400,11 @@ contains
        end do
 
     end do
+
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_shutdown()
+#endif
+
 
 10 if(st.ne.0) then
       info%flag = spllt_error_allocation
