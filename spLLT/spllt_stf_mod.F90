@@ -124,8 +124,8 @@ contains
 
     call copy_a_to_l(n,num_nodes,val,map,keep)
 
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_init_c(1)
+#if defined(SPLLT_USE_STARPU) 
+    call starpu_f_init(1)
 #endif
 
     ! factorize nodes

@@ -9,7 +9,12 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 #FFLAGS = -g -C -static -openmp
 ############################
 
-FFLAGS += $(ISPRAL)
+# Things you might add to DEFS:
+
+DEFS = -DSPLLT_USE_STARPU
+
+FFLAGS += $(DEFS)
+FFLAGS += $(ISPRAL) 
 
 LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL)
 
@@ -30,7 +35,7 @@ DTDEPS90 = $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90 \
 	$(HSLPACKDIR)/hsl_zd11/hsl_zd11d.f90
 
 # Module build dependencies
-spllt_test.f90: hsl_ma87d.o spllt_stf_mod.o spllt_mod.o dtdeps.o dtdeps90.o
+spllt_test.F90: hsl_ma87d.o spllt_stf_mod.o spllt_mod.o dtdeps.o dtdeps90.o
 spllt_stf_mod.o: hsl_ma87d.o spllt_factorization_mod.o spllt_mod.o
 spllt_factorization_mod.o: spllt_mod.o 
 spllt_mod.o: dtdeps90.o
@@ -41,7 +46,7 @@ ddeps90.o: common90.o
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_test: spllt_test.f90 hsl_ma87d.o spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o ddeps90.o common90.o dtdeps.o dtdeps90.o
+spllt_test: spllt_test.F90 hsl_ma87d.o spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o ddeps90.o common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
@@ -53,6 +58,8 @@ spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.
 %.o: %.f90
 	$(FC) $(FFLAGS) -c -o $@ $<
 %.o: %.f
+	$(FC) $(FFLAGS) -c -o $@ $<
+%.o: %.F90
 	$(FC) $(FFLAGS) -c -o $@ $<
 
 # The following rules build a source file from a variable
