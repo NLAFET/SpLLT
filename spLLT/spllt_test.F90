@@ -29,6 +29,8 @@ contains
     integer :: n, nnz
     type(spllt_cntl) :: cntl
 
+    type(spllt_data_type) :: data
+    
     ! ma87
     type(ma87_keep) :: keep
     type(ma87_control) :: control
@@ -108,7 +110,7 @@ contains
 
     write(*,'("[>] factorize")')
     ! factorize matrix
-    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, cntl)
+    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, data, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"

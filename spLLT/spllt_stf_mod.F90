@@ -4,7 +4,7 @@ module spllt_stf_mod
 
 contains
 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, data, cntl)
     use hsl_ma87_double
     use spllt_factorization_mod
 #if defined(SPLLT_USE_STARPU) 
@@ -23,10 +23,10 @@ contains
     type(MA87_control), intent(in) :: control 
     type(MA87_info), intent(out) :: info 
 
-    type(spllt_cntl) :: cntl
+    type(spllt_data_type) :: data
+    type(spllt_cntl)      :: cntl
 
     ! local arrays
-    real(wp), dimension(:), allocatable :: detlog ! per thread sum of log pivot
     ! integer, dimension(:), allocatable ::  invp ! used to hold inverse ordering
     integer, dimension(:), allocatable ::  colmap, map ! allocated to have size n.
     ! used in copying entries of user's matrix a into factor storage 
@@ -52,8 +52,6 @@ contains
     integer :: snode, num_nodes, par
     integer :: st ! stat parameter
     integer :: numrow, numcol
-    integer :: total_threads ! number of threads being used
-    integer :: this_thread
     integer :: ii, jj, kk
     
     ! update between variables
@@ -108,15 +106,9 @@ contains
     !    invp(order(j)) = j
     ! end do
     
-    ! Allocate factor storage (in keep%lfact)
-    call spllt_init_lfact(keep)
-
-    total_threads = 1 ! sequential
-    this_thread = 0
-    
-    ! Allocate information arrays
-    deallocate(detlog,stat=st)
-    allocate(detlog(0:total_threads-1),stat=st)
+    ! TODO to be done at analyse?
+    ! init factorization
+    call spllt_factorization_init(keep, data)
 
     !
     ! Copy matrix values across from a into keep%lfact
@@ -129,6 +121,9 @@ contains
     if(st.ne.0) go to 10
 
     call copy_a_to_l(n,num_nodes,val,map,keep)
+
+    ! init facto
+    
 
 #if defined(SPLLT_USE_STARPU)
     ! initialize starpu
@@ -516,6 +511,23 @@ contains
     
     return
   end subroutine spllt_build_colmap
+
+  subroutine spllt_factorization_init(keep, data)
+    use hsl_ma87_double
+    implicit none
+
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_data_type), intent(inout) :: data
+
+    ! Allocate factor storage (in keep%lfact)
+    ! TODO put block in data structure directly?    
+    ! init lfactor
+    call spllt_init_lfact(keep)
+    
+    allocate(data%bc(keep%final_blk))
+    
+    return
+  end subroutine spllt_factorization_init
 
   subroutine spllt_init_lfact(keep)
     use hsl_ma87_double
