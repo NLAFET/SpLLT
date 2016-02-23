@@ -141,7 +141,8 @@ contains
   subroutine starpu_f_1dsmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)       :: handle
-    real, target      :: a(:)
+    ! real, target      :: a(:)
+    real, allocatable, target      :: a(:)
     integer           :: host
     integer, optional :: ld, m, n
     integer           :: ild, im, in
@@ -165,7 +166,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(4,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1)), ild, im, in, int(4,kind=c_size_t))
 
     return
   end subroutine starpu_f_1dsmatrix_data_register
@@ -174,7 +175,8 @@ contains
   subroutine starpu_f_2dsmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)       :: handle
-    real, target      :: a(:,:)
+    real, allocatable, target      :: a(:,:)
+    ! real, target      :: a(:,:)
     integer           :: host
     integer, optional :: ld, m, n
     integer           :: ild, im, in
@@ -198,7 +200,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(4,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1,1)), ild, im, in, int(4,kind=c_size_t))
 
     return
   end subroutine starpu_f_2dsmatrix_data_register
@@ -206,7 +208,8 @@ contains
   subroutine starpu_f_1ddmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)              :: handle
-    real(kind(1.d0)), target :: a(:)
+    ! real(kind(1.d0)), target :: a(:)
+    real(kind(1.d0)), allocatable, target :: a(:)
     integer                  :: host
     integer, optional        :: ld, m, n
     integer                  :: ild, im, in
@@ -230,7 +233,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(8,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1)), ild, im, in, int(8,kind=c_size_t))
 
     return
   end subroutine starpu_f_1ddmatrix_data_register
@@ -239,7 +242,8 @@ contains
   subroutine starpu_f_2ddmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)              :: handle
-    real(kind(1.d0)), target :: a(:,:)
+    ! real(kind(1.d0)), target :: a(:,:)
+    real(kind(1.d0)), allocatable, target :: a(:,:)
     integer                  :: host
     integer, optional        :: ld, m, n
     integer                  :: ild, im, in
@@ -263,7 +267,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(8,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1,1)), ild, im, in, int(8,kind=c_size_t))
 
     return
   end subroutine starpu_f_2ddmatrix_data_register
@@ -271,7 +275,8 @@ contains
   subroutine starpu_f_1dcmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)       :: handle
-    complex, target   :: a(:)
+    ! complex, target   :: a(:)
+    complex, allocatable, target   :: a(:)
     integer           :: host
     integer, optional :: ld, m, n
     integer           :: ild, im, in
@@ -295,7 +300,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(8,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1)), ild, im, in, int(8,kind=c_size_t))
 
     return
   end subroutine starpu_f_1dcmatrix_data_register
@@ -305,7 +310,8 @@ contains
   subroutine starpu_f_2dcmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)       :: handle
-    complex, target   :: a(:,:)
+    complex, allocatable, target   :: a(:,:)
+    ! complex, target   :: a(:,:)
     integer           :: host
     integer, optional :: ld, m, n
     integer           :: ild, im, in
@@ -329,7 +335,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(8,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1,1)), ild, im, in, int(8,kind=c_size_t))
 
     return
   end subroutine starpu_f_2dcmatrix_data_register
@@ -337,7 +343,8 @@ contains
   subroutine starpu_f_1dzmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)                 :: handle
-    complex(kind(1.d0)), target :: a(:)
+    complex(kind(1.d0)), allocatable, target :: a(:)
+    ! complex(kind(1.d0)), target :: a(:)
     integer                     :: host
     integer, optional           :: ld, m, n
     integer                     :: ild, im, in
@@ -361,7 +368,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(16,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1)), ild, im, in, int(16,kind=c_size_t))
 
     return
   end subroutine starpu_f_1dzmatrix_data_register
@@ -370,7 +377,8 @@ contains
   subroutine starpu_f_2dzmatrix_data_register(handle, host, a, ld, m, n)
     implicit none
     type(c_ptr)                 :: handle
-    complex(kind(1.d0)), target :: a(:,:)
+    complex(kind(1.d0)), allocatable, target :: a(:,:)
+    ! complex(kind(1.d0)), target :: a(:,:)
     integer                     :: host
     integer, optional           :: ld, m, n
     integer                     :: ild, im, in
@@ -394,7 +402,7 @@ contains
     end if
 
     ! 4 is hardcoded. should make something better and more portable 
-    call starpu_matrix_data_register(handle, host, c_loc(a), ild, im, in, int(16,kind=c_size_t))
+    call starpu_matrix_data_register(handle, host, c_loc(a(1,1)), ild, im, in, int(16,kind=c_size_t))
 
     return
   end subroutine starpu_f_2dzmatrix_data_register

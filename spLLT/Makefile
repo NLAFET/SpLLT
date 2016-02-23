@@ -1,6 +1,9 @@
 #Select compiler and options from below
 ############################
+CC = gcc
 FC = gfortran
+
+CFLAGS = -g 
 FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
 #FFLAGS += -fprofile-arcs -ftest-coverage
@@ -13,10 +16,13 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 
 DEFS = -DSPLLT_USE_STARPU
 
+CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
+
+CFLAGS += $(ISTARPU)
 FFLAGS += $(ISPRAL) 
 
-LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL)
+LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU)
 
 all: spllt_test
 
@@ -36,7 +42,8 @@ DTDEPS90 = $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90 \
 
 # Module build dependencies
 spllt_test.F90: hsl_ma87d.o spllt_stf_mod.o spllt_mod.o dtdeps.o dtdeps90.o
-spllt_stf_mod.o: hsl_ma87d.o spllt_factorization_mod.o spllt_mod.o
+spllt_stf_mod.o: hsl_ma87d.o spllt_factorization_mod.o spllt_mod.o starpu_f_mod.o
+starpu_f_mod.o: starpu_f_wrappers.o
 spllt_factorization_mod.o: spllt_mod.o 
 spllt_mod.o: dtdeps90.o
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o
@@ -46,7 +53,7 @@ ddeps90.o: common90.o
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_test: spllt_test.F90 hsl_ma87d.o spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o ddeps90.o common90.o dtdeps.o dtdeps90.o
+spllt_test: spllt_test.F90 hsl_ma87d.o spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o starpu_f_mod.o starpu_f_wrappers.o ddeps90.o common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
@@ -55,6 +62,8 @@ spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.
 ## Generic compilation rules
 
 # These two rules tell us how to compile module files from source files
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 %.o: %.f90
 	$(FC) $(FFLAGS) -c -o $@ $<
 %.o: %.f

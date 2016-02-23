@@ -3,6 +3,7 @@ program spllt_test
   use spllt_mod
   implicit none
 
+  type(spllt_cntl) :: cntl
   integer n, nnz
   
   write(*,'("[spllt test]")')
@@ -13,17 +14,20 @@ program spllt_test
   n   = 256
   nnz = 1000
 
-  call spllt_test_rand(n, nnz)
+  cntl%ncpu = 1
+
+  call spllt_test_rand(n, nnz, cntl)
 
   stop
 
 contains
 
-  subroutine spllt_test_rand(n, nnz)
+  subroutine spllt_test_rand(n, nnz, cntl)
     use spllt_stf_mod
     implicit none
     
     integer :: n, nnz
+    type(spllt_cntl) :: cntl
 
     ! ma87
     type(ma87_keep) :: keep
@@ -104,7 +108,7 @@ contains
 
     write(*,'("[>] factorize")')
     ! factorize matrix
-    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"

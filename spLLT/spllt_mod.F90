@@ -19,6 +19,10 @@ module spllt_mod
   integer, parameter :: spllt_error_allocation  = -1
   integer, parameter :: spllt_error_unknown     = -99 
 
+  type spllt_cntl
+     integer :: ncpu = 1
+  end type spllt_cntl
+
   interface gen_random_posdef
      module procedure gen_random_posdef
   end interface gen_random_posdef

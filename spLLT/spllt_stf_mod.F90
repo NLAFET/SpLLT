@@ -4,9 +4,12 @@ module spllt_stf_mod
 
 contains
 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, cntl)
     use hsl_ma87_double
     use spllt_factorization_mod
+#if defined(SPLLT_USE_STARPU) 
+    use starpu_f_mod
+#endif
     implicit none
     
     integer, intent(in) :: n ! order of A
@@ -19,6 +22,8 @@ contains
     type(MA87_keep), target, intent(inout) :: keep 
     type(MA87_control), intent(in) :: control 
     type(MA87_info), intent(out) :: info 
+
+    type(spllt_cntl) :: cntl
 
     ! local arrays
     real(wp), dimension(:), allocatable :: detlog ! per thread sum of log pivot
@@ -76,6 +81,11 @@ contains
     integer(long) :: rb ! Index of block row in snode
     integer :: iinfo, a_nb, k1, size_anode
 
+#if defined(SPLLT_USE_STARPU) 
+    ! when using StarPU
+    integer(c_int) :: ret
+#endif
+
     ! call factorize_posdef(n, val, order, keep, control, info, 0, 0, soln)
 
     write(*,*) 'control%nb: ', control%nb
@@ -124,8 +134,9 @@ contains
 
     call copy_a_to_l(n,num_nodes,val,map,keep)
 
-#if defined(SPLLT_USE_STARPU) 
-    call starpu_f_init(1)
+#if defined(SPLLT_USE_STARPU)
+    ! initialize starpu
+    ret = starpu_f_init(cntl%ncpu)
 #endif
 
     ! factorize nodes
