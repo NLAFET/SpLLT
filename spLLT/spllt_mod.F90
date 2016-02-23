@@ -1,5 +1,8 @@
 module spllt_mod
   use hsl_zd11_double
+#if defined(SPLLT_USE_STARPU)
+  use starpu_f_mod
+#endif
   implicit none
 
   ! type :: matrix_type
@@ -20,8 +23,18 @@ module spllt_mod
   integer, parameter :: spllt_error_unknown     = -99 
 
   type spllt_cntl
-     integer :: ncpu = 1
+     integer :: ncpu = 1 ! number of CPU workers
   end type spllt_cntl
+  
+  type spllt_bc_type
+#if defined(SPLLT_USE_STARPU)
+     type(c_ptr)    :: hdl ! StarPU handle
+#endif
+  end type spllt_bc_type
+
+  type spllt_data_type
+     type(spllt_bc_type), allocatable :: bc(:) ! blocks
+  end type spllt_data_type
 
   interface gen_random_posdef
      module procedure gen_random_posdef
