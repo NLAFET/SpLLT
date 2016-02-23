@@ -15,16 +15,13 @@ contains
 
   ! factorize block 
   ! _potrf
-  subroutine spllt_factorize_block_task(bc, lfact, & 
-       & control, flag, detlog)
+  subroutine spllt_factorize_block_task(bc, lfact)
     use hsl_ma87_double
+    use spllt_kernels_mod
     implicit none
     
     type(block_type), intent(inout) :: bc ! block to be factorized    
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
-    type(MA87_control), intent(in) :: control 
-    integer, intent(out) :: flag ! Error flag
-    real(wp), dimension(:), allocatable, intent(inout) :: detlog ! per thread sum of log pivot
 
     integer :: m, n, bcol, sa
     integer(long) :: id
@@ -37,9 +34,11 @@ contains
     sa   = bc%sa
 
     ! factorize_block
-    call factor_diag_block(n, m, id, &
-         & lfact(bcol)%lcol(sa:sa+n*m-1),   &
-         & control, flag, detlog(0))
+    ! call factor_diag_block(n, m, id, &
+    !      & lfact(bcol)%lcol(sa:sa+n*m-1),   &
+    !      & control, flag, detlog(0))
+
+    call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
     
     return
   end subroutine spllt_factorize_block_task

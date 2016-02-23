@@ -49,8 +49,7 @@ contains
     integer :: j
     integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
     integer :: nc, nr ! number of block column/row
-    integer :: snode, num_nodes, par 
-    integer :: flag ! Error flag
+    integer :: snode, num_nodes, par
     integer :: st ! stat parameter
     integer :: numrow, numcol
     integer :: total_threads ! number of threads being used
@@ -93,9 +92,6 @@ contains
     ! shortcut
     blocks => keep%blocks
     nodes  => keep%nodes
-
-    ! Initialise
-    flag = 0
 
     num_nodes = keep%info%num_nodes
     write(*,*) 'num_nodes: ', num_nodes
@@ -176,7 +172,7 @@ contains
           ! A_kk          
           bc_kk => keep%blocks(dblk)
 
-          call spllt_factorize_block_task(bc_kk, keep%lfact, control, flag, detlog)
+          call spllt_factorize_block_task(bc_kk, keep%lfact)
 
           ! loop over the row blocks (that is, loop over blocks in block col)
           do ii = kk+1,nr
@@ -411,6 +407,11 @@ contains
        end do
 
     end do
+
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all()
+#endif
+
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_shutdown()
