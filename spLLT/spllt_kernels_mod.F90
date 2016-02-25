@@ -3,7 +3,7 @@ module spllt_kernels_mod
 
 contains
 
-  !*************************************************  
+  !********************************************************************  
   !
   ! TASK_FACTORIZE_BLOCK (uses Lapack routine dpotrf and dtrsm)
   ! A_ii <- L_ii
@@ -31,5 +31,27 @@ contains
     endif
 
   end subroutine spllt_factor_diag_block  
+
+  !********************************************************************  
+  !
+  ! TASK_SOLVE_BLOCK
+  ! Solve using factorization of diag. block (uses dtrsm)
+  ! A_ij <- A_ij A_ii^-1
+  ! dest <- dest diag^-1
+  !
+  subroutine spllt_solve_block(m, n, dest, diag)
+    use spllt_mod
+    implicit none
+
+    integer, intent(in) :: m ! number of rows in dest
+    integer, intent(in) :: n ! number of columns in dest
+    real(wp), dimension(*), intent(inout) :: dest ! holds destination block
+    real(wp), dimension(*), intent(inout) :: diag ! block
+    
+    call dtrsm('Left', 'Upper', 'Transpose', 'Non-Unit', n, m, &
+         one, diag, n, dest, n)
+
+  end subroutine spllt_solve_block
+  
 
 end module spllt_kernels_mod

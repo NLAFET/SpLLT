@@ -52,9 +52,10 @@ spllt_test.F90: hsl_ma87d.o spllt_stf_mod.o spllt_mod.o dtdeps.o dtdeps90.o
 spllt_stf_mod.o: hsl_ma87d.o spllt_factorization_mod.o spllt_mod.o starpu_f_mod.o
 spllt_starpu_factorization_mod.o: spllt_mod.o spllt_starpu_kernels.o
 starpu_f_mod.o: starpu_f_wrappers.o
-spllt_factorization_mod.o: spllt_mod.o 
+spllt_factorization_mod.o: spllt_mod.o spllt_kernels_mod.o 
 spllt_kernels_mod.o: spllt_mod.o 
-spllt_mod.o: dtdeps90.o 
+spllt_mod.o: dtdeps90.o starpu_f_mod.o  
+# spllt_starpu_kernels.o: spllt_starpu_factorization_mod.o
 
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o
 hsl_ma87d.o: ddeps90.o common90.o 
@@ -95,5 +96,6 @@ dtdeps90.f90: $(DTDEPS90)
 	cat $^ > $@
 
 clean:
+	-rm -f spllt_starpu_test spllt_test spllt_testings
 	-rm -f *.o *.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90

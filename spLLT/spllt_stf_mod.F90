@@ -4,7 +4,8 @@ module spllt_stf_mod
 
 contains
 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, data, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, pbl, cntl)
+    use spllt_mod
     use hsl_ma87_double
     use spllt_factorization_mod
 #if defined(SPLLT_USE_STARPU) 
@@ -23,7 +24,7 @@ contains
     type(MA87_control), intent(in) :: control 
     type(MA87_info), intent(out) :: info 
 
-    type(spllt_data_type) :: data
+    type(spllt_data_type), target :: pbl
     type(spllt_cntl)      :: cntl
 
     ! local arrays
@@ -33,8 +34,9 @@ contains
     ! (keep%fact).
 
     ! shortcuts
-    type(node_type), pointer :: node ! node in the atree    
-    type(block_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij, bc ! node in the atree    
+    type(node_type), pointer     :: node ! node in the atree    
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik
+    type(block_type), pointer    :: bc_jk, bc_ij, bc
     type(lfactor), dimension(:), pointer :: lfact! block columns in L factor    
     type(block_type), dimension(:), pointer :: blocks ! block info. 
     type(node_type), dimension(:), pointer :: nodes 
@@ -108,7 +110,8 @@ contains
     
     ! TODO to be done at analyse?
     ! init factorization
-    call spllt_factorization_init(keep, data)
+    ! call spllt_factorization_init(keep, data)
+    call spllt_init_lfact(keep, pbl)
 
     !
     ! Copy matrix values across from a into keep%lfact
@@ -128,6 +131,10 @@ contains
 #if defined(SPLLT_USE_STARPU)
     ! initialize starpu
     ret = starpu_f_init(cntl%ncpu)
+#endif
+
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_fxt_start_profiling()
 #endif
 
     ! factorize nodes
@@ -165,9 +172,13 @@ contains
        do kk = 1, nc
 
           ! A_kk          
-          bc_kk => keep%blocks(dblk)
+          ! bc_kk => keep%blocks(dblk)
+          bc_kk => pbl%bc(dblk)
 
           call spllt_factorize_block_task(bc_kk, keep%lfact)
+#if defined(SPLLT_USE_STARPU)
+         call starpu_f_task_wait_for_all()
+#endif
 
           ! loop over the row blocks (that is, loop over blocks in block col)
           do ii = kk+1,nr
@@ -175,9 +186,13 @@ contains
              
              ! A_mk
              blk = dblk+ii-kk
-             bc_ik => keep%blocks(blk)
+             ! bc_ik => keep%blocks(blk)
+             bc_ik => pbl%bc(blk)
 
-             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact, control)
+             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact)
+#if defined(SPLLT_USE_STARPU)
+         call starpu_f_task_wait_for_all()
+#endif
           end do
 
           do jj = kk+1,nc
@@ -190,14 +205,15 @@ contains
 
                 ! L_ik
                 blk1 = dblk+ii-kk                
-                bc_ik => keep%blocks(blk1)
+                ! bc_ik => keep%blocks(blk1)
+                bc_ik => pbl%bc(blk1)
                 
                 ! A_ij
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
                 bc_ij => keep%blocks(blk)
                 
-                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, control)
+                call spllt_update_block_task(bc_ik%blk, bc_jk, bc_ij, keep%lfact, control)
              end do
           end do
           
@@ -248,8 +264,8 @@ contains
                 ! write(*,*)"j: ", nodes(snode)%index(cptr), ", jlast: ", nodes(snode)%index(cptr2)
                 ! Set info for source block csrc (hold start location
                 ! and number of entries)
-                csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%id)%blkn
-                csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%id)%blkn
+                csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
+                csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
                 ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
                 ! Build a map of anode's blocks if this is first for anode
                 if(.not.map_done) call spllt_build_rowmap(anode, map) 
@@ -278,7 +294,7 @@ contains
                 do i = cptr, numrow
                    k = map(node%index(i))
                    ! write(*,*) "i:",i," k:",k
-                   blk = bc_kk%id + (i-1)/s_nb - (kk-1)
+                   blk = bc_kk%blk%id + (i-1)/s_nb - (kk-1)
                    bc => keep%blocks(blk) ! current block in node
 
                    if(k.ne.ii) then
@@ -407,6 +423,9 @@ contains
     call starpu_f_task_wait_for_all()
 #endif
 
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_fxt_stop_profiling()
+#endif
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_shutdown()
@@ -512,28 +531,30 @@ contains
     return
   end subroutine spllt_build_colmap
 
-  subroutine spllt_factorization_init(keep, data)
+  ! subroutine spllt_factorization_init(keep, data)
+  !   use hsl_ma87_double
+  !   implicit none
+
+  !   type(MA87_keep), target, intent(inout) :: keep 
+  !   type(spllt_data_type), intent(inout) :: data
+
+  !   ! Allocate factor storage (in keep%lfact)
+  !   ! TODO put block in data structure directly?    
+  !   ! init lfactor
+  !   call spllt_init_lfact(keep)
+        
+  !   return
+  ! end subroutine spllt_factorization_init
+
+  subroutine spllt_init_lfact(keep, pbl)
     use hsl_ma87_double
+#if defined(SPLLT_USE_STARPU)
+    use  starpu_f_mod
+#endif
     implicit none
 
     type(MA87_keep), target, intent(inout) :: keep 
-    type(spllt_data_type), intent(inout) :: data
-
-    ! Allocate factor storage (in keep%lfact)
-    ! TODO put block in data structure directly?    
-    ! init lfactor
-    call spllt_init_lfact(keep)
-    
-    allocate(data%bc(keep%final_blk))
-    
-    return
-  end subroutine spllt_factorization_init
-
-  subroutine spllt_init_lfact(keep)
-    use hsl_ma87_double
-    implicit none
-
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_data_type), intent(inout) :: pbl
 
     type(node_type), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
@@ -542,12 +563,16 @@ contains
     integer :: snode, num_nodes
     integer :: i
     integer :: st ! stat parameter
+    integer :: ptr
 
     num_nodes = keep%info%num_nodes
 
     deallocate (keep%lfact,stat=st)
     allocate (keep%lfact(keep%nbcol),stat=st)
     ! TODO trace error
+
+    ! allocate blocks 
+    allocate(pbl%bc(keep%final_blk))
 
     blk = 1
     nbcol = 0
@@ -576,10 +601,27 @@ contains
              blkn = keep%blocks(blk)%blkn
              size_bcol = size_bcol + blkm*blkn
           end do
-          sz = sz - 1
           allocate (keep%lfact(nbcol)%lcol(size_bcol),stat=st)
           ! TODO trace error
-       end do
+          ! TODO merge with previous loop?
+#if defined(SPLLT_USE_STARPU)
+          ! register blocks hanldes in StarPU
+
+          ptr = 1
+          do blk = dblk, dblk+sz-1
+             blkm = keep%blocks(blk)%blkm
+             blkn = keep%blocks(blk)%blkn
+
+             pbl%bc(blk)%blk => keep%blocks(blk) 
+             call starpu_matrix_data_register(pbl%bc(blk)%hdl, pbl%bc(blk)%mem_node, &
+                  & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
+                  & int(wp,kind=c_size_t))
+
+             ptr = ptr + blkm*blkn
+          end do
+#endif
+          sz = sz - 1
+       end do       
     end do
 
   end subroutine spllt_init_lfact

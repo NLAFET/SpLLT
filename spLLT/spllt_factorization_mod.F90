@@ -16,22 +16,33 @@ contains
   ! factorize block 
   ! _potrf
   subroutine spllt_factorize_block_task(bc, lfact)
+    use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
+#if defined(SPLLT_USE_STARPU)
+    use spllt_starpu_factorization_mod
+#endif
     implicit none
     
-    type(block_type), intent(inout) :: bc ! block to be factorized    
+    type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
 
     integer :: m, n, bcol, sa
     integer(long) :: id
-    
-    m    = bc%blkm
-    n    = bc%blkn
-    id   = bc%id 
-    bcol = bc%bcol
+    type(block_type), pointer :: blk ! block to be factorized
 
-    sa   = bc%sa
+#if defined(SPLLT_USE_STARPU)    
+    call spllt_starpu_insert_factorize_block(bc, 0)
+#else    
+
+    blk => bc%blk
+
+    m    = blk%blkm
+    n    = blk%blkn
+    id   = blk%id 
+    bcol = blk%bcol
+
+    sa   = blk%sa
 
     ! factorize_block
     ! call factor_diag_block(n, m, id, &
@@ -39,22 +50,30 @@ contains
     !      & control, flag, detlog(0))
 
     call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
+#endif
     
     return
   end subroutine spllt_factorize_block_task
 
   ! _trsm
-  subroutine spllt_solve_block_task(bc_kk, bc_ik, lfact, control)
+  subroutine spllt_solve_block_task(bc_kk, bc_ik, lfact)
     use hsl_ma87_double
+    use spllt_kernels_mod
+#if defined(SPLLT_USE_STARPU)
+    use spllt_starpu_factorization_mod
+#endif
     implicit none
 
-    type(block_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
+    type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
-    type(MA87_control), intent(in) :: control     
     
     integer :: m, n, bcol, sa 
     integer :: d_m, d_n, d_sa 
     integer(long) :: id, d_id
+
+#if defined(SPLLT_USE_STARPU)    
+    call spllt_starpu_insert_solve_block(bc_kk, bc_ik, 0)
+#else    
 
     ! bc_kk
     d_m  = bc_kk%blkm
@@ -72,10 +91,16 @@ contains
     bcol = bc_kk%bcol    
 
     ! solve_block task
-    call solv_col_block(m, n, id, & 
-         & lfact(bcol)%lcol(sa:sa+n*m-1), &
-         & d_id, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m), &
-         & control)
+    ! call solv_col_block(m, n, id, & 
+    !      & lfact(bcol)%lcol(sa:sa+n*m-1), &
+    !      & d_id, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m), &
+    !      & control)
+
+    call spllt_solve_block(m, n, &
+         & lfact(bcol)%lcol(sa:sa+n*m-1), & 
+         & lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m))
+
+#endif
 
     return
   end subroutine spllt_solve_block_task
