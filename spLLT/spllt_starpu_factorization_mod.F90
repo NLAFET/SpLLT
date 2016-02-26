@@ -19,11 +19,28 @@ module spllt_starpu_factorization_mod
 
   ! solve block StarPU task insert C
   interface
-     subroutine spllt_starpu_insert_solve_block_c(lik_hdl, lkk_hdl, prio) bind(C)
+     subroutine spllt_starpu_insert_solve_block_c(lkk_hdl, lik_hdl, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value         :: lik_hdl, lkk_hdl
        integer(c_int), value      :: prio
      end subroutine spllt_starpu_insert_solve_block_c
+  end interface
+
+  ! update block StarPU task insert C
+  interface
+     subroutine spllt_starpu_insert_update_block_c(lik_hdl, ljk_hdl, lij_hdl, &
+          & diag, prio) bind(C)
+       use iso_c_binding
+       type(c_ptr), value         :: lik_hdl, ljk_hdl, lij_hdl
+       integer(c_int), value      :: diag, prio
+     end subroutine spllt_starpu_insert_update_block_c
+  end interface
+
+  interface
+     subroutine spllt_starpu_codelet_unpack_args_update_block(cl_arg, diag) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: cl_arg, diag
+     end subroutine spllt_starpu_codelet_unpack_args_update_block
   end interface
 
 contains
@@ -80,7 +97,7 @@ contains
     type(spllt_bc_type), intent(in) :: bc_kk, bc_ik 
     integer, intent(in) :: prio
 
-    call spllt_starpu_insert_solve_block_c(bc_ik%hdl, bc_kk%hdl, prio)
+    call spllt_starpu_insert_solve_block_c(bc_kk%hdl, bc_ik%hdl, prio)
     
     return
   end subroutine spllt_starpu_insert_solve_block
@@ -111,5 +128,46 @@ contains
 
     return
   end subroutine spllt_starpu_solve_block_cpu_func
+
+  ! update block StarPU task 
+  ! _syrk/_gemm
+  subroutine spllt_starpu_update_block_cpu_func(buffers, cl_arg) bind(C)
+    use spllt_mod
+    use iso_c_binding
+    use starpu_f_mod
+    use spllt_kernels_mod
+    implicit none
+
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+    
+    type(c_ptr), target      :: dest, src1, src2
+    integer, target          :: m, n, ld, m2, n2, ld2, m1, n1, ld1
+    real(wp), pointer        :: lik(:), ljk(:), lij(:)
+    integer, target          :: d
+    logical                  :: diag
+
+    call starpu_f_get_buffer(buffers, 0, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
+    call c_f_pointer(src2, lik, (/ld2*n2/))
+
+    call starpu_f_get_buffer(buffers, 1, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
+    call c_f_pointer(src1, ljk, (/ld1*n1/))
+
+    call starpu_f_get_buffer(buffers, 2, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
+    call c_f_pointer(dest, lij, (/ld*n/))
+
+    call spllt_starpu_codelet_unpack_args_update_block(cl_arg, &
+         & c_loc(d))
+    
+    if (d .eq. 1) then
+       diag = .true.
+    else
+       diag = .false.
+    end if
+
+    call spllt_update_block(m, n, lij, diag, n1, ljk, lik)
+
+    return
+  end subroutine spllt_starpu_update_block_cpu_func
 
 end module spllt_starpu_factorization_mod

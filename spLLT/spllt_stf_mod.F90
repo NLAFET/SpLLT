@@ -35,8 +35,7 @@ contains
 
     ! shortcuts
     type(node_type), pointer     :: node ! node in the atree    
-    type(spllt_bc_type), pointer :: bc_kk, bc_ik
-    type(block_type), pointer    :: bc_jk, bc_ij, bc
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
     type(lfactor), dimension(:), pointer :: lfact! block columns in L factor    
     type(block_type), dimension(:), pointer :: blocks ! block info. 
     type(node_type), dimension(:), pointer :: nodes 
@@ -66,9 +65,8 @@ contains
     integer :: cptr2  ! Position in snode of the last row 
     ! matching a column of the current block column of anode.
     logical :: map_done
-    integer :: a_sa
     integer :: ilast
-    type(block_type), pointer :: a_bc ! node in the atree    
+    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree    
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
     integer :: cb, jb
@@ -176,10 +174,10 @@ contains
           bc_kk => pbl%bc(dblk)
 
           call spllt_factorize_block_task(bc_kk, keep%lfact)
-#if defined(SPLLT_USE_STARPU)
-         call starpu_f_task_wait_for_all()
-#endif
 
+! #if defined(SPLLT_USE_STARPU)
+         ! call starpu_f_task_wait_for_all()
+! #endif
           ! loop over the row blocks (that is, loop over blocks in block col)
           do ii = kk+1,nr
           ! do blk = dblk+1, dblk+sz-1
@@ -190,16 +188,18 @@ contains
              bc_ik => pbl%bc(blk)
 
              call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact)
-#if defined(SPLLT_USE_STARPU)
-         call starpu_f_task_wait_for_all()
-#endif
           end do
+
+! #if defined(SPLLT_USE_STARPU)
+!          call starpu_f_task_wait_for_all()
+! #endif
 
           do jj = kk+1,nc
              
              ! L_jk
              blk2 = dblk+jj-kk
-             bc_jk => keep%blocks(blk2)
+             bc_jk => pbl%bc(blk2)
+             ! bc_jk => keep%blocks(blk2)
 
              do ii = jj,nr
 
@@ -211,12 +211,17 @@ contains
                 ! A_ij
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
-                bc_ij => keep%blocks(blk)
+                bc_ij => pbl%bc(blk)
+                ! bc_ij => keep%blocks(blk)
                 
-                call spllt_update_block_task(bc_ik%blk, bc_jk, bc_ij, keep%lfact, control)
+                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact)
              end do
           end do
           
+#if defined(SPLLT_USE_STARPU)
+          call starpu_f_task_wait_for_all()
+#endif
+
           ! map update between current block column and ancestors
           ! rsrc = 0
           ! csrc = 0
@@ -295,12 +300,13 @@ contains
                    k = map(node%index(i))
                    ! write(*,*) "i:",i," k:",k
                    blk = bc_kk%blk%id + (i-1)/s_nb - (kk-1)
-                   bc => keep%blocks(blk) ! current block in node
+                   ! bc => keep%blocks(blk) ! current block in node
+                   bc => pbl%bc(blk) ! current block in node
 
                    if(k.ne.ii) then
                       a_blk = a_dblk + ii - cb
-                      a_bc => keep%blocks(a_blk)
-                      a_sa = a_bc%sa
+                      ! a_bc => keep%blocks(a_blk)
+                      a_bc => pbl%bc(a_blk)
 
                       rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                       rsrc(2) = (i - ilast)*blocks(blk)%blkn
@@ -310,7 +316,7 @@ contains
                            & csrc, rsrc, &
                            & row_list, col_list, buffer, &
                            & keep%lfact, keep%blocks, &
-                           & control, st)
+                           & control)
 
                       ii = k
                       ilast = i ! Update start of current block
@@ -318,7 +324,8 @@ contains
                 end do
                 ! i = min(i,numrow)
                 a_blk = a_dblk + ii - cb
-                a_bc => keep%blocks(a_blk)
+                ! a_bc => keep%blocks(a_blk)
+                a_bc => pbl%bc(a_blk)
 
                 rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 rsrc(2) = (i - ilast)*blocks(blk)%blkn
@@ -330,7 +337,7 @@ contains
                      & csrc, rsrc, &
                      & row_list, col_list, buffer, &
                      & keep%lfact, keep%blocks, &
-                     & control, st)
+                     & control)
                 
                 ! find id of the block in current kk colums that contains the cptr-th row
                 ! rblk = (cptr-1)/s_nb - (kk-1) + bc_kk%id

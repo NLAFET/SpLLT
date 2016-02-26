@@ -28,7 +28,7 @@ module hsl_MA87_double
 
    ! factorization kernels
    public :: factorize_posdef, factor_diag_block, solv_col_block, update_block_block, &
-        & update_between
+        & update_between, update_direct, expand_buffer
    public :: copy_a_to_l, get_dest_block 
    ! derived types
    public :: node_type, block_type, lfactor

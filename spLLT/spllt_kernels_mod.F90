@@ -4,7 +4,7 @@ module spllt_kernels_mod
 contains
 
   !********************************************************************  
-  !
+
   ! TASK_FACTORIZE_BLOCK (uses Lapack routine dpotrf and dtrsm)
   ! A_ii <- L_ii
   !
@@ -33,7 +33,7 @@ contains
   end subroutine spllt_factor_diag_block  
 
   !********************************************************************  
-  !
+
   ! TASK_SOLVE_BLOCK
   ! Solve using factorization of diag. block (uses dtrsm)
   ! A_ij <- A_ij A_ii^-1
@@ -53,5 +53,286 @@ contains
 
   end subroutine spllt_solve_block
   
+  !*************************************************  
 
+  ! TASK_UPDATE_INTERNAL
+  ! A_ik <- A_ik - A_ij A_kj^T
+  ! dest <- dest - src2 src1^T
+  ! Remember that the blocks are stored by rows.
+  ! dest, src1 and src2 all belong to the same node.
+  !
+  subroutine spllt_update_block(m, n, dest, diag, n1, src1, src2)
+    use spllt_mod
+    implicit none
+
+    integer, intent(in) :: m ! number of rows in dest
+    integer, intent(in) :: n ! number of columns in dest
+    real(wp), dimension(*), intent(inout) :: dest ! holds block in L
+    ! that is to be updated. 
+    logical :: diag ! set to true if dest is the diagonal block
+    ! type(block_type), intent(inout) :: blk ! destination block  
+    integer, intent(in) :: n1 ! number of columns in src1 and src2
+    real(wp), dimension(*), intent(in) :: src1
+    real(wp), dimension(*), intent(in) :: src2
+
+    !%%%   integer :: t_start, t_end, this_thread
+
+    ! diag = (blk%dblk.eq.blk%id)
+
+    if(diag) then
+       call dsyrk('U', 'T', n, n1, -one, src1, n1, one, dest, n)
+
+       if(m.gt.n) then
+          ! Do a dgemm on any remainder
+          call dgemm('T', 'N', n, m-n, n1, -one,                   &
+               src1, n1, src2(1+n*n1), n1, one, dest(1+n*n), n)
+       endif
+    else
+       ! dest is an off-diagonal block
+       call dgemm('T', 'N', n, m, n1, -one, src1, n1, src2, n1, one, dest, n)
+    endif
+
+  end subroutine spllt_update_block
+
+  !*************************************************
+  
+  !   Given a destination block dest, update_between performs the update
+  !                     L_dest <-- L_dest - L_rsrc (L_csrc)^T
+  !   where L_dest is a submatrix of the block dest of an ancestor
+  !   of the node snode and L_rsrc and L_csrc are submatrices of contiguous
+  !   rows that belong to the same block column of snode as the block src
+  !   (this block col. has local index scol).
+  !   The first row of L_rsrc is the first row
+  !   of the block column that corresponds to a row in the block dest and the 
+  !   last row of L_rsrc is the last row of the block column that corresponds to 
+  !   a row in the block dest. Similarly, the first/last row of L_csrc is the
+  !   first/last row of the block column that corresponds to a column in the 
+  !   block dest. The set of rows and columns of dest thus
+  !   determine which two sets of contiguous rows in scol are involved.
+  !   Unless the number of entries updated is very small, use BLAS 3 kernel 
+  !   gemm or syrk by placing its result in a buffer from which we add the 
+  !   update into the appropriate entries of the
+  !   destination block dest.
+
+  ! TODO error managment
+
+  subroutine spllt_update_between(m, n, blk, dnode, n1, src, snode, dest, csrc,    &
+       rsrc, blocks, row_list, col_list, buffer, min_width_blas)
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer, intent(in) :: m  ! number of rows in destination block
+    integer, intent(in) :: n  ! number of columns in destination block
+    integer(long), intent(in) :: blk ! identifier of destination block
+    type(node_type), intent(in) :: dnode ! Node to which blk belongs
+    integer :: n1 ! number of columns in source block column
+    integer(long), intent(in) :: src  ! identifier of block in source block col
+    type(node_type), intent(in) :: snode ! Node to which src belongs
+    real(wp), dimension(*), intent(inout) :: dest ! holds block in L
+    ! that is to be updated.
+    real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
+    real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
+    type(block_type), dimension(:), intent(inout) :: blocks
+    real(wp), dimension(:), allocatable :: buffer
+    integer, dimension(:), allocatable :: row_list ! reallocated to min size m
+    integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+    integer, intent(in) :: min_width_blas      ! Minimum width of source block
+         ! before we use an indirect update_between    
+    ! type(MA87_control), intent(in) :: control
+    ! integer, intent(inout) :: info   
+    ! integer, intent(inout) :: st
+    
+
+    ! Local scalars
+    integer :: cptr ! used in determining the rows that belong to the
+    ! source block csrc
+    integer :: col_list_sz ! initialise to 0. then increment while
+    ! rows involed in csrc are recorded, until
+    ! holds the number of columns in blk (= number
+    ! of rows in csrc)
+    integer :: dcen ! index of end column in dcol
+    integer :: dcol ! index of block column that blk belongs to in dnode
+    integer :: dcsa ! index of first column in dcol
+    logical :: diag ! set to true if blk is the diagonal block
+    integer :: dptr
+    integer :: dptr_sa
+    integer :: drsa, dren ! point to first and last rows of destination
+    ! block blk
+    integer :: i
+
+    integer :: ndiag ! set to int(s1en-s1sa+1) if blk is a
+    ! block on diagonal and 0 ow. so is number of triangular rows of update
+    integer :: row_list_sz ! initialise to 0. then increment while
+    ! rows involed in rsrc are recorded, until
+    ! holds the number of rows in blk (= number of rows in rsrc)
+    integer :: rptr ! used in determining the rows that belong to the
+    ! source block rsrc
+    integer :: scol ! index of block column that src belongs to in snode
+    integer :: s1sa, s1en ! point to the first and last rows of
+    ! the block csrc within scol
+    integer :: s2sa, s2en ! point to the first and last rows of
+    ! the block rsrc within scol
+    integer :: size_dnode ! size(dnode%index)
+    integer :: size_snode ! size(snode%index)
+
+    ! TODO error managment
+    integer :: st
+    
+    ! set diag to true if blk is block on diagonal
+    diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
+
+    ! Make a list of incident csrc rows (ie. columns of blk)
+    !
+    ! Initialize lists
+    ! TODO error managment
+    if(size(col_list).lt.n) then
+       deallocate(col_list, stat=st)
+       allocate(col_list(n), stat=st)
+       ! if (st.ne.0) go to 10
+    endif
+    if(size(row_list).lt.m) then
+       deallocate(row_list, stat=st)
+       allocate(row_list(m), stat=st)
+       ! if (st.ne.0) go to 10
+    endif
+
+! 10  if (st.ne.0) then
+!        info = MA87_ERROR_ALLOCATION
+!        call MA87_print_flag(info, control, context='MA87_factor',st=st)
+!        return
+!     end if
+
+    col_list_sz = 0
+    row_list_sz = 0
+
+    size_dnode = size(dnode%index)
+    size_snode = size(snode%index)
+
+    ! Find block column dcol of dnode that blk belongs to. The block
+    ! cols are numbered locally within dnode as 1,2,3,...
+
+    dcol = blocks(blk)%bcol - blocks(dnode%blk_sa)%bcol + 1
+
+    ! Set dcsa and dcen to hold indices
+    ! of start and end columns in dcol (global column indices)
+    dcsa = dnode%sa + (dcol-1)*dnode%nb                
+    dcen = min(dnode%sa + dcol*dnode%nb-1, dnode%en)
+
+    ! Find block column scol of snode that src belongs to. 
+    scol = blocks(src)%bcol - blocks(snode%blk_sa)%bcol + 1
+
+    ! Set cptr to point to the first row in csrc
+    cptr = 1 + min(snode%en-snode%sa+1, (scol-1)*snode%nb)
+
+    ! loop while row index within scol is less the index
+    ! of the first column in blk
+
+    do while(snode%index(cptr).lt.dcsa)
+       cptr = cptr + 1
+       if(cptr.gt.size_snode) return ! No incident columns
+    end do
+
+    ! Set s1sa to point to first row in csrc
+    s1sa = cptr 
+
+    ! Now record the rows in csrc. Local row numbers
+    ! are held in col_list(1:slen-slsa+1)
+    do while(snode%index(cptr).le.dcen)
+       col_list_sz = col_list_sz + 1
+       col_list(col_list_sz) = snode%index(cptr) - dcsa + 1
+       cptr = cptr + 1
+       if(cptr.gt.size_snode) exit ! No more rows
+    end do
+
+    ! Set slen to point to last row in csrc
+    s1en = cptr - 1 
+
+    ! Loop over rsrc rows, building row list. Identify required data, form
+    ! outer product of it into buffer.
+
+    ! Find first and last rows of destination block
+    i = dcol + blocks(blk)%id - blocks(blk)%dblk ! block in snode
+    drsa = dnode%index(1 + (i-1)*dnode%nb)
+    dren = dnode%index(min(1 + i*dnode%nb - 1, size_dnode))
+
+    ! Find first row in rsrc
+    rptr = s1sa
+    do while(snode%index(rptr).lt.drsa)
+       rptr = rptr + 1
+       if(rptr.gt.size_snode) return ! No incident row! Shouldn't happen.
+    end do
+    s2sa = rptr ! Points to first row in rsrc
+
+    ! Find the first row of destination block
+    i = blk - blocks(blk)%dblk + 1 ! row block of blk column
+    dptr_sa = 1 + (dcol-1 + i-1)*dnode%nb
+
+    ! Now record the rows in rsrc. Local row numbers
+    ! are held in row_list(1:s2en-s2sa+1)
+    dptr = dptr_sa ! Pointer for destination block
+
+    do rptr = s2sa, size_snode
+       if(snode%index(rptr).gt.dren) exit
+       do while(dnode%index(dptr).lt.snode%index(rptr))
+          dptr = dptr + 1
+       end do
+       row_list_sz = row_list_sz + 1
+       row_list(row_list_sz) = dptr - dptr_sa + 1
+    end do
+    s2en = rptr - 1 ! Points to last row in rsrc
+
+    ! if(n1.ge.control%min_width_blas) then
+    if(n1.ge.min_width_blas) then
+       ! High flop/buffer sz ratio => perform operations into buffer with BLAS
+       if(size(buffer).lt.row_list_sz*col_list_sz) then
+          deallocate(buffer, stat=st)
+          allocate(buffer(row_list_sz*col_list_sz), stat=st)
+          ! if (st.ne.0) then
+          !    info = MA87_ERROR_ALLOCATION
+          !    call MA87_print_flag(info, control, context='MA87_factor',st=st)
+          !    return
+          ! end if
+       endif
+
+       if(diag) then
+          ! blk is a block on diagonal
+          ndiag = int(s1en-s1sa+1)
+          call dsyrk('U', 'T', ndiag, n1, -one, csrc,                  &
+               n1, zero, buffer, col_list_sz)
+
+          if(s2en-s2sa+1-ndiag.gt.0) then
+             call dgemm('T', 'N', ndiag, int(s2en-s2sa+1-ndiag),       &
+                  n1, -one, csrc, n1, rsrc(1+n1*ndiag), n1, zero,        &
+                  buffer(1+col_list_sz*ndiag), col_list_sz)
+          endif
+       else
+          ! Off diagonal block
+          ndiag = 0
+          call dgemm('T', 'N', int(s1en-s1sa+1), int(s2en-s2sa+1), n1, &
+               -one, csrc, n1, rsrc, n1, zero, buffer, col_list_sz)
+       endif
+
+       !
+       ! Apply update
+       !
+
+       call expand_buffer(dest, n, row_list, row_list_sz, &
+            col_list, col_list_sz, ndiag, buffer)
+
+    else
+       ! Low flop/buffer ratio => perform update operation directly
+       ! set ndiag if blk is a diagonal block
+       ndiag = 0
+       if(diag) ndiag = int(s1en-s1sa+1)
+
+
+       call update_direct(n, dest, n1, csrc, rsrc, row_list, row_list_sz, &
+            col_list, col_list_sz, ndiag)
+
+    endif
+
+  end subroutine spllt_update_between
+
+  
 end module spllt_kernels_mod
