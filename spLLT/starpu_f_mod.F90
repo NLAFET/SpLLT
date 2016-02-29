@@ -112,6 +112,15 @@ module starpu_f_mod
      end subroutine starpu_matrix_data_register
   end interface starpu_f_matrix_data_register
 
+  interface starpu_f_vector_data_register
+     subroutine starpu_vector_data_register(handle, host, a, nx, sizeof) bind(c)
+       use iso_c_binding
+       type(c_ptr)              :: handle
+       type(c_ptr), value       :: a
+       integer(c_int), value    :: host, nx
+       integer(c_size_t), value :: sizeof
+     end subroutine starpu_vector_data_register
+  end interface starpu_f_vector_data_register
 
   ! interface
   ! end interface

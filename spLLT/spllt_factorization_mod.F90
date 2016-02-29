@@ -67,6 +67,7 @@ contains
 
   ! _trsm
   subroutine spllt_solve_block_task(bc_kk, bc_ik, lfact, prio)
+    use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -127,6 +128,7 @@ contains
   ! syrk/gemm (same node)
   ! A_ij <- A_ij - A_ik A_jk^T
   subroutine spllt_update_block_task(bc_ik, bc_jk, bc_ij, lfact, prio)
+    use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -199,9 +201,10 @@ contains
   ! syrk/gemm (inter-node)
   subroutine spllt_update_between_task(bc, snode, a_bc, anode, &
        & csrc, rsrc, &
-       & row_list, col_list, buffer, &
+       & row_list, col_list, workspace, &
        & lfact, blocks, &
        & control)
+    use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -217,7 +220,8 @@ contains
     type(node_type)                     :: anode ! dest node
     integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     integer, dimension(:), allocatable  :: row_list, col_list
-    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+    type(spllt_bc_type) :: workspace
+    ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)      :: blocks ! block info. 
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
     type(MA87_control), intent(in) :: control     
@@ -255,7 +259,7 @@ contains
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
          & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-         & blocks, row_list, col_list, buffer, &
+         & blocks, row_list, col_list, workspace%c, &
          & control%min_width_blas)
 
     return

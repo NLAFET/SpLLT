@@ -9,6 +9,7 @@ contains
     use hsl_ma87_double
     use spllt_factorization_mod
 #if defined(SPLLT_USE_STARPU) 
+    use iso_c_binding
     use starpu_f_mod
 #endif
     implicit none
@@ -75,7 +76,7 @@ contains
     integer :: k
     integer(long) :: rblk, a_dblk, a_blk ! id of block in scol containing row 
     ! nodes(snode)%index(cptr).
-    integer(long) :: rb ! Index of block row in snode
+    ! integer(long) :: rb ! Index of block row in snode
     integer :: iinfo, a_nb, k1, size_anode
 
 #if defined(SPLLT_USE_STARPU) 
@@ -94,7 +95,9 @@ contains
     num_nodes = keep%info%num_nodes
     write(*,*) 'num_nodes: ', num_nodes
 
-    allocate(col_list(1), row_list(1), buffer(keep%maxmn), stat=st)
+    allocate(col_list(1), row_list(1), stat=st)
+    if(st.ne.0) goto 10
+    allocate(pbl%workspace%c(keep%maxmn), stat=st)
     if(st.ne.0) goto 10
 
     ! Set up inverse permutation
@@ -127,8 +130,13 @@ contains
     
 
 #if defined(SPLLT_USE_STARPU)
+    ! TODO take it out of the factorize routine
     ! initialize starpu
     ret = starpu_f_init(cntl%ncpu)
+
+    ! register workspace handle
+    call starpu_f_vector_data_register(pbl%workspace%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -314,7 +322,7 @@ contains
                       ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
                       call spllt_update_between_task(bc, node, a_bc, anode, &
                            & csrc, rsrc, &
-                           & row_list, col_list, buffer, &
+                           & row_list, col_list, pbl%workspace, &
                            & keep%lfact, keep%blocks, &
                            & control)
 
@@ -335,7 +343,7 @@ contains
                 ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
                 call spllt_update_between_task(bc, node, a_bc, anode, &
                      & csrc, rsrc, &
-                     & row_list, col_list, buffer, &
+                     & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, &
                      & control)
                 
@@ -427,6 +435,11 @@ contains
     end do
 
 #if defined(SPLLT_USE_STARPU)
+    ! unregister workspace handle
+    call starpu_f_data_unregister_submit(pbl%workspace%hdl)
+    
+    ! wait for task completion
+    ! TODO take it out of the factorize routine
     call starpu_f_task_wait_for_all()
 #endif
 
@@ -435,6 +448,7 @@ contains
 #endif
 
 #if defined(SPLLT_USE_STARPU)
+    ! TODO take it out of the factorize routine
     call starpu_f_shutdown()
 #endif
 

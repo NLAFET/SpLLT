@@ -2,6 +2,7 @@ module spllt_mod
   use hsl_ma87_double, only: block_type 
   use hsl_zd11_double
 #if defined(SPLLT_USE_STARPU)
+  use iso_c_binding
   use starpu_f_mod
 #endif
   implicit none
@@ -13,7 +14,11 @@ module spllt_mod
   ! end type matrix_type
 
   integer, parameter :: wp = kind(0d0)
+#if defined(SPLLT_USE_STARPU)
+  integer, parameter :: long = c_long
+#else
   integer, parameter :: long = selected_int_kind(18)
+#endif
 
   real(wp), parameter :: one = 1.0_wp
   real(wp), parameter :: zero = 0.0_wp
@@ -29,6 +34,7 @@ module spllt_mod
   
   type spllt_bc_type
      type(block_type), pointer :: blk ! pointer to the block in keep
+     real(wp), dimension(:), allocatable :: c
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl ! StarPU handle
 #endif
@@ -37,6 +43,7 @@ module spllt_mod
 
   type spllt_data_type
      type(spllt_bc_type), allocatable :: bc(:) ! blocks
+     type(spllt_bc_type) :: workspace ! workspaces
   end type spllt_data_type
 
   interface gen_random_posdef

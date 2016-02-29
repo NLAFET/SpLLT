@@ -170,4 +170,16 @@ contains
     return
   end subroutine spllt_starpu_update_block_cpu_func
 
+  ! update between StarPU task 
+  ! _syrk/_gemm
+  subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
+    
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+
+    
+
+    return
+  end subroutine
+
 end module spllt_starpu_factorization_mod
