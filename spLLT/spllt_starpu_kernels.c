@@ -111,6 +111,25 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
 
 void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg);
 
+void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
+                                                     void *blocks,
+                                                     void *snode, int *blk, 
+                                                     void *anode, int *a_blk,
+                                                     void *csrc, void *rsrc,
+                                                     void *row_list, void *col_list,
+                                                     int *min_with_blas,
+                                                     int *nhlik, int *nhljk) {
+   
+   starpu_codelet_unpack_args(cl_arg,
+                              blocks,
+                              snode, blk, anode, a_blk,
+                              csrc, rsrc, row_list, col_list,
+                              min_with_blas,
+                              nhlik, nhljk);
+
+   return;
+}
+
 // update block task codelet
 struct starpu_codelet cl_update_between = {
   .where = STARPU_CPU,
@@ -135,7 +154,7 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    struct starpu_data_descr *descrs;
 
    nh = 0;
-   descrs = malloc((nhlik+nhlij+1) * sizeof(struct starpu_data_descr));
+   descrs = malloc((nhlik+nhljk+2) * sizeof(struct starpu_data_descr));
 
    descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH;
    nh = nh + 1;   

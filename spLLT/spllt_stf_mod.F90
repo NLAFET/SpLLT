@@ -48,10 +48,9 @@ contains
     integer :: en ! holds keep%nodes(snode)%en
     integer :: sa ! holds keep%nodes(snode)%sa
     integer(long) :: i
-    integer :: j
     integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
     integer :: nc, nr ! number of block column/row
-    integer :: snode, num_nodes, par
+    integer :: snode, num_nodes
     integer :: st ! stat parameter
     integer :: numrow, numcol
     integer :: ii, jj, kk
@@ -74,10 +73,10 @@ contains
     integer :: jlast ! Last column in the cb-th block column of anode
     ! real(wp) :: soln(0)
     integer :: k
-    integer(long) :: rblk, a_dblk, a_blk ! id of block in scol containing row 
+    integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
     ! nodes(snode)%index(cptr).
     ! integer(long) :: rb ! Index of block row in snode
-    integer :: iinfo, a_nb, k1, size_anode
+    integer :: iinfo, a_nb
 
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
@@ -323,7 +322,7 @@ contains
                       call spllt_update_between_task(bc, node, a_bc, anode, &
                            & csrc, rsrc, &
                            & row_list, col_list, pbl%workspace, &
-                           & keep%lfact, keep%blocks, &
+                           & keep%lfact, keep%blocks, pbl%bc, &
                            & control)
 
                       ii = k
@@ -344,7 +343,7 @@ contains
                 call spllt_update_between_task(bc, node, a_bc, anode, &
                      & csrc, rsrc, &
                      & row_list, col_list, pbl%workspace, &
-                     & keep%lfact, keep%blocks, &
+                     & keep%lfact, keep%blocks, pbl%bc, &
                      & control)
                 
                 ! find id of the block in current kk colums that contains the cptr-th row

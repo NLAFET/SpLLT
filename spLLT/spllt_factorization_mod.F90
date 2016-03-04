@@ -202,8 +202,8 @@ contains
   subroutine spllt_update_between_task(bc, snode, a_bc, anode, &
        & csrc, rsrc, &
        & row_list, col_list, workspace, &
-       & lfact, blocks, &
-       & control)
+       & lfact, blocks, bcs, &
+       & control, prio)
     use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -223,15 +223,59 @@ contains
     type(spllt_bc_type) :: workspace
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)      :: blocks ! block info. 
+    type(spllt_bc_type), dimension(:)      :: bcs ! block info. 
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
     type(MA87_control), intent(in) :: control     
     ! integer, intent(out) :: st ! TODO error managment
+    integer, optional :: prio 
 
     ! integer :: info ! TODO error managment
     
+    integer :: p
     integer :: m, n, n1, sa
     integer :: bcol, bcol1
     integer(long) :: id, id1
+
+#if defined(SPLLT_USE_STARPU)
+    integer :: nhljk, nhlik
+    integer :: s_nb
+    integer(long) :: blk, blk_sa, blk_en, nb_blk
+    type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
+#endif
+
+    if (present(prio)) then
+       p = prio
+    else
+       p = 0
+    end if
+
+! #if defined(SPLLT_USE_STARPU)
+
+!     s_nb = snode%nb
+
+!     ! ljk
+!     blk_sa = (csrc(1)-1)/s_nb - (bc%blk%bcol-1) + bc%blk%dblk
+!     blk_en = ((csrc(1)+csrc(2)-1)-1)/s_nb - (bc%blk%bcol-1) + bc%blk%dblk
+!     nb_blk = blk_en-blk_sa+1
+!     allocate(ljk_handles(nb_blk))
+!     nhljk=0
+!     do blk=blk_sa,nb_blk
+!        nhljk=nhljk+1
+!        ljk_handles(nhljk) = bcs(blk)%hdl
+!     end do
+
+!     ! lik
+!     blk_sa = (rsrc(1)-1)/s_nb - (bc%blk%bcol-1) + bc%blk%dblk
+!     blk_en = ((rsrc(1)+rsrc(2)-1)-1)/s_nb - (bc%blk%bcol-1) + bc%blk%dblk
+!     nb_blk = blk_en-blk_sa+1
+!     allocate(lik_handles(nb_blk))
+!     nhlik=0
+!     do blk=blk_sa,nb_blk
+!        nhlik=nhlik+1
+!        lik_handles(nhlik) = bcs(blk)%hdl
+!     end do
+
+! #else
     
     m  = a_bc%blk%blkm
     n  = a_bc%blk%blkn
@@ -259,8 +303,10 @@ contains
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
          & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-         & blocks, row_list, col_list, workspace%c, &
+         & bc%blk%dblk, blocks, row_list, col_list, workspace%c, &
          & control%min_width_blas)
+
+! #endif
 
     return
   end subroutine spllt_update_between_task

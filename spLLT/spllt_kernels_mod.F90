@@ -116,8 +116,8 @@ contains
 
   ! TODO error managment
 
-  subroutine spllt_update_between(m, n, blk, dnode, n1, src, snode, dest, csrc,    &
-       rsrc, blocks, row_list, col_list, buffer, min_width_blas)
+  subroutine spllt_update_between(m, n, blk, dnode, n1, src, snode, dest, & 
+       & csrc, rsrc, dblk, blocks, row_list, col_list, buffer, min_width_blas)
     use spllt_mod
     use hsl_ma87_double
     implicit none
@@ -133,6 +133,7 @@ contains
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
+    integer(long), intent(in) :: dblk ! identifier of destination block
     type(block_type), dimension(:), intent(inout) :: blocks
     real(wp), dimension(:), allocatable :: buffer
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
@@ -180,7 +181,8 @@ contains
     integer :: st
     
     ! set diag to true if blk is block on diagonal
-    diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
+    ! diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
+    diag = (dblk.eq.blk)
 
     ! Make a list of incident csrc rows (ie. columns of blk)
     !
