@@ -193,3 +193,69 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
 
    return;
 }
+
+// partitioning and unpartitioning data
+
+void spllt_starpu_partition_cpu_func(void *buffers[], void *cl_arg){
+  /* printf("partition\n"); */
+  return;
+}
+
+struct starpu_codelet cl_partition = {
+  .where = STARPU_CPU,
+  .cpu_funcs = {spllt_starpu_partition_cpu_func, NULL},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS, 
+  .name = "PARTITION",
+/* #if defined(usebound) || defined(calibratecpus) || defined(calibrategpus) */
+/*   .model = &partition_history_based_model */
+/* #elif defined(useperfmodels) */
+/*   .model = &partition_history_based_model */
+/* #endif */
+};
+
+
+void spllt_insert_partition_task_c(starpu_data_handle_t *bc_handle, 
+                                   starpu_data_handle_t **in_bc_handles, int nh,
+                                   int prio) {
+   int ret;
+   int i;
+   struct starpu_data_descr *descrs;
+
+   descrs[0].handle = *bc_handle;        descrs[0].mode = STARPU_R;
+
+   for(i=0; i<nh; i++){
+      descrs[i+1].handle = *in_bc_handles[i];  descrs[i+1].mode = STARPU_W /* STARPU_RW */;
+   }
+
+   ret = starpu_task_insert(&cl_partition,
+                            STARPU_DATA_MODE_ARRAY, descrs,   nh+1,
+                            STARPU_PRIORITY,        prio,
+                            0);
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
+
+   return;
+} 
+
+void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t *bc_handle, 
+                                                  starpu_data_handle_t **in_bc_handles, int nh,
+                                                  int prio) {
+
+   int ret, i;
+   struct starpu_data_descr *descrs;
+
+   descrs = malloc((nh+1) * sizeof(struct starpu_data_descr));
+   
+   descrs[0].handle = *bc_handle;        descrs[0].mode = STARPU_W;
+   /* printf("nh: %d\n", nh); */
+   for(i=0; i<nh; i++){
+      descrs[i+1].handle = *in_bc_handles[i];  descrs[i+1].mode = STARPU_R;
+   }
+
+   ret = starpu_task_insert(&cl_partition/* &cl_unpartition_hierarchical */,
+                            STARPU_DATA_MODE_ARRAY, descrs,   nh+1,
+                            STARPU_PRIORITY,        prio,
+                            0);
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
+
+   return;
+}

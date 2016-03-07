@@ -80,6 +80,23 @@ module spllt_starpu_factorization_mod
      end subroutine spllt_starpu_codelet_unpack_args_update_between
   end interface
 
+  ! data partitioning and unpartitioning task
+  interface 
+     subroutine spllt_insert_partition_task_c(hdl, in_hdls, nh, prio) bind(C)
+       use iso_c_binding
+       type(c_ptr), value     :: hdl
+       type(c_ptr)            :: in_hdls(*)
+       integer(c_int), value  :: nh, prio
+     end subroutine spllt_insert_partition_task_c
+
+     subroutine spllt_insert_unpartition_task_c(hdl, in_hdls, nh, prio) bind(C)
+       use iso_c_binding
+       type(c_ptr), value     :: hdl
+       type(c_ptr)            :: in_hdls(*)
+       integer(c_int), value  :: nh, prio
+     end subroutine spllt_insert_unpartition_task_c
+  end interface
+
 contains
 
   ! factorize block StarPU task insert

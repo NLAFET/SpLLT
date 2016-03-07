@@ -235,6 +235,7 @@ contains
     integer :: m, n, n1, sa
     integer :: bcol, bcol1
     integer(long) :: id, id1
+    integer :: dcol, scol
 
 #if defined(SPLLT_USE_STARPU)
     integer :: nhljk, nhlik
@@ -283,11 +284,13 @@ contains
     sa = a_bc%blk%sa
 
     bcol = a_bc%blk%bcol
+    dcol = bcol - blocks(anode%blk_sa)%bcol + 1
     
     n1  = bc%blk%blkn
     id1 = bc%blk%id
 
     bcol1 = bc%blk%bcol
+    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
 
     ! write(*,*) "update_between_task"
     ! call update_between(m, n, id, anode, &
@@ -298,12 +301,12 @@ contains
     !      & blocks, row_list, col_list, buffer, &
     !      & control, info, st)
 
-    call spllt_update_between(m, n, id, anode, &
-         & n1, id1, snode, &
+    call spllt_update_between(m, n, a_bc%blk, dcol, anode, &
+         & n1, scol, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
          & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-         & bc%blk%dblk, blocks, row_list, col_list, workspace%c, &
+         & blocks, row_list, col_list, workspace%c, &
          & control%min_width_blas)
 
 ! #endif

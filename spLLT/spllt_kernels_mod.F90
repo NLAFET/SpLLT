@@ -116,24 +116,26 @@ contains
 
   ! TODO error managment
 
-  subroutine spllt_update_between(m, n, blk, dnode, n1, src, snode, dest, & 
-       & csrc, rsrc, dblk, blocks, row_list, col_list, buffer, min_width_blas)
+  subroutine spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
+       & csrc, rsrc, blocks, row_list, col_list, buffer, min_width_blas)
     use spllt_mod
     use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: m  ! number of rows in destination block
     integer, intent(in) :: n  ! number of columns in destination block
-    integer(long), intent(in) :: blk ! identifier of destination block
+    ! integer(long), intent(in) :: blk ! identifier of destination block
+    type(block_type), intent(in) :: blk
+    integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
     type(node_type), intent(in) :: dnode ! Node to which blk belongs
     integer :: n1 ! number of columns in source block column
-    integer(long), intent(in) :: src  ! identifier of block in source block col
+    ! integer(long), intent(in) :: src  ! identifier of block in source block col
+    integer, intent(in) :: scol ! index of block column that src belongs to in snode
     type(node_type), intent(in) :: snode ! Node to which src belongs
     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
-    integer(long), intent(in) :: dblk ! identifier of destination block
     type(block_type), dimension(:), intent(inout) :: blocks
     real(wp), dimension(:), allocatable :: buffer
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
@@ -153,7 +155,7 @@ contains
     ! holds the number of columns in blk (= number
     ! of rows in csrc)
     integer :: dcen ! index of end column in dcol
-    integer :: dcol ! index of block column that blk belongs to in dnode
+    ! integer :: dcol ! index of block column that blk belongs to in dnode
     integer :: dcsa ! index of first column in dcol
     logical :: diag ! set to true if blk is the diagonal block
     integer :: dptr
@@ -169,7 +171,7 @@ contains
     ! holds the number of rows in blk (= number of rows in rsrc)
     integer :: rptr ! used in determining the rows that belong to the
     ! source block rsrc
-    integer :: scol ! index of block column that src belongs to in snode
+    ! integer :: scol ! index of block column that src belongs to in snode
     integer :: s1sa, s1en ! point to the first and last rows of
     ! the block csrc within scol
     integer :: s2sa, s2en ! point to the first and last rows of
@@ -181,8 +183,8 @@ contains
     integer :: st
     
     ! set diag to true if blk is block on diagonal
+    diag = (blk%dblk.eq.blk%id)
     ! diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
-    diag = (dblk.eq.blk)
 
     ! Make a list of incident csrc rows (ie. columns of blk)
     !
@@ -214,7 +216,7 @@ contains
     ! Find block column dcol of dnode that blk belongs to. The block
     ! cols are numbered locally within dnode as 1,2,3,...
 
-    dcol = blocks(blk)%bcol - blocks(dnode%blk_sa)%bcol + 1
+    ! dcol = blk%bcol - blocks(dnode%blk_sa)%bcol + 1
 
     ! Set dcsa and dcen to hold indices
     ! of start and end columns in dcol (global column indices)
@@ -222,7 +224,7 @@ contains
     dcen = min(dnode%sa + dcol*dnode%nb-1, dnode%en)
 
     ! Find block column scol of snode that src belongs to. 
-    scol = blocks(src)%bcol - blocks(snode%blk_sa)%bcol + 1
+    ! scol = blocks(src)%bcol - blocks(snode%blk_sa)%bcol + 1
 
     ! Set cptr to point to the first row in csrc
     cptr = 1 + min(snode%en-snode%sa+1, (scol-1)*snode%nb)
@@ -254,7 +256,7 @@ contains
     ! outer product of it into buffer.
 
     ! Find first and last rows of destination block
-    i = dcol + blocks(blk)%id - blocks(blk)%dblk ! block in snode
+    i = dcol + blk%id - blk%dblk ! block in snode
     drsa = dnode%index(1 + (i-1)*dnode%nb)
     dren = dnode%index(min(1 + i*dnode%nb - 1, size_dnode))
 
@@ -267,7 +269,7 @@ contains
     s2sa = rptr ! Points to first row in rsrc
 
     ! Find the first row of destination block
-    i = blk - blocks(blk)%dblk + 1 ! row block of blk column
+    i = blk%id - blk%dblk + 1 ! row block of blk column
     dptr_sa = 1 + (dcol-1 + i-1)*dnode%nb
 
     ! Now record the rows in rsrc. Local row numbers
