@@ -96,7 +96,7 @@ contains
 
     allocate(col_list(1), row_list(1), stat=st)
     if(st.ne.0) goto 10
-    allocate(pbl%workspace%c(keep%maxmn), stat=st)
+    allocate(pbl%workspace%c(keep%maxmn*keep%maxmn), stat=st)
     if(st.ne.0) goto 10
 
     ! Set up inverse permutation
@@ -135,7 +135,7 @@ contains
 
     ! register workspace handle
     call starpu_f_vector_data_register(pbl%workspace%hdl, -1, c_null_ptr, &
-         & int(keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -636,7 +636,7 @@ contains
              call starpu_matrix_data_register(pbl%bc(blk)%hdl, pbl%bc(blk)%mem_node, &
                   & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
                   & int(wp,kind=c_size_t))
-
+             pbl%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
              ptr = ptr + blkm*blkn
           end do
 #endif

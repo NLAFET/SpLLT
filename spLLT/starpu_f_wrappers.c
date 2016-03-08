@@ -32,3 +32,18 @@ void starpu_f_get_buffer(void *buffers[], int num, void **A, int *m, int *n, int
 
 }
 
+void starpu_f_vector_get_buffer(void *buffers[], int num, void **A, int *m) {
+
+  *A   = (void *)STARPU_VECTOR_GET_PTR(buffers[num]);
+  *m   = (int)STARPU_VECTOR_GET_NX(buffers[num]);
+
+  return;
+
+}
+
+void starpu_f_alloc_handle(void **ptr) {
+ 
+   *ptr = (void *)malloc(sizeof(starpu_data_handle_t));
+  
+   return;
+}

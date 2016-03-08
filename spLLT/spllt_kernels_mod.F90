@@ -117,7 +117,7 @@ contains
   ! TODO error managment
 
   subroutine spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
-       & csrc, rsrc, blocks, row_list, col_list, buffer, min_width_blas)
+       & csrc, rsrc, row_list, col_list, buffer, min_width_blas)
     use spllt_mod
     use hsl_ma87_double
     implicit none
@@ -125,7 +125,7 @@ contains
     integer, intent(in) :: m  ! number of rows in destination block
     integer, intent(in) :: n  ! number of columns in destination block
     ! integer(long), intent(in) :: blk ! identifier of destination block
-    type(block_type), intent(in) :: blk
+    type(block_type), intent(in) :: blk ! destination block
     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
     type(node_type), intent(in) :: dnode ! Node to which blk belongs
     integer :: n1 ! number of columns in source block column
@@ -136,7 +136,7 @@ contains
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
-    type(block_type), dimension(:), intent(inout) :: blocks
+    ! type(block_type), dimension(:), intent(inout) :: blocks
     real(wp), dimension(:), allocatable :: buffer
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n

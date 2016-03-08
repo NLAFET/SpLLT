@@ -94,6 +94,13 @@ module starpu_f_mod
        integer(c_int), value :: num
        type(c_ptr), value    :: m, n, lda, buffers
      end subroutine starpu_f_get_buffer
+
+     subroutine starpu_f_vector_get_buffer(buffers, num, a, m) bind(C)
+       use iso_c_binding
+       type(c_ptr), value    :: a
+       integer(c_int), value :: num
+       type(c_ptr), value    :: m, buffers
+     end subroutine starpu_f_vector_get_buffer
   end interface starpu_f_get_buffer
 
 
@@ -144,6 +151,13 @@ module starpu_f_mod
      end subroutine starpu_fxt_stop_profiling
   end interface starpu_f_fxt_stop_profiling
 ! #endif
+
+  interface
+     subroutine starpu_f_alloc_handle(p) bind(c)
+       use iso_c_binding
+       type(c_ptr) :: p
+     end subroutine starpu_f_alloc_handle
+  end interface
 
 contains
 
