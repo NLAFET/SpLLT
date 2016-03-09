@@ -247,8 +247,8 @@ contains
     type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
     integer, target :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
     integer, target :: m1, n1, ld1
-    ! real(wp), pointer        :: work(:)
-    real(wp), allocatable    :: work(:) ! TODO use StarPU scratch buffer
+    real(wp), pointer        :: work(:)
+    ! real(wp), allocatable    :: work(:) ! TODO use StarPU scratch buffer
     real(wp), pointer        :: lij(:), lik(:), ljk(:)
 
     call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &

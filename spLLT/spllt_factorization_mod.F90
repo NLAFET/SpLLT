@@ -199,8 +199,9 @@ contains
   end subroutine spllt_update_block_task
 
   ! syrk/gemm (inter-node)
-  subroutine spllt_update_between_task(bc, snode, a_bc, anode, &
-       & csrc, rsrc, &
+  subroutine spllt_update_between_task(dbc, snode, a_bc, anode, &
+       ! & csrc, rsrc, &
+       & cptr, cptr2, rptr, rptr2, &
        & row_list, col_list, workspace, &
        & lfact, blocks, bcs, &
        & control, prio)
@@ -215,7 +216,8 @@ contains
     ! type(block_type), intent(inout)     :: a_bc ! dest block
     ! type(block_type), intent(in)        :: bc ! src block
     type(spllt_bc_type), intent(inout)     :: a_bc ! dest block
-    type(spllt_bc_type), intent(in)        :: bc ! src block
+    ! type(spllt_bc_type), intent(in)        :: bc ! src block
+    type(spllt_bc_type), intent(in)        :: dbc ! diag block in source node
 #if defined(SPLLT_USE_STARPU)
     type(node_type), target                     :: snode ! src node
     type(node_type), target                     :: anode ! dest node
@@ -223,16 +225,17 @@ contains
     type(node_type)                     :: snode ! src node
     type(node_type)                     :: anode ! dest node
 #endif
-    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
+    integer :: cptr, cptr2, rptr, rptr2 
+!    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     integer, dimension(:), allocatable  :: row_list, col_list
     type(spllt_bc_type) :: workspace
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)      :: blocks ! block info. 
     type(spllt_bc_type), dimension(:)      :: bcs ! block info.
 #if defined(SPLLT_USE_STARPU)
-    type(lfactor), dimension(:), allocatable, target, intent(inout) :: lfact
+    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
-    type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
+    type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     type(MA87_control), intent(in) :: control     
     ! integer, intent(out) :: st ! TODO error managment
@@ -245,12 +248,12 @@ contains
     integer :: bcol, bcol1
     integer(long) :: id, id1
     integer :: dcol, scol
+    integer :: csrc, csrc2, rsrc, rsrc2
 
 #if defined(SPLLT_USE_STARPU)
-    integer :: blkn, cptr, cptr2, ljk_sa, rptr, rptr2
+    integer :: blkn, ljk_sa
     integer :: nhljk, nhlik
     integer :: s_nb
-    integer :: csrc_1, csrc_2, rsrc_1, rsrc_2
     integer(c_int) :: ljk_m, ljk_n
     integer(long) :: blk, blk_sa, blk_en, nb_blk, dblk
     type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
@@ -264,9 +267,12 @@ contains
        p = 0
     end if
 
-#if defined(SPLLT_USE_STARPU)
+    s_nb = snode%nb    ! block size in source node
+    n1  = dbc%blk%blkn ! width of column
 
-    s_nb = snode%nb
+! #if defined(SPLLT_USE_STARPU)
+#if 0
+
     dblk = bc%blk%dblk
     blkn = bcs(dblk)%blk%blkn
 
@@ -361,10 +367,7 @@ contains
     bcol = a_bc%blk%bcol
     dcol = bcol - blocks(anode%blk_sa)%bcol + 1
     
-    n1  = bc%blk%blkn
-    id1 = bc%blk%id
-
-    bcol1 = bc%blk%bcol
+    bcol1 = dbc%blk%bcol
     scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
 
     ! write(*,*) "update_between_task"
@@ -376,11 +379,17 @@ contains
     !      & blocks, row_list, col_list, buffer, &
     !      & control, info, st)
 
+    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
+    csrc2 = (cptr2 - cptr + 1)*n1
+
+    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
+    rsrc2 = (rptr2 - rptr + 1)*n1
+
     call spllt_update_between(m, n, a_bc%blk, dcol, anode, &
          & n1, scol, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
-         & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
-         & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
+         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
+         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
          & row_list, col_list, workspace%c, &
          & control%min_width_blas)
 

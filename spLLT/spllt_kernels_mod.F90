@@ -137,7 +137,8 @@ contains
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
     ! type(block_type), dimension(:), intent(inout) :: blocks
-    real(wp), dimension(:), allocatable :: buffer
+    ! real(wp), dimension(:), allocatable :: buffer
+    real(wp), dimension(:), pointer :: buffer
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
     integer, intent(in) :: min_width_blas      ! Minimum width of source block
@@ -289,6 +290,9 @@ contains
     ! if(n1.ge.control%min_width_blas) then
     if(n1.ge.min_width_blas) then
        ! High flop/buffer sz ratio => perform operations into buffer with BLAS
+
+       ! FIXME We probably dont need this as size(buffer) is equal to
+       ! maxmn*maxmn which always more than row_list_sz*col_list_sz
        if(size(buffer).lt.row_list_sz*col_list_sz) then
           deallocate(buffer, stat=st)
           allocate(buffer(row_list_sz*col_list_sz), stat=st)

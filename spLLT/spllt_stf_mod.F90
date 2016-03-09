@@ -56,7 +56,7 @@ contains
     integer :: ii, jj, kk
     
     ! update between variables
-    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
+    ! integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     type(node_type), pointer :: anode ! ancestor node in the atree
     ! locate source blocks
     integer :: a_num ! ancestor id
@@ -64,6 +64,7 @@ contains
     ! matching a column of the current block column of anode.
     integer :: cptr2  ! Position in snode of the last row 
     ! matching a column of the current block column of anode.
+    integer :: rptr, rptr2
     logical :: map_done
     integer :: ilast
     type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree    
@@ -276,8 +277,10 @@ contains
                 ! write(*,*)"j: ", nodes(snode)%index(cptr), ", jlast: ", nodes(snode)%index(cptr2)
                 ! Set info for source block csrc (hold start location
                 ! and number of entries)
-                csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
-                csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
+
+                ! csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
+                ! csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
+
                 ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
                 ! Build a map of anode's blocks if this is first for anode
                 if(.not.map_done) call spllt_build_rowmap(anode, map) 
@@ -315,12 +318,20 @@ contains
                       ! a_bc => keep%blocks(a_blk)
                       a_bc => pbl%bc(a_blk)
 
-                      rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
-                      rsrc(2) = (i - ilast)*blocks(blk)%blkn
+                      ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+                      ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
                       ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                       ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
-                      call spllt_update_between_task(bc, node, a_bc, anode, &
-                           & csrc, rsrc, &
+
+                      rptr  = ilast
+                      rptr2 = i-1
+
+                      call spllt_update_between_task( &
+                           ! & bc, &
+                           & bc_kk, &
+                           & node, a_bc, anode, &
+                           ! & csrc, rsrc, &
+                           & cptr, cptr2, rptr, rptr2, &
                            & row_list, col_list, pbl%workspace, &
                            & keep%lfact, keep%blocks, pbl%bc, &
                            & control)
@@ -334,14 +345,22 @@ contains
                 ! a_bc => keep%blocks(a_blk)
                 a_bc => pbl%bc(a_blk)
 
-                rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
-                rsrc(2) = (i - ilast)*blocks(blk)%blkn
+                ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+                ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
                 ! write(*,*)"i: ", i 
                 ! write(*,*)"size lcol", size(keep%lfact(keep%blocks(blk)%bcol)%lcol), ", rsrc(1)+rsrc(2)-1: ", rsrc(1)+rsrc(2)-1
                 ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                 ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
-                call spllt_update_between_task(bc, node, a_bc, anode, &
-                     & csrc, rsrc, &
+
+                rptr  = ilast
+                rptr2 = i-1
+
+                call spllt_update_between_task( &
+                     ! & bc, &
+                     & bc_kk, &
+                     & node, a_bc, anode, &
+                     ! & csrc, rsrc, &
+                     & cptr, cptr2, rptr, rptr2, &
                      & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, pbl%bc, &
                      & control)
