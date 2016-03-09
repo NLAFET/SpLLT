@@ -36,7 +36,7 @@ module spllt_mod
      type(block_type), pointer :: blk ! pointer to the block in keep
      real(wp), pointer :: c(:)
 #if defined(SPLLT_USE_STARPU)
-     type(c_ptr)    :: hdl ! StarPU handle
+     type(c_ptr)    :: hdl  ! StarPU handle
 #endif
      integer :: mem_node = 0 ! memory node where the block is allocated
   end type spllt_bc_type

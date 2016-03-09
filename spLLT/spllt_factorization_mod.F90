@@ -270,106 +270,82 @@ contains
     s_nb = snode%nb    ! block size in source node
     n1  = dbc%blk%blkn ! width of column
 
-! #if defined(SPLLT_USE_STARPU)
-#if 0
-
-    dblk = bc%blk%dblk
-    blkn = bcs(dblk)%blk%blkn
-
-    cptr  = ((csrc(1)-1)/blkn)+1
-    cptr2 = cptr+((csrc(2)/blkn)-1)
-    
-    ! ljk
-    blk_sa = (cptr -1)/s_nb + dblk
-    blk_en = (cptr2-1)/s_nb + dblk
-    nb_blk = blk_en-blk_sa+1
-    ! write(*,*)"blk sa: ", blk_sa, ", blk en: ", blk_en
-    ! write(*,*)"nb_blk: ", nb_blk
-    allocate(ljk_handles(nb_blk))
-    ljk_m = 0 ! compute height of ljk factor
-    nhljk=0
-    do blk=blk_sa,blk_en
-       nhljk=nhljk+1
-       ljk_handles(nhljk) = bcs(blk)%hdl
-       ljk_m = ljk_m + bcs(blk)%blk%blkm
-    end do
-    ljk_n = bc%blk%blkn
-    ! write(*,*)"blk_sa: ", blk_sa, ", bcs(blk_sa)%blk%last_blk: ", bcs(blk_sa)%blk%last_blk 
-    ! write(*,*)"blk_sa: ", blk_sa, ", bcs(blk_sa)%blk%sa: ", bcs(blk_sa)%blk%sa, &
-    !      & ", size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol) 
-    ! write(*,*)"sa: ", ljk_sa, ", size lcol: ", size(lfact(bcol1)%lcol) 
-
-    ! ljk_sa = bcs(blk_sa)%blk%sa
-    
-    ! call starpu_f_alloc_handle(ljk_hdl)
-
-    ! call starpu_matrix_data_register(ljk_hdl, bc%mem_node, &
-    !      ! & c_loc(lfact(bcol1)%lcol(1)), &
-    !      & c_loc(lfact(bcol1)%lcol(ljk_sa)), &
-    !      ! & c_loc(bcs(blk_sa)%c(1)), &
-    !      & ljk_m, ljk_m, ljk_n, &
-    !      & int(wp,kind=c_size_t))
-    ! call starpu_matrix_data_register(ljk_hdl, bc%mem_node, &
-    !      & c_loc(lfact(bcol1)%lcol(1)), &
-    !      ! & c_loc(lfact(bcol1)%lcol(ljk_sa)), &
-    !      ! & c_loc(bcs(blk_sa)%c(1)), &
-    !      & 1, 1, 1, &
-    !      & int(wp,kind=c_size_t))    
-    ! call starpu_f_data_unregister_submit(ljk_hdl)
-
-    ! lik
-
-    rptr  = ((rsrc(1)-1)/blkn)+1
-    rptr2 = rptr+((rsrc(2)/blkn)-1)
-
-    blk_sa = (rptr -1)/s_nb + dblk
-    blk_en = (rptr2-1)/s_nb + dblk
-    nb_blk = blk_en-blk_sa+1
-    allocate(lik_handles(nb_blk))
-    nhlik=0
-    do blk=blk_sa,nb_blk
-       nhlik=nhlik+1
-       lik_handles(nhlik) = bcs(blk)%hdl
-    end do
+    bcol1 = dbc%blk%bcol
+    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
 
     bcol = a_bc%blk%bcol
     dcol = bcol - blocks(anode%blk_sa)%bcol + 1
 
-    bcol1 = bc%blk%bcol
-    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
+#if defined(SPLLT_USE_STARPU)
+! #if 0
 
-    csrc_1 = 1 + ((cptr-1)/s_nb)*blkn 
-    csrc_2 = csrc(2)
-    rsrc_1 = 1 + ((rptr-1)/s_nb)*blkn
-    rsrc_2 = rsrc(2)
+    dblk = dbc%blk%id
+    write(*,*)"dblk: ", dblk
+
+    ! ljk
+    blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
+    blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
+    nb_blk = blk_en-blk_sa+1
+    ! write(*,*)"cptr: ", cptr, ", cptr2: ", cptr2
+    ! write(*,*)"blk sa: ", blk_sa, ", blk en: ", blk_en
+    ! write(*,*)"nb_blk: ", nb_blk
+    allocate(ljk_handles(nb_blk))
+    ! ljk_m = 0 ! compute height of ljk factor
+    nhljk=0
+    do blk=blk_sa,blk_en
+       nhljk=nhljk+1
+       ljk_handles(nhljk) = bcs(blk)%hdl
+       ! ljk_m = ljk_m + bcs(blk)%blk%blkm
+    end do
+    ! ljk_n = bc%blk%blkn
+
+    ! lik
+    blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
+    blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
+    nb_blk = blk_en-blk_sa+1
+    ! write(*,*)"blk sa: ", blk_sa, ", blk en: ", blk_en
+    ! write(*,*)"nb_blk: ", nb_blk
+    allocate(lik_handles(nb_blk))
+    nhlik=0
+    do blk=blk_sa,blk_en
+       nhlik=nhlik+1
+       lik_handles(nhlik) = bcs(blk)%hdl
+    end do
+    
+    csrc  = 1 + (mod(cptr, s_nb)-1)*n1
+    csrc2 = (cptr2 - cptr + 1)*n1
+
+    rsrc  = 1 + (mod(rptr, s_nb)-1)*n1
+    rsrc2 = (rptr2 - rptr + 1)*n1
 
     snode_c = c_loc(snode)
     anode_c = c_loc(anode)
     a_bc_c  = c_loc(a_bc%blk)
 
-    call spllt_starpu_insert_update_between_c(lik_handles, nhlik, lik_handles, nhljk, a_bc%hdl, &
+    write(*,*)"nhljk: ", nhljk, ", nhlik: ", nhlik
+    call spllt_starpu_insert_update_between_c(&
+         & lik_handles, nhlik, &
+         & ljk_handles, nhljk, &
+         & a_bc%hdl, &
          & snode_c, scol, &
          & anode_c, a_bc_c, dcol, &
-         & csrc_1, csrc_2, rsrc_1, rsrc_2, &
+         & csrc, csrc2, rsrc, rsrc2, &
          & control%min_width_blas, &
          & workspace%hdl, &
          & p)
     
     call starpu_f_task_wait_for_all()
 
+    deallocate(ljk_handles)
+    deallocate(lik_handles)
+    
 #else
     
     m  = a_bc%blk%blkm
     n  = a_bc%blk%blkn
     id = a_bc%blk%id
     sa = a_bc%blk%sa
-
-    bcol = a_bc%blk%bcol
-    dcol = bcol - blocks(anode%blk_sa)%bcol + 1
     
-    bcol1 = dbc%blk%bcol
-    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
-
     ! write(*,*) "update_between_task"
     ! call update_between(m, n, id, anode, &
     !      & n1, id1, snode, &
