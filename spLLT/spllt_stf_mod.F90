@@ -47,7 +47,6 @@ contains
     integer(long) :: dblk ! diagonal block within block column
     integer :: en ! holds keep%nodes(snode)%en
     integer :: sa ! holds keep%nodes(snode)%sa
-    integer(long) :: i
     integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
     integer :: nc, nr ! number of block column/row
     integer :: snode, num_nodes
@@ -66,7 +65,7 @@ contains
     ! matching a column of the current block column of anode.
     integer :: rptr, rptr2
     logical :: map_done
-    integer :: ilast
+    integer :: i, ilast
     type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree    
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
@@ -323,15 +322,12 @@ contains
                       ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                       ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
 
-                      rptr  = ilast
-                      rptr2 = i-1
-
                       call spllt_update_between_task( &
                            ! & bc, &
                            & bc_kk, &
                            & node, a_bc, anode, &
                            ! & csrc, rsrc, &
-                           & cptr, cptr2, rptr, rptr2, &
+                           & cptr, cptr2, ilast, i-1, &
                            & row_list, col_list, pbl%workspace, &
                            & keep%lfact, keep%blocks, pbl%bc, &
                            & control)
@@ -352,15 +348,12 @@ contains
                 ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
                 ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
 
-                rptr  = ilast
-                rptr2 = i-1
-
                 call spllt_update_between_task( &
                      ! & bc, &
                      & bc_kk, &
                      & node, a_bc, anode, &
                      ! & csrc, rsrc, &
-                     & cptr, cptr2, rptr, rptr2, &
+                     & cptr, cptr2, ilast, i-1, &
                      & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, pbl%bc, &
                      & control)
