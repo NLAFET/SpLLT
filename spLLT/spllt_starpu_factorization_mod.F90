@@ -97,7 +97,16 @@ module spllt_starpu_factorization_mod
        integer(c_int), value  :: nh, prio
      end subroutine spllt_insert_unpartition_task_c
   end interface
-
+  
+  ! tests
+  interface
+     subroutine test_insert_c(a_hdls, nah, b_hdls, nbh) bind(C)
+       use iso_c_binding
+       type(c_ptr)            :: a_hdls(*), b_hdls(*)
+       integer(c_int), value  :: nah, nbh
+     end subroutine test_insert_c
+  end interface
+  
 contains
 
   ! factorize block StarPU task insert
@@ -253,67 +262,73 @@ contains
     real(wp), pointer        :: work(:)
     ! real(wp), allocatable    :: work(:) ! TODO use StarPU scratch buffer
     real(wp), pointer        :: lij(:), lik(:), ljk(:)
+    
+    ! write(*,*)"update_between_cpu_func"
+    call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &
+         & c_loc(snode_c), c_loc(scol), &
+         & c_loc(anode_c), c_loc(a_bc_c), c_loc(dcol), &
+         & c_loc(csrc), c_loc(csrc2), &
+         & c_loc(rsrc), c_loc(rsrc2), &
+         & c_loc(min_width_blas), &
+         & c_loc(nhlik), c_loc(nhljk))
 
-    ! call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &
-    !      & c_loc(snode_c), c_loc(scol), &
-    !      & c_loc(anode_c), c_loc(a_bc_c), c_loc(dcol), &
-    !      & c_loc(csrc), c_loc(csrc2), &
-    !      & c_loc(rsrc), c_loc(rsrc2), &
-    !      & c_loc(min_width_blas), &
-    !      & c_loc(nhlik), c_loc(nhljk))
+    call c_f_pointer(snode_c, snode)
+    call c_f_pointer(anode_c, anode)
+    call c_f_pointer(a_bc_c, a_bc)
+    ! write(*,*)"nhlik: ", nhlik, ", nhljk: ", nhljk
+    ! write(*,*)"min_width_blas: ", min_width_blas
+    nh = 0
+    call starpu_f_get_buffer(buffers, nh, c_loc(work_c), c_loc(mw))
+    ! TODO use scratch buffer
+    call c_f_pointer(work_c, work,(/mw/))
+    nh = nh + 1
 
-    ! call c_f_pointer(snode_c, snode)
-    ! call c_f_pointer(anode_c, anode)
-    ! call c_f_pointer(a_bc_c, a_bc)
+    call starpu_f_get_buffer(buffers, nh, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
+    call c_f_pointer(dest, lij,(/ld*n/))
+    nh = nh + 1
 
-    ! nh = 0
-    ! call starpu_f_get_buffer(buffers, nh, c_loc(work_c), c_loc(mw))
-    ! ! TODO use scratch buffer
-    ! ! call c_f_pointer(work_c, work,(/mw/))
-    ! nh = nh + 1
+    ! Lik
+    cld2 = 0
+    do i=1,nhlik       
+       if (i.eq.1) then
+          ! get pointer on first block in lik
+          call starpu_f_get_buffer(buffers, nh, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
+       else
+          call starpu_f_get_buffer(buffers, nh, c_loc(ptr2), c_loc(m2), c_loc(n2), c_loc(ld2))
+       end if
+       cld2 = cld2 + ld2
+       nh = nh + 1
+    end do
+    call c_f_pointer(src2, lik,(/cld2*n2/))    
 
-    ! call starpu_f_get_buffer(buffers, nh, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
-    ! call c_f_pointer(dest, lij,(/ld*n/))
-    ! nh = nh + 1
-
-    ! cld2 = 0
-    ! do i=1,nhlik       
-    !    if (i.eq.1) then
-    !       ! get pointer on first block in lik
-    !       call starpu_f_get_buffer(buffers, nh, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
-    !    else
-    !       call starpu_f_get_buffer(buffers, nh, c_loc(ptr2), c_loc(m2), c_loc(n2), c_loc(ld2))
-    !    end if
-    !    cld2 = cld2 + ld2
-    !    nh = nh + 1
-    ! end do
-    ! call c_f_pointer(src2, lik,(/cld2*n2/))    
-
-    ! cld1 = 0
-    ! do i=1,nhlik
-    !    if (i.eq.1) then
-    !       ! get pointer on first block in ljk
-    !       call starpu_f_get_buffer(buffers, nh, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
-    !    else
-    !       call starpu_f_get_buffer(buffers, nh, c_loc(ptr1), c_loc(m1), c_loc(n1), c_loc(ld1))
-    !    end if
-    !    cld1 = cld1 + ld1
-    !    nh = nh + 1
-    ! end do
-    ! call c_f_pointer(src1, ljk,(/cld1*n1/))    
+    ! Ljk
+    cld1 = 0
+    do i=1,nhljk
+       if (i.eq.1) then
+          ! get pointer on first block in ljk
+          call starpu_f_get_buffer(buffers, nh, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
+       else
+          call starpu_f_get_buffer(buffers, nh, c_loc(ptr1), c_loc(m1), c_loc(n1), c_loc(ld1))
+       end if
+       cld1 = cld1 + ld1
+       nh = nh + 1
+    end do
+    call c_f_pointer(src1, ljk,(/cld1*n1/))    
     
     ! TODO use scratch memory
-    ! allocate(col_list(1), row_list(1))
+    allocate(col_list(1), row_list(1))
     ! allocate(work(m*n))
+    
+    ! write(*,*)"csrc: ", csrc
+    call spllt_update_between(m, n, a_bc, dcol, anode, &
+         & n1, scol, snode, &
+         & lij, &
+         & ljk(csrc:csrc+csrc2-1), &
+         & lik(rsrc:rsrc+rsrc2-1), &
+         & row_list, col_list, work, &
+         & min_width_blas)
 
-    ! call spllt_update_between(m, n, a_bc, dcol, anode, &
-    !      & n1, scol, snode, &
-    !      & lij, &
-    !      & ljk(csrc:csrc+csrc2-1), &
-    !      & lik(rsrc:rsrc+rsrc2-1), &
-    !      & row_list, col_list, work, &
-    !      & min_width_blas)
-
+    deallocate(col_list, row_list)
     ! deallocate(work)
 
   end subroutine spllt_starpu_update_between_cpu_func

@@ -151,28 +151,26 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    struct starpu_data_descr *descrs;
 
    nh = 0;
-   /* descrs = malloc((nhlik+nhljk+2) * sizeof(struct starpu_data_descr)); */
-   /* descrs = malloc((nhlik+nhljk+1) * sizeof(struct starpu_data_descr)); */
-   descrs = malloc((nhlik) * sizeof(struct starpu_data_descr));
+   descrs = malloc((nhlik+nhljk+2) * sizeof(struct starpu_data_descr));
 
-   /* descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH; */
-   /* nh = nh + 1; */
+   descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH;
+   nh = nh + 1;
 
-   /* descrs[nh].handle =  lij_handle; descrs[nh].mode = STARPU_RW; */
-   /* nh = nh + 1; */
+   descrs[nh].handle =  lij_handle; descrs[nh].mode = STARPU_RW;
+   nh = nh + 1;
    /* printf("nhlik: %d\n", nhlik); */
    for(i=0; i<nhlik; i++) {
-      descrs[i+nh].handle = lik_handles[i];  descrs[i+nh].mode = STARPU_R;
+      descrs[nh].handle = lik_handles[i];  descrs[nh].mode = STARPU_R;
       nh = nh + 1;
       /* printf("lik_handles[%d]: %p\n", i, &lik_handles[i]); */
       /* printf("nh: %d\n", nh); */
    }
    /* printf("nh: %d\n", nh); */
    /* printf("nhljk: %d\n", nhljk); */
-   /* for(i=0; i<nhljk; i++){ */
-   /*    descrs[i+nh].handle = ljk_handles[i];  descrs[i+nh].mode = STARPU_R; */
-   /*    nh = nh + 1; */
-   /* } */
+   for(i=0; i<nhljk; i++){
+      descrs[nh].handle = ljk_handles[i];  descrs[nh].mode = STARPU_R;
+      nh = nh + 1;
+   }
 
    ret = starpu_task_insert(&cl_update_between,
                             STARPU_VALUE, &snode, sizeof(void *),
@@ -196,6 +194,49 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    return;
 }
 
+// tests
+
+void test_cpu_func(void *buffers[], void *cl_arg) {
+
+   /* printf("TEST\n"); */
+
+   return;
+}
+
+struct starpu_codelet cl_test = {
+  .where = STARPU_CPU,
+  .cpu_funcs = {test_cpu_func, NULL},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS,
+  .name = "TEST"
+};
+
+void test_insert_c(starpu_data_handle_t *a_handles, int nah,
+                   starpu_data_handle_t *b_handles, int nbh) {
+
+   int ret, i, nh;
+   struct starpu_data_descr *descrs;
+   printf("test insert nah: %d, nbh: %d\n", nah, nbh);
+   descrs = malloc((nah+nbh) * sizeof(struct starpu_data_descr));
+   nh = 0;
+   for(i=0; i<nah; i++){
+      descrs[nh].handle = a_handles[i];  descrs[nh].mode = STARPU_R /* STARPU_RW */;
+      nh = nh + 1;
+   }
+
+   for(i=0; i<nbh; i++){
+      descrs[nh].handle = b_handles[i];  descrs[nh].mode = STARPU_R /* STARPU_RW */;
+      nh = nh + 1;
+   }
+
+   ret = starpu_task_insert(&cl_test,
+                            STARPU_DATA_MODE_ARRAY, descrs,   nh,
+                            0);
+
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
+
+   return;   
+}
+
 // partitioning and unpartitioning data
 
 void spllt_starpu_partition_cpu_func(void *buffers[], void *cl_arg){
@@ -216,17 +257,17 @@ struct starpu_codelet cl_partition = {
 };
 
 
-void spllt_insert_partition_task_c(starpu_data_handle_t *bc_handle, 
-                                   starpu_data_handle_t **in_bc_handles, int nh,
+void spllt_insert_partition_task_c(starpu_data_handle_t bc_handle, 
+                                   starpu_data_handle_t *in_bc_handles, int nh,
                                    int prio) {
    int ret;
    int i;
    struct starpu_data_descr *descrs;
 
-   descrs[0].handle = *bc_handle;        descrs[0].mode = STARPU_R;
+   descrs[0].handle = bc_handle;        descrs[0].mode = STARPU_R;
 
    for(i=0; i<nh; i++){
-      descrs[i+1].handle = *in_bc_handles[i];  descrs[i+1].mode = STARPU_W /* STARPU_RW */;
+      descrs[i+1].handle = in_bc_handles[i];  descrs[i+1].mode = STARPU_W /* STARPU_RW */;
    }
 
    ret = starpu_task_insert(&cl_partition,
@@ -238,8 +279,8 @@ void spllt_insert_partition_task_c(starpu_data_handle_t *bc_handle,
    return;
 } 
 
-void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t *bc_handle, 
-                                                  starpu_data_handle_t **in_bc_handles, int nh,
+void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t bc_handle, 
+                                                  starpu_data_handle_t *in_bc_handles, int nh,
                                                   int prio) {
 
    int ret, i;
@@ -247,10 +288,10 @@ void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t *bc_handl
 
    descrs = malloc((nh+1) * sizeof(struct starpu_data_descr));
    
-   descrs[0].handle = *bc_handle;        descrs[0].mode = STARPU_W;
+   descrs[0].handle = bc_handle;        descrs[0].mode = STARPU_W;
    /* printf("nh: %d\n", nh); */
    for(i=0; i<nh; i++){
-      descrs[i+1].handle = *in_bc_handles[i];  descrs[i+1].mode = STARPU_R;
+      descrs[i+1].handle = in_bc_handles[i];  descrs[i+1].mode = STARPU_R;
    }
 
    ret = starpu_task_insert(&cl_partition/* &cl_unpartition_hierarchical */,

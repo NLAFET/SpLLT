@@ -280,7 +280,7 @@ contains
 ! #if 0
 
     dblk = dbc%blk%id
-    write(*,*)"dblk: ", dblk
+    ! write(*,*)"dblk: ", dblk
 
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
@@ -312,17 +312,20 @@ contains
        lik_handles(nhlik) = bcs(blk)%hdl
     end do
     
-    csrc  = 1 + (mod(cptr, s_nb)-1)*n1
+    csrc  = 1 + (mod(cptr-1, s_nb))*n1
     csrc2 = (cptr2 - cptr + 1)*n1
 
-    rsrc  = 1 + (mod(rptr, s_nb)-1)*n1
+    rsrc  = 1 + (mod(rptr-1, s_nb))*n1
     rsrc2 = (rptr2 - rptr + 1)*n1
 
     snode_c = c_loc(snode)
     anode_c = c_loc(anode)
     a_bc_c  = c_loc(a_bc%blk)
 
-    write(*,*)"nhljk: ", nhljk, ", nhlik: ", nhlik
+    ! write(*,*)"s_nb: ", s_nb
+    ! write(*,*)"cptr: ", cptr
+    ! write(*,*)"csrc: ", csrc
+    ! write(*,*)"nhljk: ", nhljk, ", nhlik: ", nhlik
     call spllt_starpu_insert_update_between_c(&
          & lik_handles, nhlik, &
          & ljk_handles, nhljk, &
@@ -333,8 +336,10 @@ contains
          & control%min_width_blas, &
          & workspace%hdl, &
          & p)
-    
-    call starpu_f_task_wait_for_all()
+
+    ! call test_insert_c(lik_handles, nhlik, ljk_handles, nhljk)
+
+    ! call starpu_f_task_wait_for_all()
 
     deallocate(ljk_handles)
     deallocate(lik_handles)
