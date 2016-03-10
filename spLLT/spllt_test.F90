@@ -22,6 +22,26 @@ program spllt_test
 
 contains
 
+  subroutine spllt_test_mat(matfile, cntl)
+    use spllt_stf_mod
+    ! use spral_rutherford_boeing
+    implicit none
+    
+    character(len=*), intent(in) :: matfile
+    type(spllt_cntl) :: cntl
+
+    integer, allocatable  :: ptr(:)
+    integer, allocatable  :: row(:)
+    integer, allocatable  :: col(:)
+    real(wp), allocatable :: val(:)
+
+    write(*,'("[spllt test mat] load matrix")')
+    
+    
+
+    return
+  end subroutine spllt_test_mat
+
   subroutine spllt_test_rand(n, nnz, cntl)
     use spllt_stf_mod
     implicit none
