@@ -225,9 +225,9 @@ contains
              end do
           end do
           
-#if defined(SPLLT_USE_STARPU)
-          call starpu_f_task_wait_for_all()
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!           call starpu_f_task_wait_for_all()
+! #endif
 
           ! map update between current block column and ancestors
           ! rsrc = 0
@@ -284,21 +284,6 @@ contains
                 ! Build a map of anode's blocks if this is first for anode
                 if(.not.map_done) call spllt_build_rowmap(anode, map) 
                 ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
-
-                ! write(*,*)"map ", map
-                ! if(.not.map_done) then
-                !    a_nb = anode%nb
-                !    size_anode = size(anode%index)
-                !    map_done = .true.
-                !    jb = 1
-                !    do i = 1, size_anode, a_nb
-                !       do k = i, min(i+a_nb-1, size_anode) ! size_anode
-                !          k1 = anode%index(k)
-                !          map(k1) = jb
-                !       end do
-                !       jb = jb + 1 
-                !    end do
-                ! end if
 
                 ! Loop over the blocks of snode
                 ii = map(node%index(cptr)) 
@@ -357,80 +342,7 @@ contains
                      & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, pbl%bc, &
                      & control)
-                
-                ! find id of the block in current kk colums that contains the cptr-th row
-                ! rblk = (cptr-1)/s_nb - (kk-1) + bc_kk%id
-                ! i = cptr
-                ! do blk = rblk, blocks(rblk)%last_blk
-                !    bc => keep%blocks(blk) ! current block in node
-                !    rb = blk - blocks(blk)%dblk + kk ! block index                   
-                !    do i = i, min(numrow, 1+rb*node%nb-1)
-                !       k = map(node%index(i))
-                !       ! write(*,*)"k: ", k, ", ii: ", ii            
-                !       if(k.ne.ii) then
-                !          a_blk = a_dblk + ii - cb
-                !          write(*, *) "a_dblk: ", a_dblk
-                !          write(*, *) "ii: ", ii
-                !          write(*, *) "cb: ", cb
-                !          write(*, *) "a_blk: ", a_blk
-                !          write(*, *) "size blocks: ", size(keep%blocks)
-                !          a_bc => keep%blocks(a_blk)
-                !          a_sa = a_bc%sa
-
-                !          rsrc(1) = 1 + (ilast-(kk-1)*node%nb-1)*blocks(blk)%blkn
-                !          rsrc(2) = (i - ilast)*blocks(blk)%blkn
-
-                !          ! call spllt_update_between_task(bc, node, a_bc, anode, &
-                !          !      & csrc, rsrc, &
-                !          !      & row_list, col_list, buffer, &
-                !          !      & keep%lfact, keep%blocks, &
-                !          !      & control, st)
-                         
-                !          call update_between(a_bc%blkm, a_bc%blkn, a_bc%id, anode, &
-                !               & bc%blkn, bc%id, node, & 
-                !               & keep%lfact(a_bc%bcol)%lcol(a_sa:a_sa+a_bc%blkm*a_bc%blkn-1), &
-                !               & keep%lfact(bc%bcol)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
-                !               & keep%lfact(bc%bcol)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-                !               & keep%blocks, row_list, col_list, buffer, &
-                !               & control, iinfo, st)
-                         
-                !          ii = k
-                !          ilast = i ! Update start of current block
-                !       end if
-                !    end do
-                ! end do
-                
-                ! blk = blk-1
-                ! bc => keep%blocks(blk) ! current block in node
-
-                ! a_blk = a_dblk + ii - cb
-                ! rsrc(1) = 1 + (ilast-(kk-1)*node%nb-1)*blocks(blk)%blkn
-                ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
-
-                ! a_bc => keep%blocks(a_blk)
-                ! a_sa = a_bc%sa
-                ! write(*, *) "rblk: ", rblk, ", blk: ", blk, ", a_dblk: ", a_dblk
-                ! write(*, *) "kk: ", kk, ", ii: ", ii
-                ! write(*, *) "cb: ", cb
-                ! write(*, *) "a_blk: ", a_blk
-                ! write(*, *) "i: ", i, ", ilast: ", ilast, ", blkn: ", blocks(blk)%blkn
-                ! write(*, *) "rsrc(1): ", rsrc(1), ", rsrc(1)+rsrc(2)-1: ", rsrc(1)+rsrc(2)-1 
-                ! write(*, *) "size lcol: ", size(keep%lfact(bc%bcol)%lcol)
-
-                ! ! call spllt_update_between_task(bc, node, a_bc, anode, &
-                ! !      & csrc, rsrc, &
-                ! !      & row_list, col_list, buffer, &
-                ! !      & keep%lfact, keep%blocks, &
-                ! !      & control, st)
-
-                ! call update_between(a_bc%blkm, a_bc%blkn, a_bc%id, anode, &
-                !      & bc%blkn, bc%id, node, & 
-                !      & keep%lfact(a_bc%bcol)%lcol(a_sa:a_sa+a_bc%blkm*a_bc%blkn-1), &
-                !      & keep%lfact(bc%bcol)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
-                !      & keep%lfact(bc%bcol)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-                !      & keep%blocks, row_list, col_list, buffer, &
-                !      & control, iinfo, st)
-                         
+                                         
                 ! Move cptr down, ready for next block column of anode
                 cptr = cptr2 + 1
              end do bcols

@@ -14,7 +14,7 @@ program spllt_test
   n   = 256
   nnz = 1000
 
-  cntl%ncpu = 1
+  cntl%ncpu = 4
 
   call spllt_test_rand(n, nnz, cntl)
 
