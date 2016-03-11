@@ -19,7 +19,7 @@ program spllt_test
 
   ! call spllt_test_rand(n, nnz, cntl)
 
-  call spllt_test_mat("nasa2146.rb", cntl)
+  call spllt_test_mat("mesh2e1.rb", cntl)
   
   stop
 
@@ -62,7 +62,7 @@ contains
     write(*,'("[>] generate ordering")')
 
     ! ordering
-    allocate(order(n))
+    allocate(order(a%n))
 
     ! amd ordering
     call amd_order(a, order)
@@ -75,7 +75,7 @@ contains
     write(*,'("[>] perform analysis")')
 
     ! analysis
-    call MA87_analyse(n, a%ptr, a%row, order, keep, control, info)
+    call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"

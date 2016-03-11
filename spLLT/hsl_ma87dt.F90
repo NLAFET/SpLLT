@@ -162,7 +162,6 @@ subroutine test_random
          prblm,  &
          " n = ", a%n, " nza = ", nza, "..."
 
-
       call gen_random_posdef(a, nza, iseed)
 
       ! Generate a pivot order

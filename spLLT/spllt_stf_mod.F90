@@ -147,8 +147,8 @@ contains
 
        node => keep%nodes(snode)
        
-       write(*,*) "---------- node ----------"
-       write(*,*) 'snode: ', snode 
+       ! write(*,*) "---------- node ----------"
+       ! write(*,*) 'snode: ', snode 
 
        ! initialize node data
        
@@ -163,8 +163,8 @@ contains
        nc = (numcol-1) / s_nb + 1 
        nr = (numrow-1) / s_nb + 1 
 
-       write(*,'("numrow,numcol = ",i5,i5)')numrow, numcol
-       write(*,'("nr,nc = ",i5,i5)')nr, nc
+       ! write(*,'("numrow,numcol = ",i5,i5)')numrow, numcol
+       ! write(*,'("nr,nc = ",i5,i5)')nr, nc
        
        ! init column mapping
        colmap = 0
@@ -179,7 +179,7 @@ contains
           ! bc_kk => keep%blocks(dblk)
           bc_kk => pbl%bc(dblk)
 
-          call spllt_factorize_block_task(bc_kk, keep%lfact)
+          call spllt_factorize_block_task(bc_kk, keep%lfact, 4)
 
 ! #if defined(SPLLT_USE_STARPU)
          ! call starpu_f_task_wait_for_all()
@@ -193,7 +193,7 @@ contains
              ! bc_ik => keep%blocks(blk)
              bc_ik => pbl%bc(blk)
 
-             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact)
+             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,3)
           end do
 
 ! #if defined(SPLLT_USE_STARPU)
@@ -220,7 +220,7 @@ contains
                 bc_ij => pbl%bc(blk)
                 ! bc_ij => keep%blocks(blk)
                 
-                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact)
+                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, 2)
              end do
           end do
           
@@ -314,7 +314,7 @@ contains
                            & cptr, cptr2, ilast, i-1, &
                            & row_list, col_list, pbl%workspace, &
                            & keep%lfact, keep%blocks, pbl%bc, &
-                           & control)
+                           & control, 1)
 
                       ii = k
                       ilast = i ! Update start of current block
@@ -340,7 +340,7 @@ contains
                      & cptr, cptr2, ilast, i-1, &
                      & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, pbl%bc, &
-                     & control)
+                     & control, 1)
                                          
                 ! Move cptr down, ready for next block column of anode
                 cptr = cptr2 + 1
@@ -359,6 +359,9 @@ contains
 #if defined(SPLLT_USE_STARPU)
     ! unregister workspace handle
     call starpu_f_data_unregister_submit(pbl%workspace%hdl)
+
+    ! unregister data handles
+    call spllt_deinit_task(keep, pbl)
     
     ! wait for task completion
     ! TODO take it out of the factorize routine
@@ -489,6 +492,8 @@ contains
   !   return
   ! end subroutine spllt_factorization_init
 
+  ! initialize (allocate) L factors
+  ! StarPU: register data handles (block handles) in StarPU
   subroutine spllt_init_lfact(keep, pbl)
     use hsl_ma87_double
 #if defined(SPLLT_USE_STARPU)
@@ -568,5 +573,45 @@ contains
     end do
 
   end subroutine spllt_init_lfact
+
+#if defined(SPLLT_USE_STARPU)
+  ! deinitialize factorization
+  ! StarPU: unregister data handles (block handles) in StarPU
+  subroutine spllt_deinit_task(keep, pbl)
+    use hsl_ma87_double
+    use  starpu_f_mod
+    implicit none
+
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_data_type), intent(inout) :: pbl
+
+    integer :: i
+    integer :: snode, num_nodes
+    type(node_type), pointer :: node ! node in the atree    
+    integer(long) :: blk, dblk
+    integer :: nbcol, l_nb, sz, sa, en
+
+    num_nodes = keep%info%num_nodes
+
+    do snode = 1, num_nodes
+
+       node => keep%nodes(snode)
+
+       l_nb = node%nb
+       sz = (size(node%index) - 1) / l_nb + 1
+       sa = node%sa
+       en = node%en
+
+       do i = sa, en, l_nb
+          dblk = blk
+          do blk = dblk, dblk+sz-1
+             call starpu_f_data_unregister_submit(pbl%bc(blk)%hdl)
+          end do
+          sz = sz - 1
+       end do
+    end do
+
+  end subroutine spllt_deinit_task
+#endif
 
 end module spllt_stf_mod
