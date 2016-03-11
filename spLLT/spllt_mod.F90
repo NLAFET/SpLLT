@@ -30,6 +30,7 @@ module spllt_mod
 
   type spllt_cntl
      integer :: ncpu = 1 ! number of CPU workers
+     integer :: nb   = 16 ! blocking size
   end type spllt_cntl
   
   type spllt_bc_type
@@ -76,18 +77,39 @@ contains
     use hsl_ma87_double
     implicit none    
 
-    type(MA87_keep), intent(in) :: keep
+    type(MA87_keep), target, intent(in) :: keep
 
     integer :: snode, num_nodes
+    type(node_type), pointer     :: node ! node in the atree
+    integer :: m, n
 
     num_nodes = keep%info%num_nodes
 
     open(2, file="atree.dot")
 
     write(2, '("graph atree {")')
+    write(2, '("node [")')
+    write(2, '("style=filled")')
+    write(2, '("]")')
     
     do snode=1,num_nodes
-       write(2, '(i10)')snode
+
+       node => keep%nodes(snode)
+       m = size(node%index)
+       n = node%en - node%sa + 1
+
+       write(2, '(i10)', advance="no")snode
+       write(2, '(" ")', advance="no")
+       write(2, '("[")', advance="no")
+       write(2, '("fillcolor=white ")', advance="no")
+       write(2, '("label=""")', advance="no")  
+       write(2, '("node:", i5,"\n")', advance="no")snode
+       write(2, '("m:", i5,"\n")', advance="no")m
+       write(2, '("n:", i5,"\n")', advance="no")n
+       write(2, '("""")', advance="no")         
+       write(2, '("]")', advance="no")
+       write(2, '(" ")')
+
        if(keep%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')keep%nodes(snode)%parent, snode
     end do
 
@@ -242,5 +264,52 @@ contains
 
     return
   end subroutine spllt_print_err
+
+  subroutine amd_order(a,order)
+    type(zd11_type), intent(in) :: a
+    integer, dimension(:), allocatable :: order
+
+    logical :: realloc_flag
+    integer :: i, st
+    integer, dimension(10) :: icntl, info
+    real(wp), dimension(10) :: rinfo
+    integer, dimension(:), allocatable :: work, ptr
+
+    realloc_flag = .true.
+    if(allocated(order)) realloc_flag = size(order).lt.a%n
+
+    if(realloc_flag) then
+       deallocate(order,stat=st)
+       allocate(order(a%n))
+    endif
+
+    ! Initilise control
+    call mc47id(icntl)
+    icntl(1:2) = -1 ! Supress warnings and errors
+    icntl(5) = huge(0) ! Largest integer
+
+    ! Copy ptr data to work array
+    allocate(ptr(a%n+1))
+    ptr(:) = a%ptr(1:a%n+1)
+    ! Copy row data to work array
+    allocate(work(2*a%ptr(a%n+1) + 10*a%n))
+    work(1:a%ptr(a%n+1)-1) = &
+         a%row(1:a%ptr(a%n+1)-1)
+
+    ! Perform AMD
+    call mc47ad(a%n, a%ptr(a%n+1)-1, ptr, work, &
+         size(work), icntl, info, rinfo)
+    if(info(1).lt.0) then
+       ! Failed for some reason
+       do i = 1, a%n
+          order(i) = i
+       end do
+       return
+    endif
+
+    ! Extract ordering
+    order(1:a%n) = work(size(work)-a%n+1:size(work))
+
+  end subroutine amd_order
 
 end module spllt_mod

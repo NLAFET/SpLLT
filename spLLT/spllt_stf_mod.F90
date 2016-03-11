@@ -125,8 +125,7 @@ contains
 
     call copy_a_to_l(n,num_nodes,val,map,keep)
 
-    ! init facto
-    
+    ! init facto    
 
 #if defined(SPLLT_USE_STARPU)
     ! TODO take it out of the factorize routine
