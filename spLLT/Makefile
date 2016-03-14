@@ -41,6 +41,8 @@ COMMON90 := $(HSLPACKDIR)/hsl_mc78/hsl_mc78i.f90
 DDEPS90  := $(HSLPACKDIR)/hsl_mc34/hsl_mc34d.f90
 DTDEPS90 := $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90
 DTDEPS90 += $(HSLPACKDIR)/hsl_zd11/hsl_zd11d.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_mc56/hsl_mc56d.f90
+DTDEPS90 += $(HSLPACKDIR)/archive/hsl_zd13d.f90
 
 # object files
 objs := hsl_ma87d.o
@@ -59,6 +61,9 @@ spllt_test: spllt_test.F90 $(objs) ddeps90.o common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 ## Generic compilation rules
