@@ -10,7 +10,7 @@ program spllt_test
 
   cntl%ncpu = 4
   cntl%nb   = 8
-
+  
   ! n   = 256
   ! nnz = 1000
 
