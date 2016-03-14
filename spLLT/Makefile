@@ -24,7 +24,7 @@ FFLAGS += $(DEFS)
 CFLAGS += $(ISTARPU)
 FFLAGS += $(ISPRAL) 
 
-LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU)
+LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU) $(LMETIS)
 
 all: spllt_starpu_test
 
@@ -35,14 +35,20 @@ DTDEPS += $(HSLPACKDIR)/ym11/ym11d.f
 DTDEPS += $(HSLPACKDIR)/mc47/mc47d.f
 DTDEPS += $(HSLPACKDIR)/mc59/mc59d.f
 DTDEPS += $(HSLPACKDIR)/mc54/mc54d.f
+DTDEPS += $(HSLPACKDIR)/mc56/mc56d.f
+DTDEPS += $(HSLPACKDIR)/mc56/mc56i.f
 
 # HSL f90 deps
 COMMON90 := $(HSLPACKDIR)/hsl_mc78/hsl_mc78i.f90
 DDEPS90  := $(HSLPACKDIR)/hsl_mc34/hsl_mc34d.f90
-DTDEPS90 := $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90
+DTDEPS90 := $(HSLPACKDIR)/hsl_mc34/hsl_mc34d.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90
 DTDEPS90 += $(HSLPACKDIR)/hsl_zd11/hsl_zd11d.f90
-DTDEPS90 += $(HSLPACKDIR)/hsl_mc56/hsl_mc56d.f90
 DTDEPS90 += $(HSLPACKDIR)/archive/hsl_zd13d.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_mc56/hsl_mc56d.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_zb01/hsl_zb01i.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_mc68/hsl_mc68i.f90
+DTDEPS90 += $(HSLPACKDIR)/hsl_mc69/hsl_mc69d.f90
 
 # object files
 objs := hsl_ma87d.o
@@ -63,7 +69,7 @@ spllt_test: spllt_test.F90 $(objs) ddeps90.o common90.o dtdeps.o dtdeps90.o
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
+run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o common90.o # ddeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 ## Generic compilation rules

@@ -63,7 +63,6 @@ contains
     ! matching a column of the current block column of anode.
     integer :: cptr2  ! Position in snode of the last row 
     ! matching a column of the current block column of anode.
-    integer :: rptr, rptr2
     logical :: map_done
     integer :: i, ilast
     type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree    
@@ -76,7 +75,7 @@ contains
     integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
     ! nodes(snode)%index(cptr).
     ! integer(long) :: rb ! Index of block row in snode
-    integer :: iinfo, a_nb
+    integer :: a_nb
 
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
@@ -589,7 +588,7 @@ contains
     integer :: snode, num_nodes
     type(node_type), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
-    integer :: nbcol, l_nb, sz, sa, en
+    integer :: l_nb, sz, sa, en
 
     num_nodes = keep%info%num_nodes
 
