@@ -43,22 +43,21 @@ DTDEPS90 := $(HSLPACKDIR)/hsl_fa14/hsl_fa14d.f90
 DTDEPS90 += $(HSLPACKDIR)/hsl_zd11/hsl_zd11d.f90
 
 # object files
-OBJS := hsl_ma87d.o
-OBJS +=	spllt_kernels_mod.o
-OBJS +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
-OBJS +=	starpu_f_mod.o starpu_f_wrappers.o
+objs := hsl_ma87d.o
+objs +=	spllt_kernels_mod.o
+objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
 
-STARPUOBJS = spllt_starpu_factorization_mod.o spllt_starpu_kernels.o 
+starpuobjs := spllt_starpu_factorization_mod.o spllt_starpu_kernels.o starpu_f_mod.o starpu_f_wrappers.o
 
 include Makefile.rules.inc
 
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_starpu_test: spllt_test.F90 $(OBJS) $(STARPUOBJS) ddeps90.o common90.o dtdeps.o dtdeps90.o
+spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) ddeps90.o common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_test: spllt_test.F90 $(OBJS) ddeps90.o common90.o dtdeps.o dtdeps90.o
+spllt_test: spllt_test.F90 $(objs) ddeps90.o common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
@@ -79,4 +78,5 @@ dtdeps90.f90: $(DTDEPS90)
 clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
 	-rm -f *.o *.mod
+	-rm -f StarPU/*.o StarPU/*.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90

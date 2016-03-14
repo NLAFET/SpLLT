@@ -1,0 +1,3 @@
+* TODO Use spral instead of HSL packages
+  - generation of random problems for testing purposes
+  - analyses phase spral? currently MC78
