@@ -331,8 +331,6 @@ contains
     deallocate(col_list, row_list)
     ! deallocate(work)
 
-    deallocate(col_list, row_list)
-
   end subroutine spllt_starpu_update_between_cpu_func
 
 end module spllt_starpu_factorization_mod
