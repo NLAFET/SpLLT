@@ -47,8 +47,6 @@ objs := hsl_ma87d.o
 objs +=	spllt_kernels_mod.o
 objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
 
-starpuobjs := spllt_starpu_factorization_mod.o spllt_starpu_kernels.o starpu_f_mod.o starpu_f_wrappers.o
-
 include Makefile.rules.inc
 
 # hsl_ma87dt: hsl_ma87dt.o
@@ -78,5 +76,4 @@ dtdeps90.f90: $(DTDEPS90)
 clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
 	-rm -f *.o *.mod
-	-rm -f StarPU/*.o StarPU/*.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90
