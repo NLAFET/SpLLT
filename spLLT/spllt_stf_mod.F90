@@ -84,14 +84,14 @@ contains
 
     ! call factorize_posdef(n, val, order, keep, control, info, 0, 0, soln)
 
-    write(*,*) 'control%nb: ', control%nb
+    ! write(*,*) 'control%nb: ', control%nb
 
     ! shortcut
     blocks => keep%blocks
     nodes  => keep%nodes
 
     num_nodes = keep%info%num_nodes
-    write(*,*) 'num_nodes: ', num_nodes
+    ! write(*,*) 'num_nodes: ', num_nodes
 
     allocate(col_list(1), row_list(1), stat=st)
     if(st.ne.0) goto 10

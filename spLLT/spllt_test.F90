@@ -9,7 +9,7 @@ program spllt_test
   write(*,'("[spllt test]")')
 
   cntl%ncpu = 4
-  cntl%nb   = 8
+  cntl%nb   = 256
   
   ! n   = 256
   ! nnz = 1000
@@ -19,7 +19,7 @@ program spllt_test
 
   ! call spllt_test_rand(n, nnz, cntl)
 
-  call spllt_test_mat("mesh2e1.rb", cntl)
+  call spllt_test_mat("matrix.rb", cntl)
   
   stop
 
@@ -28,6 +28,7 @@ contains
   subroutine spllt_test_mat(matfile, cntl)
     use spllt_stf_mod
     use spral_rutherford_boeing
+    use hsl_mc68_integer
     implicit none
     
     character(len=*), intent(in) :: matfile
@@ -37,6 +38,7 @@ contains
     integer :: flag
     integer :: m, n
 
+    type(spllt_options) :: options
     type(zd11_type) :: a
     integer :: i, nrhs
     integer, dimension(:), allocatable :: order
@@ -44,10 +46,25 @@ contains
     real(wp), dimension(:), allocatable :: b, x
     type(spllt_data_type) :: pbl
 
+    ! mc68
+    type(mc68_control) :: order_control
+    type(mc68_info) :: order_info
+
     ! ma87
     type(ma87_keep) :: keep
     type(ma87_control) :: control
     type(ma87_info) :: info
+
+    ! timing
+    integer :: start_t, stop_t, rate_t
+
+    call splllt_parse_args(options)
+
+    cntl%nb   = options%nb
+    cntl%ncpu = options%ncpu
+
+    ! write(*,*)"option mat: ", options%mat
+    write(*,*)"option len mat: ", len(options%mat)
 
     write(*,'("[spllt test mat] read matrix")')
     
@@ -65,7 +82,9 @@ contains
     allocate(order(a%n))
 
     ! amd ordering
-    call amd_order(a, order)
+    ! call amd_order(a, order)
+    call mc68_order(3, a%n, a%ptr, a%row, order, &
+         order_control, order_info)
 
     ! natural order
     ! do i = 1,n
@@ -94,13 +113,17 @@ contains
 
     write(*,'("[>] factorize")')
     control%nb = cntl%nb
+    write(*,'("[>] [factorize]    nb: ", i6)'), cntl%nb
+    write(*,'("[>] [factorize] # cpu: ", i6)'), cntl%ncpu
     ! factorize matrix
+    call system_clock(start_t, rate_t)
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"
     endif
-
+    call system_clock(stop_t)
+    write(*,'("[>] [factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
     write(*,'("[>] solve")')
 
     x = b

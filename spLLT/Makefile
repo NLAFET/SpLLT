@@ -60,7 +60,7 @@ include Makefile.rules.inc
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) ddeps90.o common90.o dtdeps.o dtdeps90.o
+spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_test: spllt_test.F90 $(objs) ddeps90.o common90.o dtdeps.o dtdeps90.o

@@ -55,6 +55,12 @@ module spllt_mod
      module procedure spllt_bwerr_1d
   end interface spllt_bwerr
 
+  type spllt_options
+     integer :: ncpu = 1 ! number of CPU workers
+     integer :: nb   = 16 ! blocking size
+     character(len=100) :: mat
+  end type spllt_options
+
 contains
 
   ! subroutine spllt_realloc_1d(a, n)
@@ -311,5 +317,38 @@ contains
     order(1:a%n) = work(size(work)-a%n+1:size(work))
 
   end subroutine amd_order
+
+  subroutine splllt_parse_args(options)
+    implicit none
+
+    type(spllt_options), intent(inout) :: options
+    
+    integer :: argnum, narg
+    character(len=200) :: argval
+
+    narg = command_argument_count()
+    argnum = 1
+    do while(argnum <= narg)
+       call get_command_argument(argnum, argval)
+       argnum = argnum + 1
+       select case(argval)
+       case("--nb")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%nb
+       case("--ncpu")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%ncpu
+       case("--mat")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%mat
+       case default
+          write(*,'("Unrecognised command line argument: ", a20)'), argval
+       end select
+    end do
+
+  end subroutine splllt_parse_args
 
 end module spllt_mod
