@@ -16,12 +16,13 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 
 # Things you might add to DEFS:
 
-DEFS = -DSPLLT_USE_STARPU
+DEFS =
+# DEFS = -DSPLLT_USE_STARPU
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
 
-CFLAGS += $(ISTARPU)
+CFLAGS += $(ISTARPU) $(ICUDA) $(IHWLOC)
 FFLAGS += $(ISPRAL) 
 
 LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU) $(LMETIS)

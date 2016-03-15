@@ -96,19 +96,19 @@ contains
 #else    
 
     ! bc_kk
-    d_m  = bc_kk%blkm
-    d_n  = bc_kk%blkn
-    d_sa = bc_kk%sa
-    d_id = bc_kk%id
+    d_m  = bc_kk%blk%blkm
+    d_n  = bc_kk%blk%blkn
+    d_sa = bc_kk%blk%sa
+    d_id = bc_kk%blk%id
 
     ! bc_ik
-    n  = bc_ik%blkn
-    m  = bc_ik%blkm
-    sa = bc_ik%sa
-    id = bc_ik%id
+    n  = bc_ik%blk%blkn
+    m  = bc_ik%blk%blkm
+    sa = bc_ik%blk%sa
+    id = bc_ik%blk%id
     
     ! bcol is block column that blk and dblk belong to
-    bcol = bc_kk%bcol    
+    bcol = bc_kk%blk%bcol    
 
     ! solve_block task
     ! call solv_col_block(m, n, id, & 
@@ -249,11 +249,11 @@ contains
     integer(long) :: id, id1
     integer :: dcol, scol
     integer :: csrc, csrc2, rsrc, rsrc2
+    integer :: s_nb
 
 #if defined(SPLLT_USE_STARPU)
     integer :: blkn, ljk_sa
     integer :: nhljk, nhlik
-    integer :: s_nb
     integer(c_int) :: ljk_m, ljk_n
     integer(long) :: blk, blk_sa, blk_en, nb_blk, dblk
     type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
