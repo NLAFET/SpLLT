@@ -16,8 +16,8 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 
 # Things you might add to DEFS:
 
-DEFS =
-# DEFS = -DSPLLT_USE_STARPU
+#DEFS =
+DEFS = -DSPLLT_USE_STARPU
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
