@@ -58,7 +58,7 @@ module spllt_mod
   type spllt_options
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size
-     character(len=100) :: mat
+     character(len=100) :: mat = ''
   end type spllt_options
 
 contains

@@ -25,13 +25,13 @@ program spllt_test
 
 contains
 
-  subroutine spllt_test_mat(matfile, cntl)
+  subroutine spllt_test_mat(mf, cntl)
     use spllt_stf_mod
     use spral_rutherford_boeing
     use hsl_mc68_integer
     implicit none
     
-    character(len=*), intent(in) :: matfile
+    character(len=*), intent(in) :: mf
     type(spllt_cntl) :: cntl
 
     type(rb_reader_options) :: rb_options
@@ -39,6 +39,7 @@ contains
     integer :: m, n
 
     type(spllt_options) :: options
+    character(len=200) :: matfile    
     type(zd11_type) :: a
     integer :: i, nrhs
     integer, dimension(:), allocatable :: order
@@ -62,10 +63,13 @@ contains
 
     cntl%nb   = options%nb
     cntl%ncpu = options%ncpu
+    if (options%mat.ne.'') then
+       matfile = options%mat
+    else
+       matfile = mf
+    end if
 
     ! write(*,*)"option mat: ", options%mat
-    write(*,*)"option len mat: ", len(options%mat)
-
     write(*,'("[spllt test mat] read matrix")')
     
     rb_options%values = 2 ! Make up values if necessary
