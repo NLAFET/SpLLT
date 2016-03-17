@@ -551,7 +551,6 @@ contains
           allocate (keep%lfact(nbcol)%lcol(size_bcol),stat=st)
           ! TODO trace error
           ! TODO merge with previous loop?
-#if defined(SPLLT_USE_STARPU)
           ! register blocks hanldes in StarPU
 
           ptr = 1
@@ -560,13 +559,14 @@ contains
              blkn = keep%blocks(blk)%blkn
 
              pbl%bc(blk)%blk => keep%blocks(blk) 
+#if defined(SPLLT_USE_STARPU)
              call starpu_matrix_data_register(pbl%bc(blk)%hdl, pbl%bc(blk)%mem_node, &
                   & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
                   & int(wp,kind=c_size_t))
+#endif
              pbl%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
              ptr = ptr + blkm*blkn
           end do
-#endif
           sz = sz - 1
        end do       
     end do

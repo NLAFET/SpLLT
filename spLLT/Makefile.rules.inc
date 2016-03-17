@@ -4,7 +4,7 @@ usestarpu=$(filter %USE_STARPU%, $(DEFS))
 # starpusrc := StarPU/starpu_f_mod.F90 StarPU/starpu_f_wrappers.c
 # starpuobjs += $(patsubst %.F90, %.o, $(patsubst %.F90, %.o, $(notdir $(starpusrc))))
 
-ifdef usestarpu
+ifdef $(usestarpu)
 VPATH += StarPU
 starpuobjs := spllt_starpu_factorization_mod.o spllt_starpu_kernels.o starpu_f_mod.o starpu_f_wrappers.o
 #starpuobjs :=
@@ -18,7 +18,7 @@ spllt_kernels_mod.o: spllt_mod.o hsl_ma87d.o
 spllt_mod.o: dtdeps90.o  
 # spllt_starpu_kernels.o: spllt_starpu_factorization_mod.o
 
-ifdef usestarpu
+ifdef $(usestarpu)
 spllt_stf_mod.o: starpu_f_mod.o
 spllt_mod.o: starpu_f_mod.o
 spllt_factorization_mod.o: spllt_starpu_factorization_mod.o 
