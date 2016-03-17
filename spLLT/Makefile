@@ -16,8 +16,8 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 
 # Things you might add to DEFS:
 
-DEFS =
-#DEFS = -DSPLLT_USE_STARPU
+#DEFS =
+DEFS = -DSPLLT_USE_STARPU
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
@@ -60,7 +60,7 @@ include Makefile.rules.inc
 
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
-
+# spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
 spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
