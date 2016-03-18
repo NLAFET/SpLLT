@@ -6,7 +6,8 @@ CC = gcc
 FC = gfortran
 
 CFLAGS = -g 
-FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+#FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
 #FFLAGS += -fprofile-arcs -ftest-coverage
 ############################
