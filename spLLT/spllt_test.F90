@@ -72,7 +72,7 @@ contains
     ! write(*,*)"option mat: ", options%mat
     write(*,'("[spllt test mat] read matrix")')
     
-    rb_options%values = 2 ! Make up values if necessary
+    rb_options%values = 3 ! Make up values if necessary
     rb_options%format = 1 ! Coordinate
     call rb_read(matfile, a%m, a%n, a%ptr, a%row, a%col, &
          a%val, rb_options, flag)
