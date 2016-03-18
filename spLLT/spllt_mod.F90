@@ -31,6 +31,7 @@ module spllt_mod
   type spllt_cntl
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size
+     integer :: nemin = 32! blocking size
   end type spllt_cntl
   
   type spllt_bc_type
@@ -59,6 +60,7 @@ module spllt_mod
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size
      character(len=100) :: mat = ''
+     integer :: nemin = -1
   end type spllt_options
 
 contains
@@ -344,6 +346,10 @@ contains
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%mat
+       case("--nemin")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%nemin
        case default
           write(*,'("Unrecognised command line argument: ", a20)'), argval
        end select

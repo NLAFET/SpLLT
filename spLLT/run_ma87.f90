@@ -4,6 +4,7 @@ program run_prob
    use hsl_mc69_double
    use hsl_zd11_double
    use hsl_ma87_double
+   use spllt_mod
    implicit none
 
    integer, parameter :: dp = kind(0d0)
@@ -40,8 +41,25 @@ program run_prob
    integer, parameter :: nslv = 1
    !integer, parameter :: nslv = 10
    !integer, parameter :: nslv = 100
+   type(spllt_options) :: options
+    character(len=200) :: matfile    
 
    matrix_type = HSL_MATRIX_REAL_SYM_PSDEF
+
+   call splllt_parse_args(options)
+
+   control%nb   = options%nb
+   ! control%ncpu = options%ncpu
+
+   if (options%mat .ne. '') then
+      matfile = options%mat
+   else
+      matfile = 'matrix.rb'
+   end if
+
+    if (options%nemin .gt. 0) then
+       control%nemin = options%nemin
+    end if
 
    !control%factor_min = 0
    !control%u = 1e-8
@@ -56,7 +74,7 @@ program run_prob
    case(HSL_MATRIX_REAL_SYM_INDEF)
       control56%values = 2 ! make up values if necessary (indef)
    end select
-   call mc56_read("matrix.rb", matrix, control56, info56)
+   call mc56_read(matfile, matrix, control56, info56)
    if(info56.ne.0) then
       print *, "mc56 failed with error ", info56
       stop

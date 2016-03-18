@@ -71,7 +71,7 @@ spllt_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o common90.o # ddeps90.o
+run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o common90.o spllt_mod.o # ddeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 ## Generic compilation rules

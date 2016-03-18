@@ -63,10 +63,17 @@ contains
 
     cntl%nb   = options%nb
     cntl%ncpu = options%ncpu
+    
+    ! set matrix file
     if (options%mat.ne.'') then
        matfile = options%mat
     else
        matfile = mf
+    end if
+
+    ! set nemin
+    if (options%nemin .gt. 0) then
+       cntl%nemin = options%nemin
     end if
 
     ! write(*,*)"option mat: ", options%mat
@@ -96,7 +103,9 @@ contains
     ! end do
 
     write(*,'("[>] perform analysis")')
-
+    control%nb = cntl%nb
+    control%nemin = cntl%nemin
+    
     ! analysis
     call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
@@ -116,7 +125,6 @@ contains
     call random_number(b)
 
     write(*,'("[>] factorize")')
-    control%nb = cntl%nb
     write(*,'("[>] [factorize]    nb: ", i6)'), cntl%nb
     write(*,'("[>] [factorize] # cpu: ", i6)'), cntl%ncpu
     ! factorize matrix
