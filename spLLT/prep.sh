@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CACHE=/numerical/matrices/symmetric/UFL
+CACHE=/home/cseg/numanlys/matrices/UFL
 
 COLLECTION=`echo $1 | awk -F / '{ print $1 }'`
 PRBLM=`echo $1 | awk -F / '{ print $2 }'`
