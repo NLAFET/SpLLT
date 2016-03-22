@@ -88,5 +88,6 @@ dtdeps90.f90: $(DTDEPS90)
 
 clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
+	-rm -f run_ma87
 	-rm -f *.o *.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90
