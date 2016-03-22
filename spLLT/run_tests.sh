@@ -1,7 +1,5 @@
 #!/bin/bash
 
-module load starpu/trunk-nogpu-nofxt
-
 build_dir=`pwd`
 id=`whoami`
 outdir=data
