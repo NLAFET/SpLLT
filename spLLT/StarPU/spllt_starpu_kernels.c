@@ -98,7 +98,7 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
                             STARPU_VALUE,    &diag, sizeof(int),
                             STARPU_R,	     lik_handle,
                             STARPU_R,	     ljk_handle,
-                            STARPU_RW,	     lij_handle,
+                            STARPU_RW | STARPU_COMMUTE,	     lij_handle,
                             STARPU_PRIORITY, prio,
                             0);
 
@@ -156,7 +156,7 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH;
    nh = nh + 1;
 
-   descrs[nh].handle =  lij_handle; descrs[nh].mode = STARPU_RW;
+   descrs[nh].handle =  lij_handle; descrs[nh].mode = STARPU_RW | STARPU_COMMUTE;
    nh = nh + 1;
    /* printf("nhlik: %d\n", nhlik); */
    for(i=0; i<nhlik; i++) {
