@@ -1,6 +1,15 @@
 #!/bin/bash
 
+module purge
+module load use.own
+module load gcc/5.3.0
+module load intel/mkl/11.3.1.150
+module load hwloc/1.11.2
 module load starpu/trunk-nogpu-nofxt
+module load metis/4.0.3
+module load hsl/latest
+module load spral/trunk
+module list
 
 build_dir=`pwd`
 id=`whoami`
@@ -33,8 +42,8 @@ do
         echo "[run_tests] ncpu: $ncpu"
         # ./run_ma87
         echo "[run_tests] run MA87"
-        export OMP_NUM_THREADS=$ncpu 
-        ./run_ma87 > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}
+        export OMP_NUM_THREADS=${ncpu} 
+        ./run_ma87 --ncpu ${ncpu} --nb ${nb} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}
         echo "[run_tests] run SPLLT_STARPU"
         rm -rf $trace_dir/$prof_file
         # just to make sure
