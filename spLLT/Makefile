@@ -28,7 +28,7 @@ FFLAGS += $(ISPRAL)
 
 LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU) $(LMETIS)
 
-all: spllt_starpu_test
+all: run_ma87 spllt_starpu_test
 
 # HSL deps
 DTDEPS := $(HSLPACKDIR)/fa14/fa14d.f
