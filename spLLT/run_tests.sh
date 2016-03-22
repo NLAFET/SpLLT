@@ -1,6 +1,5 @@
 #!/bin/bash
 
-<<<<<<< HEAD
 module purge
 module load use.own
 module load gcc/5.3.0
@@ -12,8 +11,6 @@ module load hsl/latest
 module load spral/trunk
 module list
 
-=======
->>>>>>> b88796ffbbaf059a8c8903461c6100a74562c9e9
 build_dir=`pwd`
 id=`whoami`
 outdir=data
