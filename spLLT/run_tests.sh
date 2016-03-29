@@ -1,15 +1,32 @@
 #!/bin/bash
 
-module purge
-module load use.own
-module load gcc/5.3.0
-module load intel/mkl/11.3.1.150
-module load hwloc/1.11.2
-module load starpu/trunk-nogpu-nofxt
-module load metis/4.0.3
-module load hsl/latest
-module load spral/trunk
-module list
+case $HOSTNAME in
+    gauss)
+        module purge
+        module load use.own
+        module load gnu/comp/default
+        module load gnu/mkl/seq/11.2.0
+        module load hwloc/1.11.2
+        module load fxt/0.3.1
+        module load starpu/trunk
+        module load metis/4.0.3
+        module load hsl/latest
+        module load spral/trunk
+        module list
+        ;;
+    cn202.scarf.rl.ac.uk | cn255.scarf.rl.ac.uk)
+        module purge
+        module load use.own
+        module load gcc/5.3.0
+        module load intel/mkl/11.3.1.150
+        module load hwloc/1.11.2
+        module load starpu/trunk-nogpu-nofxt
+        module load metis/4.0.3
+        module load hsl/latest
+        module load spral/trunk
+        module list
+        ;;
+esac
 
 build_dir=`pwd`
 id=`whoami`

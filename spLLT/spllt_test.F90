@@ -4,7 +4,7 @@ program spllt_test
   implicit none
 
   type(spllt_cntl) :: cntl
-  integer n, nnz
+  ! integer n, nnz
   
   write(*,'("[spllt test]")')
 
@@ -41,7 +41,7 @@ contains
     type(spllt_options) :: options
     character(len=200) :: matfile    
     type(zd11_type) :: a
-    integer :: i, nrhs
+    integer :: nrhs
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, resid
     real(wp), dimension(:), allocatable :: b, x
@@ -125,8 +125,8 @@ contains
     call random_number(b)
 
     write(*,'("[>] factorize")')
-    write(*,'("[>] [factorize]    nb: ", i6)'), cntl%nb
-    write(*,'("[>] [factorize] # cpu: ", i6)'), cntl%ncpu
+    write(*,'("[>] [factorize]    nb: ", i6)') cntl%nb
+    write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
     ! factorize matrix
     call system_clock(start_t, rate_t)
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
