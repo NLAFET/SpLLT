@@ -40,7 +40,7 @@ sub get_value
       }
       if ( -e "$file" ) {
          my $t = `grep -P "$pattern" $file`;
-         print "$t\n";
+         # print "$t\n";
          if(${^CHILD_ERROR_NATIVE} == 0) {
             chomp ($t);
             $t = `echo '$t' | tail -1`;
