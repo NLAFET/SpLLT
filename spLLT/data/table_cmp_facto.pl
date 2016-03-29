@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 
 use ValueExtractor;
+use LatexPrint;
 
 # directory where runs are kept
 my $spllt_output_dir='spllt_starpu';
