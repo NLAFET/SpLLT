@@ -1,0 +1,19 @@
+\documentclass[10pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage{array}
+
+\usepackage{courier}
+
+\begin{document}
+
+\begin{table}[htbp]
+    \begin{center}
+      \input{table_cmp_facto.tex}
+    \end{center}
+    \caption{Factorization time obtained with MA87 and SpLLT
+      (i.e. MA87\_starpu). The factorization were run with the block
+      sizes \texttt{nb=(64, 128, 256, 512)}.}
+\end{table}
+
+\end{document}
