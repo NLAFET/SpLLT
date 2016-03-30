@@ -14,6 +14,8 @@ outputdir = 'cn255'
 
 for mat in fileinput.input():
 
+    mat = mat.rstrip()
+
     # print mat
     pbl = re.sub(r'/', '_', mat)
     pbl = pbl.rstrip()
@@ -29,7 +31,7 @@ for mat in fileinput.input():
         v = vextractor.get_value(f, spllt_facto_time)
         f.seek(0)
         vi = vextractor.get_value(f, spllt_task_insert_time)
-        print vi
+        # print vi
         f.close()
 
         spllt_t_facto.append(float(v))
@@ -47,9 +49,9 @@ for mat in fileinput.input():
 
         ma87_t_facto.append(float(v))
     
-    print spllt_t_facto
-    print spllt_t_insert
-    print ma87_t_facto
+    # print spllt_t_facto
+    # print spllt_t_insert
+    # print ma87_t_facto
         
     best_spllt_t_facto_idx = spllt_t_facto.index(min(spllt_t_facto))
     best_ma87_t_facto_idx  = ma87_t_facto.index(min(ma87_t_facto))
@@ -59,6 +61,10 @@ for mat in fileinput.input():
     best_spllt_t_insert = spllt_t_insert[best_spllt_t_facto_idx]
 
     best_ma87_nb       = blocksizes[best_ma87_t_facto_idx]
-    best_ma87_t_facto  = spllt_t_facto[best_ma87_t_facto_idx]
+    best_ma87_t_facto  = ma87_t_facto[best_ma87_t_facto_idx]
     
+    print("%40s & %10s & %10s \\\\" % (lp.escape(mat), 
+                                       lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)), 
+                                       lp.print_float(best_ma87_t_facto , (best_ma87_t_facto<best_spllt_t_facto))))
     
+    # print("%40s & %10s \\\\" % (lp.escape(mat), lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)))
