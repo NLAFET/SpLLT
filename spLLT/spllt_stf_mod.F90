@@ -173,7 +173,7 @@ contains
        ! write(*,'("nr,nc = ",i5,i5)')nr, nc
        
        ! init column mapping
-       colmap = 0
+       ! colmap = 0
        
        ! first block in node
        dblk = node%blk_sa

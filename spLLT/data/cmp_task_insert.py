@@ -63,8 +63,9 @@ for mat in fileinput.input():
     best_ma87_nb       = blocksizes[best_ma87_t_facto_idx]
     best_ma87_t_facto  = ma87_t_facto[best_ma87_t_facto_idx]
     
-    print("%40s & %10s & %10s \\\\" % (lp.escape(mat), 
-                                       lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)), 
-                                       lp.print_float(best_ma87_t_facto , (best_ma87_t_facto<best_spllt_t_facto))))
+    print("%40s & %10s & %10s & %10s \\\\" % (lp.escape(mat), 
+                                              lp.print_float(best_spllt_t_insert),
+                                              lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)), 
+                                              lp.print_float(best_ma87_t_facto , (best_ma87_t_facto<best_spllt_t_facto))))
     
     # print("%40s & %10s \\\\" % (lp.escape(mat), lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)))
