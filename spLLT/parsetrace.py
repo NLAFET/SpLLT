@@ -64,7 +64,6 @@ def main(argv):
     glob_ov_time = 0
     glob_sl_time = 0
     glob_ex_time = 0
-    glob_fi_time = 0
 
     for th in alltimes:
         if  th.find('w') == 0:
@@ -81,7 +80,6 @@ def main(argv):
             th_tt_time  = sum(alltimes[th].values())
 
             th_ex_time  = 0
-            th_fi_time  = 0
 
             # if(argv[1]=='w'):
             if(alltimes[th].has_key('FACTO_BLK'     )): th_ex_time += alltimes[th]['FACTO_BLK'     ]
@@ -95,24 +93,24 @@ def main(argv):
             if (alltimes[th].has_key('Sl')):
                 th_sl_time  = alltimes[th]['Sl']
 
-            if (alltimes[th].has_key('Fi')):
-                th_fi_time = alltimes[th]['Fi']
-
             #elif(argv[1]=='t'):
             #    th_ex_time = alltimes[th]['E']
-            th_ov_time = th_tt_time-th_sl_time-th_ex_time-th_fi_time
+            th_ov_time = th_tt_time-th_sl_time-th_ex_time
             glob_tt_time += th_tt_time
             glob_ex_time += th_ex_time
             glob_ov_time += th_ov_time
             glob_sl_time += th_sl_time
-            glob_fi_time += th_fi_time
             # print th,' ',th_ex_time/th_tt_time,th_sl_time/th_tt_time,th_ov_time/th_tt_time
 
         # else:
         #     print th
     # print '\nGlobal: ',glob_ex_time/glob_tt_time,glob_sl_time/glob_tt_time,glob_ov_time/glob_tt_time
 
-    print("%-50s        (exec., idle, ohead, finp): %10.0f (%6.3f),  %10.0f (%6.3f),   %10.0f (%6.3f), %10.0f (%6.3f)  = %10.0f"%(argv[0],glob_ex_time,glob_ex_time/glob_tt_time,glob_sl_time,glob_sl_time/glob_tt_time,glob_ov_time,glob_ov_time/glob_tt_time,glob_fi_time,glob_fi_time/glob_tt_time,glob_tt_time))
+    print("%-50s        (exec., idle, ohead): %10.0f (%6.3f),  %10.0f (%6.3f),   %10.0f (%6.3f)  = %10.0f" % (argv[0],
+                                                                                                              glob_ex_time, glob_ex_time/glob_tt_time,
+                                                                                                              glob_sl_time, glob_sl_time/glob_tt_time,
+                                                                                                              glob_ov_time,glob_ov_time/glob_tt_time,
+                                                                                                              glob_tt_time))
 
 if __name__ == "__main__":
    main(sys.argv[1:])    

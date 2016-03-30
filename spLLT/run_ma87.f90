@@ -61,6 +61,8 @@ program run_prob
        control%nemin = options%nemin
     end if
 
+!$ call omp_set_num_threads(options%ncpu)
+
    !control%factor_min = 0
    !control%u = 1e-8
    !control%small = 1e-16
