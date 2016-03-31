@@ -37,13 +37,11 @@ contains
     ! shortcuts
     type(node_type), pointer     :: node ! node in the atree    
     type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
-    type(lfactor), dimension(:), pointer :: lfact! block columns in L factor    
     type(block_type), dimension(:), pointer :: blocks ! block info. 
     type(node_type), dimension(:), pointer :: nodes 
  
     ! local scalars
     integer(long) :: blk, blk1, blk2 ! block identity
-    integer :: blkm, blkn ! number of rows/cols in block
     integer(long) :: dblk ! diagonal block within block column
     integer :: en ! holds keep%nodes(snode)%en
     integer :: sa ! holds keep%nodes(snode)%sa
@@ -66,8 +64,7 @@ contains
     ! matching a column of the current block column of anode.
     logical :: map_done
     integer :: i, ilast
-    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree    
-    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
     integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
     integer :: cb, jb
     integer :: jlast ! Last column in the cb-th block column of anode
@@ -76,7 +73,6 @@ contains
     integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
     ! nodes(snode)%index(cptr).
     ! integer(long) :: rb ! Index of block row in snode
-    integer :: a_nb
 
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
@@ -607,6 +603,7 @@ contains
     integer :: l_nb, sz, sa, en
 
     num_nodes = keep%info%num_nodes
+    blk = 1
 
     do snode = 1, num_nodes
 
