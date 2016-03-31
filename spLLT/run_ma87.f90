@@ -42,7 +42,7 @@ program run_prob
    !integer, parameter :: nslv = 10
    !integer, parameter :: nslv = 100
    type(spllt_options) :: options
-    character(len=200) :: matfile    
+   character(len=200) :: matfile    
 
    matrix_type = HSL_MATRIX_REAL_SYM_PSDEF
 
@@ -60,6 +60,12 @@ program run_prob
     if (options%nemin .gt. 0) then
        control%nemin = options%nemin
     end if
+
+    write(*,*) '  mat: ', matfile
+    write(*,*) '   nb: ', control%nb    
+    write(*,*) ' ncpu: ', options%ncpu
+    write(*,*) 'nemin: ', control%nemin
+
 
 !$ call omp_set_num_threads(options%ncpu)
 
