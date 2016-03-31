@@ -53,6 +53,7 @@ contains
     integer :: st ! stat parameter
     integer :: numrow, numcol
     integer :: ii, jj, kk
+    integer :: prio
     
     ! update between variables
     ! integer :: csrc(2), rsrc(2) ! used for update_between tasks to
@@ -156,8 +157,10 @@ contains
        ! write(*,*) "---------- node ----------"
        ! write(*,*) 'snode: ', snode 
 
+       ! task priority
+       prio = (num_nodes - snode + 1)*4
+
        ! initialize node data
-       
        sa = node%sa
        en = node%en
        numcol = en - sa + 1
@@ -185,7 +188,7 @@ contains
           ! bc_kk => keep%blocks(dblk)
           bc_kk => pbl%bc(dblk)
 
-          call spllt_factorize_block_task(bc_kk, keep%lfact, 4)
+          call spllt_factorize_block_task(bc_kk, keep%lfact, prio+3)
 
 ! #if defined(SPLLT_USE_STARPU)
          ! call starpu_f_task_wait_for_all()
@@ -199,7 +202,7 @@ contains
              ! bc_ik => keep%blocks(blk)
              bc_ik => pbl%bc(blk)
 
-             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,3)
+             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,prio+2)
           end do
 
 ! #if defined(SPLLT_USE_STARPU)
@@ -226,7 +229,7 @@ contains
                 bc_ij => pbl%bc(blk)
                 ! bc_ij => keep%blocks(blk)
                 
-                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, 2)
+                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
              end do
           end do
           
@@ -320,7 +323,7 @@ contains
                            & cptr, cptr2, ilast, i-1, &
                            & row_list, col_list, pbl%workspace, &
                            & keep%lfact, keep%blocks, pbl%bc, &
-                           & control, 1)
+                           & control, prio)
 
                       ii = k
                       ilast = i ! Update start of current block
@@ -346,7 +349,7 @@ contains
                      & cptr, cptr2, ilast, i-1, &
                      & row_list, col_list, pbl%workspace, &
                      & keep%lfact, keep%blocks, pbl%bc, &
-                     & control, 1)
+                     & control, prio)
                                          
                 ! Move cptr down, ready for next block column of anode
                 cptr = cptr2 + 1
