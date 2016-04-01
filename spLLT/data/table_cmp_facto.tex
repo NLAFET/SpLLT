@@ -1,38 +1,40 @@
-\begin{tabular}{l|rr}
+\begin{tabular}{l|rr|rr}
   \hline
-  Matrix                          & spLLT     & MA87       \\
-  \hline
-  Schmid/thermal2                 & 29.180    & \bf 0.395  \\
-  Rothberg/gearbox                & 1.013     & \bf 0.223  \\
-  DNVS/m\_t1                      & 0.775     & \bf 0.222  \\
-  Boeing/pwtk                     & 1.490     & \bf 0.255  \\
-  Chen/pkustk13                   & 0.757     & \bf 0.267  \\
-  GHS\_psdef/crankseg\_1          & 0.729     & \bf 0.266  \\
-  Rothberg/cfd2                   & 0.826     & \bf 0.281  \\
-  DNVS/thread                     & 0.536     & \bf 0.277  \\
-  DNVS/shipsec8                   & 0.860     & \bf 0.289  \\
-  DNVS/shipsec1                   & 1.056     & \bf 0.294  \\
-  GHS\_psdef/crankseg\_2          & 0.906     & \bf 0.335  \\
-  DNVS/fcondp2                    & 1.490     & \bf 0.339  \\
-  Schenk\_AFE/af\_shell3          & 5.106     & \bf 0.457  \\
-  DNVS/troll                      & 1.746     & \bf 0.469  \\
-  AMD/G3\_circuit                 & 50.510    & \bf 0.746  \\
-  GHS\_psdef/bmwcra\_1            & 1.298     & \bf 0.400  \\
-  DNVS/halfb                      & 1.840     & \bf 0.489  \\
-  Um/2cubes\_sphere               & 1.071     & \bf 0.433  \\
-  GHS\_psdef/ldoor                & 16.480    & \bf 0.729  \\
-  DNVS/ship\_003                  & 1.175     & \bf 0.470  \\
-  DNVS/fullb                      & 1.761     & \bf 0.582  \\
-  GHS\_psdef/inline\_1            & 5.462     & \bf 0.816  \\
-  Chen/pkustk14                   & 1.709     & \bf 0.735  \\
-  GHS\_psdef/apache2              & 13.020    & \bf 0.947  \\
-  Koutsovasilis/F1                & 3.888     & \bf 1.028  \\
-  Oberwolfach/boneS10             & 13.610    & \bf 1.348  \\
-  ND/nd12k                        & \bf 2.634 & 2.674      \\
-  JGD\_Trefethen/Trefethen\_20000 & \bf 4.844 & 22.324     \\
-  ND/nd24k                        & \bf 8.733 & 11.945     \\
-  Oberwolfach/bone010             & 18.890    & \bf 8.250  \\
-  GHS\_psdef/audikw\_1            & 23.390    & \bf 12.505 \\
-
+  Matrix                          & \multicolumn{2}{c}{spLLT} & \multicolumn{2}{c}{MA87}     \\
+  \cline{2-5}
+                                  & nb                        & facto (s) & nb  & facto (s)  \\
+  \cline{2-5}
+%  \hline
+  Schmid/thermal2                 & 1024                      & 2.045     & 256 & \bf 0.373  \\
+  Rothberg/gearbox                & 512                       & 0.549     & 256 & \bf 0.229  \\
+  DNVS/m\_t1                      & 512                       & 0.515     & 256 & \bf 0.209  \\
+  Boeing/pwtk                     & 1024                      & 0.656     & 256 & \bf 0.241  \\
+  Chen/pkustk13                   & 256                       & 0.531     & 256 & \bf 0.226  \\
+  GHS\_psdef/crankseg\_1          & 512                       & 0.547     & 256 & \bf 0.237  \\
+  Rothberg/cfd2                   & 384                       & 0.582     & 256 & \bf 0.241  \\
+  DNVS/thread                     & 384                       & 0.415     & 256 & \bf 0.225  \\
+  DNVS/shipsec8                   & 512                       & 0.536     & 256 & \bf 0.249  \\
+  DNVS/shipsec1                   & 384                       & 0.562     & 256 & \bf 0.259  \\
+  GHS\_psdef/crankseg\_2          & 384                       & 0.587     & 256 & \bf 0.260  \\
+  DNVS/fcondp2                    & 512                       & 0.708     & 256 & \bf 0.283  \\
+  Schenk\_AFE/af\_shell3          & 768                       & 1.218     & 256 & \bf 0.405  \\
+  DNVS/troll                      & 384                       & 0.865     & 256 & \bf 0.416  \\
+  AMD/G3\_circuit                 & 768                       & 3.361     & 256 & \bf 0.592  \\
+  GHS\_psdef/bmwcra\_1            & 512                       & 0.767     & 256 & \bf 0.352  \\
+  DNVS/halfb                      & 384                       & 0.892     & 256 & \bf 0.385  \\
+  Um/2cubes\_sphere               & 512                       & 0.826     & 256 & \bf 0.315  \\
+  GHS\_psdef/ldoor                & 768                       & 2.078     & 256 & \bf 0.626  \\
+  DNVS/ship\_003                  & 512                       & 0.808     & 256 & \bf 0.352  \\
+  DNVS/fullb                      & 512                       & 1.006     & 384 & \bf 0.519  \\
+  GHS\_psdef/inline\_1            & 768                       & 1.538     & 384 & \bf 0.700  \\
+  Chen/pkustk14                   & 384                       & 1.186     & 256 & \bf 0.562  \\
+  GHS\_psdef/apache2              & 768                       & 2.270     & 256 & \bf 0.722  \\
+  Koutsovasilis/F1                & 768                       & 1.597     & 256 & \bf 0.807  \\
+  Oberwolfach/boneS10             & 768                       & 2.488     & 256 & \bf 1.073  \\
+  ND/nd12k                        & 512                       & 2.112     & 256 & \bf 1.476  \\
+  JGD\_Trefethen/Trefethen\_20000 & 512                       & 4.685     & 512 & \bf 4.433  \\
+  ND/nd24k                        & 768                       & 7.159     & 384 & \bf 5.305  \\
+  Oberwolfach/bone010             & 384                       & 10.560    & 384 & \bf 7.159  \\
+  GHS\_psdef/audikw\_1            & 384                       & 14.410    & 384 & \bf 10.516 \\  
   \hline
 \end{tabular}
