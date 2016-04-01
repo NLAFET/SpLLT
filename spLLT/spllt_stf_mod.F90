@@ -81,7 +81,7 @@ contains
     ! timing
     integer :: start_t, stop_t, rate_t
     integer :: stf_start_t, stf_stop_t, stf_rate_t
-    
+    integer :: start_nosub_t, rate_nosub_t
     call system_clock(start_t, rate_t)
 
     ! call factorize_posdef(n, val, order, keep, control, info, 0, 0, soln)
@@ -140,6 +140,10 @@ contains
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_fxt_start_profiling()
+#endif
+
+#if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
+    call starpu_f_pause()
 #endif
 
     call system_clock(stf_start_t, stf_rate_t)
@@ -370,6 +374,11 @@ contains
 
     call system_clock(stf_stop_t)
     write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)
+
+#if defined(SPLLT_STARPU_NOSUB)
+    call system_clock(start_nosub_t, rate_nosub_t)
+    call starpu_f_resume()    
+#endif
     
     ! wait for task completion
     ! TODO take it out of the factorize routine
@@ -378,6 +387,7 @@ contains
 
     call system_clock(stop_t)
     write(*,'("[>] [spllt_stf_factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
+    write(*,'("[>] [spllt_stf_factorize] nosub time: ", es10.3, " s")') (stop_t - start_nosub_t)/real(rate_nosub_t)
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_fxt_stop_profiling()
