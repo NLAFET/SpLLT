@@ -8,7 +8,7 @@ contains
     implicit none
 
     integer :: num_nodes
-    integer, dimension(:), intent(inout) :: sptr, sparent
+    integer, dimension(:), intent(inout) :: sparent
     
     
 
