@@ -35,9 +35,9 @@ outdir=data
 echo "[run_tests] build dir: $build_dir"
 #matrices=(JGD_Trefethen/Trefethen_20000)
 
-ncpu_list=(27)
-nb_list=(256)
-nemin_list=(8 16 32 64)
+ncpu_list=(27 28)
+nb_list=(256 512)
+nemin_list=(16)
 trace_dir=/tmp
 prof_file=prof_file_scarf462_0
 # for matrix in ${matrices[@]}

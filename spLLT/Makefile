@@ -10,7 +10,7 @@ CFLAGS = -g -O2
 # FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
 #FFLAGS += -fprofile-arcs -ftest-coverage
-FFLAGS = -Wall -pedantic -fbounds-check -g -O2 -fopenmp
+FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 ############################
 #FC = ifort
 #FFLAGS = -g -C -static -openmp
