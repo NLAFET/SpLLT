@@ -4,7 +4,11 @@ module spllt_analyse_mod
 
 contains
 
-  subroutine spllt_prune_tree()
+  subroutine spllt_prune_tree(num_nodes, sparent)
+    implicit none
+
+    integer :: num_nodes
+    integer, dimension(:), intent(inout) :: sptr, sparent
     
     
 
