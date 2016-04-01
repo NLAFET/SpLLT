@@ -22,7 +22,7 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 # before starting the factorization
 
 #DEFS =
-DEFS = -DSPLLT_USE_STARPU -DSPLLT_STARPU_NOSUB
+DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)

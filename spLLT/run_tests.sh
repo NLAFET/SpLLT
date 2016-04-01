@@ -20,7 +20,8 @@ case $HOSTNAME in
         module load gcc/5.3.0
         module load intel/mkl/11.3.1.150
         module load hwloc/1.11.2
-        module load starpu/trunk-nogpu-nofxt
+        module load starpu/trunk-nogpu
+#        module load starpu/trunk-nogpu-nofxt
         module load metis/4.0.3
         module load hsl/latest
         module load spral/trunk
@@ -31,13 +32,15 @@ esac
 build_dir=`pwd`
 id=`whoami`
 outdir=data
+#outsuffix="_NOSUB"
+outsuffix=
 
 echo "[run_tests] build dir: $build_dir"
 #matrices=(JGD_Trefethen/Trefethen_20000)
 
-ncpu_list=(27 28)
-nb_list=(256 512)
-nemin_list=(16)
+ncpu_list=(27)
+nb_list=(512)
+nemin_list=(32)
 trace_dir=/tmp
 prof_file=prof_file_scarf462_0
 # for matrix in ${matrices[@]}
@@ -69,13 +72,14 @@ do
 
                 # ./run_ma87
                 echo "[run_tests] run MA87"
-                export OMP_NUM_THREADS=${ncpu} 
-                ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
-                echo "[run_tests] run SPLLT_STARPU"
+                # export OMP_NUM_THREADS=${ncpu} 
+                # ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
+                # echo "[run_tests] run SPLLT_STARPU"
                 rm -rf $trace_dir/$prof_file
                 # just to make sure
                 export OMP_NUM_THREADS=1
-                ./spllt_starpu_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_starpu/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
+                # ./spllt_starpu_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_starpu/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
+                ./spllt_starpu_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_starpu/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}
                 
                 if [ -f $trace_dir/$prof_file ];
                 then
