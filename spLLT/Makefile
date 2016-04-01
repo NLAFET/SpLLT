@@ -18,8 +18,11 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 
 # Things you might add to DEFS:
 
+# SPLLT_STARPU_NOSUB: wait for all the tasks to be submitted to StarPU
+# before starting the factorization
+
 #DEFS =
-DEFS = -DSPLLT_USE_STARPU
+DEFS = -DSPLLT_USE_STARPU -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
