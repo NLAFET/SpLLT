@@ -1,11 +1,4 @@
-#!/usr/bin/python
-
-import sys, getopt
-
-def main(argv):
-
-    input_file = open(argv[0], 'r')
-
+def parsetrace(input_file):
 
     alltimes = {}
     allstatu = {}
@@ -106,11 +99,8 @@ def main(argv):
         #     print th
     # print '\nGlobal: ',glob_ex_time/glob_tt_time,glob_sl_time/glob_tt_time,glob_ov_time/glob_tt_time
 
-    print("%-50s        (exec., idle, ohead): %10.0f (%6.3f),  %10.0f (%6.3f),   %10.0f (%6.3f)  = %10.0f" % (argv[0],
-                                                                                                              glob_ex_time, glob_ex_time/glob_tt_time,
-                                                                                                              glob_sl_time, glob_sl_time/glob_tt_time,
-                                                                                                              glob_ov_time,glob_ov_time/glob_tt_time,
-                                                                                                              glob_tt_time))
+    r_ex_time = glob_ex_time/glob_tt_time
+    r_sl_time = glob_sl_time/glob_tt_time
+    r_ov_time = glob_ov_time/glob_tt_time
 
-if __name__ == "__main__":
-   main(sys.argv[1:])    
+    return r_ex_time, r_sl_time, r_ov_time, glob_tt_time
