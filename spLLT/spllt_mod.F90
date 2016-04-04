@@ -28,10 +28,16 @@ module spllt_mod
   integer, parameter :: spllt_error_allocation  = -1
   integer, parameter :: spllt_error_unknown     = -99 
 
+  ! Default values
+  ! node amalgamation parameter
+  integer, parameter :: spllt_nemin_default = 32
+  ! Block size with dense kernel
+  integer, parameter :: spllt_nb_default = 256
+
   type spllt_cntl
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size
-     integer :: nemin = 32! blocking size
+     integer :: nemin = 32 ! node amalgamation parameter
   end type spllt_cntl
   
   type spllt_bc_type
@@ -42,7 +48,17 @@ module spllt_mod
 #endif
      integer :: mem_node = 0 ! memory node where the block is allocated
   end type spllt_bc_type
+  
+  ! problem data (analyis)
+  type spllt_adata_type
+     integer(long) :: num_factor = 0_long ! Number of entries in the factor.
+     integer(long) :: num_flops = 0_long  ! Number of flops for factor.
+     ! weight(i): weight of the subtree rooted at node i where weight
+     ! corresponds to the number of flops
+     real(kind(1.d0)), allocatable :: weight(:)
+  end type spllt_adata_type
 
+  ! problem data
   type spllt_data_type
      type(spllt_bc_type), allocatable :: bc(:) ! blocks
      type(spllt_bc_type) :: workspace ! workspaces
