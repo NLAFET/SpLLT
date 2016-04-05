@@ -118,6 +118,8 @@ contains
          sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
          nflops=adata%num_flops)
 
+    ! perform symbolic factorization
+    call spllt_symbolic(adata, num_nodes, sptr, sparent, rptr)
 
     info%num_nodes = num_nodes
     !**************************************
@@ -407,7 +409,7 @@ contains
     integer(long) :: mm, m, n, j
     integer(long) :: nflops
     
-    allocate(adata%weight(nnodes))
+    allocate(adata%weight(nnodes+1))
 
     do node = 1,nnodes
 
@@ -422,10 +424,8 @@ contains
           nflops = nflops + (mm+j)**2
        end do
        
-       adata%weight(node) = adata%weight(node) + real(nflops, kind(1.d0)) 
-       if (parent .gt. 0) then 
-          adata%weight(parent) = adata%weight(parent) + adata%weight(node)
-       end if
+       adata%weight(node) = adata%weight(node) + real(nflops, kind(1.d0))
+       adata%weight(parent) = adata%weight(parent) + adata%weight(node)
 
     end do
 
