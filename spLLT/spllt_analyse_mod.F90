@@ -11,7 +11,7 @@ contains
     use hsl_ma87_double
     implicit none
 
-    type(spllt_adata_type) :: adata
+    type(spllt_adata_type), intent(inout) :: adata
     integer, intent(in) :: n ! order of A
     integer, intent(in) :: row(:) ! row indices of lower triangular part
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
@@ -117,6 +117,8 @@ contains
     call mc78_analyse(n, aptr, arow, order, num_nodes, &
          sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
          nflops=adata%num_flops)
+
+    adata%nnodes = num_nodes
 
     ! perform symbolic factorization
     call spllt_symbolic(adata, num_nodes, sptr, sparent, rptr)
@@ -359,23 +361,39 @@ contains
 
   ! tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree
-  subroutine spllt_prune_tree(num_nodes, sparent, nth)
+  subroutine spllt_prune_tree(adata, sparent, nth)
+    use spllt_utils_mod
     implicit none
 
-    integer :: num_nodes ! number of nodes if the atree
+    type(spllt_adata_type), intent(inout) :: adata
     integer, dimension(:), intent(inout) :: sparent ! atree
     integer :: nth ! number of workers
 
     integer :: node, nlz
-    integer, allocatable :: lzero(:)
-    real(kind(1.d0)), allocatable   :: lzero_w(:), proc_w(:)
+    integer(long) :: p, totflops 
+    real(kind(1.d0))                :: rm, smallth
+    integer, dimension(adata%nnodes)       :: lzero
+    integer(long), dimension(adata%nnodes) :: lzero_w
+    integer(long), dimension(nth)       :: proc_w
+    logical                         :: found
+
+    allocate(adata%small(adata%nnodes))
+    adata%small = 0
+
+    smallth = 0.01
+    totflops = adata%weight(adata%nnodes)
 
     ! initialize the l0 layer with the root nodes
     nlz = 0
-    do node = 1,num_nodes
-       if (sparent(node) .eq. 0) then
-         nlz = nlz+1
-         lzero(nlz) = node
+    do node = 1, adata%nnodes
+       if (sparent(node) .gt. adata%nnodes) then
+          if(real(adata%weight(node), kind(1.d0)) .gt. smallth*totflops) then
+             nlz = nlz+1
+             lzero(nlz) = node
+             lzero_w(nlz) = adata%weight(node)
+          else
+             adata%small(node) = 1 ! node is too small; mark it
+          end if
        end if
     end do
 
@@ -383,7 +401,27 @@ contains
        ! if (nth .eq. 1) exit ! serial execution process the whole tree as a subtree
        if(nlz .gt. nth*max(2.d0,(log(real(nth,kind(1.d0)))/log(2.d0))**2)) exit ! exit if already too many nodes in l0
 
-       proc_w = 0.d0
+       proc_w = 0
+       
+       call spllt_sort(lzero_w, nlz)
+
+       ! map subtrees to threads round-robin 
+       do node=1, nlz
+          ! find the least loaded proc
+          p = minloc(proc_w,1)
+          proc_w(p) = proc_w(p) + lzero_w(node)
+       end do
+
+       ! all the subtrees have been mapped. Evaluate load balance
+       rm = minval(proc_w)/maxval(proc_w)
+
+       if((rm .gt. 0.9) .and. (nlz .ge. 1*nth)) exit ! if balance is higher than 90%, we're happy
+
+       ! if load is not balanced, replace heaviest node with its kids (if any)
+       found = .false.
+       findn: do
+          
+       end do findn
 
     end do godown
 
@@ -424,7 +462,7 @@ contains
           nflops = nflops + (mm+j)**2
        end do
        
-       adata%weight(node) = adata%weight(node) + real(nflops, kind(1.d0))
+       adata%weight(node) = adata%weight(node) + nflops
        adata%weight(parent) = adata%weight(parent) + adata%weight(node)
 
     end do

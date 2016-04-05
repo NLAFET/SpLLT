@@ -52,11 +52,13 @@ module spllt_mod
   
   ! problem data (analyis)
   type spllt_adata_type
+     integer :: nnodes
      integer(long) :: num_factor = 0_long ! Number of entries in the factor.
      integer(long) :: num_flops = 0_long  ! Number of flops for factor.
      ! weight(i): weight of the subtree rooted at node i where weight
      ! corresponds to the number of flops
-     real(kind(1.d0)), allocatable :: weight(:)
+     integer(long), allocatable :: weight(:)
+     integer, allocatable :: small(:)
   end type spllt_adata_type
 
   ! problem data

@@ -60,7 +60,7 @@ DTDEPS90 += $(HSLPACKDIR)/hsl_mc69/hsl_mc69d.f90
 objs := hsl_ma87d.o
 objs +=	spllt_kernels_mod.o
 objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
-objs += spllt_analyse_mod.o
+objs += spllt_analyse_mod.o spllt_utils_mod.o
 
 include Makefile.rules.inc
 
