@@ -38,6 +38,7 @@ module spllt_mod
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size
      integer :: nemin = 32 ! node amalgamation parameter
+     logical :: prune_tree = .false.
   end type spllt_cntl
   
   type spllt_bc_type

@@ -31,7 +31,7 @@ module hsl_MA87_double
         & update_between, update_direct, expand_buffer
    public :: copy_a_to_l, get_dest_block 
    ! derived types
-   public :: node_type, block_type, lfactor
+   public :: node_type, block_type, lfactor, make_map, lcol_map
 
    ! Parameters
    ! Data kinds

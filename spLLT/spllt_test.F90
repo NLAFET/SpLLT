@@ -29,6 +29,11 @@ contains
     use spllt_stf_mod
     use spral_rutherford_boeing
     use hsl_mc68_integer
+    use spllt_analyse_mod
+#if defined(SPLLT_USE_STARPU)
+    use iso_c_binding
+    use starpu_f_mod
+#endif
     implicit none
     
     character(len=*), intent(in) :: mf
@@ -45,7 +50,8 @@ contains
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, resid
     real(wp), dimension(:), allocatable :: b, x
-    type(spllt_data_type) :: pbl
+    type(spllt_adata_type) :: a_pbl
+    type(spllt_data_type)  :: pbl
 
     ! mc68
     type(mc68_control) :: order_control
@@ -58,6 +64,12 @@ contains
 
     ! timing
     integer :: start_t, stop_t, rate_t
+
+    ! StarPU
+#if defined(SPLLT_USE_STARPU) 
+    ! when using StarPU
+    integer(c_int) :: ret
+#endif
 
     call splllt_parse_args(options)
 
@@ -107,7 +119,8 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-    call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
+    call spllt_analyse(a_pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
@@ -124,6 +137,11 @@ contains
     allocate(b(m), x(n))
     call random_number(b)
 
+#if defined(SPLLT_USE_STARPU)
+    ! initialize starpu
+    ret = starpu_f_init(cntl%ncpu)
+#endif
+
     write(*,'("[>] factorize")')
     write(*,'("[>] [factorize]    nb: ", i6)') cntl%nb
     write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
@@ -131,12 +149,22 @@ contains
     call system_clock(start_t, rate_t)
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+
+#if defined(SPLLT_USE_STARPU)
+    ! wait for task completion
+    call starpu_f_task_wait_for_all()
+#endif
+
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"
     endif
     call system_clock(stop_t)
     write(*,'("[>] [factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
     write(*,'("[>] solve")')
+
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_shutdown()
+#endif
 
     x = b
     ! solve
