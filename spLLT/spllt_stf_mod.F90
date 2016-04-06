@@ -100,8 +100,6 @@ contains
 
     allocate(col_list(1), row_list(1), stat=st)
     if(st.ne.0) goto 10
-    allocate(pbl%workspace%c(keep%maxmn*keep%maxmn), stat=st)
-    if(st.ne.0) goto 10
 
     ! Set up inverse permutation
     ! deallocate (invp,stat=st)
@@ -124,19 +122,33 @@ contains
     if(st.ne.0) go to 10
     
     ! allocate array for colomn mapping beween snode and ancestors
-    allocate(colmap(n),stat=st)
-    if(st.ne.0) go to 10
-
-    call system_clock(start_cpya2l_t, rate_cpya2l_t)
-    call copy_a_to_l(n,num_nodes,val,map,keep)
-    call system_clock(stop_cpya2l_t)
+    ! allocate(colmap(n),stat=st)
+    ! if(st.ne.0) go to 10
 
     ! init facto    
 
 #if defined(SPLLT_USE_STARPU)
+
+    do snode = 1, num_nodes
+       call starpu_f_void_data_register(pbl%nodes(snode)%hdl)        
+    end do
+    
     ! register workspace handle
     call starpu_f_vector_data_register(pbl%workspace%hdl, -1, c_null_ptr, &
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+#else
+    allocate(pbl%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    if(st.ne.0) goto 10
+#endif
+
+    ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
+    ! call copy_a_to_l(n,num_nodes,val,map,keep)
+    do snode = 1, num_nodes ! loop over nodes
+       call spllt_init_node_task(pbl%nodes(snode), n, val, map, keep)
+    end do
+    ! call system_clock(stop_cpya2l_t)
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all()
 #endif
 
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
@@ -144,7 +156,7 @@ contains
 #endif
 
     call system_clock(stop_setup_t)
-    write(*,'("[>] [spllt_stf_factorize] cpy a2l time: ", es10.3, " s")') (stop_cpya2l_t - start_cpya2l_t)/real(rate_cpya2l_t)
+    ! write(*,'("[>] [spllt_stf_factorize] cpy a2l time: ", es10.3, " s")') (stop_cpya2l_t - start_cpya2l_t)/real(rate_cpya2l_t)
     write(*,'("[>] [spllt_stf_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
     call system_clock(stf_start_t, stf_rate_t)
 

@@ -342,5 +342,66 @@ contains
 
   end subroutine spllt_update_between
 
+  ! init node
+  subroutine spllt_init_node(snode, n, val, map, keep)
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer, intent(in) :: snode
+    integer, intent(in) :: n      ! order of matrix 
+    real(wp), dimension(*), intent(in) :: val ! user's matrix values
+    integer, intent(out) :: map(n)  ! mapping array. Reset for each node
+    ! so that, if variable (row) i is involved in node,
+    ! map(i) is set to its local row index
+    type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
+    ! into relevant part of keep%lfact
+
+    integer(long) :: i, j ! Temporary variable   
+    integer(long) :: dblk ! set to keep%nodes(snode)%blk_sa (first block
+    ! in snode which is, of course, a diagonal block)
+    integer :: l_nb ! set to keep%nodes(snode)%nb
+    integer :: sa ! set keep%nodes(snode)%sa
+    integer :: en ! set keep%nodes(snode)%en
+    integer :: cb ! Temporary variable
+    integer :: bcol ! block column
+    integer :: sz ! set to size of keep%lfact(nbcol)%lcol
+    integer(long) :: offset
+    integer :: swidth ! set to keep%blocks(dblk)%blkn (number of columns
+    ! in block column to which dblk belongs)
+
+    ! Build a map from global to local indices
+    do j = 1, size(keep%nodes(snode)%index)
+       i = keep%nodes(snode)%index(j)
+       map(i) = j - 1
+    end do
+
+    ! Fill in keep%lfact by block columns
+    dblk = keep%nodes(snode)%blk_sa
+
+    l_nb = keep%nodes(snode)%nb
+    sa = keep%nodes(snode)%sa
+    en = keep%nodes(snode)%en
+
+    do cb = sa, en, l_nb
+       bcol = keep%blocks(dblk)%bcol
+       sz = size(keep%lfact(bcol)%lcol)
+       ! Zero the block column. 
+       keep%lfact(bcol)%lcol(1:sz) = zero
+
+       offset = keep%blocks(dblk)%sa - (cb-sa)*keep%blocks(dblk)%blkn
+       swidth = keep%blocks(dblk)%blkn
+
+       do i = 1, keep%lmap(bcol)%len_map
+          keep%lfact(bcol)%lcol(keep%lmap(bcol)%map(1,i)) = &
+               val(keep%lmap(bcol)%map(2,i))
+       end do
+
+       ! move to next block column in snode
+       dblk = keep%blocks(dblk)%last_blk + 1
+    end do
+
+    return
+  end subroutine spllt_init_node
   
 end module spllt_kernels_mod

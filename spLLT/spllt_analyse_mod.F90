@@ -5,13 +5,14 @@ module spllt_analyse_mod
 contains
 
   ! analysis phase
-  subroutine spllt_analyse(adata, n, ptr, row, order, keep, cntl, info)
+  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
     use hsl_mc78_integer
     use hsl_mc34_double
     use hsl_ma87_double
     implicit none
 
-    type(spllt_adata_type), intent(inout) :: adata
+    type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
+    type(spllt_data_type), intent(inout) :: fdata ! data related to the factorization
     integer, intent(in) :: n ! order of A
     integer, intent(in) :: row(:) ! row indices of lower triangular part
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
@@ -127,9 +128,12 @@ contains
     !**************************************
     ! Set up nodal data structures
     ! For each node, hold data in keep%nodes(node) 
-    deallocate(keep%nodes, stat=st)
-
+    deallocate(keep%nodes, stat=st)    
     allocate(keep%nodes(-1:num_nodes),stat=st)
+    if (st /= 0) go to 9999
+
+    deallocate(fdata%nodes, stat=st)
+    allocate(fdata%nodes(-1:num_nodes),stat=st)
     if (st /= 0) go to 9999
 
     keep%nodes(0)%blk_en = 0
@@ -141,7 +145,9 @@ contains
     do node = 1, num_nodes
        keep%nodes(node)%sa = sptr(node)
        keep%nodes(node)%en = sptr(node+1)-1
-
+       ! set node id 
+       fdata%nodes(node)%num = node
+       
        par = sparent(node)
        keep%nodes(node)%parent = par
        if(par .le. num_nodes) then

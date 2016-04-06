@@ -121,7 +121,7 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-    call spllt_analyse(a_pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then

@@ -106,7 +106,26 @@ module spllt_starpu_factorization_mod
        integer(c_int), value  :: nah, nbh
      end subroutine test_insert_c
   end interface
-  
+
+  ! init node StarPU task insert
+  interface
+     subroutine spllt_insert_init_node_task_c(hdl, snode, n, val, map, keep) bind(C)
+       use iso_c_binding
+       type(c_ptr), value     :: hdl
+       integer(c_int), value  :: snode, n
+       type(c_ptr), value     :: val, map, keep
+     end subroutine spllt_insert_init_node_task_c
+  end interface
+
+  interface
+     subroutine spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
+          & snode, n, val, map, keep) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: cl_arg 
+       type(c_ptr), value :: snode, n, val, map, keep
+     end subroutine spllt_starpu_codelet_unpack_args_init_node
+  end interface
+
 contains
 
   ! factorize block StarPU task insert
@@ -237,10 +256,10 @@ contains
   ! update between StarPU task 
   ! _syrk/_gemm
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
+    use iso_c_binding
     use hsl_ma87_double
     use spllt_mod
     use spllt_kernels_mod
-    use iso_c_binding
     implicit none
     
     type(c_ptr), value        :: cl_arg
@@ -332,5 +351,34 @@ contains
     ! deallocate(work)
 
   end subroutine spllt_starpu_update_between_cpu_func
+
+  ! init node StarPU task 
+  subroutine spllt_starpu_init_node_cpu_func(buffers, cl_arg) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    use spllt_kernels_mod
+    implicit none
+
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+
+    integer, target           :: n, snode
+    type(c_ptr), target       :: val_c, map_c, keep_c
+    real(wp), pointer         :: val(:)
+    integer, pointer          :: map(:)
+    type(ma87_keep), pointer  :: keep
+
+    call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
+         & c_loc(snode), &  
+         & c_loc(n), c_loc(val_c), c_loc(map_c), c_loc(keep_c)) 
+    
+    call c_f_pointer(val_c, val, (/n*n/))    
+    call c_f_pointer(map_c, map, (/n/))    
+    call c_f_pointer(keep_c, keep)    
+
+    call spllt_init_node(snode, n, val, map, keep)
+    
+  end subroutine spllt_starpu_init_node_cpu_func
 
 end module spllt_starpu_factorization_mod

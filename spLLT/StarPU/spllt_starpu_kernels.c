@@ -302,3 +302,51 @@ void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t bc_handle
 
    return;
 }
+
+void spllt_starpu_init_node_cpu_func(void *buffers[], void *cl_arg);
+
+void spllt_starpu_codelet_unpack_args_init_node(void *cl_arg,
+                                                int *snode,
+                                                int *n, void *val, 
+                                                void *map, void *keep) {
+   
+   starpu_codelet_unpack_args(cl_arg,
+                              snode,
+                              n, val, map, keep);
+
+   return;
+}
+
+struct starpu_codelet cl_init_node = {
+  .where = STARPU_CPU,
+  .cpu_funcs = {spllt_starpu_init_node_cpu_func, NULL},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS, 
+  .name = "INIT_NODE",
+/* #if defined(usebound) || defined(calibratecpus) || defined(calibrategpus) */
+/*   .model = &partition_history_based_model */
+/* #elif defined(useperfmodels) */
+/*   .model = &partition_history_based_model */
+/* #endif */
+};
+
+void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle, 
+                                   int snode, int n,
+                                   void *val, void *map, void *keep) {
+   
+   
+   int ret;
+
+   ret = starpu_task_insert(&cl_init_node,
+                            STARPU_VALUE, &snode, sizeof(int),
+                            STARPU_VALUE, &n, sizeof(int),
+                            STARPU_VALUE, &val, sizeof(void*),
+                            STARPU_VALUE, &map, sizeof(void*),
+                            STARPU_VALUE, &keep, sizeof(void*),
+                            STARPU_RW, node_handle,
+                            0);
+
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
+
+   return;
+}
+

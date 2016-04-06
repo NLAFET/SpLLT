@@ -40,7 +40,16 @@ module spllt_mod
      integer :: nemin = 32 ! node amalgamation parameter
      logical :: prune_tree = .false.
   end type spllt_cntl
-  
+
+  ! node type
+  type spllt_node_type
+     integer :: num ! node id
+#if defined(SPLLT_USE_STARPU)
+     type(c_ptr)    :: hdl  ! StarPU handle
+#endif     
+  end type spllt_node_type
+
+  ! block type  
   type spllt_bc_type
      type(block_type), pointer :: blk ! pointer to the block in keep
      real(wp), pointer :: c(:)
@@ -61,10 +70,11 @@ module spllt_mod
      integer, allocatable :: small(:)
   end type spllt_adata_type
 
-  ! problem data
+  ! problem data (factorization)
   type spllt_data_type
      type(spllt_bc_type), allocatable :: bc(:) ! blocks
      type(spllt_bc_type) :: workspace ! workspaces
+     type(spllt_node_type), allocatable :: nodes(:) ! super nodes 
   end type spllt_data_type
 
   interface gen_random_posdef

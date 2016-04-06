@@ -380,11 +380,39 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task(node)
+  subroutine spllt_init_node_task(node, n, val, map, keep)
+    use spllt_mod
+    use hsl_ma87_double
+    use spllt_kernels_mod
+#if defined(SPLLT_USE_STARPU)
+    use spllt_starpu_factorization_mod
+#endif
     implicit none
     
-    integer, intent(in) :: node
+    type(spllt_node_type), intent(in) :: node
+    integer, intent(in) :: n      ! order of matrix 
+    real(wp), dimension(*), target, intent(in) :: val ! user's matrix values
+    integer, target, intent(out) :: map(n)  ! mapping array. Reset for each node
+     ! so that, if variable (row) i is involved in node,
+     ! map(i) is set to its local row index
+    type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
+     ! into relevant part of keep%lfact
 
+#if defined(SPLLT_USE_STARPU)
+    type(c_ptr) :: val_c, map_c, keep_c
+#endif
+
+
+#if defined(SPLLT_USE_STARPU)
+    val_c  = c_loc(val(1)) 
+    map_c  = c_loc(map(1)) 
+    keep_c = c_loc(keep)
+
+    call spllt_insert_init_node_task_c(node%hdl, node%num, n, val_c, map_c, keep_c)
+#else
+    call spllt_init_node(node%num, n, val, map, keep)
+#endif
+    
     return
   end subroutine spllt_init_node_task
 
