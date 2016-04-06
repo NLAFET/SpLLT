@@ -64,6 +64,8 @@ contains
 
     ! timing
     integer :: start_t, stop_t, rate_t
+    integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
+    integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
 
     ! StarPU
 #if defined(SPLLT_USE_STARPU) 
@@ -138,8 +140,12 @@ contains
     call random_number(b)
 
 #if defined(SPLLT_USE_STARPU)
+    call system_clock(start_starpuinit_t, rate_starpuinit_t)
     ! initialize starpu
     ret = starpu_f_init(cntl%ncpu)
+    call system_clock(stop_starpuinit_t)
+    write(*,'("[>] [spllt_test_mat] StarPU init time: ", es10.3, " s")') &
+         &(stop_starpuinit_t - start_starpuinit_t)/real(rate_starpuinit_t)
 #endif
 
     write(*,'("[>] factorize")')
@@ -163,7 +169,11 @@ contains
     write(*,'("[>] solve")')
 
 #if defined(SPLLT_USE_STARPU)
+    call system_clock(start_starpushutdown_t, rate_starpushutdown_t)
     call starpu_f_shutdown()
+    call system_clock(stop_starpushutdown_t)
+    write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
+         &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
 #endif
 
     x = b

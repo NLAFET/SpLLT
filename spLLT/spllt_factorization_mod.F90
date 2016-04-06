@@ -379,4 +379,13 @@ contains
     return
   end subroutine spllt_update_between_task
 
+  ! init node
+  subroutine spllt_init_node_task()
+    implicit none
+    
+    
+
+    return
+  end subroutine spllt_init_node_task
+
 end module spllt_factorization_mod
