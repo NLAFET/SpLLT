@@ -139,10 +139,6 @@ contains
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #endif
 
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_fxt_start_profiling()
-#endif
-
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
 #endif
@@ -391,10 +387,6 @@ contains
     ! write(*,'("[>] [spllt_stf_factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     write(*,'("[>] [spllt_stf_factorize] nosub time: ", es10.3, " s")') (stop_t - start_nosub_t)/real(rate_nosub_t)
-#endif
-
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_fxt_stop_profiling()
 #endif
 
 10 if(st.ne.0) then

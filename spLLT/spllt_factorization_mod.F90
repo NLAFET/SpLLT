@@ -380,10 +380,10 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task()
+  subroutine spllt_init_node_task(node)
     implicit none
     
-    
+    integer, intent(in) :: node
 
     return
   end subroutine spllt_init_node_task

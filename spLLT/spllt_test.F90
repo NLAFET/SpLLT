@@ -146,6 +146,7 @@ contains
     call system_clock(stop_starpuinit_t)
     write(*,'("[>] [spllt_test_mat] StarPU init time: ", es10.3, " s")') &
          &(stop_starpuinit_t - start_starpuinit_t)/real(rate_starpuinit_t)
+    call starpu_f_fxt_start_profiling()
 #endif
 
     write(*,'("[>] factorize")')
@@ -159,6 +160,7 @@ contains
 #if defined(SPLLT_USE_STARPU)
     ! wait for task completion
     call starpu_f_task_wait_for_all()
+    call starpu_f_fxt_stop_profiling()
 #endif
 
     if(info%flag .lt. spllt_success) then
@@ -166,7 +168,6 @@ contains
     endif
     call system_clock(stop_t)
     write(*,'("[>] [factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
-    write(*,'("[>] solve")')
 
 #if defined(SPLLT_USE_STARPU)
     call system_clock(start_starpushutdown_t, rate_starpushutdown_t)
@@ -176,6 +177,7 @@ contains
          &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
 #endif
 
+    write(*,'("[>] solve")')
     x = b
     ! solve
     call MA87_solve(x, order, keep, control, info)
