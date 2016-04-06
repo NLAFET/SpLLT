@@ -15,7 +15,7 @@ contains
 
   ! factorize block 
   ! _potrf
-  subroutine spllt_factorize_block_task(bc, lfact, prio)
+  subroutine spllt_factorize_block_task(node, bc, lfact, prio)
     use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -24,6 +24,7 @@ contains
 #endif
     implicit none
     
+    type(spllt_node_type), intent(in)          :: node
     type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
     type(lfactor), dimension(:), allocatable, intent(inout) :: lfact
     integer, optional :: prio
@@ -32,6 +33,9 @@ contains
     integer(long) :: id
     type(block_type), pointer :: blk ! block to be factorized
     integer :: p
+#if defined(SPLLT_USE_STARPU)
+    type(c_ptr) :: node_hdl
+#endif
 
     if (present(prio)) then
        p = prio
@@ -40,7 +44,12 @@ contains
     end if
 
 #if defined(SPLLT_USE_STARPU)
-    call spllt_starpu_insert_factorize_block_c(bc%hdl, p)
+    node_hdl = c_null_ptr
+    if (node%node%blk_sa .eq. bc%blk%id) then
+       node_hdl = node%hdl
+       ! write(*,*)
+    end if
+    call spllt_starpu_insert_factorize_block_c(bc%hdl, node_hdl, p)
 
     ! call spllt_starpu_insert_factorize_block(bc, p)
 #else    
@@ -219,11 +228,11 @@ contains
     ! type(spllt_bc_type), intent(in)        :: bc ! src block
     type(spllt_bc_type), intent(in)        :: dbc ! diag block in source node
 #if defined(SPLLT_USE_STARPU)
-    type(node_type), target                     :: snode ! src node
-    type(node_type), target                     :: anode ! dest node
+    type(node_type), target                :: snode ! src node
+    type(spllt_node_type), target          :: anode ! dest node
 #else
-    type(node_type)                     :: snode ! src node
-    type(node_type)                     :: anode ! dest node
+    type(node_type)                        :: snode ! src node
+    type(spllt_node_type)                  :: anode ! dest node
 #endif
     integer :: cptr, cptr2, rptr, rptr2 
 !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
@@ -274,7 +283,7 @@ contains
     scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
 
     bcol = a_bc%blk%bcol
-    dcol = bcol - blocks(anode%blk_sa)%bcol + 1
+    dcol = bcol - blocks(anode%node%blk_sa)%bcol + 1
 
 #if defined(SPLLT_USE_STARPU)
 ! #if 0
@@ -319,7 +328,7 @@ contains
     rsrc2 = (rptr2 - rptr + 1)*n1
 
     snode_c = c_loc(snode)
-    anode_c = c_loc(anode)
+    anode_c = c_loc(anode%node)
     a_bc_c  = c_loc(a_bc%blk)
 
     ! write(*,*)"s_nb: ", s_nb
@@ -335,6 +344,7 @@ contains
          & csrc, csrc2, rsrc, rsrc2, &
          & control%min_width_blas, &
          & workspace%hdl, &
+         & anode%hdl, &
          & p)
 
     ! call test_insert_c(lik_handles, nhlik, ljk_handles, nhljk)
@@ -366,7 +376,7 @@ contains
     rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
     rsrc2 = (rptr2 - rptr + 1)*n1
 
-    call spllt_update_between(m, n, a_bc%blk, dcol, anode, &
+    call spllt_update_between(m, n, a_bc%blk, dcol, anode%node, &
          & n1, scol, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &

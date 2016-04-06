@@ -4,7 +4,7 @@ module spllt_stf_mod
 
 contains
 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, pbl, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
     use spllt_mod
     use hsl_ma87_double
     use spllt_factorization_mod
@@ -25,7 +25,7 @@ contains
     type(MA87_control), intent(in) :: control 
     type(MA87_info), intent(out) :: info 
 
-    type(spllt_data_type), target :: pbl
+    type(spllt_data_type), target :: fdata
     type(spllt_cntl)      :: cntl
 
     ! local arrays
@@ -113,7 +113,7 @@ contains
     ! TODO to be done at analyse?
     ! init factorization
     ! call spllt_factorization_init(keep, data)
-    call spllt_init_lfact(keep, pbl)
+    call spllt_init_lfact(keep, fdata)
 
     !
     ! Copy matrix values across from a into keep%lfact
@@ -130,26 +130,26 @@ contains
 #if defined(SPLLT_USE_STARPU)
 
     do snode = 1, num_nodes
-       call starpu_f_void_data_register(pbl%nodes(snode)%hdl)        
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)        
     end do
     
     ! register workspace handle
-    call starpu_f_vector_data_register(pbl%workspace%hdl, -1, c_null_ptr, &
+    call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #else
-    allocate(pbl%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
     if(st.ne.0) goto 10
 #endif
 
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
-       call spllt_init_node_task(pbl%nodes(snode), n, val, map, keep, huge(1))
+       call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_task_wait_for_all()
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif
 
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
@@ -198,9 +198,9 @@ contains
 
           ! A_kk          
           ! bc_kk => keep%blocks(dblk)
-          bc_kk => pbl%bc(dblk)
+          bc_kk => fdata%bc(dblk)
 
-          call spllt_factorize_block_task(bc_kk, keep%lfact, prio+3)
+          call spllt_factorize_block_task(fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
 
 ! #if defined(SPLLT_USE_STARPU)
          ! call starpu_f_task_wait_for_all()
@@ -212,7 +212,7 @@ contains
              ! A_mk
              blk = dblk+ii-kk
              ! bc_ik => keep%blocks(blk)
-             bc_ik => pbl%bc(blk)
+             bc_ik => fdata%bc(blk)
 
              call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,prio+2)
           end do
@@ -225,7 +225,7 @@ contains
              
              ! L_jk
              blk2 = dblk+jj-kk
-             bc_jk => pbl%bc(blk2)
+             bc_jk => fdata%bc(blk2)
              ! bc_jk => keep%blocks(blk2)
 
              do ii = jj,nr
@@ -233,12 +233,12 @@ contains
                 ! L_ik
                 blk1 = dblk+ii-kk                
                 ! bc_ik => keep%blocks(blk1)
-                bc_ik => pbl%bc(blk1)
+                bc_ik => fdata%bc(blk1)
                 
                 ! A_ij
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
-                bc_ij => pbl%bc(blk)
+                bc_ij => fdata%bc(blk)
                 ! bc_ij => keep%blocks(blk)
                 
                 call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
@@ -315,12 +315,12 @@ contains
                    ! write(*,*) "i:",i," k:",k
                    blk = bc_kk%blk%id + (i-1)/s_nb - (kk-1)
                    ! bc => keep%blocks(blk) ! current block in node
-                   bc => pbl%bc(blk) ! current block in node
+                   bc => fdata%bc(blk) ! current block in node
 
                    if(k.ne.ii) then
                       a_blk = a_dblk + ii - cb
                       ! a_bc => keep%blocks(a_blk)
-                      a_bc => pbl%bc(a_blk)
+                      a_bc => fdata%bc(a_blk)
 
                       ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                       ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
@@ -330,11 +330,11 @@ contains
                       call spllt_update_between_task( &
                            ! & bc, &
                            & bc_kk, &
-                           & node, a_bc, anode, &
+                           & node, a_bc, fdata%nodes(a_num), &
                            ! & csrc, rsrc, &
                            & cptr, cptr2, ilast, i-1, &
-                           & row_list, col_list, pbl%workspace, &
-                           & keep%lfact, keep%blocks, pbl%bc, &
+                           & row_list, col_list, fdata%workspace, &
+                           & keep%lfact, keep%blocks, fdata%bc, &
                            & control, prio)
 
                       ii = k
@@ -344,7 +344,7 @@ contains
                 ! i = min(i,numrow)
                 a_blk = a_dblk + ii - cb
                 ! a_bc => keep%blocks(a_blk)
-                a_bc => pbl%bc(a_blk)
+                a_bc => fdata%bc(a_blk)
 
                 ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
@@ -356,11 +356,11 @@ contains
                 call spllt_update_between_task( &
                      ! & bc, &
                      & bc_kk, &
-                     & node, a_bc, anode, &
+                     & node, a_bc, fdata%nodes(a_num), &
                      ! & csrc, rsrc, &
                      & cptr, cptr2, ilast, i-1, &
-                     & row_list, col_list, pbl%workspace, &
-                     & keep%lfact, keep%blocks, pbl%bc, &
+                     & row_list, col_list, fdata%workspace, &
+                     & keep%lfact, keep%blocks, fdata%bc, &
                      & control, prio)
                                          
                 ! Move cptr down, ready for next block column of anode
@@ -379,13 +379,13 @@ contains
 
 #if defined(SPLLT_USE_STARPU)
     ! unregister workspace handle
-    call starpu_f_data_unregister_submit(pbl%workspace%hdl)
+    call starpu_f_data_unregister_submit(fdata%workspace%hdl)
 
     ! unregister data handles
-    call spllt_deinit_task(keep, pbl)
+    call spllt_deinit_task(keep, fdata)
 
     ! do snode = 1, num_nodes
-    !    call starpu_f_void_unregister_submit(pbl%nodes(snode)%hdl)        
+    !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
     ! end do
 
     call system_clock(stf_stop_t)

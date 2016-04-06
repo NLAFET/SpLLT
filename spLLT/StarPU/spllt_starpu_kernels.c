@@ -17,20 +17,29 @@ void spllt_starpu_factorize_block_cpu_func(void *buffers[], void *cl_arg);
 struct starpu_codelet cl_factorize_block = {
   .where = STARPU_CPU,
   .cpu_funcs = {spllt_starpu_factorize_block_cpu_func, NULL},
-  .nbuffers = 1,
-  .modes = {STARPU_RW},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "FACTO_BLK"
 };
 
 void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
+                                           starpu_data_handle_t node_handle,
                                            int prio) {
    
    int ret;
 
-   ret = starpu_task_insert(&cl_factorize_block,                           
-                            STARPU_RW,	     l_handle,
-                            STARPU_PRIORITY, prio,
-                            0);
+   if (node_handle) {
+      ret = starpu_task_insert(&cl_factorize_block,                           
+                               STARPU_RW,	     l_handle,
+                               STARPU_R,	     node_handle,
+                               STARPU_PRIORITY, prio,
+                               0);
+   }
+   else {
+      ret = starpu_task_insert(&cl_factorize_block,                           
+                               STARPU_RW,	     l_handle,
+                               STARPU_PRIORITY, prio,
+                               0);
+   }
 
   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 
@@ -145,13 +154,14 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
                                           int csrc, int csrc2, int rsrc, int rsrc2,
                                           int min_width_blas,
                                           starpu_data_handle_t workspace_handle,
+                                          starpu_data_handle_t node_handle,
                                           int prio) {
 
    int ret, i, nh;
    struct starpu_data_descr *descrs;
 
    nh = 0;
-   descrs = malloc((nhlik+nhljk+2) * sizeof(struct starpu_data_descr));
+   descrs = malloc((nhlik+nhljk+3) * sizeof(struct starpu_data_descr));
 
    descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH;
    nh = nh + 1;
@@ -171,6 +181,9 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
       descrs[nh].handle = ljk_handles[i];  descrs[nh].mode = STARPU_R;
       nh = nh + 1;
    }
+
+   descrs[nh].handle = node_handle;  descrs[nh].mode = STARPU_R;
+   nh = nh + 1;   
 
    ret = starpu_task_insert(&cl_update_between,
                             STARPU_VALUE, &snode, sizeof(void *),

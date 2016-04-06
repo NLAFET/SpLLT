@@ -10,7 +10,7 @@ spllt_task_insert_time = '\[>\] \[spllt_stf_factorize\] task insert time:'
 
 blocksizes = [256, 384, 512, 768, 1024]
 
-outputdir = 'cn255_3'
+outputdir = 'cn255_4'
 
 for mat in fileinput.input():
 

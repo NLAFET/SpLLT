@@ -1,5 +1,5 @@
 module spllt_mod
-  use hsl_ma87_double, only: block_type 
+  use hsl_ma87_double, only: block_type, node_type 
   use hsl_zd11_double
 #if defined(SPLLT_USE_STARPU)
   use iso_c_binding
@@ -43,6 +43,7 @@ module spllt_mod
 
   ! node type
   type spllt_node_type
+     type(node_type), pointer :: node
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle

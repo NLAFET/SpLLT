@@ -18,7 +18,7 @@ spllt_factorization_mod.o: spllt_mod.o spllt_kernels_mod.o
 spllt_kernels_mod.o: spllt_mod.o hsl_ma87d.o 
 spllt_analyse_mod.o: spllt_utils_mod.o spllt_mod.o hsl_ma87d.o
 spllt_utils_mod.o: spllt_mod.o
-spllt_mod.o: dtdeps90.o  
+spllt_mod.o: hsl_ma87d.o dtdeps90.o  
 # spllt_starpu_kernels.o: spllt_starpu_factorization_mod.o
 
 ifneq ($(usestarpu),)

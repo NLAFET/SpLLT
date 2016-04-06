@@ -10,9 +10,9 @@ module spllt_starpu_factorization_mod
 
   ! factorize block StarPU task insert C
   interface
-     subroutine spllt_starpu_insert_factorize_block_c(l_hdl, prio) bind(C)
+     subroutine spllt_starpu_insert_factorize_block_c(l_hdl, node_hdl, prio) bind(C)
        use iso_c_binding
-       type(c_ptr), value         :: l_hdl
+       type(c_ptr), value         :: l_hdl, node_hdl
        integer(c_int), value      :: prio
      end subroutine spllt_starpu_insert_factorize_block_c
   end interface
@@ -54,11 +54,12 @@ module spllt_starpu_factorization_mod
           & csrc, csrc2, rsrc, rsrc2, &
           & min_width_blas, &
           & workspace_hdl, &
+          & node_hdl, &
           & prio) bind(C)
        use iso_c_binding
        type(c_ptr)            :: lik_hdl(*), ljk_hdl(*)
        type(c_ptr), value     :: snode, anode, a_bc
-       type(c_ptr), value     :: lij_hdl, workspace_hdl
+       type(c_ptr), value     :: lij_hdl, workspace_hdl, node_hdl
        integer(c_int), value  :: csrc, csrc2, rsrc, rsrc2
        integer(c_int), value  :: scol, dcol 
        integer(c_int), value  :: nhlik, nhljk
@@ -129,17 +130,17 @@ module spllt_starpu_factorization_mod
 contains
 
   ! factorize block StarPU task insert
-  subroutine spllt_starpu_insert_factorize_block(bc, prio)
-    use spllt_mod
-    implicit none
+  ! subroutine spllt_starpu_insert_factorize_block(bc, prio)
+  !   use spllt_mod
+  !   implicit none
 
-    type(spllt_bc_type), intent(in) :: bc ! block to be factorized    
-    integer, intent(in) :: prio
+  !   type(spllt_bc_type), intent(in) :: bc ! block to be factorized    
+  !   integer, intent(in) :: prio
 
-    call spllt_starpu_insert_factorize_block_c(bc%hdl, prio)
+  !   call spllt_starpu_insert_factorize_block_c(bc%hdl, prio)
     
-    return
-  end subroutine spllt_starpu_insert_factorize_block
+  !   return
+  ! end subroutine spllt_starpu_insert_factorize_block
 
   ! factorize block StarPU task 
   ! _potrf

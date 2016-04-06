@@ -19,7 +19,7 @@ contains
     integer, intent(inout), dimension(:) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
-    type(MA87_keep), intent(out) :: keep
+    type(MA87_keep), target, intent(out) :: keep
     type(spllt_cntl), intent(in) :: cntl
     type(MA87_info), intent(inout) :: info
 
@@ -146,6 +146,7 @@ contains
        keep%nodes(node)%sa = sptr(node)
        keep%nodes(node)%en = sptr(node+1)-1
        ! set node id 
+       fdata%nodes(node)%node => keep%nodes(node)
        fdata%nodes(node)%num = node
        
        par = sparent(node)
