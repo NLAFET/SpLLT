@@ -1,5 +1,8 @@
 def parsetrace(input_file):
 
+    start = 0
+    stopt = 0
+
     alltimes = {}
     allstatu = {}
     allbegin = {}
@@ -46,7 +49,12 @@ def parsetrace(input_file):
         elif sl[0]=='9':
             if sl[4]=='stop_profiling':
                 stopt = float(sl[1])
-     
+            elif sl[4]=='start_profiling':
+                start = float(sl[1])
+                
+    print "start: " + str(start)
+    print "stopt: " + str(stopt)
+
     # for th in alltimes:
         # if alltimes[thread].has_key('Sl'):
             # alltimes[th]['Sl'] += stopt-float(allbegin[th])
@@ -85,7 +93,7 @@ def parsetrace(input_file):
             
             if (alltimes[th].has_key('Sl')):
                 th_sl_time  = alltimes[th]['Sl']
-
+                
             #elif(argv[1]=='t'):
             #    th_ex_time = alltimes[th]['E']
             th_ov_time = th_tt_time-th_sl_time-th_ex_time
@@ -94,7 +102,6 @@ def parsetrace(input_file):
             glob_ov_time += th_ov_time
             glob_sl_time += th_sl_time
             # print th,' ',th_ex_time/th_tt_time,th_sl_time/th_tt_time,th_ov_time/th_tt_time
-
         # else:
         #     print th
     # print '\nGlobal: ',glob_ex_time/glob_tt_time,glob_sl_time/glob_tt_time,glob_ov_time/glob_tt_time

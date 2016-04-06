@@ -82,7 +82,9 @@ contains
     integer :: start_t, stop_t, rate_t
     integer :: stf_start_t, stf_stop_t, stf_rate_t
     integer :: start_nosub_t, rate_nosub_t
+    integer :: start_setup_t, stop_setup_t, rate_setup_t
     ! call system_clock(start_t, rate_t)
+    call system_clock(start_setup_t, rate_setup_t)
 
     ! call factorize_posdef(n, val, order, keep, control, info, 0, 0, soln)
 
@@ -142,6 +144,8 @@ contains
     call starpu_f_pause()
 #endif
 
+    call system_clock(stop_setup_t)
+    write(*,'("[>] [spllt_stf_factorize] setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
     call system_clock(stf_start_t, stf_rate_t)
 
     ! factorize nodes
