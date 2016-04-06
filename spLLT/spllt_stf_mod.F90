@@ -83,6 +83,7 @@ contains
     integer :: stf_start_t, stf_stop_t, stf_rate_t
     integer :: start_nosub_t, rate_nosub_t
     integer :: start_setup_t, stop_setup_t, rate_setup_t
+    integer :: start_cpya2l_t, stop_cpya2l_t, rate_cpya2l_t
     ! call system_clock(start_t, rate_t)
     call system_clock(start_setup_t, rate_setup_t)
 
@@ -126,7 +127,9 @@ contains
     allocate(colmap(n),stat=st)
     if(st.ne.0) go to 10
 
+    call system_clock(start_cpya2l_t, rate_cpya2l_t)
     call copy_a_to_l(n,num_nodes,val,map,keep)
+    call system_clock(stop_cpya2l_t)
 
     ! init facto    
 
@@ -145,7 +148,8 @@ contains
 #endif
 
     call system_clock(stop_setup_t)
-    write(*,'("[>] [spllt_stf_factorize] setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
+    write(*,'("[>] [spllt_stf_factorize] cpy a2l time: ", es10.3, " s")') (stop_cpya2l_t - start_cpya2l_t)/real(rate_cpya2l_t)
+    write(*,'("[>] [spllt_stf_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
     call system_clock(stf_start_t, stf_rate_t)
 
     ! factorize nodes
