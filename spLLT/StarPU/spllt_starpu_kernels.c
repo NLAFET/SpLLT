@@ -331,7 +331,8 @@ struct starpu_codelet cl_init_node = {
 
 void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle, 
                                    int snode, int n,
-                                   void *val, void *map, void *keep) {
+                                   void *val, void *map, void *keep, 
+                                   int prio) {
    
    
    int ret;
@@ -343,6 +344,7 @@ void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle,
                             STARPU_VALUE, &map, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
                             STARPU_RW, node_handle,
+                            STARPU_PRIORITY, prio,
                             0);
 
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");

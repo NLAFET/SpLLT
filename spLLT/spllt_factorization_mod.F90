@@ -380,7 +380,7 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task(node, n, val, map, keep)
+  subroutine spllt_init_node_task(node, n, val, map, keep, prio)
     use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -397,18 +397,26 @@ contains
      ! map(i) is set to its local row index
     type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
      ! into relevant part of keep%lfact
+    integer, optional :: prio 
 
 #if defined(SPLLT_USE_STARPU)
+    integer :: p
     type(c_ptr) :: val_c, map_c, keep_c
 #endif
 
+    if (present(prio)) then
+       p = prio
+    else
+       p = 0
+    end if
 
 #if defined(SPLLT_USE_STARPU)
     val_c  = c_loc(val(1)) 
     map_c  = c_loc(map(1)) 
     keep_c = c_loc(keep)
 
-    call spllt_insert_init_node_task_c(node%hdl, node%num, n, val_c, map_c, keep_c)
+    call spllt_insert_init_node_task_c(node%hdl, &
+         & node%num, n, val_c, map_c, keep_c, p)
 #else
     call spllt_init_node(node%num, n, val, map, keep)
 #endif

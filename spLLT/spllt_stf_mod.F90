@@ -144,7 +144,7 @@ contains
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
-       call spllt_init_node_task(pbl%nodes(snode), n, val, map, keep)
+       call spllt_init_node_task(pbl%nodes(snode), n, val, map, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
 #if defined(SPLLT_USE_STARPU)
@@ -383,6 +383,10 @@ contains
 
     ! unregister data handles
     call spllt_deinit_task(keep, pbl)
+
+    ! do snode = 1, num_nodes
+    !    call starpu_f_void_unregister_submit(pbl%nodes(snode)%hdl)        
+    ! end do
 
     call system_clock(stf_stop_t)
     write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)

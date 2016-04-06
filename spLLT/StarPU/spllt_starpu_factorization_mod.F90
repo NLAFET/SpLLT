@@ -109,10 +109,10 @@ module spllt_starpu_factorization_mod
 
   ! init node StarPU task insert
   interface
-     subroutine spllt_insert_init_node_task_c(hdl, snode, n, val, map, keep) bind(C)
+     subroutine spllt_insert_init_node_task_c(hdl, snode, n, val, map, keep, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: hdl
-       integer(c_int), value  :: snode, n
+       integer(c_int), value  :: snode, n, prio
        type(c_ptr), value     :: val, map, keep
      end subroutine spllt_insert_init_node_task_c
   end interface
