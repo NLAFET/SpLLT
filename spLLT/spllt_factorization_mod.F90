@@ -54,17 +54,18 @@ contains
     ! call spllt_starpu_insert_factorize_block(bc, p)
 #elif defined(SPLLT_USE_OMP)
 
+!$omp task private(blk, m, n, bcol, sa) shared(lfact) depend(inout:bc)
     blk => bc%blk
 
     m    = blk%blkm
     n    = blk%blkn
-    id   = blk%id 
     bcol = blk%bcol
 
     sa   = blk%sa
 
 ! !$omp task depend(inout:bc%c(1))
-!$omp task
+! !$omp task private(m, n)
+
     call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
 !$omp end task
 
@@ -120,23 +121,21 @@ contains
     ! call spllt_starpu_insert_solve_block(bc_kk, bc_ik, 0)
 
 #elif defined(SPLLT_USE_OMP)
-    
+
+!$omp task private(m, n, bcol, sa, d_m, d_n, d_sa) shared(lfact) depend(in:bc_kk) depend(inout:bc_ik)
     ! bc_kk
     d_m  = bc_kk%blk%blkm
     d_n  = bc_kk%blk%blkn
     d_sa = bc_kk%blk%sa
-    d_id = bc_kk%blk%id
 
     ! bc_ik
     n  = bc_ik%blk%blkn
     m  = bc_ik%blk%blkm
     sa = bc_ik%blk%sa
-    id = bc_ik%blk%id
     
     ! bcol is block column that blk and dblk belong to
     bcol = bc_kk%blk%bcol    
 
-!$omp task
     call spllt_solve_block(m, n, &
          & lfact(bcol)%lcol(sa:sa+n*m-1), & 
          & lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m))
@@ -193,6 +192,9 @@ contains
     integer :: n1, m1, sa1, n2, m2, sa2, n, m, sa
     integer :: bcol1, bcol, bcol2
     integer :: p, d
+#if defined(SPLLT_USE_OMP)
+    logical :: is_diag
+#endif
 
     if (present(prio)) then
        p = prio
@@ -208,6 +210,46 @@ contains
     end if
 
     call spllt_starpu_insert_update_block_c(bc_ik%hdl, bc_jk%hdl, bc_ij%hdl, d, p)
+#elif defined(SPLLT_USE_OMP)
+
+!$omp task private(n1, m1, sa1, bcol1, n2, m2, sa2, bcol2, is_diag, &
+!$omp              & n, m, sa, bcol) shared(lfact) & 
+!$omp              & depend(in:bc_ik, bc_jk) depend(inout: bc_ij)
+
+    ! bc_ik
+    n1  = bc_ik%blk%blkn
+    m1  = bc_ik%blk%blkm
+    sa1 = bc_ik%blk%sa
+    bcol1 = bc_ik%blk%bcol
+
+    ! bc_jk
+    n2  = bc_jk%blk%blkn
+    m2  = bc_jk%blk%blkm
+    sa2 = bc_jk%blk%sa
+    bcol2 = bc_jk%blk%bcol
+
+    ! bc_ij
+    n  = bc_ij%blk%blkn
+    m  = bc_ij%blk%blkm
+    sa = bc_ij%blk%sa
+
+    bcol = bc_ij%blk%bcol
+
+    ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
+    ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
+    ! write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n
+
+    ! write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
+    ! write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1
+    is_diag = bc_ij%blk%dblk.eq.bc_ij%blk%id 
+
+    call spllt_update_block(m, n, &
+         & lfact(bcol)%lcol(sa:sa+n*m-1), &
+         & is_diag, n1, &
+         & lfact(bcol1)%lcol(sa2:sa2+n1*m2-1), &
+         & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1))
+!$omp end task
+
 #else
 
     ! bc_ik
@@ -310,6 +352,12 @@ contains
     type(c_ptr) :: snode_c, anode_c, a_bc_c
 #endif
 
+#if defined(SPLLT_USE_OMP)
+    type(block_type), pointer :: a_blk ! block to be updated
+    integer, dimension(:), allocatable  :: rlst, clst
+    real(wp), dimension(:), pointer  :: work
+#endif
+
     if (present(prio)) then
        p = prio
     else
@@ -394,6 +442,49 @@ contains
     deallocate(ljk_handles)
     deallocate(lik_handles)
     
+#elif defined(SPLLT_USE_OMP)
+
+
+!$omp task private(m, n, sa, csrc, csrc2, rsrc, rsrc2) &
+!$omp    & firstprivate(n1, dcol, scol) &    
+!$omp    & shared(lfact, control) depend(inout:a_bc)
+    m  = a_bc%blk%blkm
+    n  = a_bc%blk%blkn
+    sa = a_bc%blk%sa
+    
+    ! write(*,*) "update_between_task"
+    ! call update_between(m, n, id, anode, &
+    !      & n1, id1, snode, &
+    !      & lfact(bcol)%lcol(sa:sa+m*n-1), &
+    !      & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
+    !      & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
+    !      & blocks, row_list, col_list, buffer, &
+    !      & control, info, st)
+
+    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
+    csrc2 = (cptr2 - cptr + 1)*n1
+
+    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
+    rsrc2 = (rptr2 - rptr + 1)*n1
+
+    a_blk => a_bc%blk
+
+    allocate(work(m*n))
+    allocate(rlst(1), clst(1))
+
+    call spllt_update_between(m, n, a_blk, dcol, anode%node, &
+         & n1, scol, snode, &
+         & lfact(bcol)%lcol(sa:sa+m*n-1), &
+         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
+         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
+         & rlst, clst, work, &
+         & control%min_width_blas)
+
+    deallocate(work)
+    deallocate(rlst, clst)
+
+!$omp end task
+    
 #else
     
     m  = a_bc%blk%blkm
@@ -453,6 +544,9 @@ contains
 #if defined(SPLLT_USE_STARPU)
     type(c_ptr) :: val_c, map_c, keep_c
 #endif
+#if defined(SPLLT_USE_OMP)
+    integer :: snum
+#endif
 
     if (present(prio)) then
        p = prio
@@ -469,10 +563,13 @@ contains
          & node%num, n, val_c, map_c, keep_c, p)
 #elif defined(SPLLT_USE_OMP)
 
-!$omp task
-    call spllt_init_node(node%num, n, val, map, keep)
-!$omp end task
+! !$omp task default(shared) private(snum) shared(n, val, map, keep)
+!$omp task private(snum) shared(n, val, map, keep) 
+    snum = node%num
 
+    call spllt_init_node(snum, n, val, map, keep)
+!$omp end task
+! !$omp taskwait
 #else
     call spllt_init_node(node%num, n, val, map, keep)
 #endif

@@ -221,9 +221,9 @@ contains
 
           call spllt_factorize_block_task(fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
 
-#if defined(SPLLT_USE_OMP)
-!$omp taskwait
-#endif
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
 
 ! #if defined(SPLLT_USE_STARPU)
          ! call starpu_f_task_wait_for_all()
@@ -240,9 +240,9 @@ contains
              call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,prio+2)
           end do
 
-#if defined(SPLLT_USE_OMP)
-!$omp taskwait
-#endif
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
 
 ! #if defined(SPLLT_USE_STARPU)
 !          call starpu_f_task_wait_for_all()
@@ -275,6 +275,10 @@ contains
 ! #if defined(SPLLT_USE_STARPU)
 !           call starpu_f_task_wait_for_all()
 ! #endif
+
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
 
           ! map update between current block column and ancestors
           ! rsrc = 0
