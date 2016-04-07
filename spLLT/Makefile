@@ -21,8 +21,8 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 # SPLLT_STARPU_NOSUB: wait for all the tasks to be submitted to StarPU
 # before starting the factorization
 
-#DEFS =
-DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
+DEFS = -DSPLLT_USE_OMP
+#DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
@@ -70,6 +70,9 @@ include Makefile.rules.inc
 spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+spllt_omp_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
 spllt_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
@@ -93,6 +96,7 @@ dtdeps90.f90: $(DTDEPS90)
 
 clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
+	-rm -f spllt_omp_test
 	-rm -f run_ma87
 	-rm -f *.o *.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90

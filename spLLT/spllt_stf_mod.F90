@@ -151,8 +151,9 @@ contains
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
+#if defined(SPLLT_USE_STARPU)
        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
-
+#endif
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
 
@@ -164,6 +165,10 @@ contains
 ! #if defined(SPLLT_USE_STARPU)
 !     call starpu_f_task_wait_for_all()
 ! #endif
+
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
 
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
@@ -216,6 +221,10 @@ contains
 
           call spllt_factorize_block_task(fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
 
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
+
 ! #if defined(SPLLT_USE_STARPU)
          ! call starpu_f_task_wait_for_all()
 ! #endif
@@ -230,6 +239,10 @@ contains
 
              call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,prio+2)
           end do
+
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
 
 ! #if defined(SPLLT_USE_STARPU)
 !          call starpu_f_task_wait_for_all()

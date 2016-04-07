@@ -52,6 +52,22 @@ contains
     call spllt_starpu_insert_factorize_block_c(bc%hdl, node_hdl, p)
 
     ! call spllt_starpu_insert_factorize_block(bc, p)
+#elif defined(SPLLT_USE_OMP)
+
+    blk => bc%blk
+
+    m    = blk%blkm
+    n    = blk%blkn
+    id   = blk%id 
+    bcol = blk%bcol
+
+    sa   = blk%sa
+
+! !$omp task depend(inout:bc%c(1))
+!$omp task
+    call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
+!$omp end task
+
 #else    
 
     blk => bc%blk
@@ -102,6 +118,30 @@ contains
 #if defined(SPLLT_USE_STARPU)    
     call spllt_starpu_insert_solve_block_c(bc_kk%hdl, bc_ik%hdl, p)
     ! call spllt_starpu_insert_solve_block(bc_kk, bc_ik, 0)
+
+#elif defined(SPLLT_USE_OMP)
+    
+    ! bc_kk
+    d_m  = bc_kk%blk%blkm
+    d_n  = bc_kk%blk%blkn
+    d_sa = bc_kk%blk%sa
+    d_id = bc_kk%blk%id
+
+    ! bc_ik
+    n  = bc_ik%blk%blkn
+    m  = bc_ik%blk%blkm
+    sa = bc_ik%blk%sa
+    id = bc_ik%blk%id
+    
+    ! bcol is block column that blk and dblk belong to
+    bcol = bc_kk%blk%bcol    
+
+!$omp task
+    call spllt_solve_block(m, n, &
+         & lfact(bcol)%lcol(sa:sa+n*m-1), & 
+         & lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m))
+!$omp end task
+
 #else    
 
     ! bc_kk
@@ -409,8 +449,8 @@ contains
      ! into relevant part of keep%lfact
     integer, optional :: prio 
 
-#if defined(SPLLT_USE_STARPU)
     integer :: p
+#if defined(SPLLT_USE_STARPU)
     type(c_ptr) :: val_c, map_c, keep_c
 #endif
 
@@ -427,6 +467,12 @@ contains
 
     call spllt_insert_init_node_task_c(node%hdl, &
          & node%num, n, val_c, map_c, keep_c, p)
+#elif defined(SPLLT_USE_OMP)
+
+!$omp task
+    call spllt_init_node(node%num, n, val, map, keep)
+!$omp end task
+
 #else
     call spllt_init_node(node%num, n, val, map, keep)
 #endif

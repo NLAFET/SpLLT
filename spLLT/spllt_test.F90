@@ -147,6 +147,9 @@ contains
     write(*,'("[>] [spllt_test_mat] StarPU init time: ", es10.3, " s")') &
          &(stop_starpuinit_t - start_starpuinit_t)/real(rate_starpuinit_t)
     call starpu_f_fxt_start_profiling()
+#elif defined(SPLLT_USE_OMP)
+!$omp parallel num_threads(cntl%ncpu)
+!$omp master
 #endif
 
     write(*,'("[>] factorize")')
@@ -161,6 +164,8 @@ contains
     ! wait for task completion
     call starpu_f_task_wait_for_all()
     call starpu_f_fxt_stop_profiling()
+#elif defined(SPLLT_USE_OMP)
+!$omp taskwait
 #endif
 
     if(info%flag .lt. spllt_success) then
@@ -175,6 +180,9 @@ contains
     call system_clock(stop_starpushutdown_t)
     write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
          &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
+#elif defined(SPLLT_USE_OMP)
+!$omp end master
+!$omp end parallel
 #endif
 
     write(*,'("[>] solve")')
