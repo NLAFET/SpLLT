@@ -29,18 +29,17 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
 
    if (node_handle) {
       ret = starpu_task_insert(&cl_factorize_block,                           
-                               STARPU_RW,	     l_handle,
-                               STARPU_R,	     node_handle,
+                               STARPU_RW,	l_handle,
+                               STARPU_R,	node_handle,
                                STARPU_PRIORITY, prio,
                                0);
    }
    else {
       ret = starpu_task_insert(&cl_factorize_block,                           
-                               STARPU_RW,	     l_handle,
+                               STARPU_RW,	l_handle,
                                STARPU_PRIORITY, prio,
                                0);
    }
-
   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 
   return;
@@ -356,7 +355,7 @@ void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle,
                             STARPU_VALUE, &val, sizeof(void*),
                             STARPU_VALUE, &map, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
-                            STARPU_RW, node_handle,
+                            STARPU_W, node_handle,
                             STARPU_PRIORITY, prio,
                             0);
 

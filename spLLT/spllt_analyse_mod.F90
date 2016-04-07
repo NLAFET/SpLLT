@@ -236,6 +236,11 @@ contains
     allocate(keep%blocks(keep%final_blk),stat=st)
     if(st.ne.0) go to 9999
 
+    ! allocate blocks in fdata
+    ! deallocate(fdata%bc,stat=st)
+    ! allocate(fdata%bc(keep%final_blk),stat=st)
+    ! if(st.ne.0) go to 9999
+
     ! Loop over the nodes. Number the blocks in the first node
     ! contiguously, then those in the second node, and so on.
     ! Each node has a number of block columns; the blocks within

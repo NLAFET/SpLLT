@@ -12,6 +12,7 @@ contains
     use iso_c_binding
     use starpu_f_mod
 #endif
+    use spllt_kernels_mod, only : spllt_activate_node
     implicit none
     
     integer, intent(in) :: n ! order of A
@@ -113,7 +114,17 @@ contains
     ! TODO to be done at analyse?
     ! init factorization
     ! call spllt_factorization_init(keep, data)
-    call spllt_init_lfact(keep, fdata)
+
+    deallocate (keep%lfact,stat=st)
+    allocate (keep%lfact(keep%nbcol),stat=st)
+    if(st.ne.0) go to 10
+
+    ! allocate blocks 
+    deallocate (fdata%bc,stat=st)
+    allocate(fdata%bc(keep%final_blk),stat=st)
+    if(st.ne.0) go to 10
+
+    ! call spllt_init_lfact(keep, fdata)
 
     !
     ! Copy matrix values across from a into keep%lfact
@@ -128,10 +139,6 @@ contains
     ! init facto    
 
 #if defined(SPLLT_USE_STARPU)
-
-    do snode = 1, num_nodes
-       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)        
-    end do
     
     ! register workspace handle
     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
@@ -144,12 +151,19 @@ contains
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+
+       ! activate node: allocate factors, register handles
+       call spllt_activate_node(snode, keep, fdata)
+
+       ! init node
        call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
+
     end do
     ! call system_clock(stop_cpya2l_t)
-! #if defined(SPLLT_USE_STARPU)
-!     call starpu_f_task_wait_for_all()
-! #endif
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all()
+#endif
 
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
@@ -541,13 +555,6 @@ contains
     integer :: ptr
 
     num_nodes = keep%info%num_nodes
-
-    deallocate (keep%lfact,stat=st)
-    allocate (keep%lfact(keep%nbcol),stat=st)
-    ! TODO trace error
-
-    ! allocate blocks 
-    allocate(pbl%bc(keep%final_blk))
 
     blk = 1
     nbcol = 0
