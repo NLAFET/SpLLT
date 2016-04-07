@@ -161,9 +161,9 @@ contains
 
     end do
     ! call system_clock(stop_cpya2l_t)
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_task_wait_for_all()
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif
 
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
