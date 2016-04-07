@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# list loaded modules
+module list
+
 for matrix in `cat list.matrix`
 do
     matname=`echo $matrix | sed -e 's/\//_/g'`
