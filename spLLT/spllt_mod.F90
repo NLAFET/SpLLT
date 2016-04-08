@@ -74,7 +74,11 @@ module spllt_mod
   ! problem data (factorization)
   type spllt_data_type
      type(spllt_bc_type), allocatable :: bc(:) ! blocks
+#if defined(SPLLT_USE_OMP)
+     type(spllt_bc_type), allocatable :: workspace(:) ! workspaces
+#else
      type(spllt_bc_type) :: workspace ! workspaces
+#endif
      type(spllt_node_type), allocatable :: nodes(:) ! super nodes 
   end type spllt_data_type
 

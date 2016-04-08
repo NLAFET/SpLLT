@@ -11,6 +11,8 @@ contains
 #if defined(SPLLT_USE_STARPU) 
     use iso_c_binding
     use starpu_f_mod
+#elif defined(SPLLT_USE_OMP)
+!$ use omp_lib
 #endif
     use spllt_kernels_mod, only : spllt_activate_node
     implicit none
@@ -78,6 +80,8 @@ contains
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
     integer(c_int) :: ret
+#elif defined(SPLLT_USE_OMP)
+    integer :: nt
 #endif
     ! timing
     integer :: start_t, stop_t, rate_t
@@ -143,6 +147,14 @@ contains
     ! register workspace handle
     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+#elif defined(SPLLT_USE_OMP)
+
+    nt = omp_get_num_threads()
+    allocate(fdata%workspace(0:nt-1))
+
+    do i=0,nt-1
+       allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
+    end do
 #else
     allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
     if(st.ne.0) goto 10
@@ -276,9 +288,9 @@ contains
 !           call starpu_f_task_wait_for_all()
 ! #endif
 
-#if defined(SPLLT_USE_OMP)
-!$omp taskwait
-#endif
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
 
           ! map update between current block column and ancestors
           ! rsrc = 0
@@ -404,7 +416,16 @@ contains
           ! move to next block column in snode
           dblk = blocks(dblk)%last_blk + 1
           ! numrow = numrow - s_nb
+
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
+
        end do
+
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
 
     end do
 
