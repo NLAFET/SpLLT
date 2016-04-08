@@ -41,6 +41,7 @@ contains
     type(c_ptr) :: node_hdl
 #elif defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol
+    real(wp), dimension(:), pointer :: bc_c
 #endif
 
     if (present(prio)) then
@@ -60,8 +61,15 @@ contains
     ! call spllt_starpu_insert_factorize_block(bc, p)
 #elif defined(SPLLT_USE_OMP)
 
-
+    bc_c => bc%c
     blk => bc%blk
+    
+!$omp task private(m, n, sa, bcol, bc, lcol) &
+!$omp    & firstprivate(blk, bc_c) &
+!$omp    & shared(lfact) &
+!$omp    & depend(inout:bc_c)
+! !$omp    & depend(inout:lcol(sa:n*m-1))
+
     bcol = blk%bcol
     lcol => lfact(bcol)%lcol
 
@@ -69,11 +77,7 @@ contains
     n    = blk%blkn
     sa   = blk%sa
 
-!$omp task firstprivate(m, n, sa, blk, bcol, lcol) &
-!$omp    & shared(lfact) &
-!$omp    & depend(inout:lcol(sa:n*m-1))
-! !$omp    & depend(inout:bc)
-
+    ! write(*,*)"bcol: ", bcol
     call spllt_factor_diag_block(m, n, lcol(sa:sa+n*m-1))
 !$omp end task
 
@@ -123,6 +127,7 @@ contains
     integer :: p
 #if defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol
+    real(wp), dimension(:), pointer :: bc_kk_c, bc_ik_c
 #endif
 
     if (present(prio)) then
@@ -136,6 +141,19 @@ contains
     ! call spllt_starpu_insert_solve_block(bc_kk, bc_ik, 0)
 
 #elif defined(SPLLT_USE_OMP)
+    
+    bc_kk_c => bc_kk%c
+    bc_ik_c => bc_ik%c
+    
+!$omp task private(m, n, sa, d_m, d_n, d_sa) &
+!$omp    & firstprivate(bc_kk, bc_ik) & 
+!$omp    & firstprivate(bc_kk_c, bc_ik_c) & 
+!$omp    & private(lcol, bcol) &
+!$omp    & shared(lfact) &
+!$omp    & depend(in:bc_kk_c) &
+!$omp    & depend(inout:bc_ik_c)
+! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
+! !$omp    & depend(inout:lcol(sa:n*m-1))
 
     ! bcol is block column that blk and dblk belong to
     bcol = bc_kk%blk%bcol    
@@ -151,12 +169,6 @@ contains
     m  = bc_ik%blk%blkm
     sa = bc_ik%blk%sa
 
-!$omp task firstprivate(bcol, m, n, sa, d_m, d_n, d_sa) &
-!$omp    & firstprivate(lcol) & 
-!$omp    & shared(lfact) &
-!$omp    & depend(inout:lcol(sa:n*m-1)) & 
-!$omp    & depend(in:lcol(d_sa:d_n*d_m))
-    
     call spllt_solve_block(m, n, &
          & lcol(sa:sa+n*m-1), & 
          & lcol(d_sa:d_sa+d_n*d_m))
@@ -220,6 +232,7 @@ contains
 #if defined(SPLLT_USE_OMP)
     logical :: is_diag
     real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
+    real(wp), dimension(:), pointer :: bc_ik_c, bc_jk_c, bc_ij_c
 #endif
 
     if (present(prio)) then
@@ -238,7 +251,22 @@ contains
     call spllt_starpu_insert_update_block_c(bc_ik%hdl, bc_jk%hdl, bc_ij%hdl, d, p)
 #elif defined(SPLLT_USE_OMP)
 
-    ! bc_ik
+    bc_ik_c => bc_ik%c
+    bc_jk_c => bc_jk%c
+    bc_ij_c => bc_ij%c
+    
+!$omp task private(n1, m1, sa1, bcol1, n2, m2, sa2, bcol2, &
+!$omp    & n, m, sa, bcol, lcol, lcol1) shared(lfact) &
+!$omp    & private(is_diag) &
+!$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
+!$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
+!$omp    & depend(in:bc_ik_c, bc_jk_c) &
+!$omp    & depend(inout: bc_ij_c)
+! !$omp    & depend(in:lcol1(sa1:n1*m1-1)) &
+! !$omp    & depend(in:lcol2(sa2:n1*m2-1)) &
+! !$omp    & depend(inout: lcol(sa:n*m-1))
+
+        ! bc_ik
     n1  = bc_ik%blk%blkn
     m1  = bc_ik%blk%blkm
     sa1 = bc_ik%blk%sa
@@ -260,15 +288,6 @@ contains
     lcol => lfact(bcol)%lcol
 
     is_diag = bc_ij%blk%dblk.eq.bc_ij%blk%id 
-
-!$omp task firstprivate(n1, m1, sa1, bcol1, n2, m2, sa2, bcol2, is_diag, &
-!$omp    & n, m, sa, bcol, lcol, lcol1) shared(lfact) & 
-!$omp    & depend(in:lcol1(sa1:n1*m1-1)) &
-!$omp    & depend(in:lcol2(sa2:n1*m2-1)) & 
-!$omp    & depend(inout: lcol(sa:n*m-1))
-! !$omp    & depend(in:bc_ik, bc_jk) &
-! !$omp    & depend(inout: bc_ij)
-
 
     ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
     ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
@@ -357,12 +376,14 @@ contains
     integer, dimension(:), allocatable  :: row_list, col_list
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), allocatable :: workspace(:)
+    type(spllt_bc_type), target      :: bcs(:) ! block info.
 #else
-    type(spllt_bc_type) :: workspace
+    type(spllt_bc_type)              :: workspace
+    type(spllt_bc_type)              :: bcs(:) ! block info.
 #endif
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)      :: blocks ! block info. 
-    type(spllt_bc_type), dimension(:)      :: bcs ! block info.
+
 #if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
@@ -402,6 +423,8 @@ contains
     integer, dimension(:), allocatable  :: rlst, clst
     integer :: th_id
     integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
+    ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    real(wp), dimension(:), pointer :: a_bc_c, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
 #endif
 
     if (present(prio)) then
@@ -490,14 +513,6 @@ contains
     
 #elif defined(SPLLT_USE_OMP)
 
-    lcol1 => lfact(bcol1)%lcol
-    lcol  => lfact(bcol)%lcol
-
-    th_id = omp_get_thread_num()
-    ! write(*,*)"thread id: ", th_id
-    m  = a_bc%blk%blkm
-    n  = a_bc%blk%blkn
-    sa = a_bc%blk%sa
 
     ! ! lik
     ! blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
@@ -513,19 +528,13 @@ contains
     !      & blocks, row_list, col_list, buffer, &
     !      & control, info, st)
 
-    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
-    csrc2 = (cptr2 - cptr + 1)*n1
-
-    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
-    rsrc2 = (rptr2 - rptr + 1)*n1
-
-    a_blk => a_bc%blk
-
     dblk = dbc%blk%id
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
     blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
     nb_blk = blk_en-blk_sa+1
+    bc_jk_sa => bcs(blk_sa)%c
+    bc_jk_en => bcs(blk_en)%c
     ! write(*,*) "nb_blk: ", nb_blk
     ! write(*,*) "nb_blk:", nb_blk, "blk_sa: ", blk_sa, ", blk_en: ", blk_en
     csrc_sa = blocks(blk_sa)%sa
@@ -538,23 +547,51 @@ contains
     blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
     blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
     nb_blk = blk_en-blk_sa+1
+    bc_ik_sa => bcs(blk_sa)%c
+    bc_ik_en => bcs(blk_en)%c
 
     rsrc_sa = blocks(blk_sa)%sa
     rsrc_en = blocks(blk_en)%sa
 
-!$omp task firstprivate(m, n, sa, csrc, csrc2, rsrc, rsrc2, &
-!$omp    & bcol, bcol1, rlst, clst, a_bc, a_blk, lcol, lcol1, &
-!$omp    & n1, dcol, scol, snode, anode, csrc_sa, csrc_en, &
-!$omp    & rsrc_sa, rsrc_en) &    
-!$omp    & private(th_id) &    
-!$omp    & shared(workspace, control) &
-!$omp    & depend(inout:lcol(sa:m*n-1)) &
-!$omp    & depend(in:lcol1(csrc_sa:1), lcol1(csrc_en:1)) &
-!$omp    & depend(in:lcol1(rsrc_sa:1), lcol1(rsrc_en:1))
-! !$omp    & depend(inout:a_bc)
+    a_bc_c => a_bc%c
+    
+!$omp task firstprivate(dbc, rlst, clst, cptr, cptr2, rptr, rptr2, &
+!$omp    & dcol, scol, snode, anode) &    
+!$omp    & firstprivate(a_bc, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en) &
+!$omp    & private(lcol, lcol1, m, n, sa, th_id, bcol, bcol1, &
+!$omp    & a_blk, s_nb, n1) &    
+!$omp    & shared(workspace, control, lfact) &
+!$omp    & depend(inout:a_bc_c) &
+!$omp    & depend(in:bc_jk_sa, bc_jk_en) &
+!$omp    & depend(in:bc_ik_sa, bc_ik_en)
+! !$omp    & depend(inout:lcol(sa:m*n-1)) &
+! !$omp    & depend(in:lcol1(csrc_sa:1), lcol1(csrc_en:1)) &
+! !$omp    & depend(in:lcol1(rsrc_sa:1), lcol1(rsrc_en:1))
+
+    s_nb = snode%nb    ! block size in source node
+    n1  = dbc%blk%blkn ! width of column
+    
+    bcol1 = dbc%blk%bcol
+    bcol  = a_bc%blk%bcol
+
+    lcol1 => lfact(bcol1)%lcol
+    lcol  => lfact(bcol)%lcol
+
+    ! write(*,*)"thread id: ", th_id
+    m  = a_bc%blk%blkm
+    n  = a_bc%blk%blkn
+    sa = a_bc%blk%sa
 
     th_id = omp_get_thread_num()
     ! write(*,*)"thread id: ", th_id
+
+    a_blk => a_bc%blk
+
+    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
+    csrc2 = (cptr2 - cptr + 1)*n1
+
+    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
+    rsrc2 = (rptr2 - rptr + 1)*n1
 
     allocate(rlst(1), clst(1))
 

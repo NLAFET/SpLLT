@@ -21,6 +21,7 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 # SPLLT_STARPU_NOSUB: wait for all the tasks to be submitted to StarPU
 # before starting the factorization
 
+# DEFS =
 DEFS = -DSPLLT_USE_OMP
 #DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 

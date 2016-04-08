@@ -227,6 +227,10 @@ contains
        ! Loop over the block columns in node. 
        do kk = 1, nc
 
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
+          
           ! A_kk          
           ! bc_kk => keep%blocks(dblk)
           bc_kk => fdata%bc(dblk)
@@ -410,7 +414,7 @@ contains
                 cptr = cptr2 + 1
              end do bcols
           
-             a_num = anode%parent             
+             a_num = anode%parent
           end do
           
           ! move to next block column in snode
@@ -423,9 +427,9 @@ contains
 
        end do
 
-#if defined(SPLLT_USE_OMP)
-!$omp taskwait
-#endif
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
 
     end do
 
@@ -439,17 +443,21 @@ contains
     ! do snode = 1, num_nodes
     !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
     ! end do
+#endif
 
     call system_clock(stf_stop_t)
     write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)
 
-#if defined(SPLLT_STARPU_NOSUB)
+#if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call system_clock(start_nosub_t, rate_nosub_t)
     call starpu_f_resume()
     ! wait for task completion
     call starpu_f_task_wait_for_all()
 #endif
-#endif
+
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
 
     call system_clock(stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
