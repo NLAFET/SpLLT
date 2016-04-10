@@ -160,18 +160,19 @@ contains
     if(st.ne.0) goto 10
 #endif
 
-    ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
-    ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
 #endif
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
-
+    end do
+    
+    ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
+    ! call copy_a_to_l(n,num_nodes,val,map,keep)
+    do snode = 1, num_nodes ! loop over nodes
        ! init node
        call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
-
     end do
     ! call system_clock(stop_cpya2l_t)
 ! #if defined(SPLLT_USE_STARPU)
