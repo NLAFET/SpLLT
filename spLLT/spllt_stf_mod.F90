@@ -124,11 +124,11 @@ contains
     if(st.ne.0) go to 10
 
     ! allocate blocks 
-    deallocate (fdata%bc,stat=st)
-    allocate(fdata%bc(keep%final_blk),stat=st)
-    if(st.ne.0) go to 10
+    ! deallocate (fdata%bc,stat=st)
+    ! allocate(fdata%bc(keep%final_blk),stat=st)
+    ! if(st.ne.0) go to 10
 
-    call spllt_init_lfact(keep, fdata)
+    ! call spllt_init_lfact(keep, fdata)
 
     !
     ! Copy matrix values across from a into keep%lfact
@@ -161,9 +161,10 @@ contains
 #endif
 
     do snode = 1, num_nodes ! loop over nodes
-! #if defined(SPLLT_USE_STARPU)
-!        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
-! #endif
+#if defined(SPLLT_USE_STARPU)
+       ! TODO put in activate routine
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+#endif
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
     end do
@@ -171,9 +172,9 @@ contains
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
-#if defined(SPLLT_USE_STARPU)
-       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+! #endif
        ! init node
        call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
     end do

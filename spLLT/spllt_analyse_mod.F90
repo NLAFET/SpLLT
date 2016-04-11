@@ -237,8 +237,8 @@ contains
     if(st.ne.0) go to 9999
 
     ! allocate blocks in fdata
-    ! deallocate(fdata%bc,stat=st)
-    ! allocate(fdata%bc(keep%final_blk),stat=st)
+    deallocate(fdata%bc,stat=st)
+    allocate(fdata%bc(keep%final_blk),stat=st)
     ! if(st.ne.0) go to 9999
 
     ! Loop over the nodes. Number the blocks in the first node

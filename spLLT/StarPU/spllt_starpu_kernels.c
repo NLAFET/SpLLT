@@ -180,7 +180,7 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
       descrs[nh].handle = ljk_handles[i];  descrs[nh].mode = STARPU_R;
       nh = nh + 1;
    }
-
+   /* printf("node_handle: %p\n", node_handle); */
    descrs[nh].handle = node_handle;  descrs[nh].mode = STARPU_R;
    nh = nh + 1;   
 
