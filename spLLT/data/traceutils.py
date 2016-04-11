@@ -52,8 +52,8 @@ def parsetrace(input_file):
             elif sl[4]=='start_profiling':
                 start = float(sl[1])
                 
-    print "start: " + str(start)
-    print "stopt: " + str(stopt)
+    # print "[parsetrace] start: " + str(start)
+    # print "[parsetrace] stopt: " + str(stopt)
 
     # for th in alltimes:
         # if alltimes[thread].has_key('Sl'):

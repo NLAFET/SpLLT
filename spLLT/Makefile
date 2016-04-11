@@ -20,10 +20,11 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 
 # SPLLT_STARPU_NOSUB: wait for all the tasks to be submitted to StarPU
 # before starting the factorization
-
-# DEFS =
+# SPLLT_USE_STARPU: spLLT StarPU version
+# SPLLT_USE_OMP: spLLT OpenMP version
+DEFS =
 # DEFS = -DSPLLT_USE_OMP
-DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
+#DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
@@ -63,11 +64,17 @@ objs +=	spllt_kernels_mod.o
 objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
 objs += spllt_analyse_mod.o spllt_utils_mod.o
 
+spllt_starpu_test:  
+	$(eval DEFS += -DSPLLT_USE_STARPU) #DEFS += -DSPLLT_USE_STARPU
+spllt_omp_test: 
+	$(eval DEFS += -DSPLLT_USE_OMP) #DEFS += -DSPLLT_USE_STARPU
+
 include Makefile.rules.inc
 
 # hsl_ma87dt: hsl_ma87dt.o
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
-# spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
+
+#spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
 spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
