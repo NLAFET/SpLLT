@@ -22,9 +22,9 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 # before starting the factorization
 # SPLLT_USE_STARPU: spLLT StarPU version
 # SPLLT_USE_OMP: spLLT OpenMP version
-DEFS =
+# DEFS =
 # DEFS = -DSPLLT_USE_OMP
-#DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
+DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
@@ -32,7 +32,7 @@ FFLAGS += $(DEFS)
 CFLAGS += $(ISTARPU) $(ICUDA) $(IHWLOC)
 FFLAGS += $(ISPRAL) 
 
-LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LSTARPU) $(LMETIS)
+LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU)
 
 all: run_ma87 spllt_starpu_test
 
@@ -64,10 +64,11 @@ objs +=	spllt_kernels_mod.o
 objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
 objs += spllt_analyse_mod.o spllt_utils_mod.o
 
-spllt_starpu_test:  
-	$(eval DEFS += -DSPLLT_USE_STARPU) #DEFS += -DSPLLT_USE_STARPU
-spllt_omp_test: 
-	$(eval DEFS += -DSPLLT_USE_OMP) #DEFS += -DSPLLT_USE_STARPU
+# spllt_starpu_test:
+# 	$(eval DEFS += -DSPLLT_USE_STARPU) #DEFS += -DSPLLT_USE_STARPU
+# 	$(eval LIBS += $(LSTARPU)) 
+# spllt_omp_test: 
+# 	$(eval DEFS += -DSPLLT_USE_OMP) #DEFS += -DSPLLT_USE_STARPU
 
 include Makefile.rules.inc
 
