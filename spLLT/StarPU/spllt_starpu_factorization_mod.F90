@@ -66,6 +66,20 @@ module spllt_starpu_factorization_mod
        integer(c_int), value  :: min_width_blas
        integer(c_int), value  :: prio
      end subroutine spllt_starpu_insert_update_between_c
+     ! subroutine spllt_starpu_insert_update_between_c(&
+     !      & dcol, &
+     !      & csrc, csrc2, rsrc, rsrc2, &
+     !      & min_width_blas, &
+     !      & workspace_hdl, &
+     !      & node_hdl, &
+     !      & prio) bind(C)
+     !   use iso_c_binding
+     !   ! type(c_ptr), value     :: anode, a_bc
+     !   integer(c_int), value  :: dcol 
+     !   integer(c_int), value  :: csrc, csrc2, rsrc, rsrc2
+     !   type(c_ptr), value     :: workspace_hdl, node_hdl
+     !   integer(c_int), value  :: min_width_blas, prio
+     ! end subroutine spllt_starpu_insert_update_between_c
   end interface
 
   interface

@@ -36,6 +36,7 @@ contains
     integer, dimension(:), allocatable ::  colmap, map ! allocated to have size n.
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
+    integer, dimension(:), allocatable ::  tmpmap
 
     ! shortcuts
     type(node_type), pointer     :: node ! node in the atree    
@@ -135,6 +136,9 @@ contains
     !
     allocate(map(n),stat=st)
     if(st.ne.0) go to 10
+
+    allocate(tmpmap(n),stat=st)
+    if(st.ne.0) go to 10
     
     ! allocate array for colomn mapping beween snode and ancestors
     ! allocate(colmap(n),stat=st)
@@ -168,20 +172,20 @@ contains
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
     end do
-    
+
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all()
+#endif    
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     do snode = 1, num_nodes ! loop over nodes
-! #if defined(SPLLT_USE_STARPU)
-!        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
-! #endif
        ! init node
        call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
-! #if defined(SPLLT_USE_STARPU)
-!     call starpu_f_task_wait_for_all()
-! #endif
+#if defined(SPLLT_USE_STARPU)
+    ! call starpu_f_task_wait_for_all()
+#endif
 
 #if defined(SPLLT_USE_OMP)
 !$omp taskwait
@@ -237,9 +241,8 @@ contains
 ! #endif
           
           ! A_kk          
-          ! bc_kk => keep%blocks(dblk)
-          bc_kk => fdata%bc(dblk)
 
+          bc_kk => fdata%bc(dblk)
           call spllt_factorize_block_task(fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
 
 ! #if defined(SPLLT_USE_OMP)
@@ -251,7 +254,6 @@ contains
 ! #endif
           ! loop over the row blocks (that is, loop over blocks in block col)
           do ii = kk+1,nr
-          ! do blk = dblk+1, dblk+sz-1
              
              ! A_mk
              blk = dblk+ii-kk
@@ -274,22 +276,19 @@ contains
              ! L_jk
              blk2 = dblk+jj-kk
              bc_jk => fdata%bc(blk2)
-             ! bc_jk => keep%blocks(blk2)
 
              do ii = jj,nr
 
                 ! L_ik
                 blk1 = dblk+ii-kk                
-                ! bc_ik => keep%blocks(blk1)
                 bc_ik => fdata%bc(blk1)
                 
                 ! A_ij
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
                 bc_ij => fdata%bc(blk)
-                ! bc_ij => keep%blocks(blk)
-                
                 call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+
              end do
           end do
           
@@ -354,16 +353,16 @@ contains
 
                 ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
                 ! Build a map of anode's blocks if this is first for anode
-                if(.not.map_done) call spllt_build_rowmap(anode, map) 
+                if(.not.map_done) call spllt_build_rowmap(anode, tmpmap) 
                 ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
 
                 ! Loop over the blocks of snode
-                ii = map(node%index(cptr)) 
+                ii = tmpmap(node%index(cptr)) 
                 ! ii = -1 
                 ilast = cptr ! Set start of current block
 
                 do i = cptr, numrow
-                   k = map(node%index(i))
+                   k = tmpmap(node%index(i))
                    ! write(*,*) "i:",i," k:",k
                    blk = bc_kk%blk%id + (i-1)/s_nb - (kk-1)
                    ! bc => keep%blocks(blk) ! current block in node
@@ -376,8 +375,6 @@ contains
 
                       ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                       ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
-                      ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
-                      ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
 
                       call spllt_update_between_task( &
                            ! & bc, &
@@ -400,10 +397,6 @@ contains
 
                 ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
-                ! write(*,*)"i: ", i 
-                ! write(*,*)"size lcol", size(keep%lfact(keep%blocks(blk)%bcol)%lcol), ", rsrc(1)+rsrc(2)-1: ", rsrc(1)+rsrc(2)-1
-                ! write(*,*) "kk: ", kk, ", dblk: ", dblk, ", blk: ", blk, ", a_num: ", a_num, ", a_blk: ", a_blk
-                ! write(*,*) "ilast: ", ilast, ", i: ", i, ", rsrc(2): ", rsrc(2)
 
                 call spllt_update_between_task( &
                      ! & bc, &

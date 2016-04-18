@@ -54,7 +54,7 @@ contains
     node_hdl = c_null_ptr
     if (node%node%blk_sa .eq. bc%blk%id) then
        node_hdl = node%hdl
-       ! write(*,*)
+       ! write(*,*)'Test'
     end if
     call spllt_starpu_insert_factorize_block_c(bc%hdl, node_hdl, p)
 
@@ -441,20 +441,18 @@ contains
 
     bcol = a_bc%blk%bcol
     dcol = bcol - blocks(anode%node%blk_sa)%bcol + 1
+    ! dcol = a_bc%blk%bcol ! blocks(anode%node%blk_sa)%bcol + 1
 
 #if defined(SPLLT_USE_STARPU)
 ! #if 0
-
+    ! write(*,*)"associated blk: ", associated(a_bc%blk)
     dblk = dbc%blk%id
-    ! write(*,*)"dblk: ", dblk
 
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
     blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
     nb_blk = blk_en-blk_sa+1
-    ! write(*,*)"cptr: ", cptr, ", cptr2: ", cptr2
-    ! write(*,*)"blk sa: ", blk_sa, ", blk en: ", blk_en
-    ! write(*,*)"nb_blk: ", nb_blk
+
     allocate(ljk_handles(nb_blk))
     ! ljk_m = 0 ! compute height of ljk factor
     nhljk=0
@@ -469,8 +467,7 @@ contains
     blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
     blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
     nb_blk = blk_en-blk_sa+1
-    ! write(*,*)"blk sa: ", blk_sa, ", blk en: ", blk_en
-    ! write(*,*)"nb_blk: ", nb_blk
+
     allocate(lik_handles(nb_blk))
     nhlik=0
     do blk=blk_sa,blk_en
@@ -487,11 +484,9 @@ contains
     snode_c = c_loc(snode)
     anode_c = c_loc(anode%node)
     a_bc_c  = c_loc(a_bc%blk)
+    
+    ! write(*,*)"dcol: ", dcol
 
-    ! write(*,*)"s_nb: ", s_nb
-    ! write(*,*)"cptr: ", cptr
-    ! write(*,*)"csrc: ", csrc
-    ! write(*,*)"nhljk: ", nhljk, ", nhlik: ", nhlik
     call spllt_starpu_insert_update_between_c(&
          & lik_handles, nhlik, &
          & ljk_handles, nhljk, &
@@ -502,7 +497,8 @@ contains
          & control%min_width_blas, &
          & workspace%hdl, &
          & anode%hdl, &
-         & p)
+         & p &
+         &)
 
     ! call test_insert_c(lik_handles, nhlik, ljk_handles, nhljk)
 

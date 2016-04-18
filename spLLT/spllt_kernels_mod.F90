@@ -451,7 +451,7 @@ contains
           blkm = keep%blocks(blk)%blkm
           blkn = keep%blocks(blk)%blkn
 
-          fdata%bc(blk)%blk => keep%blocks(blk) 
+          fdata%bc(blk)%blk => keep%blocks(blk)
 #if defined(SPLLT_USE_STARPU)
           call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
                & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &

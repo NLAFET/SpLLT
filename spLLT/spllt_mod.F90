@@ -52,7 +52,7 @@ module spllt_mod
 
   ! block type  
   type spllt_bc_type
-     type(block_type), pointer :: blk ! pointer to the block in keep
+     type(block_type), pointer :: blk => null()! pointer to the block in keep
      real(wp), pointer :: c(:)
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
