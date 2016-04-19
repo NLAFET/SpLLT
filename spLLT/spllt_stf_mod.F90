@@ -390,6 +390,9 @@ contains
                       ilast = i ! Update start of current block
                    end if
                 end do
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
                 ! i = min(i,numrow)
                 a_blk = a_dblk + ii - cb
                 ! a_bc => keep%blocks(a_blk)

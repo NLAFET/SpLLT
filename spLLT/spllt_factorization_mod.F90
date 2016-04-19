@@ -75,7 +75,8 @@ contains
 !$omp task private(m, n, sa, bcol, bc, lcol) &
 !$omp    & firstprivate(blk, bc_c) &
 !$omp    & shared(lfact) &
-!$omp    & depend(inout:bc_c)
+!$omp    & depend(inout:bc_c(1:1))
+
 ! !$omp    & depend(inout:lcol(sa:n*m-1))
 
 #if defined(SPLLT_OMP_TRACE)
@@ -177,8 +178,9 @@ contains
 !$omp    & firstprivate(bc_kk_c, bc_ik_c) & 
 !$omp    & private(lcol, bcol) &
 !$omp    & shared(lfact) &
-!$omp    & depend(in:bc_kk_c) &
-!$omp    & depend(inout:bc_ik_c)
+!$omp    & depend(in:bc_kk_c(1:1)) &
+!$omp    & depend(inout:bc_ik_c(1:1))
+
 ! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
 ! !$omp    & depend(inout:lcol(sa:n*m-1))
 
@@ -307,8 +309,9 @@ contains
 !$omp    & private(is_diag) &
 !$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
 !$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
-!$omp    & depend(in:bc_ik_c, bc_jk_c) &
-!$omp    & depend(inout: bc_ij_c)
+!$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
+!$omp    & depend(inout: bc_ij_c(1:1))
+
 ! !$omp    & depend(in:lcol1(sa1:n1*m1-1)) &
 ! !$omp    & depend(in:lcol2(sa2:n1*m2-1)) &
 ! !$omp    & depend(inout: lcol(sa:n*m-1))
@@ -486,7 +489,7 @@ contains
     integer :: th_id
     integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
     ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    real(wp), dimension(:), pointer :: a_bc_c, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    real(wp), dimension(:), pointer :: a_bc_c, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en, dbc_c
 #endif
 
     if (present(prio)) then
@@ -612,6 +615,9 @@ contains
     rsrc_en = blocks(blk_en)%sa
 
     a_bc_c => a_bc%c
+
+    dbc_c => dbc%c
+! !$omp taskwait
     
 !$omp task firstprivate(dbc, rlst, clst, cptr, cptr2, rptr, rptr2, &
 !$omp    & dcol, scol, snode, anode) &    
@@ -619,16 +625,18 @@ contains
 !$omp    & private(lcol, lcol1, m, n, sa, th_id, bcol, bcol1, &
 !$omp    & a_blk, s_nb, n1) &    
 !$omp    & shared(workspace, control, lfact) &
-!$omp    & depend(inout:a_bc_c) &
-!$omp    & depend(in:bc_jk_sa, bc_jk_en) &
-!$omp    & depend(in:bc_ik_sa, bc_ik_en)
+!$omp    & depend(in:bc_jk_sa(1:1), bc_jk_en(1:1)) &
+!$omp    & depend(in:bc_ik_sa(1:1), bc_ik_en(1:1)) &
+! !$omp    & depend(inout:dbc_c(1:1)) &
+!$omp    & depend(inout:a_bc_c(1:1))
+
 ! !$omp    & depend(inout:lcol(sa:m*n-1)) &
 ! !$omp    & depend(in:lcol1(csrc_sa:1), lcol1(csrc_en:1)) &
 ! !$omp    & depend(in:lcol1(rsrc_sa:1), lcol1(rsrc_en:1))
 
 #if defined(SPLLT_OMP_TRACE)
     th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    ! write(*,*)"upd_btw_id: ", fac_blk_id, ", th_id: ", th_id
     call trace_event_start(upd_btw_id, th_id)
 #endif
 
