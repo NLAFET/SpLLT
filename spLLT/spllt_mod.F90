@@ -34,6 +34,10 @@ module spllt_mod
   ! Block size with dense kernel
   integer, parameter :: spllt_nb_default = 256
 
+#if defined(SPLLT_USE_OMP) && defined(SPLLT_OMP_TRACE) 
+  integer, save :: ini_nde_id, fac_blk_id, slv_blk_id, upd_blk_id, upd_btw_id 
+#endif
+
   type spllt_cntl
      integer :: ncpu = 1 ! number of CPU workers
      integer :: nb   = 16 ! blocking size

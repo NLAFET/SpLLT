@@ -21,6 +21,11 @@ contains
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE)
+    use trace_mod
+#endif
 #endif
     implicit none
     
@@ -42,6 +47,9 @@ contains
 #elif defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol
     real(wp), dimension(:), pointer :: bc_c
+#if defined(SPLLT_OMP_TRACE)
+    integer :: th_id
+#endif
 #endif
 
     if (present(prio)) then
@@ -70,6 +78,12 @@ contains
 !$omp    & depend(inout:bc_c)
 ! !$omp    & depend(inout:lcol(sa:n*m-1))
 
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(fac_blk_id, th_id)
+#endif
+
     bcol = blk%bcol
     lcol => lfact(bcol)%lcol
 
@@ -79,6 +93,11 @@ contains
 
     ! write(*,*)"bcol: ", bcol
     call spllt_factor_diag_block(m, n, lcol(sa:sa+n*m-1))
+
+#if defined(SPLLT_OMP_TRACE)
+    ! write(*,*)"fac_blk_id: ", fac_blk_id
+    call trace_event_stop(fac_blk_id, th_id)
+#endif
 !$omp end task
 
 #else    
@@ -110,6 +129,11 @@ contains
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE)
+    use trace_mod
+#endif
 #endif
     implicit none
 
@@ -128,6 +152,9 @@ contains
 #if defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol
     real(wp), dimension(:), pointer :: bc_kk_c, bc_ik_c
+#if defined(SPLLT_OMP_TRACE)
+    integer :: th_id
+#endif
 #endif
 
     if (present(prio)) then
@@ -155,6 +182,12 @@ contains
 ! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
 ! !$omp    & depend(inout:lcol(sa:n*m-1))
 
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(slv_blk_id, th_id)
+#endif
+
     ! bcol is block column that blk and dblk belong to
     bcol = bc_kk%blk%bcol    
     lcol => lfact(bcol)%lcol
@@ -172,6 +205,12 @@ contains
     call spllt_solve_block(m, n, &
          & lcol(sa:sa+n*m-1), & 
          & lcol(d_sa:d_sa+d_n*d_m))
+
+#if defined(SPLLT_OMP_TRACE)
+    ! write(*,*)"fac_blk_id: ", fac_blk_id
+    call trace_event_stop(slv_blk_id, th_id)
+#endif
+
 !$omp end task
 
 #else    
@@ -214,6 +253,11 @@ contains
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE)
+    use trace_mod
+#endif
 #endif
     implicit none
     
@@ -233,6 +277,9 @@ contains
     logical :: is_diag
     real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
     real(wp), dimension(:), pointer :: bc_ik_c, bc_jk_c, bc_ij_c
+#if defined(SPLLT_OMP_TRACE)
+    integer :: th_id
+#endif
 #endif
 
     if (present(prio)) then
@@ -265,6 +312,12 @@ contains
 ! !$omp    & depend(in:lcol1(sa1:n1*m1-1)) &
 ! !$omp    & depend(in:lcol2(sa2:n1*m2-1)) &
 ! !$omp    & depend(inout: lcol(sa:n*m-1))
+
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(upd_blk_id, th_id)
+#endif
 
         ! bc_ik
     n1  = bc_ik%blk%blkn
@@ -301,6 +354,12 @@ contains
          & is_diag, n1, &
          & lcol1(sa2:sa2+n1*m2-1), &
          & lcol1(sa1:sa1+n1*m1-1))
+
+#if defined(SPLLT_OMP_TRACE)
+    ! write(*,*)"fac_blk_id: ", fac_blk_id
+    call trace_event_stop(upd_blk_id, th_id)
+#endif
+
 !$omp end task
 
 #else
@@ -356,6 +415,9 @@ contains
     use spllt_starpu_factorization_mod
 #elif defined(SPLLT_USE_OMP)
 !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE)
+    use trace_mod
+#endif
 #endif
     implicit none
 
@@ -564,6 +626,12 @@ contains
 ! !$omp    & depend(in:lcol1(csrc_sa:1), lcol1(csrc_en:1)) &
 ! !$omp    & depend(in:lcol1(rsrc_sa:1), lcol1(rsrc_en:1))
 
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(upd_btw_id, th_id)
+#endif
+
     s_nb = snode%nb    ! block size in source node
     n1  = dbc%blk%blkn ! width of column
     
@@ -600,6 +668,11 @@ contains
          & control%min_width_blas)
 
     deallocate(rlst, clst)
+
+#if defined(SPLLT_OMP_TRACE)
+    ! write(*,*)"fac_blk_id: ", fac_blk_id
+    call trace_event_stop(upd_btw_id, th_id)
+#endif
 
 !$omp end task
     
@@ -645,6 +718,11 @@ contains
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+!$ use omp_lib
+#if defined(SPLLT_OMP_TRACE)
+    use trace_mod
+#endif
 #endif
     implicit none
     
@@ -664,6 +742,7 @@ contains
 #endif
 #if defined(SPLLT_USE_OMP)
     integer :: snum
+    integer :: th_id
 #endif
 
     if (present(prio)) then
@@ -683,9 +762,21 @@ contains
 
 ! !$omp task default(shared) private(snum) shared(n, val, map, keep)
 !$omp task private(snum) shared(n, val, map, keep) 
+
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(ini_nde_id, th_id)
+#endif
+
     snum = node%num
 
     call spllt_init_node(snum, n, val, map, keep)
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(ini_nde_id, th_id)
+#endif
+
 !$omp end task
 ! !$omp taskwait
 #else

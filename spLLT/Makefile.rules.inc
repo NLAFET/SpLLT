@@ -1,5 +1,7 @@
 #usestarpu=$(filter %USE_STARPU, $(DEFS))
 usestarpu=$(findstring USE_STARPU, $(DEFS))
+useomp=$(findstring USE_OMP, $(DEFS))
+useomptrace=$(findstring OMP_TRACE, $(DEFS))
 #usestarpu=
 
 # starpusrc := StarPU/starpu_f_mod.F90 StarPU/starpu_f_wrappers.c
@@ -9,6 +11,10 @@ ifneq ($(usestarpu),)
 VPATH += StarPU
 starpuobjs := spllt_starpu_factorization_mod.o spllt_starpu_kernels.o starpu_f_mod.o starpu_f_wrappers.o
 #starpuobjs :=
+endif
+
+ifneq ($(useomptrace),)
+ompobjs += trace_mod.o get_wtime.o get_wtime_mod.o
 endif
 
 # Module build dependencies
@@ -28,6 +34,11 @@ spllt_mod.o: starpu_f_mod.o
 spllt_factorization_mod.o: spllt_starpu_factorization_mod.o 
 spllt_starpu_factorization_mod.o: spllt_mod.o spllt_starpu_kernels.o
 starpu_f_mod.o: starpu_f_wrappers.o
+endif
+
+ifneq ($(useomptrace),)
+spllt_factorization_mod.o: trace_mod.o
+trace_mod.o: get_wtime_mod.o
 endif
 
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o

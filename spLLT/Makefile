@@ -22,7 +22,7 @@ FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 # before starting the factorization
 # SPLLT_USE_STARPU: spLLT StarPU version
 # SPLLT_USE_OMP: spLLT OpenMP version
-# DEFS =
+#DEFS = -DSPLLT_USE_WHATEVER
 # DEFS = -DSPLLT_USE_OMP
 DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
@@ -76,10 +76,17 @@ include Makefile.rules.inc
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 #spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
+starpu:
+	($(MAKE) spllt_starpu_test DEFS = -DSPLLT_USE_STARPU)
+omp:
+	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
+omp_trace:
+	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
+
 spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_omp_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
+spllt_omp_test: spllt_test.F90 $(objs) $(ompobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o

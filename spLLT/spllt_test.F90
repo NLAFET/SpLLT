@@ -33,6 +33,11 @@ contains
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
     use starpu_f_mod
+#elif defined(SPLLT_USE_OMP)
+!$ use omp_lib
+#if defined(SPLLT_OMP_TRACE) 
+    use trace_mod
+#endif
 #endif
     implicit none
     
@@ -150,6 +155,14 @@ contains
 #elif defined(SPLLT_USE_OMP)
 !$omp parallel num_threads(cntl%ncpu)
 !$omp master
+#if defined(SPLLT_OMP_TRACE) 
+    call trace_init(omp_get_num_threads())
+    call trace_create_event('INIT_NODE', ini_nde_id)
+    call trace_create_event('FACTO_BLK', fac_blk_id)
+    call trace_create_event('SOLVE_BLK', slv_blk_id)
+    call trace_create_event('UPDATE_BLK', upd_blk_id)
+    call trace_create_event('UPDATE_BTW', upd_btw_id)
+#endif
 #endif
 
     write(*,'("[>] factorize")')
@@ -181,6 +194,9 @@ contains
     write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
          &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
 #elif defined(SPLLT_USE_OMP)
+#if defined(SPLLT_OMP_TRACE) 
+    call trace_log_dump_paje('trace')
+#endif
 !$omp end master
 !$omp end parallel
 #endif
