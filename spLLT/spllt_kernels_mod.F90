@@ -351,7 +351,11 @@ contains
     integer, intent(in) :: snode
     integer, intent(in) :: n      ! order of matrix 
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    integer, intent(out) :: map(n)  ! mapping array. Reset for each node
+#if defined(SPLLT_USE_OMP)
+    integer, pointer, intent(inout) :: map(:)  ! mapping array. Reset for each node
+#else
+    integer, intent(inout) :: map(n)  ! mapping array. Reset for each node
+#endif
     ! so that, if variable (row) i is involved in node,
     ! map(i) is set to its local row index
     type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
@@ -369,7 +373,9 @@ contains
     integer(long) :: offset
     integer :: swidth ! set to keep%blocks(dblk)%blkn (number of columns
     ! in block column to which dblk belongs)
-
+    ! write(*,*)"snode: ", snode
+    ! write(*,*)"size map: ", size(map), ", snode: ", snode
+    ! write(*,*)"size nodes: ", size(keep%nodes), ", snode: ", snode
     ! Build a map from global to local indices
     do j = 1, size(keep%nodes(snode)%index)
        i = keep%nodes(snode)%index(j)
@@ -434,7 +440,7 @@ contains
     
     size_bcol = 0
     do i = sa, en, l_nb
-       nbcol = nbcol + 1
+       ! nbcol = nbcol + 1
        size_bcol = 0
        dblk = blk
        nbcol = keep%blocks(dblk)%bcol

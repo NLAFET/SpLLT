@@ -30,10 +30,11 @@ contains
     implicit none
     
     type(spllt_node_type), intent(in)          :: node
-    type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
 #if defined(SPLLT_USE_OMP)
+    type(spllt_bc_type), pointer, intent(inout) :: bc ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
+    type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio
@@ -71,26 +72,27 @@ contains
 
     bc_c => bc%c
     blk => bc%blk
-    
-!$omp task private(m, n, sa, bcol, bc, lcol) &
-!$omp    & firstprivate(blk, bc_c) &
-!$omp    & shared(lfact) &
-!$omp    & depend(inout:bc_c(1:1))
-
-! !$omp    & depend(inout:lcol(sa:n*m-1))
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(fac_blk_id, th_id)
-#endif
-
     bcol = blk%bcol
     lcol => lfact(bcol)%lcol
 
     m    = blk%blkm
     n    = blk%blkn
     sa   = blk%sa
+    
+!$omp taskwait
+
+!$omp task firstprivate(m, n, sa) &
+!$omp    & firstprivate(blk, bc_c, bcol, lcol) &
+!$omp    & depend(inout:bc%c(1))
+! !$omp    & depend(inout:bc_c)
+! !$omp    & depend(inout:bc_c(1:1))
+! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
+
+#if defined(SPLLT_OMP_TRACE)
+    th_id = omp_get_thread_num()
+    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
+    call trace_event_start(fac_blk_id, th_id)
+#endif
 
     ! write(*,*)"bcol: ", bcol
     call spllt_factor_diag_block(m, n, lcol(sa:sa+n*m-1))
@@ -100,6 +102,8 @@ contains
     call trace_event_stop(fac_blk_id, th_id)
 #endif
 !$omp end task
+
+! !$omp taskwait
 
 #else    
 
@@ -138,10 +142,12 @@ contains
 #endif
     implicit none
 
-    type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
 #if defined(SPLLT_USE_OMP)
+    type(spllt_bc_type), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
+    type(block_type), pointer :: blk_kk, blk_ik ! block to be factorized
 #else
+    type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio 
@@ -153,9 +159,7 @@ contains
 #if defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol
     real(wp), dimension(:), pointer :: bc_kk_c, bc_ik_c
-#if defined(SPLLT_OMP_TRACE)
     integer :: th_id
-#endif
 #endif
 
     if (present(prio)) then
@@ -172,13 +176,34 @@ contains
     
     bc_kk_c => bc_kk%c
     bc_ik_c => bc_ik%c
-    
-!$omp task private(m, n, sa, d_m, d_n, d_sa) &
-!$omp    & firstprivate(bc_kk, bc_ik) & 
-!$omp    & firstprivate(bc_kk_c, bc_ik_c) & 
-!$omp    & private(lcol, bcol) &
-!$omp    & shared(lfact) &
-!$omp    & depend(in:bc_kk_c(1:1)) &
+
+    blk_kk => bc_kk%blk
+    blk_ik => bc_ik%blk
+    ! bcol is block column that blk and dblk belong to
+    bcol = blk_kk%bcol    
+    ! write(*,*)"bcol: ", bcol
+    lcol => lfact(bcol)%lcol
+
+    ! bc_kk
+    d_m  = blk_kk%blkm
+    d_n  = blk_kk%blkn
+    d_sa = blk_kk%sa
+
+    ! bc_ik
+    n  = blk_ik%blkn
+    m  = blk_ik%blkm
+    sa = blk_ik%sa
+
+! !$omp taskwait
+
+!$omp task private(th_id) &
+!$omp    & firstprivate(m, n, sa, d_m, d_n, d_sa) &
+!$omp    & firstprivate(lcol, bcol) &
+!$omp    & firstprivate(blk_kk, blk_ik) &
+!$omp    & firstprivate(bc_kk_c, bc_ik_c) &
+!$omp    & depend(in:bc_kk%c(1)) &
+! !$omp    & depend(in:bc_kk_c) &
+! !$omp    & depend(in:bc_kk_c(1:1)) &
 !$omp    & depend(inout:bc_ik_c(1:1))
 
 ! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
@@ -190,20 +215,6 @@ contains
     call trace_event_start(slv_blk_id, th_id)
 #endif
 
-    ! bcol is block column that blk and dblk belong to
-    bcol = bc_kk%blk%bcol    
-    lcol => lfact(bcol)%lcol
-
-    ! bc_kk
-    d_m  = bc_kk%blk%blkm
-    d_n  = bc_kk%blk%blkn
-    d_sa = bc_kk%blk%sa
-
-    ! bc_ik
-    n  = bc_ik%blk%blkn
-    m  = bc_ik%blk%blkm
-    sa = bc_ik%blk%sa
-
     call spllt_solve_block(m, n, &
          & lcol(sa:sa+n*m-1), & 
          & lcol(d_sa:d_sa+d_n*d_m))
@@ -214,6 +225,8 @@ contains
 #endif
 
 !$omp end task
+
+! !$omp taskwait
 
 #else    
 
@@ -264,10 +277,11 @@ contains
     implicit none
     
     ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
-    type(spllt_bc_type), intent(inout) :: bc_ik, bc_jk, bc_ij
 #if defined(SPLLT_USE_OMP)
+    type(spllt_bc_type), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
+    type(spllt_bc_type), intent(inout) :: bc_ik, bc_jk, bc_ij
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio 
@@ -279,9 +293,8 @@ contains
     logical :: is_diag
     real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
     real(wp), dimension(:), pointer :: bc_ik_c, bc_jk_c, bc_ij_c
-#if defined(SPLLT_OMP_TRACE)
+    type(block_type), pointer :: blk_ik, blk_jk, blk_ij ! block to be factorized
     integer :: th_id
-#endif
 #endif
 
     if (present(prio)) then
@@ -303,12 +316,28 @@ contains
     bc_ik_c => bc_ik%c
     bc_jk_c => bc_jk%c
     bc_ij_c => bc_ij%c
+
+    blk_ik => bc_ik%blk
+    blk_jk => bc_jk%blk
+    blk_ij => bc_ij%blk
+
+    bcol1 = bc_ik%blk%bcol
+    lcol1 => lfact(bcol1)%lcol
+
+    bcol2 = bc_jk%blk%bcol
+    lcol2 => lfact(bcol2)%lcol
+
+    bcol = bc_ij%blk%bcol
+    lcol => lfact(bcol)%lcol
     
-!$omp task private(n1, m1, sa1, bcol1, n2, m2, sa2, bcol2, &
-!$omp    & n, m, sa, bcol, lcol, lcol1) shared(lfact) &
-!$omp    & private(is_diag) &
+!$omp taskwait
+
+!$omp task private(n1, m1, sa1, n2, m2, sa2, &
+!$omp    & n, m, sa, is_diag, th_id) &
+!$omp    & firstprivate(bcol2, lcol2, bcol1, lcol1, bcol, lcol) &
 !$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
 !$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
+!$omp    & firstprivate(blk_ik, blk_jk, blk_ij) &
 !$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
 !$omp    & depend(inout: bc_ij_c(1:1))
 
@@ -322,28 +351,22 @@ contains
     call trace_event_start(upd_blk_id, th_id)
 #endif
 
-        ! bc_ik
-    n1  = bc_ik%blk%blkn
-    m1  = bc_ik%blk%blkm
-    sa1 = bc_ik%blk%sa
-    bcol1 = bc_ik%blk%bcol
-    lcol1 => lfact(bcol1)%lcol
+    ! bc_ik
+    n1  = blk_ik%blkn
+    m1  = blk_ik%blkm
+    sa1 = blk_ik%sa
 
     ! bc_jk
-    n2  = bc_jk%blk%blkn
-    m2  = bc_jk%blk%blkm
-    sa2 = bc_jk%blk%sa
-    bcol2 = bc_jk%blk%bcol
-    lcol2 => lfact(bcol2)%lcol
+    n2  = blk_jk%blkn
+    m2  = blk_jk%blkm
+    sa2 = blk_jk%sa
 
     ! bc_ij
-    n  = bc_ij%blk%blkn
-    m  = bc_ij%blk%blkm
-    sa = bc_ij%blk%sa
-    bcol = bc_ij%blk%bcol
-    lcol => lfact(bcol)%lcol
+    n  = blk_ij%blkn
+    m  = blk_ij%blkm
+    sa = blk_ij%sa
 
-    is_diag = bc_ij%blk%dblk.eq.bc_ij%blk%id 
+    is_diag = blk_ij%dblk.eq.blk_ij%id 
 
     ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
     ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
@@ -364,6 +387,8 @@ contains
 #endif
 
 !$omp end task
+
+!$omp taskwait
 
 #else
 
@@ -424,14 +449,26 @@ contains
 #endif
     implicit none
 
-    ! type(block_type), intent(inout)     :: a_bc ! dest block
-    ! type(block_type), intent(in)        :: bc ! src block
+#if defined(SPLLT_USE_OMP)
+    type(spllt_bc_type), pointer, intent(inout)     :: a_bc ! dest block
+    type(spllt_bc_type), pointer, intent(inout)     :: dbc ! diag block in source node
+
+    type(spllt_bc_type), allocatable, target :: workspace(:)
+    type(spllt_bc_type), target      :: bcs(:) ! block info.
+#else
     type(spllt_bc_type), intent(inout)     :: a_bc ! dest block
-    ! type(spllt_bc_type), intent(in)        :: bc ! src block
     type(spllt_bc_type), intent(in)        :: dbc ! diag block in source node
+
+    type(spllt_bc_type)              :: workspace
+    type(spllt_bc_type)              :: bcs(:) ! block info.
+#endif
+
 #if defined(SPLLT_USE_STARPU)
     type(node_type), target                :: snode ! src node
     type(spllt_node_type), target          :: anode ! dest node
+#elif defined(SPLLT_USE_OMP)
+    type(node_type), pointer                :: snode ! src node
+    type(spllt_node_type), pointer          :: anode ! dest node
 #else
     type(node_type)                        :: snode ! src node
     type(spllt_node_type)                  :: anode ! dest node
@@ -439,13 +476,6 @@ contains
     integer :: cptr, cptr2, rptr, rptr2 
 !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     integer, dimension(:), allocatable  :: row_list, col_list
-#if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), allocatable :: workspace(:)
-    type(spllt_bc_type), target      :: bcs(:) ! block info.
-#else
-    type(spllt_bc_type)              :: workspace
-    type(spllt_bc_type)              :: bcs(:) ! block info.
-#endif
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)      :: blocks ! block info. 
 
@@ -484,12 +514,17 @@ contains
 
 #if defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol1, lcol
-    type(block_type), pointer :: a_blk ! block to be updated
     integer, dimension(:), allocatable  :: rlst, clst
     integer :: th_id
     integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
     ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     real(wp), dimension(:), pointer :: a_bc_c, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en, dbc_c
+    type(block_type), pointer :: blk_kk, a_blk
+    type(spllt_bc_type), pointer :: p_workspace(:)
+    real(wp), dimension(:), pointer :: work
+    integer :: min_width_blas
+    type(node_type), pointer                :: p_snode ! src node
+    type(spllt_node_type), pointer          :: p_anode ! dest node
 #endif
 
     if (present(prio)) then
@@ -588,8 +623,8 @@ contains
     !      & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
     !      & blocks, row_list, col_list, buffer, &
     !      & control, info, st)
-
-    dblk = dbc%blk%id
+    blk_kk => dbc%blk
+    dblk = blk_kk%id
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
     blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
@@ -617,14 +652,39 @@ contains
     a_bc_c => a_bc%c
 
     dbc_c => dbc%c
-! !$omp taskwait
+
+    bcol1 = blk_kk%bcol
+    bcol  = a_bc%blk%bcol
+
+    lcol1 => lfact(bcol1)%lcol
+    lcol  => lfact(bcol)%lcol
+
+    a_blk => a_bc%blk
+    p_workspace => workspace
+
+    min_width_blas = control%min_width_blas
+
+    p_snode => snode
+    p_anode => anode
+
+    s_nb = p_snode%nb    ! block size in source node
+    n1  = blk_kk%blkn ! width of column
+
+    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
+    csrc2 = (cptr2 - cptr + 1)*n1
+
+    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
+    rsrc2 = (rptr2 - rptr + 1)*n1
+
+!$omp taskwait
     
-!$omp task firstprivate(dbc, rlst, clst, cptr, cptr2, rptr, rptr2, &
-!$omp    & dcol, scol, snode, anode) &    
-!$omp    & firstprivate(a_bc, bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en) &
-!$omp    & private(lcol, lcol1, m, n, sa, th_id, bcol, bcol1, &
-!$omp    & a_blk, s_nb, n1) &    
-!$omp    & shared(workspace, control, lfact) &
+!$omp task firstprivate(blk_kk, dcol, scol, p_snode, p_anode, &
+!$omp    & lcol, lcol1, a_blk) &    
+!$omp    & firstprivate(bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en) &
+!$omp    & firstprivate(p_workspace, min_width_blas, s_nb, n1) &    
+!$omp    & firstprivate(csrc, csrc2, rsrc, rsrc2) &    
+!$omp    & private(m, n, sa, th_id, bcol, bcol1, &
+!$omp    & rlst, clst, work) &    
 !$omp    & depend(in:bc_jk_sa(1:1), bc_jk_en(1:1)) &
 !$omp    & depend(in:bc_ik_sa(1:1), bc_ik_en(1:1)) &
 ! !$omp    & depend(inout:dbc_c(1:1)) &
@@ -639,41 +699,25 @@ contains
     ! write(*,*)"upd_btw_id: ", fac_blk_id, ", th_id: ", th_id
     call trace_event_start(upd_btw_id, th_id)
 #endif
-
-    s_nb = snode%nb    ! block size in source node
-    n1  = dbc%blk%blkn ! width of column
     
-    bcol1 = dbc%blk%bcol
-    bcol  = a_bc%blk%bcol
-
-    lcol1 => lfact(bcol1)%lcol
-    lcol  => lfact(bcol)%lcol
-
     ! write(*,*)"thread id: ", th_id
-    m  = a_bc%blk%blkm
-    n  = a_bc%blk%blkn
-    sa = a_bc%blk%sa
+    m  = a_blk%blkm
+    n  = a_blk%blkn
+    sa = a_blk%sa
 
     th_id = omp_get_thread_num()
     ! write(*,*)"thread id: ", th_id
 
-    a_blk => a_bc%blk
-
-    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
-    csrc2 = (cptr2 - cptr + 1)*n1
-
-    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
-    rsrc2 = (rptr2 - rptr + 1)*n1
-
+    work => p_workspace(th_id)%c
     allocate(rlst(1), clst(1))
 
-    call spllt_update_between(m, n, a_blk, dcol, anode%node, &
-         & n1, scol, snode, &
+    call spllt_update_between(m, n, a_blk, dcol, p_anode%node, &
+         & n1, scol, p_snode, &
          & lcol(sa:sa+m*n-1), &
          & lcol1(csrc:csrc+csrc2-1), &
          & lcol1(rsrc:rsrc+rsrc2-1), &
-         & rlst, clst, workspace(th_id)%c, &
-         & control%min_width_blas)
+         & rlst, clst, work, &
+         & min_width_blas)
 
     deallocate(rlst, clst)
 
@@ -683,6 +727,8 @@ contains
 #endif
 
 !$omp end task
+
+!$omp taskwait
     
 #else
     
@@ -736,8 +782,9 @@ contains
     
     type(spllt_node_type), intent(in) :: node
     integer, intent(in) :: n      ! order of matrix 
-    real(wp), dimension(*), target, intent(in) :: val ! user's matrix values
-    integer, target, intent(out) :: map(n)  ! mapping array. Reset for each node
+    real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
+    integer, target, intent(inout) :: map(n)  ! mapping array. Reset for each node
+
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
     type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
@@ -748,9 +795,14 @@ contains
 #if defined(SPLLT_USE_STARPU)
     type(c_ptr) :: val_c, map_c, keep_c
 #endif
+
 #if defined(SPLLT_USE_OMP)
     integer :: snum
     integer :: th_id
+    ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
+    integer, pointer         :: p_map(:)  
+    type(MA87_keep), pointer :: p_keep 
+    real(wp), pointer :: p_val(:)
 #endif
 
     if (present(prio)) then
@@ -768,8 +820,13 @@ contains
          & node%num, n, val_c, map_c, keep_c, p)
 #elif defined(SPLLT_USE_OMP)
 
-! !$omp task default(shared) private(snum) shared(n, val, map, keep)
-!$omp task private(snum) shared(n, val, map, keep) 
+    snum = node%num
+    p_map => map
+    p_keep => keep
+    p_val => val
+
+!$omp task firstprivate(snum) firstprivate(n, p_map, p_keep, p_val) &
+!$omp    & private(th_id)
 
 #if defined(SPLLT_OMP_TRACE)
     th_id = omp_get_thread_num()
@@ -777,16 +834,14 @@ contains
     call trace_event_start(ini_nde_id, th_id)
 #endif
 
-    snum = node%num
-
-    call spllt_init_node(snum, n, val, map, keep)
+    call spllt_init_node(snum, n, p_val, p_map, p_keep)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(ini_nde_id, th_id)
 #endif
 
 !$omp end task
-! !$omp taskwait
+
 #else
     call spllt_init_node(node%num, n, val, map, keep)
 #endif

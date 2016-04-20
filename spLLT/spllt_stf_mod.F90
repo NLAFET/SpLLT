@@ -33,7 +33,10 @@ contains
 
     ! local arrays
     ! integer, dimension(:), allocatable ::  invp ! used to hold inverse ordering
-    integer, dimension(:), allocatable ::  colmap, map ! allocated to have size n.
+    integer, dimension(:), allocatable ::  colmap ! allocated to have size n.
+
+    integer, dimension(:), allocatable ::  map ! allocated to have size n.
+
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
     integer, dimension(:), allocatable ::  tmpmap
@@ -60,6 +63,7 @@ contains
     ! update between variables
     ! integer :: csrc(2), rsrc(2) ! used for update_between tasks to
     type(node_type), pointer :: anode ! ancestor node in the atree
+    type(spllt_node_type), pointer :: a_node ! ancestor node in the atree
     ! locate source blocks
     integer :: a_num ! ancestor id
     integer :: cptr  ! Position in snode of the first row 
@@ -178,14 +182,15 @@ contains
 #endif    
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
+    ! write(*,*)"num_nodes: ", num_nodes
     do snode = 1, num_nodes ! loop over nodes
        ! init node
        call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
-#if defined(SPLLT_USE_STARPU)
-    ! call starpu_f_task_wait_for_all()
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif
 
 #if defined(SPLLT_USE_OMP)
 !$omp taskwait
@@ -272,7 +277,7 @@ contains
 ! #endif
 
           do jj = kk+1,nc
-             
+
              ! L_jk
              blk2 = dblk+jj-kk
              bc_jk => fdata%bc(blk2)
@@ -282,7 +287,7 @@ contains
                 ! L_ik
                 blk1 = dblk+ii-kk                
                 bc_ik => fdata%bc(blk1)
-                
+
                 ! A_ij
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
@@ -316,7 +321,7 @@ contains
           ! write(*,*)"numrow: ", numrow
           do while(a_num.gt.0)
              anode => keep%nodes(a_num) 
-             
+             a_node => fdata%nodes(a_num)
              ! Skip columns that come from other children
              do cptr = cptr, numrow
                 if(node%index(cptr).ge.anode%sa) exit
@@ -379,7 +384,7 @@ contains
                       call spllt_update_between_task( &
                            ! & bc, &
                            & bc_kk, &
-                           & node, a_bc, fdata%nodes(a_num), &
+                           & node, a_bc, a_node, &
                            ! & csrc, rsrc, &
                            & cptr, cptr2, ilast, i-1, &
                            & row_list, col_list, fdata%workspace, &
@@ -404,7 +409,7 @@ contains
                 call spllt_update_between_task( &
                      ! & bc, &
                      & bc_kk, &
-                     & node, a_bc, fdata%nodes(a_num), &
+                     & node, a_bc, a_node, &
                      ! & csrc, rsrc, &
                      & cptr, cptr2, ilast, i-1, &
                      & row_list, col_list, fdata%workspace, &
@@ -413,6 +418,9 @@ contains
                                          
                 ! Move cptr down, ready for next block column of anode
                 cptr = cptr2 + 1
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endifx
              end do bcols
           
              a_num = anode%parent

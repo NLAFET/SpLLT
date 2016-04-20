@@ -2,19 +2,20 @@ include Make.inc
 
 #Select compiler and options from below
 ############################
-CC = gcc
-FC = gfortran
+# CC = gcc
+# FC = gfortran
 
-CFLAGS = -Wall -pedantic -g -O2
-# FFLAGS = -Wall -pedantic -g -O2 -fopenmp
+# CFLAGS = -Wall -pedantic -g -O2
+# # FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 
-FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
-#FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
-#FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
-#FFLAGS += -fprofile-arcs -ftest-coverage
+# FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+# #FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+# #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
+# #FFLAGS += -fprofile-arcs -ftest-coverage
 ############################
-# CC = icc
-# FC = ifort
+CC = icc
+FC = ifort
+FFLAGS = -g -C -openmp
 # FFLAGS = -g -C -static -openmp
 ############################
 
@@ -78,8 +79,10 @@ include Makefile.rules.inc
 # 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 #spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
+stf:
+	($(MAKE) spllt_stf_test DEFS=)
 starpu:
-	($(MAKE) spllt_starpu_test DEFS = -DSPLLT_USE_STARPU)
+	($(MAKE) spllt_starpu_test DEFS=-DSPLLT_USE_STARPU)
 omp:
 	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
 omp_trace:
@@ -91,7 +94,7 @@ spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtde
 spllt_omp_test: spllt_test.F90 $(objs) $(ompobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-spllt_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
+spllt_stf_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
@@ -115,6 +118,7 @@ dtdeps90.f90: $(DTDEPS90)
 clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
 	-rm -f spllt_omp_test
+	-rm -f spllt_stf_test
 	-rm -f run_ma87
 	-rm -f *.o *.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90
