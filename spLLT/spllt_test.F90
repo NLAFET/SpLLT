@@ -4,18 +4,18 @@ program spllt_test
   implicit none
 
   type(spllt_cntl) :: cntl
-  ! integer n, nnz
+  integer n, nnz
   
   write(*,'("[spllt test]")')
-
-  cntl%ncpu = 4
-  cntl%nb   = 256
   
   ! n   = 256
   ! nnz = 1000
 
   ! n   = 256
-  ! nnz = 1000
+  ! nnz = 10000
+
+  ! n   = 4000
+  ! nnz = 100*4000
 
   ! call spllt_test_rand(n, nnz, cntl)
 
@@ -126,7 +126,7 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+     call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
@@ -222,13 +222,28 @@ contains
   end subroutine spllt_test_mat
 
   subroutine spllt_test_rand(n, nnz, cntl)
+    use hsl_mc68_integer
+    use spllt_mod
+    use spllt_analyse_mod
+#if defined(SPLLT_USE_OMP)
+!$ use omp_lib
+#if defined(SPLLT_OMP_TRACE) 
+    use trace_mod
+#endif
+#endif
     use spllt_stf_mod
     implicit none
     
     integer :: n, nnz
     type(spllt_cntl) :: cntl
 
+    type(spllt_adata_type) :: a_pbl
     type(spllt_data_type) :: pbl
+    type(spllt_options) :: options
+
+    ! mc68
+    type(mc68_control) :: order_control
+    type(mc68_info) :: order_info
     
     ! ma87
     type(ma87_keep) :: keep
@@ -244,6 +259,16 @@ contains
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, resid
 
+    call splllt_parse_args(options)
+
+    cntl%nb   = options%nb
+    cntl%ncpu = options%ncpu
+    
+    ! set nemin
+    if (options%nemin .gt. 0) then
+       cntl%nemin = options%nemin
+    end if
+
     a%m = n
     a%n = n
     a%ne = nnz
@@ -252,18 +277,6 @@ contains
     allocate(a%row(2*a%ne), a%col(2*a%ne), a%val(2*a%ne))
 
     write(*,'("[spllt test rand] generate random matrix")')
-
-    ! control%nb = 10
-    control%nb = 8
-    ! control%nb = 39
-    ! control%nb = 64
-    ! control%nb = 119
-    ! control%nb = 120
-    ! control%nb = 256
-
-    ! control%nemin = 10
-
-    ! control%nb = 40
 
     call fa14id(iseed)
 
@@ -282,15 +295,21 @@ contains
     ! ordering
     allocate(order(a%n))
 
+    ! amd ordering
+    call amd_order(a, order)
+    ! call mc68_order(3, a%n, a%ptr, a%row, order, &
+    !      order_control, order_info)
+
     ! natural order
-    do i = 1,a%n
-       order(i) = i
-    end do
+    ! do i = 1,a%n
+    !    order(i) = i
+    ! end do
 
     write(*,'("[>] analyse")')
 
     ! analysis
-    call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
+    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
@@ -307,13 +326,41 @@ contains
     allocate(b(a%m), x(a%n))
     call random_number(b)
 
+#if defined(SPLLT_USE_OMP)
+!$omp parallel num_threads(cntl%ncpu)
+!$omp master
+#if defined(SPLLT_OMP_TRACE) 
+    call trace_init(omp_get_num_threads())
+    call trace_create_event('INIT_NODE', ini_nde_id)
+    call trace_create_event('FACTO_BLK', fac_blk_id)
+    call trace_create_event('SOLVE_BLK', slv_blk_id)
+    call trace_create_event('UPDATE_BLK', upd_blk_id)
+    call trace_create_event('UPDATE_BTW', upd_btw_id)
+#endif
+#endif
+
     write(*,'("[>] factorize")')
+    write(*,'("[>] [factorize]    nb: ", i6)') cntl%nb
+    write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
+
     ! factorize matrix
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"
     endif
+
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
+
+#if defined(SPLLT_USE_OMP)
+#if defined(SPLLT_OMP_TRACE) 
+    call trace_log_dump_paje('trace')
+#endif
+!$omp end master
+!$omp end parallel
+#endif
 
 ! goto 9999 ! no solve
 

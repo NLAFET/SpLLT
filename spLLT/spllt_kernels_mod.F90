@@ -46,7 +46,7 @@ contains
     integer, intent(in) :: m ! number of rows in dest
     integer, intent(in) :: n ! number of columns in dest
     real(wp), dimension(*), intent(inout) :: dest ! holds destination block
-    real(wp), dimension(*), intent(inout) :: diag ! block
+    real(wp), dimension(*), intent(in)    :: diag ! block
     
     call dtrsm('Left', 'Upper', 'Transpose', 'Non-Unit', n, m, &
          one, diag, n, dest, n)
@@ -141,6 +141,8 @@ contains
     real(wp), dimension(:), pointer :: buffer
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+    ! integer, dimension(:), pointer :: row_list ! reallocated to min size m
+    ! integer, dimension(:), pointer :: col_list ! reallocated to min size n
     integer, intent(in) :: min_width_blas      ! Minimum width of source block
          ! before we use an indirect update_between    
     ! type(MA87_control), intent(in) :: control

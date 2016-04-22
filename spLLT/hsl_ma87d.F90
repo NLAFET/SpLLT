@@ -3727,7 +3727,7 @@ subroutine solv_col_block(m, n, id, dest, id1, diag, control)
   !%%% if(control%unit_log.gt.0) call system_clock(t_start)
 
    call dtrsm('Left', 'Upper', 'Transpose', 'Non-Unit', n, m, &
-      one, diag, n, dest, n)
+        one, diag, n, dest, n)
 
 !%%%   if(control%unit_log.gt.0) then
 !%%%      call system_clock(t_end)

@@ -157,7 +157,8 @@ contains
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #elif defined(SPLLT_USE_OMP)
 
-    nt = omp_get_num_threads()
+    nt = 1
+!$  nt = omp_get_num_threads()
     allocate(fdata%workspace(0:nt-1))
 
     do i=0,nt-1
@@ -185,7 +186,7 @@ contains
     ! write(*,*)"num_nodes: ", num_nodes
     do snode = 1, num_nodes ! loop over nodes
        ! init node
-       call spllt_init_node_task(fdata%nodes(snode), n, val, map, keep, huge(1))
+       call spllt_init_node_task(fdata, fdata%nodes(snode), n, val, map, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
 ! #if defined(SPLLT_USE_STARPU)
@@ -248,7 +249,7 @@ contains
           ! A_kk          
 
           bc_kk => fdata%bc(dblk)
-          call spllt_factorize_block_task(fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
+          call spllt_factorize_block_task(fdata, fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
 
 ! #if defined(SPLLT_USE_OMP)
 ! !$omp taskwait
@@ -259,13 +260,13 @@ contains
 ! #endif
           ! loop over the row blocks (that is, loop over blocks in block col)
           do ii = kk+1,nr
-             
+          ! do ii = nr,kk+1,-1             
              ! A_mk
              blk = dblk+ii-kk
              ! bc_ik => keep%blocks(blk)
              bc_ik => fdata%bc(blk)
 
-             call spllt_solve_block_task(bc_kk, bc_ik, keep%lfact,prio+2)
+             call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
           end do
 
 ! #if defined(SPLLT_USE_OMP)
@@ -292,7 +293,7 @@ contains
                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
                 bc_ij => fdata%bc(blk)
-                call spllt_update_block_task(bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+                call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
 
              end do
           end do
@@ -304,6 +305,22 @@ contains
 ! #if defined(SPLLT_USE_OMP)
 ! !$omp taskwait
 ! #endif
+
+!           ! DEBUG
+!           dblk = blocks(dblk)%last_blk + 1
+
+!        end do
+
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
+
+!        dblk = node%blk_sa
+
+!        do kk = 1, nc
+!           bc_kk => fdata%bc(dblk)
+
+!           ! END DEBUG
 
           ! map update between current block column and ancestors
           ! rsrc = 0
@@ -382,6 +399,7 @@ contains
                       ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
 
                       call spllt_update_between_task( &
+                           & fdata, &
                            ! & bc, &
                            & bc_kk, &
                            & node, a_bc, a_node, &
@@ -405,8 +423,9 @@ contains
 
                 ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
-
+                
                 call spllt_update_between_task( &
+                     & fdata, &
                      ! & bc, &
                      & bc_kk, &
                      & node, a_bc, a_node, &
@@ -425,6 +444,32 @@ contains
           
              a_num = anode%parent
           end do
+
+          ! DEBUG
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
+!           do jj = kk+1,nc
+
+!              ! L_jk
+!              blk2 = dblk+jj-kk
+!              bc_jk => fdata%bc(blk2)
+
+!              do ii = jj,nr
+
+!                 ! L_ik
+!                 blk1 = dblk+ii-kk                
+!                 bc_ik => fdata%bc(blk1)
+
+!                 ! A_ij
+!                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+!                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
+!                 bc_ij => fdata%bc(blk)
+!                 call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+
+!              end do
+!           end do
+          ! END DEBUG
           
           ! move to next block column in snode
           dblk = blocks(dblk)%last_blk + 1
