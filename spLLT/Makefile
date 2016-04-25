@@ -2,21 +2,21 @@ include Make.inc
 
 #Select compiler and options from below
 ############################
-# CC = gcc
-# FC = gfortran
+CC = gcc
+FC = gfortran
 
-# CFLAGS = -Wall -pedantic -g -O2
-# # FFLAGS = -Wall -pedantic -g -O2 -fopenmp
+CFLAGS = -Wall -pedantic -g -O2
+# FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 
-# FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
-# #FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
-# #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
-# #FFLAGS += -fprofile-arcs -ftest-coverage
+FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+#FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+#FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
+#FFLAGS += -fprofile-arcs -ftest-coverage
 ############################
-CC = icc
-FC = ifort
-FFLAGS = -g -C -openmp
-# FFLAGS = -g -C -static -openmp
+# CC = icc
+# FC = ifort
+# FFLAGS = -g -C -openmp
+# # FFLAGS = -g -C -static -openmp
 ############################
 
 # Things you might add to DEFS:

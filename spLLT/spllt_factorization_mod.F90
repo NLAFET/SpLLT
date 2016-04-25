@@ -88,14 +88,14 @@ contains
 !$omp    & shared(fac_blk_id) &
 #endif
 !$omp    & firstprivate(blk, bc_c, bcol, lcol) &
-!$omp    & depend(inout:fdata%bc(id)%c(:))
-! !$omp    & depend(inout:bc_c(:))
+! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
+! !$omp    & depend(inout:fdata%bc(id)%c(:))
+!$omp    & depend(inout:bc_c(1))
 ! !$omp    & priority(p)
 
 ! !$omp    & depend(inout:bc%c(1))
 ! !$omp    & depend(inout:bc_c)
 ! !$omp    & depend(inout:bc_c(1))
-! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
 
 ! !$omp critical
 
@@ -194,8 +194,6 @@ contains
 
 #elif defined(SPLLT_USE_OMP)
     
-    bc_kk_c => bc_kk%c
-    bc_ik_c => bc_ik%c
 
     blk_kk => bc_kk%blk
     blk_ik => bc_ik%blk
@@ -217,6 +215,9 @@ contains
     id = blk_ik%id
     ! write(*,*)"solve id: ", id
 
+    bc_kk_c => fdata%bc(d_id)%c
+    bc_ik_c => fdata%bc(id)%c
+
     snode = blk_kk%node
     blk_sa = fdata%nodes(snode)%node%blk_sa
     ! write(*,*)"blk_sa: ", blk_sa
@@ -228,16 +229,21 @@ contains
 !$omp    & firstprivate(blk_kk, blk_ik) &
 !$omp    & firstprivate(bc_kk_c, bc_ik_c) &
 !$omp    & firstprivate(d_id, id) &
-! !$omp    & depend(in:bc_kk_c(:)) &
-!$omp    & depend(in:fdata%bc(d_id)%c) &
-!$omp    & depend(inout:fdata%bc(id)%c)
+#if defined(SPLLT_OMP_TRACE)
+!$omp    & shared(slv_blk_id) &
+#endif
+!$omp    & depend(in:bc_kk_c(1)) &
+!$omp    & depend(inout:bc_ik_c(1))
+
+! !$omp    & depend(in:fdata%bc(d_id)%c(1)) &
+! !$omp    & depend(inout:fdata%bc(id)%c)
 
 ! !$omp    & depend(in:bc_kk%c(1)) &
 ! !$omp    & depend(in:bc_kk_c) &
 ! !$omp    & depend(in:bc_kk_c(1:1)) &
-! !$omp    & depend(inout:bc_ik%c(1))
 ! !$omp    & depend(inout:bc_ik_c(1:1))
 
+! !$omp    & depend(inout:bc_ik%c(1))
 ! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
 ! !$omp    & depend(inout:lcol(sa:n*m-1))
 
@@ -361,10 +367,6 @@ contains
     call spllt_starpu_insert_update_block_c(bc_ik%hdl, bc_jk%hdl, bc_ij%hdl, d, p)
 #elif defined(SPLLT_USE_OMP)
 
-    bc_ik_c => bc_ik%c
-    bc_jk_c => bc_jk%c
-    bc_ij_c => bc_ij%c
-
     blk_ik => bc_ik%blk
     blk_jk => bc_jk%blk
     blk_ij => bc_ij%blk
@@ -372,6 +374,10 @@ contains
     id_ik = blk_ik%id
     id_jk = blk_jk%id
     id_ij = blk_ij%id
+
+    bc_ik_c => fdata%bc(id_ik)%c
+    bc_jk_c => fdata%bc(id_jk)%c
+    bc_ij_c => fdata%bc(id_ij)%c
 
     bcol1 = bc_ik%blk%bcol
     lcol1 => lfact(bcol1)%lcol
@@ -393,8 +399,14 @@ contains
 !$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
 !$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
 !$omp    & firstprivate(blk_ik, blk_jk, blk_ij) &
-!$omp    & depend(in:fdata%bc(id_ik)%c, fdata%bc(id_jk)%c) &
-!$omp    & depend(inout: fdata%bc(id_ij)%c)
+#if defined(SPLLT_OMP_TRACE)
+!$omp    & shared(upd_blk_id) &
+#endif
+!$omp    & depend(in:bc_ik_c(1), bc_jk_c(1)) &
+!$omp    & depend(inout: bc_ij_c(1))
+
+! !$omp    & depend(in:fdata%bc(id_ik)%c, fdata%bc(id_jk)%c) &
+! !$omp    & depend(inout: fdata%bc(id_ij)%c)
 
 ! !$omp    & depend(in:bc_ik%c(1), bc_jk%c(1)) &
 ! !$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
@@ -494,52 +506,52 @@ contains
     return
   end subroutine spllt_update_block_task
 
-#if defined(SPLLT_USE_OMP)
-  subroutine spllt_omp_update_between_cpu_func(m, n, blk, dcol, dnode, n1, scol, snode, dest, csrc, rsrc, min_width_blas)
-    use spllt_mod
-    use spllt_kernels_mod
-    implicit none
+! #if defined(SPLLT_USE_OMP)
+!   subroutine spllt_omp_update_between_cpu_func(m, n, blk, dcol, dnode, n1, scol, snode, dest, csrc, rsrc, min_width_blas)
+!     use spllt_mod
+!     use spllt_kernels_mod
+!     implicit none
 
-    integer, intent(in) :: m  ! number of rows in destination block
-    integer, intent(in) :: n  ! number of columns in destination block
-    ! integer(long), intent(in) :: blk ! identifier of destination block
-    type(block_type), intent(in) :: blk ! destination block
-    integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-    type(node_type), intent(in) :: dnode ! Node to which blk belongs
-    integer :: n1 ! number of columns in source block column
-    ! integer(long), intent(in) :: src  ! identifier of block in source block col
-    integer, intent(in) :: scol ! index of block column that src belongs to in snode
-    type(node_type), intent(in) :: snode ! Node to which src belongs
-    real(wp), dimension(*), intent(inout) :: dest ! holds block in L
-    ! that is to be updated.
-    real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
-    real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
-    ! type(block_type), dimension(:), intent(inout) :: blocks
-    ! real(wp), dimension(:), allocatable :: buffer
-    integer, intent(in) :: min_width_blas      ! Minimum width of source block
+!     integer, intent(in) :: m  ! number of rows in destination block
+!     integer, intent(in) :: n  ! number of columns in destination block
+!     ! integer(long), intent(in) :: blk ! identifier of destination block
+!     type(block_type), intent(in) :: blk ! destination block
+!     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
+!     type(node_type), intent(in) :: dnode ! Node to which blk belongs
+!     integer :: n1 ! number of columns in source block column
+!     ! integer(long), intent(in) :: src  ! identifier of block in source block col
+!     integer, intent(in) :: scol ! index of block column that src belongs to in snode
+!     type(node_type), intent(in) :: snode ! Node to which src belongs
+!     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
+!     ! that is to be updated.
+!     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
+!     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
+!     ! type(block_type), dimension(:), intent(inout) :: blocks
+!     ! real(wp), dimension(:), allocatable :: buffer
+!     integer, intent(in) :: min_width_blas      ! Minimum width of source block
 
-    real(wp), dimension(:), pointer :: buffer
-    integer, dimension(:), allocatable :: row_list ! reallocated to min size m
-    integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+!     real(wp), dimension(:), pointer :: buffer
+!     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
+!     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
 
-    allocate(buffer(m*n))
-    allocate(row_list(1), col_list(1))
+!     allocate(buffer(m*n))
+!     allocate(row_list(1), col_list(1))
 
-    call spllt_update_between(m, n, blk, dcol, dnode, &
-         & n1, scol, snode, &
-         & dest, &
-         & csrc, &
-         & rsrc, &
-         & row_list, col_list, buffer, &
-         & min_width_blas)
+!     call spllt_update_between(m, n, blk, dcol, dnode, &
+!          & n1, scol, snode, &
+!          & dest, &
+!          & csrc, &
+!          & rsrc, &
+!          & row_list, col_list, buffer, &
+!          & min_width_blas)
 
-    deallocate(buffer)
-    deallocate(row_list, col_list)
+!     deallocate(buffer)
+!     deallocate(row_list, col_list)
 
-    return
+!     return
 
-  end subroutine spllt_omp_update_between_cpu_func
-#endif
+!   end subroutine spllt_omp_update_between_cpu_func
+! #endif
 
   ! syrk/gemm (inter-node)
   subroutine spllt_update_between_task(fdata, &
@@ -635,7 +647,8 @@ contains
     ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     real(wp), dimension(:), pointer :: a_bc_c, dbc_c
     ! real(wp), dimension(:), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    type(spllt_bc_type), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    ! type(spllt_bc_type), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    real(wp), dimension(:), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     type(block_type), pointer :: blk_kk, a_blk
     type(spllt_bc_type), pointer :: p_workspace(:) => null()
     ! real(wp), dimension(:), allocatable :: work
@@ -748,6 +761,7 @@ contains
     !      & control, info, st)
     blk_kk => dbc%blk
     dblk = blk_kk%id
+
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
     blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
@@ -758,8 +772,8 @@ contains
     id_jk_en = blk_en
     ! write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
     ! if (nb_blk.gt.2) write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
-    bc_jk_sa => bcs(blk_sa)
-    bc_jk_en => bcs(blk_en)
+    bc_jk_sa => fdata%bc(id_jk_sa)%c ! bcs(blk_sa)%c
+    bc_jk_en => fdata%bc(id_jk_en)%c ! bcs(blk_en)%c
     ! write(*,*) "nb_blk: ", nb_blk
     ! write(*,*) "nb_blk:", nb_blk, "blk_sa: ", blk_sa, ", blk_en: ", blk_en
     csrc_sa = blocks(blk_sa)%sa
@@ -778,14 +792,14 @@ contains
     id_ik_en = blk_en
     ! if (nb_blk.gt.2)  write(*,*) "nb_blk:", nb_blk, "id_ik_sa: ", id_ik_sa, ", id_ik_en: ", id_ik_en
 
-    bc_ik_sa => bcs(blk_sa)
-    bc_ik_en => bcs(blk_en)
+    bc_ik_sa => fdata%bc(id_ik_sa)%c ! bcs(blk_sa)%c
+    bc_ik_en => fdata%bc(id_ik_en)%c ! bcs(blk_en)%c
 
     rsrc_sa = blocks(blk_sa)%sa
     rsrc_en = blocks(blk_en)%sa
 
-    a_bc_c => a_bc%c
     id_ij = a_blk%id
+    a_bc_c => fdata%bc(id_ij)%c
 
     dbc_c => dbc%c
 
@@ -828,9 +842,17 @@ contains
 !$omp task firstprivate(m, n, a_blk, dcol, p_anode, n1, scol, p_snode, &
 !$omp    & lcol, lcol1, min_width_blas, sa, csrc, csrc2, rsrc, rsrc2) &
 !$omp    & private(rlst, clst, work) & 
-!$omp    & depend(in:fdata%bc(id_ik_sa)%c, fdata%bc(id_ik_en)%c) &
-!$omp    & depend(in:fdata%bc(id_jk_sa)%c, fdata%bc(id_jk_en)%c) &
-!$omp    & depend(inout:fdata%bc(id_ij)%c)
+#if defined(SPLLT_OMP_TRACE)
+!$omp    & shared(upd_btw_id) &
+#endif
+!$omp    & firstprivate(bc_ik_sa, bc_ik_en, bc_jk_sa, bc_jk_en, a_bc_c) &
+!$omp    & depend(in:bc_ik_sa(1), bc_ik_en(1)) &
+!$omp    & depend(in:bc_jk_sa(1), bc_jk_en(1)) &
+!$omp    & depend(inout: a_bc_c(1))
+
+! !$omp    & depend(in:fdata%bc(id_ik_sa)%c, fdata%bc(id_ik_en)%c) &
+! !$omp    & depend(in:fdata%bc(id_jk_sa)%c, fdata%bc(id_jk_en)%c) &
+! !$omp    & depend(inout:fdata%bc(id_ij)%c)
 
 #if defined(SPLLT_OMP_TRACE)
     th_id = omp_get_thread_num()
@@ -976,6 +998,9 @@ contains
     p_val => val
 
 !$omp task firstprivate(snum) firstprivate(n, p_map, p_keep, p_val) &
+#if defined(SPLLT_OMP_TRACE)
+!$omp    & shared(ini_nde_id) &
+#endif
 !$omp    & private(th_id)
 
 #if defined(SPLLT_OMP_TRACE)
