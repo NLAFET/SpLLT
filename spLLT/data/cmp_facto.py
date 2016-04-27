@@ -12,7 +12,7 @@ spllt_task_insert_time = '\[>\] \[spllt_stf_factorize\] task insert time:'
 blocksizes = [256, 384, 512, 768, 1024]
 # ncpu = 24
 
-outputdir = 'sirocco'
+outputdir = 'cn255_4'
 
 for mat in fileinput.input():
 
@@ -22,12 +22,24 @@ for mat in fileinput.input():
     pbl = re.sub(r'/', '_', mat)
     pbl = pbl.rstrip()
 
+    # OpenMP (gnu)
+    spllt_gnu_omp_t_facto = []
+    for blocksize in blocksizes:
+        datafile = outputdir + '/' + 'spllt_omp' + '/' + 'gnu' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        if os.path.exists(datafile):
+            # print datafile
+            f = open(datafile)
+            v = vextractor.get_value(f, spllt_facto_time)
+            # print v
+            f.close()
+            spllt_gnu_omp_t_facto.append(float(v))
+
     # spLLT
     spllt_t_facto = []
     spllt_t_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + pbl + '_NCPU-23' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'spllt_starpu' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)
@@ -44,7 +56,7 @@ for mat in fileinput.input():
     ma87_t_facto = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'ma87' + '/' + pbl + '_NCPU-24' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'ma87' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
 
             # print datafile
@@ -58,8 +70,12 @@ for mat in fileinput.input():
     # print spllt_t_insert
     # print ma87_t_facto
         
+    best_spllt_gnu_omp_t_facto_idx = spllt_gnu_omp_t_facto.index(min(spllt_gnu_omp_t_facto))
     best_spllt_t_facto_idx = spllt_t_facto.index(min(spllt_t_facto))
     best_ma87_t_facto_idx  = ma87_t_facto.index(min(ma87_t_facto))
+
+    best_spllt_gnu_omp_nb       = blocksizes[best_spllt_gnu_omp_t_facto_idx]
+    best_spllt_gnu_omp_t_facto  = spllt_gnu_omp_t_facto[best_spllt_gnu_omp_t_facto_idx]
 
     best_spllt_nb       = blocksizes[best_spllt_t_facto_idx]
     best_spllt_t_facto  = spllt_t_facto[best_spllt_t_facto_idx]
@@ -73,11 +89,16 @@ for mat in fileinput.input():
     #                                           lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)), 
     #                                           lp.print_float(best_ma87_t_facto , (best_ma87_t_facto<best_spllt_t_facto))))
 
-    print("%40s & %10s & %10s & %10s & %10s \\\\" % (lp.escape(mat), 
-                                                     best_spllt_nb,
-                                                     lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)),
-                                                     best_ma87_nb,
-                                                     lp.print_float(best_ma87_t_facto , (best_ma87_t_facto<best_spllt_t_facto))))
+    print("%40s & %10s & %10s & %10s & %10s & %10s & %10s \\\\" % (lp.escape(mat), 
+                                                                   best_spllt_gnu_omp_nb,
+                                                                   lp.print_float(best_spllt_gnu_omp_t_facto, 
+                                                                                  ((best_spllt_gnu_omp_t_facto<best_ma87_t_facto) and (best_spllt_gnu_omp_t_facto<best_spllt_t_facto))),
+                                                                   best_spllt_nb,
+                                                                   lp.print_float(best_spllt_t_facto, 
+                                                                                  ((best_spllt_t_facto<best_ma87_t_facto) and (best_spllt_t_facto<best_spllt_gnu_omp_t_facto))),
+                                                                   best_ma87_nb,
+                                                                   lp.print_float(best_ma87_t_facto,
+                                                                                  ((best_ma87_t_facto<best_spllt_t_facto) and (best_ma87_t_facto<best_spllt_gnu_omp_t_facto)))))
     
     # print("%40s & %10s \\\\" % (lp.escape(mat), lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)))
         

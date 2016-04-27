@@ -2,6 +2,7 @@
 usestarpu=$(findstring USE_STARPU, $(DEFS))
 useomp=$(findstring USE_OMP, $(DEFS))
 useomptrace=$(findstring OMP_TRACE, $(DEFS))
+useparsec=$(findstring USE_PARSEC, $(DEFS))
 #usestarpu=
 
 # starpusrc := StarPU/starpu_f_mod.F90 StarPU/starpu_f_wrappers.c
@@ -15,6 +16,12 @@ endif
 
 ifneq ($(useomptrace),)
 ompobjs += trace_mod.o get_wtime.o get_wtime_mod.o
+endif
+
+ifneq ($(useparsec),)
+VPATH += PaRSEC
+parsecobjs := spllt_ptg_mod.o
+parsecobjs += spllt_parsec_data.o factorize.o
 endif
 
 # Module build dependencies

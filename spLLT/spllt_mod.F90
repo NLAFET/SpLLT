@@ -4,6 +4,8 @@ module spllt_mod
 #if defined(SPLLT_USE_STARPU)
   use iso_c_binding
   use starpu_f_mod
+#elif defined(SPLLT_USE_PARSEC)
+  use dague_f08_interfaces
 #endif
   implicit none
 
@@ -36,6 +38,10 @@ module spllt_mod
 
 #if defined(SPLLT_USE_OMP) && defined(SPLLT_OMP_TRACE) 
   integer, save :: ini_nde_id, fac_blk_id, slv_blk_id, upd_blk_id, upd_btw_id 
+#endif
+
+#if defined(SPLLT_USE_PARSEC)
+  type(dague_context_t) :: ctx
 #endif
 
   type spllt_cntl

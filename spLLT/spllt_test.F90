@@ -26,6 +26,7 @@ program spllt_test
 contains
 
   subroutine spllt_test_mat(mf, cntl)
+    use spllt_mod
     use spllt_stf_mod
     use spral_rutherford_boeing
     use hsl_mc68_integer
@@ -38,6 +39,9 @@ contains
 #if defined(SPLLT_OMP_TRACE) 
     use trace_mod
 #endif
+#elif defined(SPLLT_USE_PARSEC)
+    use dague_f08_interfaces
+    use spllt_ptg_mod
 #endif
     implicit none
     
@@ -163,6 +167,9 @@ contains
     call trace_create_event('UPDATE_BLK', upd_blk_id)
     call trace_create_event('UPDATE_BTW', upd_btw_id)
 #endif
+
+#elif defined(SPLLT_USE_PARSEC)
+    call dague_init(cntl%ncpu, ctx)
 #endif
 
     write(*,'("[>] factorize")')
@@ -170,8 +177,13 @@ contains
     write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
     ! factorize matrix
     call system_clock(start_t, rate_t)
+    ! TODO create factorize method
+#if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+#elif defined(SPLLT_USE_PARSEC)
+    call spllt_ptg_factorize()
+#endif
 
 #if defined(SPLLT_USE_STARPU)
     ! wait for task completion
@@ -199,6 +211,8 @@ contains
 #endif
 !$omp end master
 !$omp end parallel
+#elif defined(SPLLT_USE_PARSEC)
+    call dague_fini(ctx)
 #endif
 
     write(*,'("[>] solve")')

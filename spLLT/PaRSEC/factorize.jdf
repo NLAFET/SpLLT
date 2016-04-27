@@ -1,0 +1,38 @@
+extern "C" %{
+
+#include "dague.h"
+#include "dague_internal.h"
+   //#include "data_dist/matrix/two_dim_rectangle_cyclic.h"
+#include "data_dist/matrix/matrix.h"
+#include "data_dist/matrix/two_dim_tabular.h"
+#include "factorize.h"
+
+%}
+
+num_nodes             [type = int]
+
+
+init_node(snode)
+
+   snodes = 1..num_nodes
+   
+BODY
+{
+   printf("[init_node]\n");
+}
+END
+
+extern "C" %{
+   
+   dague_handle_t* factorize(int num_nodes) {
+      
+      dague_factorize_handle_t* facto_handle;
+
+      facto_handle = dague_factorize_new(qrm_mat, sym, fsym, nnodes);
+
+      assert( NULL != facto_handle );
+
+      return &facto_handle->super;    
+   }
+
+%}

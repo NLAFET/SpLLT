@@ -32,10 +32,10 @@ DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
 
-CFLAGS += $(ISTARPU) $(ICUDA) $(IHWLOC)
-FFLAGS += $(ISPRAL) 
+CFLAGS += $(ICUDA) $(IHWLOC) $(ISTARPU) $(IPARSEC)
+FFLAGS += $(ISPRAL) $(IPARSEC)
 
-LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU)
+LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU) $(LPARSEC) $(LHWLOC) $(LMPI)
 
 all: run_ma87 spllt_starpu_test
 
@@ -87,13 +87,22 @@ omp:
 	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
 omp_trace:
 	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
+parsec:
+	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC)
 
+# PaRSEC
+spllt_parsec_test: spllt_test.F90 $(objs) $(parsecobjs) common90.o dtdeps.o dtdeps90.o
+	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
+
+# StarPU
 spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+# OpenMP
 spllt_omp_test: spllt_test.F90 $(objs) $(ompobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
+# STF
 spllt_stf_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
