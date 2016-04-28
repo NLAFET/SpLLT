@@ -522,7 +522,7 @@ contains
 10 if(st.ne.0) then
       info%flag = spllt_error_allocation
       info%stat = st
-      call spllt_print_err(info%flag, control, context='spllt_stf_factorize',st=st)
+      call spllt_print_err(info%flag, context='spllt_stf_factorize',st=st)
       return
    endif
 

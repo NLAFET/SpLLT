@@ -20,13 +20,20 @@ endif
 
 ifneq ($(useparsec),)
 VPATH += PaRSEC
+
+INCLUDES += -I./PaRSEC
+CFLAGS += -m64 -mcx16
+LIBS += $(LPARSEC) $(LHWLOC) $(LMPI)
+
 parsecobjs := spllt_ptg_mod.o
 parsecobjs += spllt_parsec_data.o factorize.o
+parsecobjs += spllt_parsec_factorization_mod.o
 endif
 
 # Module build dependencies
 spllt_test.o: hsl_ma87d.o spllt_analyse_mod.o spllt_stf_mod.o spllt_mod.o dtdeps.o dtdeps90.o
 spllt_stf_mod.o: hsl_ma87d.o spllt_factorization_mod.o spllt_mod.o
+spllt_ptg_mod.o: spllt_mod.o
 spllt_factorization_mod.o: spllt_mod.o spllt_kernels_mod.o 
 spllt_kernels_mod.o: spllt_mod.o hsl_ma87d.o 
 spllt_analyse_mod.o: spllt_utils_mod.o spllt_mod.o hsl_ma87d.o
@@ -46,6 +53,10 @@ endif
 ifneq ($(useomptrace),)
 spllt_factorization_mod.o: trace_mod.o
 trace_mod.o: get_wtime_mod.o
+endif
+
+ifneq ($(useparsec),)
+spllt_ptg_mod.o: spllt_parsec_factorization_mod.o 
 endif
 
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o

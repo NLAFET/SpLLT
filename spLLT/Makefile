@@ -6,9 +6,9 @@ CC = gcc
 FC = gfortran
 
 CFLAGS = -Wall -pedantic -g -O2
-# FFLAGS = -Wall -pedantic -g -O2 -fopenmp
+FFLAGS = -Wall -pedantic -g -O2 -fopenmp
 
-FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
+#FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -g -fbacktrace -fopenmp -ffpe-trap=invalid,zero,overflow
 #FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -Wunused -fbacktrace -fopenmp
 #FFLAGS += -fprofile-arcs -ftest-coverage
@@ -18,6 +18,8 @@ FFLAGS = -Wall -pedantic -fbounds-check -march=native -g -fbacktrace -fopenmp -f
 # FFLAGS = -g -C -openmp
 # # FFLAGS = -g -C -static -openmp
 ############################
+
+INCLUDES = -I. 
 
 # Things you might add to DEFS:
 
@@ -35,7 +37,9 @@ FFLAGS += $(DEFS)
 CFLAGS += $(ICUDA) $(IHWLOC) $(ISTARPU) $(IPARSEC)
 FFLAGS += $(ISPRAL) $(IPARSEC)
 
-LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU) $(LPARSEC) $(LHWLOC) $(LMPI)
+#CFLAGS += -m64 -mcx16
+
+LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU)  $(LHWLOC)
 
 all: run_ma87 spllt_starpu_test
 

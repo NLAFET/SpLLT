@@ -73,6 +73,7 @@ module spllt_mod
   ! problem data (analyis)
   type spllt_adata_type
      integer :: nnodes
+     integer :: n
      integer(long) :: num_factor = 0_long ! Number of entries in the factor.
      integer(long) :: num_flops = 0_long  ! Number of flops for factor.
      ! weight(i): weight of the subtree rooted at node i where weight
@@ -298,12 +299,11 @@ contains
 
   end subroutine compute_resid
 
-  subroutine spllt_print_err(iflag, control, context, st)
+  subroutine spllt_print_err(iflag, context, st)
     use hsl_ma87_double
     implicit none
     
     integer, intent(in) :: iflag
-    type(ma87_control), intent(in) :: control
     character (len=*), optional, intent(in) :: context
     integer, intent(in), optional :: st
 

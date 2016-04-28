@@ -2,10 +2,10 @@
 %.c: %.jdf
 	$(DAGUEPP) --noline -i $< -o $*
 %.o: %.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 %.o: %.f90
-	$(FC) $(FFLAGS) -c -o $@ $<
+	$(FC) $(FFLAGS) $(INCLUDES) -c -o $@ $<
 %.o: %.f
-	$(FC) $(FFLAGS) -c -o $@ $<
+	$(FC) $(FFLAGS) $(INCLUDES) -c -o $@ $<
 %.o: %.F90
-	$(FC) $(FFLAGS) -c -o $@ $<
+	$(FC) $(FFLAGS) $(INCLUDES) -c -o $@ $<

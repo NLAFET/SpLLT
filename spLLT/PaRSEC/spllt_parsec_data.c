@@ -8,23 +8,24 @@ static inline dague_data_t* get_or_create_data(spllt_parsec_data_t* dat, int sno
 
    dague_data_t* data = dat->data;
 
-   if (data == NULL) {
+   /* if (data == NULL) { */
       
-      dague_data_copy_t* data_copy = OBJ_NEW(dague_data_copy_t);
-      data = OBJ_NEW(dague_data_t)/* (dague_data_t *) malloc(sizeof(dague_data_t)); */;
+   /*    dague_data_copy_t* data_copy = OBJ_NEW(dague_data_copy_t); */
+   /*    data = OBJ_NEW(dague_data_t)/\* (dague_data_t *) malloc(sizeof(dague_data_t)); *\/; */
             
-      data_copy->coherency_state = DATA_COHERENCY_OWNED;
-      data_copy->original = NULL /* data */;
-      data_copy->device_private = NULL;
+   /*    data_copy->coherency_state = DATA_COHERENCY_OWNED; */
+   /*    data_copy->original = NULL /\* data *\/; */
+   /*    data_copy->device_private = NULL; */
 
-      data->owner_device = 0;
-      data->key = 0 /* node */;
-      data->nb_elts = 0;
-      dague_data_copy_attach(data, data_copy, 0);
+   /*    data->owner_device = 0; */
+   /*    data->key = 0 /\* node *\/; */
+   /*    data->nb_elts = 0; */
+   /*    dague_data_copy_attach(data, data_copy, 0); */
 
-   }
+   /* } */
     
-   return data;
+   return dague_data_create(&data, &(dat->super), 
+                            0, NULL, 0);
 }
 
 static dague_data_t* factorize_data_of(dague_ddesc_t *desc, ...) {

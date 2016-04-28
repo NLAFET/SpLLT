@@ -130,7 +130,7 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-     call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
@@ -182,7 +182,7 @@ contains
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize()
+    call spllt_ptg_factorize(a_pbl, keep, cntl, pbl, info)
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -191,6 +191,8 @@ contains
     call starpu_f_fxt_stop_profiling()
 #elif defined(SPLLT_USE_OMP)
 !$omp taskwait
+#elif (SPLLT_USE_PARSEC)
+    call dague_context_wait(ctx)
 #endif
 
     if(info%flag .lt. spllt_success) then

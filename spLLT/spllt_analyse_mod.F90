@@ -71,6 +71,7 @@ contains
     info%stat = 0
 
     keep%n = n
+    adata%n = n
     ne = ptr(n+1) - 1
 
     ! immediate return if n = 0

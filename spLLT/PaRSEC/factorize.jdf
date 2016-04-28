@@ -6,33 +6,38 @@ extern "C" %{
 #include "data_dist/matrix/matrix.h"
 #include "data_dist/matrix/two_dim_tabular.h"
 #include "factorize.h"
+#include "spllt_parsec_data.h"
 
 %}
 
-num_nodes             [type = int]
-
+num_nodes       [type = int]
+data            [type = "struct spllt_parsec_data*"]
 
 init_node(snode)
 
-   snodes = 1..num_nodes
+   snode = 1..num_nodes
+
+   : data(snode)
    
 BODY
 {
-   printf("[init_node]\n");
+   printf("[init_node] snode: %d\n", snode);
 }
 END
 
 extern "C" %{
    
-   dague_handle_t* factorize(int num_nodes) {
+   dague_handle_t* spllt_parsec_factorize(int num_nodes) {
       
-      dague_factorize_handle_t* facto_handle;
+      dague_factorize_handle_t* fac_hdl;
+      
+      spllt_parsec_data_t *data = spllt_parsec_data_create(num_nodes); 
 
-      facto_handle = dague_factorize_new(qrm_mat, sym, fsym, nnodes);
+      fac_hdl = dague_factorize_new(num_nodes, data);
 
-      assert( NULL != facto_handle );
+      assert( NULL != fac_hdl );
 
-      return &facto_handle->super;    
+      return &fac_hdl->super;    
    }
 
 %}
