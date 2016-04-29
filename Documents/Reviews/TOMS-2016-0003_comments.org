@@ -1,0 +1,27 @@
+The manuscript "Non-GPU-resident Symmetric Indefinite Factorization"
+introduces a new algorithm for the factorization of dense symmetric
+indefinite matrices based on a Aasen's algorithm. In more details,
+this new algorithm is based on a communication avoiding variant of the
+original Aasen's algorithm and aims at reducing the impact of CPU-GPU
+communications in the case where the input problem does not fit on the
+GPU memory. To achieve this objective, the authors use a
+non-GPU-resident strategy that they apply on the original
+factorization algorithm. Finally the authors present experimental
+study of their algorithm and compare it with two other popular
+algorithms which are Bunch Kaufman and partitioned Aasen algorithms.
+
+The proposed algorithm consists in a simple modification of the
+Partitioned Aasen algorithm using a non-GPU-resident strategy. This
+strategy has been already been widely applied in the context of dense
+linear algebra kernels. In addition, the proposed algorithm seems to
+be a straightforward solution to cope with memory limitations. As a
+results we do not believe that the novelty of the work presented in
+this manuscript is not very high and we suggest that the paper should
+be rejected. In addition, the evolution of the unified memory feature
+in the next generation of Nvidia GPU (Pascal architecture) will
+simplify and increase the efficiency of memory sharing for CPU and
+GPU. Therefore we think that the issue of hiding communication and
+computation in the context of an hybrid CPU-GPU architecture might no
+longer be an issue in a non distant future. As a result we also think
+the main focus of this paper is not extremely relevant for the
+emerging GPU architectures.
