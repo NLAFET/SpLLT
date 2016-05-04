@@ -1,0 +1,414 @@
+% This version: August 21st, 2008
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% packages %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{savesym}
+%\usepackage{repdefs,latexsym,longtable,cite}
+\usepackage{latexsym,longtable,cite}
+\usepackage{accents}
+\usepackage{varioref}
+\savesymbol{dddot}
+\savesymbol{ddddot}
+\usepackage{amsmath}
+\restoresymbol{TXF}{dddot}
+\restoresymbol{TXF}{ddddot}
+\usepackage{stfctitlepage}
+\usepackage{amssymb}
+\usepackage{subfigure}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage[usenames,dvipsnames]{pstricks}
+\usepackage{epsfig}
+\usepackage{pst-grad} % For gradients
+\usepackage{pst-plot} % For axes
+\usepackage[section]{placeins}
+\usepackage{lscape}
+
+%%%%%%%%%%%%%%%%%%%%%%% definitions from repdefs %%%%%%%%%%%%%%%%%%%%%
+
+% formatting
+
+\textwidth  16.17cm 
+\textheight 23.4cm
+\oddsidemargin -0.2mm 
+\evensidemargin -0.2mm
+\def\baselinestretch{1.1} 
+\topmargin -8.4mm 
+\renewcommand{\textfraction}{0.05}
+\setlength{\unitlength}{1mm}
+
+% sections
+
+\newcommand{\resetcounters}{\setcounter{equation}{0} \setcounter{figure}{0} 
+ \setcounter{table}{0}}
+\newcommand{\numsection}[1]{\section{#1}\resetcounters}
+
+% Equations, tables and figures numbered by chapter and section
+
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\thetable}{\arabic{section}.\arabic{table}}
+\renewcommand{\thefigure}{\arabic{section}.\arabic{figure}}
+
+% displayed equations
+
+\newcommand{\eqn}[2]{\begin{equation}\label{#1}{#2}\end{equation}}
+\newcommand{\disp}[1]{\[{#1}\]}
+\newcommand{\tim}[1]{\;\; \mbox{#1} \;\;}
+\newcommand{\rim}[1]{\;\;\; \mbox{#1} \;\;\;}
+
+% arrays etc
+
+\newcommand{\vect}[1]{\left(\begin{array}{c}#1\end{array}\right)}
+\newcommand{\mat}[2]{\left(\begin{array}{#1}#2\end{array}\right)}
+\newcommand{\matinv}[2]{\left(\begin{array}{#1}#2\end{array}\right)^{-1}}
+\newcommand{\arr}[2]{\begin{array}{#1}#2\end{array}}
+
+% shorthand for itemize, etc
+
+\newcommand{\ite}[1]{\begin{itemize}{#1}\end{itemize}}
+\newcommand{\enu}[1]{\begin{enumerate}{#1}\end{enumerate}}
+\newcommand{\des}[1]{\begin{description}{#1}\end{description}}
+
+% mathematics
+
+\renewcommand{\Re}{\hbox{I\hskip -1.5pt R}}
+\newcommand{\smallRe}
+     {\mbox{\raisebox{-0.8pt}{\footnotesize I\hskip -1.5pt R\hskip -0.5pt}}}
+\newcommand{\mininx}[1]{ {\renewcommand{\arraystretch}{0.8} 
+                     \begin{array}[t]{c} 
+                     \mbox{minimize} \vspace*{-1mm} \\ 
+                     \mbox{ $\scriptstyle x \in \smallRe^n #1 $ } 
+                     \end{array} \;} }
+\newcommand{\minin}[1]{ {\renewcommand{\arraystretch}{0.8} 
+                     \begin{array}[t]{c} 
+                     \mbox{minimize} \vspace*{-1mm} \\ 
+                     \mbox{ $\scriptstyle #1 $ } 
+                     \end{array} \;} }
+\newcommand{\eqdef}{\stackrel{\rm def}{=}}
+\newcommand{\bigsum}{\displaystyle \sum}
+\newcommand{\bigfrac}[2]{\displaystyle\frac{#1}{#2}}
+\newcommand{\s}[1]{^{\mbox{\protect\tiny #1}}}
+\newcommand{\sub}[1]{_{\mbox{\protect\tiny #1}}}
+\newcommand{\st}{\,\mid\,}
+\newcommand{\diag}{\mbox{diag}}
+
+%  fractions
+
+\newcommand{\sfrac}[2]{{\scriptstyle \frac{#1}{#2}}}
+\newcommand{\half}{\sfrac{1}{2}}
+\newcommand{\quarter}{\sfrac{1}{4}}
+\newcommand{\eighth}{\sfrac{1}{8}}
+
+% theorems etc
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{example}{Example}[section]
+\newtheorem{defn}{Definition}[section]
+\newtheorem{remark}{Remark}[section]
+\newtheorem{assumption}{Assumption}[section]
+\newcommand{\llem}[2]{\vspace{\baselineskip} 
+ \noindent\framebox[\textwidth]{\parbox{0.95\textwidth}{
+ \begin{lemma} \label{#1} \rm #2 \end{lemma} } } \vspace{\baselineskip} }
+\newcommand{\lthm}[2]{\vspace{\baselineskip} 
+ \noindent\framebox[\textwidth]{\parbox{0.95\textwidth}{
+ \begin{theorem} \label{#1} \rm #2 \end{theorem} } } \vspace{\baselineskip} }
+\newcommand{\lcor}[2]{\vspace{\baselineskip}
+ \noindent\framebox[\textwidth]{\parbox{0.95\textwidth}{
+ \begin{corollary} \label{#1} \rm #2 \end{corollary} } } \vspace{\baselineskip} }
+\newcommand{\lassump}[2]{\vspace{\baselineskip}
+ \noindent\framebox[\textwidth]{\parbox{0.95\textwidth}{
+ \begin{assumption} \label{#1} \rm #2 \end{assumption} } } \vspace{\baselineskip} }
+\newcommand{\ldefn}[2]{\vspace{\baselineskip}
+ \noindent\framebox[\textwidth]{\parbox{0.95\textwidth}{
+ \begin{defn} \label{#1} \rm #2 \end{defn} } } \vspace{\baselineskip} }
+
+% proofs
+
+\newcommand{\bpr}{{\bf Proof.} \hspace{1.5mm}}
+\newcommand{\epr}{\hfill $\Box$ \vspace*{1em}}
+\newcommand{\proof}[1]{
+\begin{list}{}{
+\setlength{\topsep}{0.0pt}
+\setlength{\partopsep}{0.0pt}
+\setlength{\leftmargin}{0.025\textwidth}
+\setlength{\rightmargin}{0.5\leftmargin}
+\setlength{\labelwidth}{0.5\leftmargin}
+\setlength{\labelsep}{0.25\leftmargin}}
+\item \bpr #1 \epr \noindent
+\end{list}}
+
+% appendix
+
+\newcommand{\newappendixname}{A}
+\newcommand{\newappendix}[1]{\renewcommand{\newappendixname}{{#1}}
+ \section*{Appendix \newappendixname} 
+ \resetcounters
+ \renewcommand{\theequation}{\newappendixname.\arabic{equation}}
+ }
+
+% calligraphic letters
+
+\newcommand{\calA}{{\cal A}} \newcommand{\calB}{{\cal B}}
+\newcommand{\calC}{{\cal C}} \newcommand{\calD}{{\cal D}}
+\newcommand{\calE}{{\cal E}} \newcommand{\calF}{{\cal F}}
+\newcommand{\calG}{{\cal G}} \newcommand{\calH}{{\cal H}}
+\newcommand{\calI}{{\cal I}} \newcommand{\calJ}{{\cal J}}
+\newcommand{\calK}{{\cal K}} \newcommand{\calL}{{\cal L}}
+\newcommand{\calM}{{\cal M}} \newcommand{\calN}{{\cal N}}
+\newcommand{\calO}{{\cal O}} \newcommand{\calP}{{\cal P}}
+\newcommand{\calQ}{{\cal Q}} \newcommand{\calR}{{\cal R}}
+\newcommand{\calS}{{\cal S}} \newcommand{\calT}{{\cal T}}
+\newcommand{\calU}{{\cal U}} \newcommand{\calV}{{\cal V}}
+\newcommand{\calW}{{\cal W}} \newcommand{\calX}{{\cal X}}
+\newcommand{\calY}{{\cal Y}} \newcommand{\calZ}{{\cal Z}}
+
+% figures
+
+\newcommand{\fig}[2]{\begin{figure}[htbp]
+\begin{center} {#1} \caption{#2} \end{center} \end{figure}}
+\newcommand{\figt}[2]{\begin{figure}[t]
+\begin{center} {#1} \caption{#2} \end{center} \end{figure}}
+
+
+%%%%%%%%%%%%%%%%%%%%%%% additional definitions %%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\mycitetwo}[4]{[\citenum{#1}: #2, \citenum{#3}: #4]}
+\newcommand{\mycitethree}[3]{[\citenum{#1}: #2, \citenum{#3}]}
+
+\newcommand{\lk}{\lambda_k}
+\newcommand{\lkp}{\lambda_{k+1}}
+\newcommand{\dk}{\delta_k}
+
+\newcommand{\lambdac}{\lambda\sub{C}}
+\newcommand{\lambdae}{\lambda\sub{E}}
+\newcommand{\lambdas}{\lambda\sub{S}}
+\newcommand{\lambdal}{\lambda\sub{L}}
+\newcommand{\lambdat}{\lambda\sub{T}}
+\newcommand{\lambdau}{\lambda\sub{U}}
+\newcommand{\xs}{x\sub{S}}
+\newcommand{\alphas}{\alpha\sub{S}}
+\newcommand{\thetal}{\theta\sub{L}}
+\newcommand{\thetau}{\theta\sub{U}}
+
+\newcommand{\xl}{x(\lambda)}
+\newcommand{\xlt}{x^T(\lambda)}
+\newcommand{\xlp}{\dot{x}(\lambda)}
+\newcommand{\xlpt}{\dot{x}^T(\lambda)}
+\newcommand{\xlpp}{\ddot{x}(\lambda)}
+\newcommand{\xlppt}{\ddot{x}^T(\lambda)}
+
+\newcommand{\xlz}{x^{(0)}(\lambda)}
+\newcommand{\xlo}{x^{(1)}(\lambda)}
+\newcommand{\xlk}{x^{(k)}(\lambda)}
+\newcommand{\xlkt}{x^{(k)T}(\lambda)}
+\newcommand{\xlkm}{x^{(k-1)}(\lambda)}
+\newcommand{\xlkp}{x^{(k+1)}(\lambda)}
+\newcommand{\xlkpt}{x^{(k+1)T}(\lambda)}
+\newcommand{\xlkpp}{x^{(k+2)}(\lambda)}
+
+\newcommand{\ylz}{y^{(0)}(\lambda)}
+\newcommand{\ylk}{y^{(k)}(\lambda)}
+\newcommand{\ylkt}{y^{(k)T}(\lambda)}
+\newcommand{\ylkp}{y^{(k+1)}(\lambda)}
+\newcommand{\ylkpt}{y^{(k+1)T}(\lambda)}
+\newcommand{\ylkm}{y^{(k-1)}(\lambda)}
+
+\newcommand{\zlz}{z^{(0)}(\lambda)}
+\newcommand{\zlk}{z^{(k)}(\lambda)}
+\newcommand{\zlkp}{z^{(k+1)}(\lambda)}
+\newcommand{\zlkm}{z^{(k-1)}(\lambda)}
+
+\newcommand{\Hlm}{H + \lambda M}
+\newcommand{\Hlmc}{H + \lambdac M}
+
+\newcommand{\pil}{\pi(\lambda)}
+\newcommand{\pilp}{\pi^{(1)}(\lambda)}
+\newcommand{\pilpp}{\pi^{(2)}(\lambda)}
+\newcommand{\pilppp}{\pi^{(3)}(\lambda)}
+\newcommand{\pilpppp}{\pi^{(4)}(\lambda)}
+
+%\newcommand{\pilp}{\dot{\pi}(\lambda)}
+%\newcommand{\pilpp}{\ddot{\pi}(\lambda)}
+%\newcommand{\pilppp}{\dddot{\pi}(\lambda)}
+%\newcommand{\pilpppp}{\ddddot{\pi}(\lambda)}
+
+\newcommand{\pitkp}{\pi^{(2k+1)}(\lambda)}
+\newcommand{\pitkpt}{\pi^{(2k+2)}(\lambda)}
+
+\newcommand{\yl}{y(\lambda)}
+\newcommand{\ylp}{\dot{y}(\lambda)}
+\newcommand{\ylpt}{\dot{y}^T(\lambda)}
+\newcommand{\ylpp}{\ddot{y}(\lambda)}
+\newcommand{\ylppt}{\ddot{y}^T(\lambda)}
+
+\newcommand{\zl}{z(\lambda)}
+\newcommand{\zlp}{\dot{z}(\lambda)}
+\newcommand{\zlpt}{\dot{z}^T(\lambda)}
+\newcommand{\zlpp}{\ddot{z}(\lambda)}
+\newcommand{\zlppt}{\ddot{z}^T(\lambda)}
+
+%\newcommand{\baru}{\bar{u}}
+%\newcommand{\barx}{\bar{x}}
+%\newcommand{\barz}{\bar{z}}
+%\newcommand{\barc}{\bar{c}}
+%\newcommand{\barH}{\bar{H}}
+\newcommand{\barc}{\skew4\overline c}
+\newcommand{\barr}{\skew1\overline r}
+\newcommand{\baru}{\skew0\overline u}
+\newcommand{\barw}{\skew0\overline w}
+\newcommand{\barx}{\skew1\overline x}
+\newcommand{\bary}{\skew1\overline y}
+\newcommand{\barz}{\skew2\overline z}
+\newcommand{\barH}{\skew4\overline H}
+\newcommand{\barU}{\skew1\overline U}
+\newcommand{\hatH}{H\sub{S}}
+\newcommand{\hatM}{M\sub{S}}
+\newcommand{\hatu}{u\sub{S}}
+\newcommand{\hatlambdal}{\lambda\sub{SL}}
+%\newcommand{\Dlambda}{\Delta \lambda}
+\newcommand{\Dlambda}{\delta}
+\newcommand{\Dlambdac}{\delta\sub{C}}
+
+ \newcommand{\mnorm}[1]{\|#1\|_M}
+
+\newcommand{\bovt}{\sfrac{\beta}{2}}
+
+% replace the next two by the best lower bounds for quadratic and cubic approx
+
+\newcommand{\bestq}{-\sfrac{2}{3}}
+\newcommand{\bestc}{-\sfrac{2}{5}}
+\newcommand{\Real}{\mathbb{R}}
+
+\newcommand{\ud}{\mathrm{d}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\ff}{\mathbf{f}}
+\newcommand{\bb}{\mathbf{b}}
+\newcommand{\dd}{\mathbf{d}}
+
+%%%%%%%%%%%%%%%%%%%%%%%% Added by Sue %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\etl}{\eta(\lambda;\beta)}
+\newcommand{\etlp}{\eta^{(1)}(\lambda;\beta)}
+\newcommand{\etlpp}{\eta^{(2)}(\lambda;\beta)}
+\newcommand{\etlppp}{\eta^{(3)}(\lambda;\beta)}
+\newcommand{\etlpppp}{\eta^{(4)}(\lambda;\beta)}
+
+
+\newcommand{\zetl}{\zeta(\lambda;\beta)}
+\newcommand{\zetlp}{\zeta^{(1)}(\lambda)}
+\newcommand{\zetlpp}{\zeta^{(2)}(\lambda)}
+\newcommand{\zetlppp}{\zeta^{(3)}(\lambda)}
+\newcommand{\zetlpppp}{\zeta^{(4)}(\lambda)}
+
+%\newcommand{\etlp}{\dot{\eta}(\lambda)}
+%\newcommand{\etlpp}{\ddot{\eta}(\lambda)}
+%\newcommand{\etlppp}{\dddot{\eta}(\lambda)}
+%\newcommand{\etlpppp}{\ddddot{\eta}(\lambda)}
+
+\newcommand{\rhl}{\rho(\lambda)}
+\newcommand{\rhlp}{\rho^{(1)}(\lambda)}
+\newcommand{\rhlpp}{\rho^{(2)}(\lambda)}
+\newcommand{\rhlppp}{\rho^{(3)}(\lambda)}
+\newcommand{\rhlpppp}{\rho^{(4)}(\lambda)}
+
+%\newcommand{\rhlp}{\dot{\rho}(\lambda)}
+%\newcommand{\rhlpp}{\ddot{\rho}(\lambda)}
+%\newcommand{\rhlppp}{\dddot{\rho}(\lambda)}
+%\newcommand{\rhlpppp}{\ddddot{\rho}(\lambda)}
+
+\newcommand{\pilb}{\pi(\lambda; \beta)}
+\newcommand{\pilbp}{\pi^{(1)}(\lambda; \beta)}
+\newcommand{\pilbpp}{\pi^{(2)}(\lambda; \beta)}
+\newcommand{\pilbppp}{\pi^{(3)}(\lambda; \beta)}
+\newcommand{\pilbpppp}{\pi^{(4)}(\lambda; \beta)}
+
+%\newcommand{\psilp}{\dot{\psi}(\lambda; \beta)}
+%\newcommand{\psilpp}{\ddot{\psi}(\lambda; \beta)}
+%\newcommand{\psilppp}{\dddot{\psi}(\lambda; \beta)}
+%\newcommand{\psilpppp}{\ddddot{\psi}(\lambda; \beta)}
+
+\newcommand{\lam}{\lambda}
+\newcommand{\lammax}{\lambda_{\max}}
+\newcommand{\lammin}{\lambda_{\min}}
+\newcommand{\lami}{\lambda_i}
+\newcommand{\lamj}{\lambda_j}
+\newcommand{\lamk}{\lambda_k}
+\newcommand{\laml}{\lambda_l}
+\newcommand{\lamlami}[1]{\left(\lambda + \lambda_i\right)^{#1}}
+\newcommand{\lamlamj}[1]{\left(\lambda + \lambda_j\right)^{#1}}
+\newcommand{\lamlamk}[1]{\left(\lambda + \lambda_k\right)^{#1}}
+\newcommand{\lamlaml}[1]{\left(\lambda + \lambda_l\right)^{#1}}
+\newcommand{\sigmax}{\sigma_{\max}}
+\newcommand{\sigmin}{\sigma_{\min}}
+\newcommand{\mumax}{\mu_{\max}}
+\newcommand{\mumin}{\mu_{\min}}
+
+%%%%%%%%%%%%%%%%%%%%%%% Added by Daniel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ %\usepackage{amssymb}
+
+ \newcommand{\sgap}{\;}
+ \newcommand{\mgap}{\;\;}
+ \newcommand{\bgap}{\;\;\;}
+ \newcommand{\cbar}{\skew5\bar c}
+ \newcommand{\gammabar}{\bar\gamma}
+ \newcommand{\lamA}{\lambda^{\scriptscriptstyle A}}
+ \newcommand{\lamR}{\lambda^{\scriptscriptstyle R}}
+ \newcommand{\lamone}{\lambda_1}
+ \newcommand{\lamtwo}{\lambda_2}
+ \newcommand{\lamnext}{\lambda_J}
+ \newcommand{\uone}{u_1}
+ \newcommand{\nInv}{n}
+ \newcommand{\nInvbar}{\bar \nInv}
+ \newcommand{\gap}[1]{\text{gap($#1$)}}
+ \newcommand{\plusminus}{{\scriptscriptstyle (-/+)\thinspace}}
+ \newcommand{\eps}{\varepsilon}
+ \newcommand{\northog}{\mathchar"3236 \hspace{-3.5pt} \bot}
+\newcommand{\norm}[1]{\left\Vert#1\right\Vert}
+\newcommand{\snorm}[1]{\Vert#1\Vert}
+\newcommand{\abs}[1]{\left\vert#1\right\vert}
+ %\newcommand{\eig}{\mathop{\operator@font{eig}}}
+ \newcommand{\eig}{\mathop{\mathrm{eig}}}
+ \newcommand{\qbar}{\bar q}
+ \newcommand{\lwords}[1]{\text{#1}\mgap}     % text automatically adjusts the size
+ \newcommand{\rwords}[1]{\mgap\text{#1}}
+ \newcommand{\lwordss}[1]{\text{#1}\quad}    % text automatically adjusts the size
+ \newcommand{\rwordss}[1]{\quad\text{#1}}
+ \newcommand{\lwordsss}[1]{\text{#1}\qquad}  % text automatically adjusts the size
+ \newcommand{\rwordsss}[1]{\qquad\text{#1}}
+ \newcommand{\words}[1]{\mgap\text{#1}\mgap}
+ \newcommand{\wordss}[1]{\quad\text{#1}\quad}
+ \newcommand{\wordsss}[1]{\qquad\text{#1}\qquad}
+ 
+ \newcommand{\alg}[1]{\par\noindent\mystrut\ignorespaces\hbox to\textwidth{#1\hfill}}
+ \newcommand{\algt}[1]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip1.5em#1\hfill}}
+ \newcommand{\algtt}[1]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip3.5em#1\hfill}}
+ \newcommand{\algttt}[1]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip5.5em#1\hfill}}
+ \newcommand{\algtttt}[1]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip7.5em#1\hfill}}
+ \newcommand{\algttttt}[1]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip9.5em#1\hfill}}
+ \newcommand{\clg}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces#1\hfill[#2]}}
+ \newcommand{\clgt}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip1.5em#1\hfill[#2]}}
+ \newcommand{\clgtt}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip3.5em#1\hfill[#2]}}
+ \newcommand{\clgttt}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip5.5em#1\hfill[#2]}}
+ \newcommand{\clgtttt}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip7.5em#1\hfill[#2]}}
+ \newcommand{\clgttttt}[2]{\par\noindent\mystrut\hbox to\textwidth{\ignorespaces\hskip9.5em#1\hfill[#2]}}
+ \newcommand{\mystrut}{\vrule height9.5pt depth1.5pt width0pt}
+ \newtheorem{definition}{Definition}[section]
+
+ \newcounter{pseudocode}[section]
+ \def\thepseudocode{\thesection.\arabic{pseudocode}}
+ \newenvironment{pseudocode}[2]%
+	{%
+	\refstepcounter{pseudocode}%
+	\vspace{\medskipamount}\noindent 
+               {{\sc       Algorithm \thepseudocode.} \rule[-1.25pt]{0pt}{10pt}\sc#1}%
+%              {{\bfseries Algorithm \thepseudocode.} \rule[-1.25pt]{0pt}{10pt}\slshape#1}%
+%              {{\bfseries Algorithm \thepseudocode.} \rule[-1.25ex]{0pt}{2ex}\slshape#1}%
+	#2}%
+	{\vspace{\medskipamount}}
+
+\ifx   \innerprod\undefined%
+   \def\innerprod(#1,#2){\langle#1,#2\rangle} % Must be called as \innerproduct(A,B)
+\fi

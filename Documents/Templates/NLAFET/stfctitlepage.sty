@@ -1,0 +1,331 @@
+%%
+%% This is file `stfctitlepage.sty',
+\NeedsTeXFormat{LaTeX2e}[1995/12/01]
+%\ProvidesClass{stfctitlepage}
+%              [1/Oct/2007: M. Arioli, N. I. M. Gould, copyright STFC
+% Standard LaTeX document class]
+
+\usepackage{graphicx,color}
+
+\definecolor{ralmagenta}{rgb}{0.70196078,0.0,.48627451}
+\definecolor{ralblue}{cmyk}{1. , .46 , 0.0 , .7}
+\definecolor{ralgray}{cmyk}{0.02 , 0.09 , 0.0 , .36}
+
+\newcommand{\stfclinebreak}{\\ \\ \hspace*{-0.3cm}}
+
+% The stfctitlepage command. Requires the user to have defined 
+% four commands:
+%  \newcommand{\stfccovernumber}{TR number}
+%  \newcommand{\stfccovertitle}{Title}
+%  \newcommand{\stfccoverauthor}{Authors}
+%  \newcommand{\stfccoverdate}{Date, can be \today}
+% Any linbreaks in the above should use \stfclinebreak
+
+\newcommand{\stfctitlepage}{
+
+%  First page
+
+\thispagestyle{empty}
+
+\vspace*{-3.5cm}
+\noindent
+\hspace*{-26mm}
+%\includegraphics[width=7cm]{stfc.ps} \hspace{6.7cm}
+\includegraphics{stfc.ps} 
+
+\vspace*{-22mm}
+\hspace{9cm}
+%\hfill
+{\Huge 
+\raisebox{25mm}{\parbox[t]{8cm}{\bf {\sffamily  \stfccovernumber}}}}
+
+\color{black}
+\vspace*{-9cm}
+
+\hspace*{-1.cm}
+\noindent
+{\LARGE  \sffamily  \stfccoverdate}
+\vspace*{-6cm}
+
+\hspace*{-1cm}
+\noindent
+{\LARGE \bf {\sffamily \stfccoverauthor}}
+\vspace*{-5.7cm}
+
+\hspace*{-1cm}
+\noindent
+{\Huge\bf{\sffamily\stfccovertitle}}
+
+%  Second page
+
+\newpage
+
+\thispagestyle{empty}
+
+\noindent
+{\sffamily
+{\color{ralblue}
+{\copyright {\bf \, {\large Science and Technology Facilities Council}}}
+\vspace*{3mm}
+
+\noindent
+{\large Enquires about copyright, reproduction and requests for additional 
+copies of this report should \\be addressed to:}
+\vspace*{3mm}
+
+\noindent
+{\large Library and Information Services \\
+SFTC Rutherford Appleton Laboratory \\
+Harwell Science and Innovation Campus \\
+Didcot \\
+OX11 0QX \\
+UK \\
+Tel: +44 (0)1235 445384 \\
+Fax: +44(0)1235 446403 \\
+Email: library@rl.ac.uk}
+\vspace*{3mm}
+
+\noindent
+{\large The STFC ePublication archive (epubs), 
+recording the scientific output of the Chilbolton, \\
+Daresbury, and Rutherford Appleton Laboratories is available online at:\\
+http://epubs.cclrc.ac.uk/}
+\vspace*{7mm}
+
+\noindent
+{\bf ISSN 1358-6254}
+\vspace*{115mm}
+
+\noindent
+{\large Neither the Council nor the Laboratory accept any 
+responsibility for loss or\\
+damage arising from the use of information contained in any of 
+their reports\\
+or in any communication about their tests or investigation}
+
+\newpage
+}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% stfctitlepagetwelve %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The stfctitlepagetwelve command.Just as stfctitlepage, but for 12pt
+% format. Requires the user to have defined 
+% four commands:
+%  \newcommand{\stfccovernumber}{TR number}
+%  \newcommand{\stfccovertitle}{Title}
+%  \newcommand{\stfccoverauthor}{Authors}
+%  \newcommand{\stfccoverdate}{Date, can be \today}
+% Any linbreaks in the above should use \stfclinebreak
+
+\newcommand{\stfctitlepagetwelve}{
+
+%\setlength{\storebaselinestretch}{\baselinestretch}
+%\renewcommand{\baselinestretch}{0.9}
+
+\renewcommand{\stfclinebreak}{\\ \vspace*{-1mm} \\ \hspace*{-0.2cm}}
+
+%  First page
+
+\thispagestyle{empty}
+
+\vspace*{-3.5cm}
+\noindent
+\hspace*{-26mm}
+%\includegraphics[width=7cm]{stfc.eps} \hspace{6.7cm}
+\includegraphics{stfc.ps} 
+
+\vspace*{-12mm}
+\hspace{10cm}
+%\hfill
+{\Huge 
+\raisebox{25mm}{\parbox[t]{8cm}{\bf {\sffamily  \stfccovernumber}}}}
+
+\color{black}
+\vspace*{-9cm}
+
+\hspace*{-1.cm}
+\noindent
+{\LARGE  \sffamily  \stfccoverdate}
+\vspace*{-6cm}
+
+\hspace*{-1cm}
+\noindent
+{\LARGE \bf {\sffamily \stfccoverauthor}}
+\vspace*{-5.7cm}
+
+\hspace*{-1cm}
+\noindent
+{\Huge\bf{\sffamily\stfccovertitle}}
+
+%  Second page
+
+\newpage
+
+\newpage
+
+\thispagestyle{empty}
+
+\noindent
+{\sffamily
+{\color{ralblue}
+{\copyright {\bf \, {\large Science and Technology Facilities Council}}}
+\vspace*{3mm}
+
+\noindent
+{\large Enquires about copyright, reproduction and requests for additional 
+\\copies of this report should be addressed to:}
+\vspace*{3mm}
+
+\noindent
+{\large Library and Information Services \\
+SFTC Rutherford Appleton Laboratory \\
+Harwell Science and Innovation Campus \\
+Didcot \\
+OX11 0QX \\
+UK \\
+Tel: +44 (0)1235 445384 \\
+Fax: +44(0)1235 446403 \\
+Email: library@rl.ac.uk}
+\vspace*{3mm}
+
+\noindent
+{\large The STFC ePublication archive (epubs), 
+recording the scientific output of the \\ 
+Chilbolton, Daresbury, and Rutherford Appleton Laboratories is available 
+\\online at: http://epubs.cclrc.ac.uk/}
+\vspace*{7mm}
+
+\noindent
+{\bf ISSN 1358-6254}
+\vspace*{105mm}
+
+\noindent
+{\large Neither the Council nor the Laboratory accept any 
+responsibility for loss or\\
+damage arising from the use of information contained in any of 
+their reports\\
+or in any communication about their tests or investigation}
+
+\newpage
+}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% stfctitlepageeleven %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The stfctitlepageeleven command.Just as stfctitlepage, but for 11pt
+% format. Requires the user to have defined 
+% four commands:
+%  \newcommand{\stfccovernumber}{TR number}
+%  \newcommand{\stfccovertitle}{Title}
+%  \newcommand{\stfccoverauthor}{Authors}
+%  \newcommand{\stfccoverdate}{Date, can be \today}
+% Any linbreaks in the above should use \stfclinebreak
+
+\newcommand{\stfctitlepageeleven}{
+
+%\setlength{\storebaselinestretch}{\baselinestretch}
+%\renewcommand{\baselinestretch}{0.9}
+
+\renewcommand{\stfclinebreak}{\\ \vspace*{-1mm} \\ \hspace*{-0.2cm}}
+
+%  First page
+
+\thispagestyle{empty}
+
+\vspace*{-3.5cm}
+\noindent
+\hspace*{-26mm}
+%\includegraphics[width=7cm]{stfc.eps} \hspace{6.7cm}
+\includegraphics{stfc.ps} 
+
+\vspace*{-12mm}
+\hspace{10cm}
+%\hfill
+{\Huge 
+\raisebox{25mm}{\parbox[t]{8cm}{\bf {\sffamily  \stfccovernumber}}}}
+
+\color{black}
+\vspace*{-9cm}
+
+\hspace*{-1.cm}
+\noindent
+{\LARGE  \sffamily  \stfccoverdate}
+\vspace*{-6cm}
+
+\hspace*{-1cm}
+\noindent
+{\LARGE \bf {\sffamily \stfccoverauthor}}
+\vspace*{-5.7cm}
+
+\hspace*{-1cm}
+\noindent
+{\Huge\bf{\sffamily\stfccovertitle}}
+
+%  Second page
+
+\newpage
+
+\thispagestyle{empty}
+
+\noindent
+{\sffamily
+{\color{ralblue}
+{\copyright {\bf \, {\large Science and Technology Facilities Council}}}
+\vspace*{3mm}
+
+\noindent
+{\large Enquires about copyright, reproduction and requests for additional 
+copies of this report should \\be addressed to:}
+\vspace*{3mm}
+
+\noindent
+{\large Library and Information Services \\
+SFTC Rutherford Appleton Laboratory \\
+Harwell Science and Innovation Campus \\
+Didcot \\
+OX11 0QX \\
+UK \\
+Tel: +44 (0)1235 445384 \\
+Fax: +44(0)1235 446403 \\
+Email: library@rl.ac.uk}
+\vspace*{3mm}
+
+\noindent
+{\large The STFC ePublication archive (epubs), 
+recording the scientific output of the Chilbolton, \\
+Daresbury, and Rutherford Appleton Laboratories is available online at:\\
+http://epubs.cclrc.ac.uk/}
+\vspace*{7mm}
+
+\noindent
+{\bf ISSN 1358-6254}
+\vspace*{115mm}
+
+\noindent
+{\large Neither the Council nor the Laboratory accept any 
+responsibility for loss or\\
+damage arising from the use of information contained in any of 
+their reports\\
+or in any communication about their tests or investigation}
+
+\newpage
+}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%%% stfctitlepageten %%%
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+% The stfctitlepageten command. An alias for stfctitlepage.
+% Requires the user to have defined four commands:
+%  \newcommand{\stfccovernumber}{TR number}
+%  \newcommand{\stfccovertitle}{Title}
+%  \newcommand{\stfccoverauthor}{Authors}
+%  \newcommand{\stfccoverdate}{Date, can be \today}
+% Any linbreaks in the above should use \stfclinebreak
+
+\newcommand{\stfctitlepageten}{\stfctitlepage}
+
+
