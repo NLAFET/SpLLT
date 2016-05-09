@@ -1,27 +1,31 @@
 The manuscript "Non-GPU-resident Symmetric Indefinite Factorization"
-introduces a new algorithm for the factorization of dense symmetric
-indefinite matrices based on a Aasen's algorithm. In more details,
-this new algorithm is based on a communication avoiding variant of the
-original Aasen's algorithm and aims at reducing the impact of CPU-GPU
-communications in the case where the input problem does not fit on the
-GPU memory. To achieve this objective, the authors use a
-non-GPU-resident strategy that they apply on the original
+describes implementations of two algorithms (Bunch-Kaufmann and
+partitioned Aasen) and introduces a new algorithm for the
+factorization of dense symmetric indefinite matrices based on Aasen's
+algorithm. This new algorithm is based on the author's previous work
+on a communication-avoiding variant of Aasen, and aims to reduce the
+impact of CPU-GPU communications in the case where the input problem
+does not fit on the GPU memory. To achieve this objective, the authors
+use a non-GPU-resident strategy that they apply on the original
 factorization algorithm. Finally the authors present experimental
-study of their algorithm and compare it with two other popular
-algorithms which are Bunch Kaufman and partitioned Aasen algorithms.
+study of their algorithm and compare it with non-GPU-resident versions
+of two other popular algorithms which are Bunch Kaufman and
+partitioned Aasen algorithms.
 
-The proposed algorithm consists in a simple modification of the
-Partitioned Aasen algorithm using a non-GPU-resident strategy. This
-strategy has been already been widely applied in the context of dense
-linear algebra kernels. In addition, the proposed algorithm seems to
-be a straightforward solution to cope with memory limitations. As a
-results we do not believe that the novelty of the work presented in
-this manuscript is not very high and we suggest that the paper should
-be rejected. In addition, the evolution of the unified memory feature
-in the next generation of Nvidia GPU (Pascal architecture) will
-simplify and increase the efficiency of memory sharing for CPU and
-GPU. Therefore we think that the issue of hiding communication and
-computation in the context of an hybrid CPU-GPU architecture might no
-longer be an issue in a non distant future. As a result we also think
-the main focus of this paper is not extremely relevant for the
-emerging GPU architectures.
+The proposed algorithm consists in a simple modification (literally
+"do all the bits that will fit on the GPU, then update the rest,
+repeat") of the Partitioned Aasen algorithm using a non-GPU-resident
+strategy and it appear that this method has already been widely
+applied in the context of dense linear algebra kernels to cope with
+the cost of CPU-GPU communications. As a results we think that the
+novelty of the work presented in this manuscript is not very high and
+we suggest that the paper should be rejected. Moreover, the evolution
+of the unified memory feature in the next generation of GPUs (e.g. the
+recently released Pascal chips from NVIDIA) and increased end-to-end
+memory bandwidth of proposed future systems (e.g. CORAL) will simplify
+and increase the efficiency of memory sharing for CPU and
+GPU. Therefore we believe that the need for GPU-specific algorithms
+will no longer be an issue in the near future, and any paper needs to
+consider the more general context of out of core computation. As a
+result we also think the main focus of this paper is not extremely
+relevant for the emerging architectures.

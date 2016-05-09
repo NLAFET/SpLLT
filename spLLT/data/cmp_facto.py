@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+import sys
 import os
 import fileinput
 import re
@@ -12,15 +15,20 @@ spllt_task_insert_time = '\[>\] \[spllt_stf_factorize\] task insert time:'
 blocksizes = [256, 384, 512, 768, 1024]
 # ncpu = 24
 
-outputdir = 'cn255_4'
+# print '% data directory: ', sys.argv[1]
+outputdir = sys.argv[1]
+listmat  = outputdir + '/list.matrix'  
+flistmat = open(listmat)
 
-for mat in fileinput.input():
+for mat in flistmat:
 
     mat = mat.rstrip()
 
     # print mat
     pbl = re.sub(r'/', '_', mat)
     pbl = pbl.rstrip()
+
+    v = 0.0
 
     # OpenMP (gnu)
     spllt_gnu_omp_t_facto = []
