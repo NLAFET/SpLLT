@@ -182,7 +182,7 @@ contains
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(a_pbl, keep, cntl, pbl, info)
+    call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)
 #endif
 
 #if defined(SPLLT_USE_STARPU)

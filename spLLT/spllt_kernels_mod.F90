@@ -473,5 +473,35 @@ contains
 
     return
   end subroutine spllt_activate_node
+
+  ! Build a map of node's blocks
+  subroutine spllt_build_rowmap(node, rowmap)
+    use hsl_ma87_double
+    implicit none
+
+    type(node_type), intent(in) :: node  ! current node in the atree
+    integer, dimension(:), intent(out) :: rowmap ! Workarray to hold map from row 
+    ! indices to block indices in ancestor node.
+
+    integer :: a_nr ! number of rows in ancestor
+    integer :: a_nb ! block size in ancestor
+    integer :: rr  ! row index
+    integer :: row, arow  ! row index
+    integer :: i
+
+    a_nr = size(node%index)
+    a_nb = node%nb
+
+    rr = 1
+    do row = 1, a_nr, a_nb
+       do i = row, min(row+a_nb-1, a_nr)
+          arow = node%index(i)
+          rowmap(arow) = rr
+       end do
+       rr = rr + 1
+    end do
+
+    return
+  end subroutine spllt_build_rowmap
   
 end module spllt_kernels_mod

@@ -372,6 +372,130 @@ contains
     return
   end subroutine spllt_analyse
 
+  subroutine spllt_compute_dep(adata, fdata, keep, map)
+    use hsl_ma87_double
+    use spllt_kernels_mod
+    implicit none
+
+    type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
+    type(spllt_data_type), intent(inout) :: fdata ! data related to the factorization
+    type(MA87_keep), target, intent(in) :: keep
+    integer, allocatable :: map(:)
+
+    type(node_type), pointer     :: node, anode ! node in the atree
+    integer :: num_nodes, snum, anum
+    integer :: numcol, numrow
+    integer :: s_nb
+    integer :: cptr, cptr2
+    logical :: map_done
+    integer :: jb, cb, jlast
+    integer(long) :: blk, dblk, a_blk, a_dblk
+    integer :: i, k, ii, ilast
+    integer :: blk_jk_sa, blk_jk_en
+    integer :: lik, ljk, ljk_sa, ljk_en
+    integer :: nr, nc
+    integer(long) :: id_lik, id_ljk, id
+
+    num_nodes = adata%nnodes
+
+    do snum = 1, num_nodes
+
+       node => keep%nodes(snum)
+
+       ! parent node
+       anum = node%parent
+       numrow = size(node%index)
+       ! numcol is number of columns in node
+       numcol = node%en-node%sa + 1
+       ! block size
+       s_nb = node%nb
+       ! number of block colum
+       nc = (numcol-1) / s_nb + 1 
+       ! number of block row
+       nr = (numrow-1) / s_nb + 1 
+
+       ! initialise cptr 
+       cptr = 1 + numcol
+
+       ! loop over ancestors of node
+       do while(anum.gt.0)
+          anode => keep%nodes(anum)
+
+          ! Skip columns that come from other children
+          do cptr = cptr, numrow
+             if(node%index(cptr).ge.anode%sa) exit
+          end do
+          if(cptr.gt.numrow) exit ! finished with node
+
+          map_done = .false. ! We will only build a map when we need it
+
+                       
+          ! Loop over affected block columns of anode
+          bcols: do
+             if(cptr.gt.numrow) exit
+             if(node%index(cptr).gt.anode%en) exit
+
+             ! compute local index of block column in anode and find the id of 
+             ! its diagonal block
+             cb = (node%index(cptr) - anode%sa)/anode%nb + 1
+             a_dblk = anode%blk_sa
+             do jb = 2, cb
+                a_dblk = keep%blocks(a_dblk)%last_blk + 1
+             end do
+
+             ! Find cptr2
+             jlast = min(anode%sa + cb*anode%nb - 1, anode%en)
+             do cptr2 = cptr,numrow
+                if(node%index(cptr2) > jlast) exit
+             end do
+             cptr2 = cptr2 - 1
+             
+             ljk_sa = (cptr -1)/s_nb+1
+             ljk_en = (cptr2-1)/s_nb+1
+             
+             if(.not.map_done) call spllt_build_rowmap(anode, map) 
+
+             ! Loop over the blocks of snode
+             ! ii = map(node%index(cptr)) 
+             ii = -1 
+             ilast = cptr ! Set start of current block
+             
+             do i = cptr, numrow
+                k = map(node%index(i))
+
+                if(k.ne.ii) then
+                   ii = k
+                   a_blk = a_dblk + ii - cb
+                   
+                   ! loop over ljk blocks
+                   do ljk=ljk_sa,ljk_en
+                      ! loop over lik blocks
+                      dblk = node%blk_sa
+                      do lik=1,nc
+                         
+                         id_lik = dblk + (i-1)/s_nb - (lik-1)
+                         id_ljk = dblk + ljk - (lik-1)
+
+                         
+                         
+                         dblk = keep%blocks(dblk)%last_blk + 1
+                      end do
+                   end do
+                   
+                end if
+             end do
+
+          end do bcols
+          
+          ! Move up the tree to the parent of anode
+          anum = keep%nodes(anum)%parent
+       end do
+
+    end do
+
+    return
+  end subroutine spllt_compute_dep
+
   ! tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree
   subroutine spllt_prune_tree(adata, sparent, nth)

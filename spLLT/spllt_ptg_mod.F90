@@ -2,21 +2,23 @@ module spllt_ptg_mod
 
 contains
 
-  subroutine spllt_ptg_factorize(adata, keep, cntl, fdata, info)
+  subroutine spllt_ptg_factorize(adata, val, keep, cntl, fdata, info)
     use spllt_mod
     use hsl_ma87_double
-    use spllt_kernels_mod, only : spllt_activate_node
+    use spllt_kernels_mod, only : spllt_activate_node, spllt_init_node
 !    use spllt_factorization_mod
 #if defined(SPLLT_USE_PARSEC)
+    use iso_c_binding
     use dague_f08_interfaces
     use spllt_parsec_factorization_mod
 #endif
     implicit none
 
     type(spllt_adata_type), intent(in) :: adata
+    real(wp), intent(in) :: val(:) ! matrix values
     type(MA87_keep), target, intent(inout) :: keep 
     type(spllt_cntl)      :: cntl
-    type(spllt_data_type), intent(inout) :: fdata
+    type(spllt_data_type), target, intent(inout) :: fdata
     type(MA87_info), intent(out) :: info 
 
     integer :: n ! matrix order
@@ -28,6 +30,8 @@ contains
 #if defined(SPLLT_USE_PARSEC)
     ! PaRSEC 
     type(dague_handle_t)            :: fac_hdl
+    type(c_ptr) :: bc_c
+    integer(c_int) :: nbc
 #endif
 
     write(*,'("[spllt_ptg_factorize]")')
@@ -46,12 +50,19 @@ contains
     if(st.ne.0) go to 10
 
     do snode = 1, num_nodes ! loop over nodes
-       ! activate node: allocate factors, register handles
+       ! activate node: allocate factors
        call spllt_activate_node(snode, keep, fdata)
+       ! init node 
+       ! TODO parallelize node init
+       call spllt_init_node(snode, n, val, map, keep)
     end do
 
 #if defined(SPLLT_USE_PARSEC)
-    fac_hdl = spllt_parsec_factorize(num_nodes)
+
+    bc_c = c_loc(fdata%bc(1))
+    nbc = size(fdata%bc,1)
+
+    fac_hdl = spllt_parsec_factorize(bc_c, nbc)
 
     ! add factorization DAG to PaRSEC
     call dague_enqueue(ctx, fac_hdl)

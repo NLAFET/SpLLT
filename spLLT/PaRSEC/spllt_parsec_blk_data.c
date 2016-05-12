@@ -1,8 +1,8 @@
-#include "spllt_parsec_blk_data.h"
-
 #include <dague.h>
 #include <dague/data.h>
 #include <dague/data_distribution.h>
+
+#include "spllt_parsec_blk_data.h"
 
 static inline uint32_t blk_key(int id) {
    return  id;
@@ -43,33 +43,35 @@ static int32_t blk_vpid_of_key(dague_ddesc_t *desc, dague_data_key_t key) {
 
 static dague_data_t *blk_data_of(dague_ddesc_t *desc, ... ) {
 
-    lfacr_desc_t *blk_desc = (sparse_matrix_desc_t*)desc;
+    blk_desc_t *blk_desc = (blk_desc_t*)desc;
 
     va_list ap;
     int id;
     dague_data_key_t key;
+    int pos;
     size_t size;
-    void *blk;
+    void *bcs; // bloc list
+    void *bc;  // bloc ptr
 
-    va_start(ap, mat);
+    va_start(ap, desc);
     id = va_arg(ap, unsigned int);
     va_end(ap);
 
     /* nbcol = blk_desc->nbcol; */
     bcs = blk_desc->bcs;
-    bc  = get_blk_ptr(bcs, id):
+    bc  = get_blk_ptr(bcs, id);
 
     key  = blk_data_key(id);
     pos  = key;
     size = get_blk_sze(bcs, id);
 
-    return dague_data_create(spmtx->data_map + pos, mat, key, lcol, size);
+    return dague_data_create(blk_desc->data_map + pos, desc, key, bc, size);
 }
 
 void spllt_parsec_blk_data_init(blk_desc_t *desc,
-                                  void *bcs,
-                                  int nbc, size_t typesize,
-                                  int nodes, int myrank) {
+                                void *bcs,
+                                int nbc, size_t typesize,
+                                int nodes, int myrank) {
    
     dague_ddesc_t *o = (dague_ddesc_t*)desc;
     

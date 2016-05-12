@@ -60,6 +60,21 @@ module spllt_mod
 #endif     
   end type spllt_node_type
 
+  type spllt_dep_upd
+     integer(long) :: id
+     integer(long) :: id_ljk, id_lik
+  end type spllt_dep_upd
+
+  type spllt_dep_node
+     type(spllt_dep_upd)           :: dep_upd
+     type(spllt_dep_node), pointer :: next => null()     
+  end type spllt_dep_node
+
+  type spllt_dep_list
+     type(spllt_dep_node), pointer :: head => null()
+     type(spllt_dep_node), pointer :: tail => null()
+  end type spllt_dep_list
+
   ! block type  
   type spllt_bc_type
      type(block_type), pointer :: blk => null()! pointer to the block in keep
@@ -68,6 +83,11 @@ module spllt_mod
      type(c_ptr)    :: hdl  ! StarPU handle
 #endif
      integer :: mem_node = 0 ! memory node where the block is allocated
+     
+     ! store ids of blocks contributing to this block
+     type(spllt_dep_list), pointer :: dep_in  => null()
+     ! store ids of blocks for which this block contributes to 
+     type(spllt_dep_list), pointer :: dep_out => null()
   end type spllt_bc_type
   
   ! problem data (analyis)
@@ -109,6 +129,44 @@ module spllt_mod
   end type spllt_options
 
 contains
+
+  subroutine spllt_dep_list_init(dep_list, dep)
+
+    type(spllt_dep_list), pointer :: dep_list
+    type(spllt_dep_node), pointer :: dep
+
+    if (.not. associated(dep_list)) then
+       allocate(dep_list)
+       dep_list%head => dep
+       dep_list%tail => dep
+    end if
+
+    return
+  end subroutine spllt_dep_list_init
+
+  subroutine spllt_dep_list_push_back(dep_list, id_lik, id_ljk, id)
+    implicit none
+
+    type(spllt_dep_list), pointer :: dep_list
+    integer(long) :: id_lik, id_ljk, id
+
+    type(spllt_dep_node), pointer :: dep => null()
+
+    allocate(dep)
+    
+    dep%id_lik = id_lik
+    dep%id_ljk = id_ljk
+    dep%id = id
+
+    if (.not. associated(dep_list)) then
+       call spllt_dep_list_init(dep_list, dep)
+    else
+       dep_list%tail%next => dep
+       dep_list%tail      => dep
+    end if
+
+    return
+  end subroutine spllt_dep_list_push_back
 
   ! subroutine spllt_realloc_1d(a, n)
   !   implicit none
