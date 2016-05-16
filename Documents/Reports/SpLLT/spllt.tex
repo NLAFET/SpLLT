@@ -185,6 +185,45 @@ using direct methods .....
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
+\section{Parallel programming models}\label{sec:runtime}
+
+In this work we propose to exploit a \textit{Sequential Task Flow
+  (STF)} programming model for the implementation of a parallel
+task-based Cholesky factorization on top of a runtime system. In this
+model the detection of dependencies between task relies on a data
+analysis of input and output data in order to guarantee the
+\textit{sequential consistency} of operations during a parallel
+execution. This analysis is often refer to as a \textit{superscalar}
+analysis in reference to the dependency detection between instructions
+that is performed in superscalar processors. In this context the
+dependency graph is used to allow the parallel execution of
+independent instructions which is referred to as instruction-level
+parallelism and increases the instruction throughput. The STF model is
+the most commonly used paradigm for the parallelization of DAG-based
+algorithms that have become more and more popular in the scientific
+computing community. For example, several dense linear algebra
+software packages such as PLASMA~\cite{a.d.d.h.ea:09} and
+FLAME~\cite{i.c.q.q.ea:12} use this paradigm in their
+implementations. One reason for such a popularity is that it is
+extremely easy to use this model as it the parallel code is very
+similar from the sequential one. Essentially, for a given sequential
+algorithm, the STF code is implemented by replacing the function calls
+(i.e. the execution of tasks in the case of a DAG-based algorithm)
+with the asynchronous submission of this task to a runtime system in
+charge of the scheduling. Depending of the data access that are
+provided, the runtime system automatically detects the dependencies
+between the tasks. The sequential consistency is then ensured by the
+fact that the order of submission of tasks correspond to the
+sequential order.
+
+This parallel programming model, however, has several drawbacks that
+may affect the performance and scalability of parallel codes. First
+the task are issued and submitted to the runtime system
+sequentially. In the case where the task granularity is small compared
+to the time needed for building and submitting a task, the parallel
+execution might be constraint by the time spent in the submission
+loop.
+
 \section{Runtime systems}\label{sec:runtime}
 \setcounter{equation}{0}
 \setcounter{table}{0}
@@ -210,6 +249,16 @@ In this section, we examine a range of runtime systems and .....
   \caption{\label{fig:stf-example}Simple example of a parallel version
     of the sequential code in Figure~\ref{fig:seq-example} using a STF
     model with \starpu.}
+\end{figure}
+
+\section{Parallelisation of a task-based Cholesky factorization using a STF programming model}
+\label{sec:experiments}
+
+
+\begin{figure}[!h]
+  \centering \lstinputlisting{listings/spllt_facto_stf.f90}
+\caption{\label{fig:activation-pseudocode-1d}Pseudo-code for the
+  sparse Cholesky factorization using a STF model.}
 \end{figure}
 
 \section{Experimental results}\label{sec:experiments}
@@ -244,7 +293,7 @@ and maintain at the Rutherford Appleton Laboratory (see
 \url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
 
 \clearpage
-\bibliography{refs}
+\bibliography{flipflapflopBib}
 
 \appendix
 
