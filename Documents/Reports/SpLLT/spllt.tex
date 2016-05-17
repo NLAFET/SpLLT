@@ -216,13 +216,65 @@ between the tasks. The sequential consistency is then ensured by the
 fact that the order of submission of tasks correspond to the
 sequential order.
 
-This parallel programming model, however, has several drawbacks that
-may affect the performance and scalability of parallel codes. First
-the task are issued and submitted to the runtime system
-sequentially. In the case where the task granularity is small compared
-to the time needed for building and submitting a task, the parallel
-execution might be constraint by the time spent in the submission
-loop.
+\begin{figure}[!h]
+  \begin{minipage}{0.5\textwidth}
+    \centering \lstset{language=C, procnamekeys={}}
+    \lstinputlisting{listings/seq-example.c}
+    \caption{\label{fig:seq-example}Simple of a sequential code}
+    \vspace{0.5cm}
+    \centering \lstinputlisting{listings/stf-example.c}
+    \caption{\label{fig:stf-example}STF code}
+  \end{minipage}
+  \hspace{0.5cm}
+  \begin{minipage}{0.5\textwidth}
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/example_dag}
+    \caption{\label{fig:dag-example}DAG corresponding to the
+      sequential code presented in Figure~\ref{fig:stf-example}}
+  \end{minipage}
+  %% \caption{\label{fig:seq-example} Simple example of a sequential code
+  %%   on the left with the corresponding DAG represented on the right.}
+\end{figure}
+
+As an example, we consider the sequential code in
+Figure~\ref{fig:seq-example} for which the corresponding DAG is
+represented in Figure~\ref{fig:dag-example}. Based on a STF model, the
+parallel version of this code is illustrated in
+Figure~\ref{fig:stf-example}. In the sequential code, the two
+functions \textit{f} and \textit{g} manipulate arrays \textit{x} and
+\textit{y}. The STF code is obtain by submitting the tasks that
+consists of a kernels funtion (\textit{f} or \textit{g} in this
+example) together with a data which is associated with a data access
+which can possibly be \textit{R} when the data is read, \textit{W}
+when the data is modified and \textit{RW} when the data is read and
+modified.
+
+As we have seen with this simple example is that the STF model is
+extremely easy to exploit and this characteristic is certainly one of
+the main reason for its extreme popularity in the HPC community. This
+model, however, has several drawbacks that may affect the performance
+and scalability of parallel codes relying on it. First the task are
+issued and submitted to the runtime system sequentially. In the case
+where, for a given DAG, the task granularity is small compared to the
+time needed for building and submitting a task, the parallel execution
+might be constraint by the time spent in the submission loop that is
+setting up the DAG. To avoid this issue, it might be interesting to
+consider a \textit{recursive} model where tasks might be used to
+submit other tasks enabling the distribution of the cost for building
+the DAG between the resources instead of doing it in a single
+submission loop. This might be implemented for example with
+\textit{callback} functions that are executed upon task completion and
+can be use for the submission of tasks depending on the task that just
+finished its execution. Another issue arising with the STF model comes
+from the fact that the whole DAG is unrolled during the parallel
+execution and every tasks in the DAG is stored in order to track task
+dependencies. In the case where the DAG is extremely large, handling
+and storing the DAG might represent an important overhead in terms of
+computational cost and memory storage. Regarding this issue, even if
+the recursive model allows to mitigate the problem, it my be necessary
+to consider a radically different model such a the Parametrized Task
+Graph model. In this model, task dependencies are explicitly encoded
+and
 
 \section{Runtime systems}\label{sec:runtime}
 \setcounter{equation}{0}
@@ -231,22 +283,9 @@ loop.
 In this section, we examine a range of runtime systems and .....
 
 \begin{figure}[!h]
-  \begin{minipage}{0.5\linewidth}
-    \centering \lstset{language=C, procnamekeys={}}
-    \lstinputlisting{listings/seq-example.c}
-  \end{minipage}
-  \begin{minipage}{0.5\linewidth}
-    \centering
-    \includegraphics[width=0.7\textwidth]{figures/example_dag}
-  \end{minipage}
-  \caption{\label{fig:seq-example} Simple example of a sequential code
-    on the left with the corresponding DAG represented on the right.}
-\end{figure}
-
-\begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
   \centering \lstinputlisting{listings/stf-example.c}
-  \caption{\label{fig:stf-example}Simple example of a parallel version
+  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
     of the sequential code in Figure~\ref{fig:seq-example} using a STF
     model with \starpu.}
 \end{figure}
