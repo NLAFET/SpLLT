@@ -276,7 +276,7 @@ to consider a radically different model such a the Parametrized Task
 Graph (PTG) model which is introduced in~\cite{c.l:95}. In this model,
 task dependencies are explicitly encoded according to the data-flow of
 each task and as a results the whole DAG can be expressed in a compact
-format.
+format. 
 
 %% In the present paper we mainly focus on the 
 
@@ -284,11 +284,53 @@ format.
 \setcounter{equation}{0}
 \setcounter{table}{0}
 \setcounter{figure}{0}
-In this section, we examine a range of runtime systems and .....
+
+The popularity of task-based algorithms push the OpenMP standard to
+introduce the \textit{task} construct in the version 3.0 its API. Then
+motivated by the popularity of the STF model, the OpenMP board decided
+to include the \textit{depend} construct in the version 4.0 allowing
+users to express dependencies between tasks in a way complying with
+the STF model. In this work we propose an OpenMP implementation of our
+Cholesky solver and show advantages of using this standard in terms of
+performance, scalability and productivity. However because many
+features are still unavailable in the standard we also developed
+another version based on the StarPU runtime system. Both
+implementations of our solver rely on a STF model, but the
+StarPU-based implementation might benefit from a wider range of
+feature available with StarPU. For example, although we focus on
+shared-memory architectures in this work, the StarPU version might be
+extended into a distributed-memory version whereas OpenMP doesn't
+provide any possibility to run on distributed memory architectures.
+
+In order to introduce the features provided by StarPU API and the
+features provided by this runtime system, we show in Figure~\ref{fig:seq-starpu-example} an example of a
+StarPU-based implementation for the simple example presented in
+Figure~\ref{fig:seq-example}. The task submission is done through the
+\texttt{starpu\_task\_insert} function that tasks in input a
+\textit{codelet} and a set of \textit{handles}. A codelet correspond
+to the description of a task and include a list of computational
+resources where the task can be executed as well as the corresponding
+computational kernels. In our example the codelet \texttt{g\_cl}
+describe a task that can be executed on a CPU and a CUDA device
+(\texttt{STARPU\_CPU | STARPU\_CUDA}) respectively with the kernels
+\texttt{g\_cpu\_func} and \texttt{g\_cuda\_func}. The data handles
+represents a piece of data that is accessed in the task and can be
+read (\texttt{STARPU\_R}), written (\texttt{STARPU\_W}) or read and
+written (\texttt{STARPU\_RW}). In order to be accessed, a data handle
+must be \textit{registered} to the runtime system by providing
+information such as a pointer on the data, its size and type. These
+information allows StarPU to automatically perform the data transfer
+between the memory nodes during the execution. For example, when a
+data needs to be accessed on a GPU device, the runtime system
+automatically transfer it to the device memory node. As a results
+StarPU is capable of ensuring the data consistency multiple
+nodes. When all the tasks have been submitted to the runtime system,
+we wait for their completion by calling the routine
+\texttt{starpu\_task\_wait\_for\_all}.
 
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
-  \centering \lstinputlisting{listings/stf-example.c}
+  \centering \lstinputlisting{listings/stf-starpu-example.c}
   \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
     of the sequential code in Figure~\ref{fig:seq-example} using a STF
     model with \starpu.}
