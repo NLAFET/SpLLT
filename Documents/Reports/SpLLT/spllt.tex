@@ -185,7 +185,7 @@ using direct methods .....
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-\section{Parallel programming models}\label{sec:runtime}
+\section{Sequential Task Flow parallel programming model}\label{sec:runtime}
 
 In this work we propose to exploit a \textit{Sequential Task Flow
   (STF)} programming model for the implementation of a parallel
@@ -195,7 +195,7 @@ analysis of input and output data in order to guarantee the
 \textit{sequential consistency} of operations during a parallel
 execution. This analysis is often refer to as a \textit{superscalar}
 analysis in reference to the dependency detection between instructions
-that is performed in superscalar processors. In this context the
+that are performed in superscalar processors. In this context the
 dependency graph is used to allow the parallel execution of
 independent instructions which is referred to as instruction-level
 parallelism and increases the instruction throughput. The STF model is
@@ -273,8 +273,12 @@ and storing the DAG might represent an important overhead in terms of
 computational cost and memory storage. Regarding this issue, even if
 the recursive model allows to mitigate the problem, it my be necessary
 to consider a radically different model such a the Parametrized Task
-Graph model. In this model, task dependencies are explicitly encoded
-and
+Graph (PTG) model which is introduced in~\cite{c.l:95}. In this model,
+task dependencies are explicitly encoded according to the data-flow of
+each task and as a results the whole DAG can be expressed in a compact
+format.
+
+%% In the present paper we mainly focus on the 
 
 \section{Runtime systems}\label{sec:runtime}
 \setcounter{equation}{0}
