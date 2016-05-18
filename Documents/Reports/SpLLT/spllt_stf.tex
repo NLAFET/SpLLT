@@ -176,9 +176,15 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 
 \section{Introduction} \label{sec:introduction}
 
-We consider the solution of a sparse linear system of equations $Ax = b$ 
-using direct methods .....
-
+In this work we investigate the use a runtime system for the
+implementation of a sparse Cholesky solver with the aim to efficiently
+exploit multicore architectures. Since their introduction multicore
+processor have become increasingly popular and can be found in the
+vast majority of high performance computing platforms. Despite their
+popularity, exploiting the capabilities of multicore processors remain
+a challenge and in this work we explore the potential of runtime
+systems for the implementation of a complex and irregular workload
+such as a sparse Cholesky solver.
 
 \section{Sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
@@ -303,8 +309,9 @@ extended into a distributed-memory version whereas OpenMP doesn't
 provide any possibility to run on distributed memory architectures.
 
 In order to introduce the features provided by StarPU API and the
-features provided by this runtime system, we show in Figure~\ref{fig:seq-starpu-example} an example of a
-StarPU-based implementation for the simple example presented in
+features provided by this runtime system, we show in
+Figure~\ref{fig:seq-starpu-example} an example of a StarPU-based
+implementation for the simple example presented in
 Figure~\ref{fig:seq-example}. The task submission is done through the
 \texttt{starpu\_task\_insert} function that tasks in input a
 \textit{codelet} and a set of \textit{handles}. A codelet correspond
@@ -338,6 +345,7 @@ we wait for their completion by calling the routine
 
 \section{Parallelisation of a task-based Cholesky factorization using a STF programming model}
 \label{sec:experiments}
+
 
 
 \begin{figure}[!h]

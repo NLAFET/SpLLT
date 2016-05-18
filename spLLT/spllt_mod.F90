@@ -61,12 +61,14 @@ module spllt_mod
   end type spllt_node_type
 
   type spllt_dep_upd
-     integer(long) :: id
-     integer(long) :: id_ljk, id_lik
+     integer(long) :: id     = 0
+     integer(long) :: id_ljk = 0
+     integer(long) :: id_lik = 0
   end type spllt_dep_upd
 
   type spllt_dep_node
-     type(spllt_dep_upd)           :: dep_upd
+     type(spllt_dep_upd)           :: upd
+     type(spllt_dep_node), pointer :: prev => null()     
      type(spllt_dep_node), pointer :: next => null()     
   end type spllt_dep_node
 
@@ -154,13 +156,14 @@ contains
 
     allocate(dep)
     
-    dep%id_lik = id_lik
-    dep%id_ljk = id_ljk
-    dep%id = id
+    dep%upd%id_lik = id_lik
+    dep%upd%id_ljk = id_ljk
+    dep%upd%id     = id
 
     if (.not. associated(dep_list)) then
        call spllt_dep_list_init(dep_list, dep)
     else
+       dep%prev           => dep_list%tail
        dep_list%tail%next => dep
        dep_list%tail      => dep
     end if
