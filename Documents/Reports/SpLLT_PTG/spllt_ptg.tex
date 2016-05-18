@@ -1,0 +1,170 @@
+\documentclass{article}
+\pagenumbering{arabic}
+
+\usepackage{url}
+\usepackage{color}
+\usepackage{verbatim}
+
+\usepackage{color}
+\definecolor{gray98}{rgb}{0.98,0.98,0.98}
+\definecolor{gray20}{rgb}{0.20,0.20,0.20}
+\definecolor{gray25}{rgb}{0.25,0.25,0.25}
+\definecolor{gray16}{rgb}{0.161,0.161,0.161}
+\definecolor{gray60}{rgb}{0.6,0.6,0.6}
+\definecolor{gray30}{rgb}{0.3,0.3,0.3}
+\definecolor{bgray}{RGB}{248, 248, 248}
+\definecolor{amgreen}{RGB}{77, 175, 74}
+% \definecolor{amblu}{RGB}{72, 88, 102}
+\definecolor{amblu}{RGB}{55, 126, 184}
+\definecolor{amred}{RGB}{228,26,28}
+\definecolor{amyellow}{RGB}{237,177,32}
+\definecolor{ampurple}{RGB}{126,47,142}
+\newcommand{\mye}[1]{\textcolor{amyellow}{#1}\xspace}
+\newcommand{\mgr}[1]{\textcolor{amgreen}{#1}\xspace}
+\newcommand{\mbl}[1]{\textcolor{amblu}{#1}\xspace}
+\newcommand{\mre}[1]{\textcolor{amred}{#1}\xspace}
+\newcommand{\mbk}[1]{\textcolor{black}{#1}\xspace}
+\newcommand{\mbp}[1]{\textcolor{ampurple}{#1}\xspace}
+
+\input{nlafet_style.sty}
+
+\bibliographystyle{siam}
+
+%-----------------------------------------------------------------------
+%
+% include macros
+%
+\input nlafet_macros.tex
+%-----------------------------------------------------------------------
+
+\newcommand{\stfccovertitle}
+{Experiments with sparse Cholesky using data-flow runtime systems}
+
+\newcommand{\theabstract}{We describe the development of a prototype code for 
+the solution of large symmetric positive definite sparse systems that is
+efficient on parallel architectures.}
+
+\textwidth  16.18cm
+\textheight 23.4cm
+\oddsidemargin -0.2mm
+\evensidemargin -0.2mm
+\def\baselinestretch{1.1}
+\topmargin -8.4mm
+
+\newcommand{\n}[1][1]{\vspace*{#1\baselineskip}\noindent}
+\newcommand{\ISD}[1]{\begin{center}\n[.4]\textcolor{red}{ISD\
+ \hspace*{0.15em} \fbox{\parbox{.8\textwidth}{#1}}}\n[.4]\end{center}}
+\newcommand{\HSD}[1]{\begin{center}\n[.4]\textcolor{green}{FL\
+\hspace*{0.15em} \fbox{\parbox{.9\textwidth}{\texttt{#1}}}}\n[.4]\end{center}}
+\newcommand{\ASH}[1]{\begin{center}\n[.4]\textcolor{brown}{JH\
+\hspace*{0.15em} \fbox{\parbox{.9\textwidth}{\texttt{#1}}}}\n[.4]\end{center}}
+
+\newcommand{\metis}{{\sc Me$\!$T$\!$iS\ }}
+
+\hyphenpenalty=10000
+\widowpenalty=10000
+\sloppy
+
+\begin{document}
+
+
+\begin{titlepage}
+
+\vspace*{-0.5cm}
+
+\vspace{1.0 cm}
+
+{\Large \bf
+\begin{center}
+   \stfccovertitle
+\end{center}}
+
+\begin{center}
+\mbox{} \\
+      Iain Duff\footnotemark[1], 
+      Jonathan Hogg\footnotemark[1], and Florent Lopez\footnotemark[1]
+     
+\mbox{} \\
+\end{center}
+
+\vspace{1.0cm}
+
+
+\noindent
+{\large ABSTRACT}
+
+\vspace{0.3cm}
+\noindent
+\theabstract
+
+\vspace{0.6cm}
+
+\begin{description}
+\item [Keywords:] sparse Cholesky, SPD systems, runtime systems, STARPU, PaRSEC
+\item [AMS(MOS) subject classifications:]  65F30, 65F50
+\end{description}
+
+\vspace{0.1 cm}
+
+\noindent \rule{15cm}{0.001in}
+\vspace{0.1 cm}
+
+\begin{description}
+
+\item [$^1$] Scientific Computing Department, STFC Rutherford 
+Appleton Laboratory,
+Harwell Campus,\\ Oxfordshire, OX11 0QX, UK.
+\end{description}
+\noindent
+Correspondence to: florent.lopez@stfc.ac.uk\\
+This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
+
+
+\vspace{1.1 cm}
+\noindent \today
+
+\end{titlepage}
+
+\newpage
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+\section{Introduction} \label{sec:introduction}
+
+\section{Concluding remarks}\label{sec:conclusions}
+This report has described in detail the development of a new
+
+ 
+\section*{Code Availability}
+A development version of the Cholesky factorization software used in this 
+paper may be checked out of
+our source code repository using the following command:
+
+\begin{verbatim}
+   svn co -r612 http://ccpforge.cse.rl.ac.uk/svn/spral/branches/xxxxxxx
+\end{verbatim}
+
+This code has not yet been optimised and so is not yet
+part of the HSL or SPRAL libraries that are we develop
+and maintain at the Rutherford Appleton Laboratory (see
+\url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
+
+\clearpage
+\bibliography{flipflapflopBib}
+
+\appendix
+
+\section{Test problems}\label{appendix}
+\setcounter{equation}{0}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+\renewcommand{\thetable}{A.\arabic{table}}
+
+
+In Table~\ref{Tbl:Problems} we list  our test problems along with 
+their characteristics. The problems are from the 
+University of Florida Sparse Matrix Collection  and are chosen 
+to represent a wide range of sparsity structures.
+
+\end{document}
