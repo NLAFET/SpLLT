@@ -8,18 +8,12 @@ program spllt_test
   
   write(*,'("[spllt test]")')
   
-  ! n   = 256
-  ! nnz = 1000
+  n   = 512
+  nnz = 512*512
 
-  ! n   = 256
-  ! nnz = 10000
+  call spllt_test_rand(n, nnz, cntl)
 
-  ! n   = 4000
-  ! nnz = 100*4000
-
-  ! call spllt_test_rand(n, nnz, cntl)
-
-  call spllt_test_mat("matrix.rb", cntl)
+  ! call spllt_test_mat("matrix.rb", cntl)
   
   stop
 
@@ -247,7 +241,14 @@ contains
     use trace_mod
 #endif
 #endif
+
+#if defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU)
     use spllt_stf_mod
+#elif defined(SPLLT_USE_PARSEC)
+    use dague_f08_interfaces
+    use spllt_ptg_mod
+#endif
+
     implicit none
     
     integer :: n, nnz
@@ -353,6 +354,9 @@ contains
     call trace_create_event('UPDATE_BLK', upd_blk_id)
     call trace_create_event('UPDATE_BTW', upd_btw_id)
 #endif
+
+#elif defined(SPLLT_USE_PARSEC)
+    call dague_init(cntl%ncpu, ctx)
 #endif
 
     write(*,'("[>] factorize")')
@@ -360,7 +364,11 @@ contains
     write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
 
     ! factorize matrix
+#if defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU) 
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
+#elif defined(SPLLT_USE_PARSEC)
+    call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)
+#endif
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "failed factorization"
@@ -368,6 +376,8 @@ contains
 
 #if defined(SPLLT_USE_OMP)
 !$omp taskwait
+#elif (SPLLT_USE_PARSEC)
+    call dague_context_wait(ctx)
 #endif
 
 #if defined(SPLLT_USE_OMP)
@@ -376,6 +386,8 @@ contains
 #endif
 !$omp end master
 !$omp end parallel
+#elif defined(SPLLT_USE_PARSEC)
+    call dague_fini(ctx)
 #endif
 
 ! goto 9999 ! no solve

@@ -16,7 +16,7 @@ module spllt_mod
   ! end type matrix_type
 
   integer, parameter :: wp = kind(0d0)
-#if defined(SPLLT_USE_STARPU)
+#if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_PARSEC) 
   integer, parameter :: long = c_long
 #else
   integer, parameter :: long = selected_int_kind(18)
@@ -86,10 +86,15 @@ module spllt_mod
 #endif
      integer :: mem_node = 0 ! memory node where the block is allocated
      
+
+#if defined(SPLLT_USE_PARSEC)
      ! store ids of blocks contributing to this block
-     type(spllt_dep_list), pointer :: dep_in  => null()
+     ! type(spllt_dep_list), pointer :: dep_in  => null()
+     type(spllt_dep_upd), pointer :: dep_in(:)  => null()
      ! store ids of blocks for which this block contributes to 
-     type(spllt_dep_list), pointer :: dep_out => null()
+     ! type(spllt_dep_list), pointer :: dep_out => null()
+     type(spllt_dep_upd), pointer :: dep_out(:) => null()
+#endif
   end type spllt_bc_type
   
   ! problem data (analyis)
@@ -132,7 +137,22 @@ module spllt_mod
 
 contains
 
+  subroutine spllt_dep_array_init(dep_arr, dep)
+    implicit none
+
+    type(spllt_dep_upd), dimension(:), pointer :: dep_arr
+    type(spllt_dep_upd) :: dep
+
+    if (.not. associated(dep_arr)) then
+       allocate(dep_arr(1))
+       dep_arr(1) = dep
+    end if
+    
+    return
+  end subroutine spllt_dep_array_init
+
   subroutine spllt_dep_list_init(dep_list, dep)
+    implicit none
 
     type(spllt_dep_list), pointer :: dep_list
     type(spllt_dep_node), pointer :: dep

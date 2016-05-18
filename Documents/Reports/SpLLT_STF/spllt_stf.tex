@@ -182,9 +182,19 @@ exploit multicore architectures. Since their introduction multicore
 processor have become increasingly popular and nowadays can be found
 in the vast majority of high performance computing platforms. Despite
 their popularity, exploiting the capabilities of multicore processors
-remain a challenge and in this work we explore the potential of
-runtime systems for the implementation of a complex and irregular
-workload such as a sparse Cholesky solver.
+remain a challenge. When designing scientific computing libraries for
+shared-memory multicore architecture, the classical approach consists
+in developing ad-hoc scheduler which rely on the knowledge of the
+algorithm and implemented using a low-level multithreading library
+such as pthread (POSIX threads) to manage synchronisations and enforce
+dependencies between processes. In this work, instead, we use a
+runtime system as a software layer between the architecture and the
+application. In this approach the application is then implemented
+using a high-level API provided by the runtime system the low level
+details such as data consistency across the architecture and task
+scheduling are delegated to the runtime system. In addition, in this
+work we use a Sequential Task Flow (STF) programming model which
+allows us to simply express the parallel code from the sequential one.
 
 \section{Sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}

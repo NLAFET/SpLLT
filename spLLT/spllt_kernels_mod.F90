@@ -32,6 +32,25 @@ contains
 
   end subroutine spllt_factor_diag_block  
 
+  ! C wrapper
+
+  subroutine spllt_factor_diag_block_c(m, n, bc_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    integer(c_int), value :: m, n
+    type(c_ptr), value :: bc_c
+    
+    real(wp), pointer :: bc(:) ! holds block
+
+    call c_f_pointer(bc_c, bc,(/m*n/))
+    
+    call spllt_factor_diag_block(m, n, bc)
+
+    return
+  end subroutine spllt_factor_diag_block_c
+
   !********************************************************************  
 
   ! TASK_SOLVE_BLOCK
@@ -52,6 +71,25 @@ contains
          one, diag, n, dest, n)
 
   end subroutine spllt_solve_block
+
+  ! C wrapper
+
+  subroutine spllt_solve_block_c(m, n, bc_kk_c, bc_ik_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    integer(c_int) :: m ! number of rows in dest
+    integer(c_int) :: n ! number of columns in dest
+    type(c_ptr)    :: bc_kk_c ! holds destination block
+    type(c_ptr)    :: bc_ik_c ! block
+    
+    real(wp), pointer :: bc_kk(:), bc_ik(:) 
+    
+    
+
+    return
+  end subroutine spllt_solve_block_c
   
   !*************************************************  
 

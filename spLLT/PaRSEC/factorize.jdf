@@ -14,19 +14,73 @@ extern "C" %{
 %}
 
 blk            [type = "struct blk_desc*"]
+bcs            [type = "void *"]
 nbc            [type = int]
 
-init_blk(id)
+/* init_blk(id) */
+
+/*    id = 1..nbc */
+
+/*    : blk(id) */
+   
+/* BODY */
+/* { */
+/*    /\* printf("[init_blk] blk: %d\n", id); *\/ */
+/* } */
+/* END */
+
+// factorize block
+
+factorize_block(id, e)
 
    id = 1..nbc
+   /* check existence of this task for this id*/
+   e  = 1..inline_c %{ return is_diag(bcs, id); %}
 
    : blk(id)
-   
+
+   RW bc_kk <- blk(id)  
+            -> blk(id)
 BODY
 {
-   /* printf("[init_blk] blk: %d\n", id); */
+   /* printf("[factorize_block] bc_kk: %p\n", bc_kk); */
+
+   int m = get_blk_m(bcs, id);
+   int n = get_blk_n(bcs, id);
+   
+   printf("[factorize_block] blk id: %d, m: %d, n: %d\n", id, m, n);
+
+   spllt_factor_diag_block_c(m, n, bc_kk);
+
 }
 END
+
+// solve block
+
+solve_block(id, idx, e)
+
+   id  = 1..nbc
+   /* check existence of this task for blk id*/
+   e   = 1..inline_c %{ return is_diag(bcs, id); %}
+   
+   idx = 1..inline_c %{ return get_num_subdiag(bcs, id); %}
+
+   id_ik = id + idx
+
+   : blk(id_ik)
+
+   READ  bc_kk <- blk(id)  
+   RW    bc_ik <- blk(id_ik)
+               -> blk(id_ik)
+
+BODY
+{
+   printf("[solve_block] id: %d, id_ik: %d\n", id, id_ik);
+
+   
+}
+END
+
 
 extern "C" %{
    
@@ -47,15 +101,15 @@ extern "C" %{
 #endif
       
       printf("[factorize] nodes: %d, rank: %d\n", nodes, rank);
+      printf("[factorize] number of blocks: %d\n", nbc);
       
       blk_desc_t *blk_desc = malloc(sizeof(blk_desc_t));
       
       spllt_parsec_blk_data_init(blk_desc, 
                                  bcs, nbc,
-                                 sizeof(double),
                                  nodes, rank);
       
-      fac_hdl = dague_factorize_new(blk_desc, nbc);
+      fac_hdl = dague_factorize_new(blk_desc, bcs, nbc);
 
       assert( NULL != fac_hdl );
 

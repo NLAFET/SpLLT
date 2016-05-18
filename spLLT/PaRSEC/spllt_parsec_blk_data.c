@@ -5,7 +5,12 @@
 #include "spllt_parsec_blk_data.h"
 
 static inline uint32_t blk_key(int id) {
-   return  id;
+
+   uint32_t key;
+
+   key = (uint32_t) id-1;
+
+   return  key;
 }
 
 static uint32_t blk_data_key(dague_ddesc_t *desc, ... ) {
@@ -15,10 +20,10 @@ static uint32_t blk_data_key(dague_ddesc_t *desc, ... ) {
     int id;
 
     va_start(ap, desc);
-    id = va_arg(ap, unsigned int);
+    id = va_arg(ap, int);
     va_end(ap);
 
-    return blk_data_key(id);
+    return blk_key(id);
 }
 
 static uint32_t blk_rank_of(dague_ddesc_t *desc, ... ) {
@@ -54,23 +59,27 @@ static dague_data_t *blk_data_of(dague_ddesc_t *desc, ... ) {
     void *bc;  // bloc ptr
 
     va_start(ap, desc);
-    id = va_arg(ap, unsigned int);
+    id = va_arg(ap, int);
     va_end(ap);
 
     /* nbcol = blk_desc->nbcol; */
     bcs = blk_desc->bcs;
     bc  = get_blk_ptr(bcs, id);
+    /* bc  = NULL; */
 
-    key  = blk_data_key(id);
+    key  = blk_key(id);
     pos  = key;
     size = get_blk_sze(bcs, id);
+
+    /* printf("[blk_data_of] id: %d, key: %zu\n", id, key); */
+    /* printf("[blk_data_of] key: %d, bc: %p, size: %d\n", key, bc, size); */
+    /* size = sizeof(double); */
 
     return dague_data_create(blk_desc->data_map + pos, desc, key, bc, size);
 }
 
 void spllt_parsec_blk_data_init(blk_desc_t *desc,
-                                void *bcs,
-                                int nbc, size_t typesize,
+                                void *bcs, int nbc,
                                 int nodes, int myrank) {
    
     dague_ddesc_t *o = (dague_ddesc_t*)desc;
@@ -91,7 +100,7 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
     o->data_of     = blk_data_of;
     /* o->data_of_key = blk_data_of_key; */
 
-    desc->typesize  = typesize;
+    /* desc->typesize  = typesize; */
     desc->bcs       = bcs;
     desc->nbc       = nbc;
     desc->data_map  = (dague_data_t**)calloc( nbc, sizeof(dague_data_t*) );
