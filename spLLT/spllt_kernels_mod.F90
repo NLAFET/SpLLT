@@ -79,15 +79,18 @@ contains
     use spllt_mod
     implicit none
 
-    integer(c_int) :: m ! number of rows in dest
-    integer(c_int) :: n ! number of columns in dest
-    type(c_ptr)    :: bc_kk_c ! holds destination block
-    type(c_ptr)    :: bc_ik_c ! block
+    integer(c_int), value :: m ! number of rows in dest
+    integer(c_int), value :: n ! number of columns in dest
+    type(c_ptr), value    :: bc_kk_c ! holds destination block
+    type(c_ptr), value    :: bc_ik_c ! block
     
     real(wp), pointer :: bc_kk(:), bc_ik(:) 
     
-    
+    call c_f_pointer(bc_kk_c, bc_kk, (/n*n/))
+    call c_f_pointer(bc_ik_c, bc_ik, (/m*n/))
 
+    call spllt_solve_block(m, n, bc_ik, bc_kk)
+    
     return
   end subroutine spllt_solve_block_c
   

@@ -62,9 +62,11 @@ solve_block(id, idx, e)
    id  = 1..nbc
    /* check existence of this task for blk id*/
    e   = 1..inline_c %{ return is_diag(bcs, id); %}
-   
+
+   /* iterator on subdiag blocks */
    idx = 1..inline_c %{ return get_num_subdiag(bcs, id); %}
 
+   /* subdiag blocks index */
    id_ik = id + idx
 
    : blk(id_ik)
@@ -77,7 +79,10 @@ BODY
 {
    printf("[solve_block] id: %d, id_ik: %d\n", id, id_ik);
 
-   
+   int m = get_blk_m(bcs, id_ik);
+   int n = get_blk_n(bcs, id_ik);
+
+   spllt_solve_block_c(m, n, bc_kk, bc_ik);
 }
 END
 

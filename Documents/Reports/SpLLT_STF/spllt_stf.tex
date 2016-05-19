@@ -179,22 +179,32 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 In this work we investigate the use a runtime system for the
 implementation of a sparse Cholesky solver with the aim to efficiently
 exploit multicore architectures. Since their introduction multicore
-processor have become increasingly popular and nowadays can be found
+processor have become increasingly popular and can be found nowadays
 in the vast majority of high performance computing platforms. Despite
 their popularity, exploiting the capabilities of multicore processors
-remain a challenge. When designing scientific computing libraries for
-shared-memory multicore architecture, the classical approach consists
-in developing ad-hoc scheduler which rely on the knowledge of the
-algorithm and implemented using a low-level multithreading library
-such as pthread (POSIX threads) to manage synchronisations and enforce
-dependencies between processes. In this work, instead, we use a
-runtime system as a software layer between the architecture and the
-application. In this approach the application is then implemented
-using a high-level API provided by the runtime system the low level
-details such as data consistency across the architecture and task
-scheduling are delegated to the runtime system. In addition, in this
-work we use a Sequential Task Flow (STF) programming model which
-allows us to simply express the parallel code from the sequential one.
+remain a challenge. To cope with these multicore hardware, DAG-based
+algorithms have been shown to be extremely efficient in terms of
+performance and scalability. They have been widely employed in the
+context dense linear algebra such as in the
+PLASMA~\cite{a.d.d.h.ea:09}. Because of their deficiencies in this
+context they have then been used with sparse algorithm such as the
+\texttt{HSL\_MA87} solver which implements a sparse Cholesky
+factorization and \texttt{HSL\_MA87} which implements a multifrontal
+QR method.
+
+When designing scientific computing libraries for shared-memory
+multicore architecture, the classical approach consists in developing
+ad-hoc scheduler which rely on the knowledge of the algorithm and
+implemented using a low-level multithreading library such as pthread
+(POSIX threads) to manage synchronisations and enforce dependencies
+between processes. In this work, instead, we use a runtime system as a
+software layer between the architecture and the application. In this
+approach the application is then implemented using a high-level API
+provided by the runtime system the low level details such as data
+consistency across the architecture and task scheduling are delegated
+to the runtime system. In addition, in this work we use a Sequential
+Task Flow (STF) programming model which allows us to simply express
+the parallel code from the sequential one.
 
 \section{Sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
@@ -320,7 +330,7 @@ provide any possibility to run on distributed memory architectures.
 
 In order to introduce the features provided by StarPU API and the
 features provided by this runtime system, we show in
-Figure~\ref{fig:seq-starpu-example} an example of a StarPU-based
+Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
 implementation for the simple example presented in
 Figure~\ref{fig:seq-example}. The task submission is done through the
 \texttt{starpu\_task\_insert} function that tasks in input a
