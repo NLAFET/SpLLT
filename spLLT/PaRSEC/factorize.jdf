@@ -14,6 +14,8 @@ extern "C" %{
 %}
 
 blk            [type = "struct blk_desc*"]
+snodes         [type = "void *"]
+nnodes         [type = int]
 bcs            [type = "void *"]
 nbc            [type = int]
 
@@ -31,16 +33,18 @@ nbc            [type = int]
 
 // factorize block
 
-factorize_block(id, e)
+factorize_block(id, isDiag)
 
    id = 1..nbc
    /* check existence of this task for this id*/
-   e  = 1..inline_c %{ return is_diag(bcs, id); %}
+   isDiag = 1..inline_c %{ return is_diag(bcs, id); %}
+   
+   last_blk = inline_c %{ return get_last_blk(bcs, id); %}
 
    : blk(id)
 
    RW bc_kk <- blk(id)  
-            -> blk(id)
+            -> (id == last_blk) ? blk(id) : bc_kk solve_block(id, 1, (id+1)..last_blk)
 BODY
 {
    /* printf("[factorize_block] bc_kk: %p\n", bc_kk); */
@@ -57,23 +61,29 @@ END
 
 // solve block
 
-solve_block(id, idx, e)
+solve_block(id, isDiag, id_ik)
 
    id  = 1..nbc
    /* check existence of this task for blk id*/
-   e   = 1..inline_c %{ return is_diag(bcs, id); %}
+   isDiag = 1..inline_c %{ return is_diag(bcs, id); %}
+   
+   last_blk = inline_c %{ return get_last_blk(bcs, id); %}
 
    /* iterator on subdiag blocks */
-   idx = 1..inline_c %{ return get_num_subdiag(bcs, id); %}
+   id_ik = (id+1)..last_blk
 
-   /* subdiag blocks index */
-   id_ik = id + idx
+   /* number of block column in current node */
+   ncol =  inline_c %{ return get_nc(snodes, nnodes, bcs, id); %}
+   /* current block column*/
+   bcol =  inline_c %{ return get_bcol(bcs, id); %}
 
    : blk(id_ik)
 
-   READ  bc_kk <- blk(id)  
+   READ  bc_kk <- bc_kk factorize_block(id, 1)  
    RW    bc_ik <- blk(id_ik)
-               -> blk(id_ik)
+               -> (bcol == ncol) ? blk(id_ik) 
+               -> (bcol < ncol) ? bc_jk update_block(id, isDiag, id_ik, (id+1)..last_blk)
+               -> (bcol < ncol) ? bc_ik update_block(id, isDiag, (id+1)..(id+ncol), id_ik)
 
 BODY
 {
@@ -86,10 +96,55 @@ BODY
 }
 END
 
+// update block
+
+update_block(id, isDiag, id_jk, id_ik)
+
+   id  = 1..nbc
+   /* check existence of this task for blk id*/
+   isDiag = 1..inline_c %{ return is_diag(bcs, id); %}
+   /* get last block id in current block column */
+   last_blk = inline_c %{ return get_last_blk(bcs, id); %}
+   /* get number of block column in current node */
+   ncol =  inline_c %{ return get_nc(snodes, nnodes, bcs, id); %}
+
+   /* get first (diag) block id in current node */
+   blk_sa =  inline_c %{ return get_blk_sa(snodes, nnodes, bcs, id); %}
+   /* id of previous diag block*/
+   prev_diag = inline_c %{ return get_prev_dblk(bcs, id); %}
+
+   next_diag = inline_c %{ return get_next_dblk(bcs, id); %}
+
+   id_jk = (id+1)..(id+ncol)
+
+   id_ik = id_jk..last_blk
+
+   id_ij = inline_c %{ return get_dest_blk_id(bcs, nbc, id_jk, id_ik); %}
+
+   : blk(id_ij)
+
+   READ bc_jk <- bc_ik solve_block(id, 1, id_jk)
+
+   READ bc_ik <- bc_ik solve_block(id, 1, id_ik)
+
+   RW bc_ij <- (id == blk_sa) ? blk(id_ij) : bc_ij update_block(id, isDiag, id_jk, id_ik) 
+            -> blk(id_ij)
+
+BODY
+{
+   printf("[update_block] id: %d, id_jk: %d, id_ij: %d\, id_ik: %d\n", id, id_jk, id_ik, id_ij);
+
+   /* int m = get_blk_m(bcs, id_ik); */
+   /* int n = get_blk_n(bcs, id_ik); */
+
+}
+END
+
 
 extern "C" %{
    
-   dague_handle_t* spllt_parsec_factorize(void *bcs, int nbc) {
+   dague_handle_t* spllt_parsec_factorize(void *snodes, int nnodes, 
+                                          void *bcs, int nbc) {
 
       dague_factorize_handle_t* fac_hdl;
 
@@ -110,11 +165,11 @@ extern "C" %{
       
       blk_desc_t *blk_desc = malloc(sizeof(blk_desc_t));
       
-      spllt_parsec_blk_data_init(blk_desc, 
+      spllt_parsec_blk_data_init(blk_desc,
                                  bcs, nbc,
                                  nodes, rank);
       
-      fac_hdl = dague_factorize_new(blk_desc, bcs, nbc);
+      fac_hdl = dague_factorize_new(blk_desc, snodes, nnodes, bcs, nbc);
 
       assert( NULL != fac_hdl );
 

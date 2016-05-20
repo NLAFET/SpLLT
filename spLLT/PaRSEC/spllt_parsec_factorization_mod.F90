@@ -1,11 +1,11 @@
 module spllt_parsec_factorization_mod
 
   interface
-     function spllt_parsec_factorize(bcs, nbc) bind(C)
+     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc) bind(C)
        use iso_c_binding
        use dague_f08_interfaces
-       type(c_ptr), value      :: bcs
-       integer(c_int), value   :: nbc
+       type(c_ptr), value      :: nodes, bcs
+       integer(c_int), value   :: num_nodes, nbc
        type(dague_handle_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
 
@@ -18,6 +18,146 @@ module spllt_parsec_factorization_mod
   end interface
 
 contains
+
+  function get_blk_sa(nodes_c, nnodes, bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: nodes_c, bcs_c
+    integer(c_int)             :: nnodes
+    integer(long), value       :: id
+    integer(long)              :: get_blk_sa
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(node_type), pointer :: node, nodes(:)
+    
+    call c_f_pointer(nodes_c, nodes, (/nnodes/))    
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    node => nodes(bc(id)%blk%node)
+    get_blk_sa = node%blk_sa 
+    
+  end function get_blk_sa
+
+  function get_nc(nodes_c, nnodes, bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: nodes_c, bcs_c
+    integer(c_int)             :: nnodes
+    integer(long), value       :: id
+    integer(long)              :: get_nc
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(node_type), pointer :: node, nodes(:)
+    integer :: sa, en, numcol, s_nb
+    
+    call c_f_pointer(nodes_c, nodes, (/nnodes/))    
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    node => nodes(bc(id)%blk%node)
+    sa = node%sa
+    en = node%en
+    numcol = en - sa + 1
+    s_nb = node%nb
+    get_nc = (numcol-1) / s_nb + 1
+    
+  end function get_nc
+
+  function get_dest_blk_id(bcs_c, nbc, id_jk, id_ik) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(c_int), value      :: nbc
+    integer(long), value       :: id_jk, id_ik
+    integer(long)              :: get_dest_blk_id
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    
+    call c_f_pointer(bcs_c, bc,(/nbc/))    
+    
+    get_dest_blk_id = get_dest_block(bc(id_jk)%blk, bc(id_ik)%blk)
+
+  end function get_dest_blk_id
+
+  function get_next_dblk(bcs_c, diag) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: diag
+    integer(c_int)             :: get_prev_dblk
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/diag/))    
+    
+    get_prev_dblk = bc(diag-1)%blk%dblk 
+      
+  end function get_next_dblk
+
+  function get_prev_dblk(bcs_c, diag) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: diag
+    integer(c_int)             :: get_prev_dblk
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/diag/))    
+    
+    get_prev_dblk = 0
+
+    if (diag .gt. 1) then
+       get_prev_dblk = bc(diag-1)%blk%dblk 
+    end if
+       
+  end function get_prev_dblk
+
+  function get_last_blk(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int)             :: get_last_blk
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_last_blk = bc(id)%blk%last_blk 
+    
+  end function get_last_blk
+
+  function get_bcol(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int)             :: get_bcol
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))
+
+    get_bcol = bc(id)%blk%bcol 
+    
+  end function get_bcol
 
   function get_num_subdiag(bcs_c, id) bind(C)
     use iso_c_binding
