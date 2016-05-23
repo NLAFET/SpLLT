@@ -357,6 +357,10 @@ contains
          keep%lmap, map, amap, st)
     if(st.ne.0) goto 9999
 
+#if defined(SPLLT_USE_PARSEC)
+    call spllt_compute_dep(adata, fdata, keep, map)
+#endif
+
     ! before returning take copy of components of info set by MA87_analyse
     keep%info%flag         = info%flag
     keep%info%num_factor   = info%num_factor
@@ -406,6 +410,7 @@ contains
     integer(long) :: id_lik, id_ljk, id
     type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
 
+    write(*,*)'[spllt_analyse_mod][compute_dep]'
 
     num_nodes = adata%nnodes
 
@@ -439,7 +444,6 @@ contains
           if(cptr.gt.numrow) exit ! finished with node
 
           map_done = .false. ! We will only build a map when we need it
-
                        
           ! Loop over affected block columns of anode
           bcols: do
@@ -487,6 +491,9 @@ contains
                          id_lik = dblk + (i-1)/s_nb - (lik-1)
                          id_ljk = dblk + ljk - (lik-1)
 
+                         write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_lik: ', &
+                              & id_lik, ', id_ljk: ', id_ljk, ', anum: ', anum
+
                          bc_jk => fdata%bc(id_ljk)
                          bc_ik => fdata%bc(id_lik)
                          bc_ij => fdata%bc(a_blk)
@@ -502,6 +509,8 @@ contains
                 end if
              end do
 
+             ! Move cptr down, ready for next block column of anode
+             cptr = cptr2 + 1
           end do bcols
           
           ! Move up the tree to the parent of anode
