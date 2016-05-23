@@ -387,7 +387,7 @@ contains
     implicit none
 
     type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
-    type(spllt_data_type), intent(inout) :: fdata ! data related to the factorization
+    type(spllt_data_type), target, intent(inout) :: fdata ! data related to the factorization
     type(MA87_keep), target, intent(in) :: keep
     integer, allocatable :: map(:)
 
@@ -404,6 +404,8 @@ contains
     integer :: lik, ljk, ljk_sa, ljk_en
     integer :: nr, nc
     integer(long) :: id_lik, id_ljk, id
+    type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
+
 
     num_nodes = adata%nnodes
 
@@ -485,7 +487,13 @@ contains
                          id_lik = dblk + (i-1)/s_nb - (lik-1)
                          id_ljk = dblk + ljk - (lik-1)
 
+                         bc_jk => fdata%bc(id_ljk)
+                         bc_ik => fdata%bc(id_lik)
+                         bc_ij => fdata%bc(a_blk)
                          
+                         call spllt_dep_array_add(bc_jk%dep_out, dblk, id_ljk, id_lik, a_blk)
+                         call spllt_dep_array_add(bc_ik%dep_out, dblk, id_ljk, id_lik, a_blk)
+                         call spllt_dep_array_add(bc_ij%dep_in, dblk, id_ljk, id_lik, a_blk)
                          
                          dblk = keep%blocks(dblk)%last_blk + 1
                       end do

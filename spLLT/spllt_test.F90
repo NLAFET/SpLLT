@@ -8,8 +8,11 @@ program spllt_test
   
   write(*,'("[spllt test]")')
   
-  n   = 384
-  nnz = n*n
+  ! n   = 384
+  ! nnz = n*n
+
+  n   = 512
+  nnz = 10000
 
   call spllt_test_rand(n, nnz, cntl)
 

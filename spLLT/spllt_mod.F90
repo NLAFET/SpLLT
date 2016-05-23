@@ -61,9 +61,10 @@ module spllt_mod
   end type spllt_node_type
 
   type spllt_dep_upd
-     integer(long) :: id     = 0
-     integer(long) :: id_ljk = 0
-     integer(long) :: id_lik = 0
+     integer(long) :: id_kk  = 0
+     integer(long) :: id_jk = 0
+     integer(long) :: id_ik = 0
+     integer(long) :: id_ij  = 0
   end type spllt_dep_upd
 
   type spllt_dep_node
@@ -155,45 +156,76 @@ contains
     return
   end subroutine spllt_dep_array_init
 
-  subroutine spllt_dep_list_init(dep_list, dep)
+  subroutine spllt_dep_array_add(dep_arr, id_kk, id_jk, id_ik, id_ij)
     implicit none
 
-    type(spllt_dep_list), pointer :: dep_list
-    type(spllt_dep_node), pointer :: dep
+    type(spllt_dep_upd), dimension(:), pointer :: dep_arr
+    integer(long) :: id_kk, id_jk, id_ik, id_ij
 
-    if (.not. associated(dep_list)) then
-       allocate(dep_list)
-       dep_list%head => dep
-       dep_list%tail => dep
-    end if
+    integer :: sz
+    type(spllt_dep_upd), dimension(:), pointer :: new_dep_arr => null()
 
-    return
-  end subroutine spllt_dep_list_init
-
-  subroutine spllt_dep_list_push_back(dep_list, id_lik, id_ljk, id)
-    implicit none
-
-    type(spllt_dep_list), pointer :: dep_list
-    integer(long) :: id_lik, id_ljk, id
-
-    type(spllt_dep_node), pointer :: dep => null()
-
-    allocate(dep)
+    sz = size(dep_arr)
     
-    dep%upd%id_lik = id_lik
-    dep%upd%id_ljk = id_ljk
-    dep%upd%id     = id
-
-    if (.not. associated(dep_list)) then
-       call spllt_dep_list_init(dep_list, dep)
+    if (.not. associated(dep_arr)) then
+       allocate(dep_arr(1))
+       dep_arr(1)%id_kk = id_kk
+       dep_arr(1)%id_jk = id_jk
+       dep_arr(1)%id_ik = id_ik
+       dep_arr(1)%id_ij = id_ij
     else
-       dep%prev           => dep_list%tail
-       dep_list%tail%next => dep
-       dep_list%tail      => dep
+       allocate(new_dep_arr(sz+1))
+       new_dep_arr(1:sz) = dep_arr(1:sz)
+       new_dep_arr(sz+1)%id_kk = id_kk
+       new_dep_arr(sz+1)%id_jk = id_jk
+       new_dep_arr(sz+1)%id_ik = id_ik
+       new_dep_arr(sz+1)%id_ij = id_ij       
+       deallocate(dep_arr)
+       dep_arr => new_dep_arr
     end if
-
+    
     return
-  end subroutine spllt_dep_list_push_back
+  end subroutine spllt_dep_array_add
+
+  ! subroutine spllt_dep_list_init(dep_list, dep)
+  !   implicit none
+
+  !   type(spllt_dep_list), pointer :: dep_list
+  !   type(spllt_dep_node), pointer :: dep
+
+  !   if (.not. associated(dep_list)) then
+  !      allocate(dep_list)
+  !      dep_list%head => dep
+  !      dep_list%tail => dep
+  !   end if
+
+  !   return
+  ! end subroutine spllt_dep_list_init
+
+  ! subroutine spllt_dep_list_push_back(dep_list, id_lik, id_ljk, id)
+  !   implicit none
+
+  !   type(spllt_dep_list), pointer :: dep_list
+  !   integer(long) :: id_lik, id_ljk, id
+
+  !   type(spllt_dep_node), pointer :: dep => null()
+
+  !   allocate(dep)
+    
+  !   dep%upd%id_lik = id_lik
+  !   dep%upd%id_ljk = id_ljk
+  !   dep%upd%id     = id
+
+  !   if (.not. associated(dep_list)) then
+  !      call spllt_dep_list_init(dep_list, dep)
+  !   else
+  !      dep%prev           => dep_list%tail
+  !      dep_list%tail%next => dep
+  !      dep_list%tail      => dep
+  !   end if
+
+  !   return
+  ! end subroutine spllt_dep_list_push_back
 
   ! subroutine spllt_realloc_1d(a, n)
   !   implicit none
