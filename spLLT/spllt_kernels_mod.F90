@@ -135,6 +135,37 @@ contains
 
   end subroutine spllt_update_block
 
+  ! C wrapper
+
+  subroutine spllt_update_block_c(m, n, dest_c, isDiag, n1, src1_c, src2_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    integer(c_int), value :: m ! number of rows in dest
+    integer(c_int), value :: n ! number of columns in dest
+    type(c_ptr),  value :: dest_c ! holds block in L
+    integer(c_int), value :: isDiag ! set to true if dest is the diagonal block
+    integer(c_int), value :: n1 ! number of columns in src1 and src2
+    type(c_ptr), value :: src1_c ! holds block in L
+    type(c_ptr), value :: src2_c ! holds block in L
+
+    real(wp), pointer :: dest(:), src1(:), src2(:) 
+    logical :: diag
+    
+    diag = .true.
+    if (isDiag .le. 0) diag = .false.
+    
+    call c_f_pointer(dest_c, dest, (/m*n/))
+
+    call c_f_pointer(src1_c, src1, (/n*n1/))
+    call c_f_pointer(src2_c, src2, (/m*n1/))    
+
+    call spllt_update_block(m, n, dest, diag, n1, src1, src2) 
+
+    return
+  end subroutine spllt_update_block_c
+
   !*************************************************
   
   !   Given a destination block dest, update_between performs the update

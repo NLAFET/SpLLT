@@ -1,11 +1,11 @@
 module spllt_parsec_factorization_mod
 
   interface
-     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc) bind(C)
+     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc, diags, ndiag) bind(C)
        use iso_c_binding
        use dague_f08_interfaces
-       type(c_ptr), value      :: nodes, bcs
-       integer(c_int), value   :: num_nodes, nbc
+       type(c_ptr), value      :: nodes, bcs, diags
+       integer(c_int), value   :: num_nodes, nbc, ndiag
        type(dague_handle_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
 
@@ -94,13 +94,13 @@ contains
 
     type(c_ptr), value, target :: bcs_c
     integer(long), value       :: diag
-    integer(c_int)             :: get_prev_dblk
+    integer(c_int)             :: get_next_dblk
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/diag/))    
     
-    get_prev_dblk = bc(diag-1)%blk%dblk 
+    get_next_dblk = bc(diag)%blk%last_blk + 1 
       
   end function get_next_dblk
 

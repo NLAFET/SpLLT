@@ -30,7 +30,7 @@ contains
 #if defined(SPLLT_USE_PARSEC)
     ! PaRSEC 
     type(dague_handle_t)            :: fac_hdl
-    type(c_ptr) :: bc_c, nodes_c
+    type(c_ptr) :: bc_c, nodes_c, diags_c
     integer(c_int) :: nbc
 #endif
 
@@ -63,8 +63,9 @@ contains
 
     bc_c = c_loc(fdata%bc(1))
     nbc = size(fdata%bc,1)
+    diags_c = c_loc(fdata%diags(1))
 
-    fac_hdl = spllt_parsec_factorize(nodes_c, num_nodes,bc_c, nbc)
+    fac_hdl = spllt_parsec_factorize(nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol)
 
     ! add factorization DAG to PaRSEC
     call dague_enqueue(ctx, fac_hdl)

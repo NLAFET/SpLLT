@@ -118,6 +118,10 @@ module spllt_mod
      type(spllt_bc_type) :: workspace ! workspaces
 #endif
      type(spllt_node_type), allocatable :: nodes(:) ! super nodes 
+#if defined(SPLLT_USE_PARSEC)
+     ! ids of diag blocks. size keep%nbcol
+     integer(long), allocatable :: diags(:)
+#endif
   end type spllt_data_type
 
   interface gen_random_posdef

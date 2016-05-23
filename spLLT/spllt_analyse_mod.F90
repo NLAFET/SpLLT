@@ -242,6 +242,12 @@ contains
     allocate(fdata%bc(keep%final_blk),stat=st)
     ! if(st.ne.0) go to 9999
 
+#if defined(SPLLT_USE_PARSEC)
+    ! allocate diag in fdata
+    deallocate(fdata%diags,stat=st)
+    allocate(fdata%diags(keep%final_blk),stat=st) ! large over-estimation of array size
+#endif
+
     ! Loop over the nodes. Number the blocks in the first node
     ! contiguously, then those in the second node, and so on.
     ! Each node has a number of block columns; the blocks within
@@ -282,6 +288,9 @@ contains
 
           dblk = blk
 
+#if defined(SPLLT_USE_PARSEC)
+          fdata%diags(keep%nbcol) = dblk
+#endif
           ! loop over the row blocks (that is, loop over blocks in block col)
           row_used = 0 
           do blk = dblk, dblk+sz-1

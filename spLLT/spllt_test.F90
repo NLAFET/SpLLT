@@ -8,8 +8,8 @@ program spllt_test
   
   write(*,'("[spllt test]")')
   
-  n   = 512
-  nnz = 512*512
+  n   = 384
+  nnz = n*n
 
   call spllt_test_rand(n, nnz, cntl)
 
