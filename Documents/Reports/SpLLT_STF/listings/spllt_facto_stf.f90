@@ -1,21 +1,20 @@
 forall nodes snode in post-order
    ! allocate data structures
-   call submit(alloc, snode:RW)
+   call alloc(snode)
    ! initianlize node structure
-   call submit(init, snode:RW) 
+   call submit(init, snode:W) 
 end do
 
 forall nodes snode in post-order
 
   ! factorize node
-  ! call submit(factorize, snode:RW)
   do k=1..n in snode
     ! factorize diagonal block
-    call submit(factorize, blk(k,k):RW)
+    call submit(factorize, snode:R, blk(k,k):RW)
     
     do i=k+1..m in snode
        ! perform triangular solve w.r.t diag block
-        call submit(solve, blk(k,k):R, blk(i,k):Rw)
+        call submit(solve, blk(k,k):R, blk(i,k):RW)
     end do
 
     do j=k+1..n
@@ -26,7 +25,7 @@ forall nodes snode in post-order
 
     forall ancestors(snode) anode
       ! udpate ancestor nodes
-      call submit(update, snode:R, anode:RW)
+      call submit(update_between, snode:R, anode:RW)
     end do
 
   end do

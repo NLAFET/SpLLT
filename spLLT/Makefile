@@ -84,7 +84,7 @@ include Makefile.rules.inc
 
 #spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
 stf:
-	($(MAKE) spllt_stf_test DEFS=)
+	($(MAKE) spllt_stf_test DEFS=-DSPLLT_USE_STF)
 starpu:
 	($(MAKE) spllt_starpu_test DEFS=-DSPLLT_USE_STARPU)
 omp:
@@ -132,6 +132,7 @@ clean:
 	-rm -f spllt_starpu_test spllt_test spllt_testings
 	-rm -f spllt_omp_test
 	-rm -f spllt_stf_test
+	-rm -f spllt_parsec_test
 	-rm -f run_ma87
 	-rm -f *.o *.mod
 	-rm -f metis.f *deps.f *deps90.f90 common.f common90.f90

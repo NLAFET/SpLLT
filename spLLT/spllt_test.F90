@@ -14,9 +14,9 @@ program spllt_test
   n   = 512
   nnz = 10000
 
-  call spllt_test_rand(n, nnz, cntl)
+  ! call spllt_test_rand(n, nnz, cntl)
 
-  ! call spllt_test_mat("matrix.rb", cntl)
+  call spllt_test_mat("matrix.rb", cntl)
   
   stop
 
@@ -175,7 +175,7 @@ contains
     ! factorize matrix
     call system_clock(start_t, rate_t)
     ! TODO create factorize method
-#if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
+#if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #elif defined(SPLLT_USE_PARSEC)
@@ -367,7 +367,7 @@ contains
     write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
 
     ! factorize matrix
-#if defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU) 
+#if defined(SPLLT_USE_STF) || defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU) 
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
 #elif defined(SPLLT_USE_PARSEC)
     call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)

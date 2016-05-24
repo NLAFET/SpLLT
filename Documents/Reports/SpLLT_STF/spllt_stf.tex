@@ -68,6 +68,9 @@
 \newcommand{\starpu}{{StarPU}\xspace}
 \newcommand{\parsec}{{PaRSEC}\xspace}
 \newcommand{\TODO}{\alert{TODO}\xspace}
+\newcommand{\openmp}{OpenMP\xspace}
+\newcommand{\ma}{HSL\_MA87\xspace}
+\newcommand{\spllt}{SpLLT\xspace}
 
 \bibliographystyle{siam}
 
@@ -186,11 +189,11 @@ remain a challenge. To cope with these multicore hardware, DAG-based
 algorithms have been shown to be extremely efficient in terms of
 performance and scalability. They have been widely employed in the
 context dense linear algebra such as in the
-PLASMA~\cite{a.d.d.h.ea:09}. Because of their deficiencies in this
-context they have then been used with sparse algorithm such as the
-\texttt{HSL\_MA87} solver which implements a sparse Cholesky
-factorization and \texttt{HSL\_MA87} which implements a multifrontal
-QR method.
+PLASMA~\cite{a.d.d.h.ea:09} software package and because of their
+deficiencies in this context they have then been used to implement
+sparse algorithm. For example, The \texttt{HSL\_MA87} solver
+implements a task-based sparse Cholesky factorization and the
+\texttt{qr\_mumps} implements a multifrontal QR method.
 
 When designing scientific computing libraries for shared-memory
 multicore architecture, the classical approach consists in developing
@@ -311,7 +314,7 @@ format.
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-The popularity of task-based algorithms push the OpenMP standard to
+The popularity of task-based algorithms pushed the OpenMP board to
 introduce the \textit{task} construct in the version 3.0 its API. Then
 motivated by the popularity of the STF model, the OpenMP board decided
 to include the \textit{depend} construct in the version 4.0 allowing
@@ -366,11 +369,66 @@ we wait for their completion by calling the routine
 \section{Parallelisation of a task-based Cholesky factorization using a STF programming model}
 \label{sec:experiments}
 
+The two parallel implementations of our task-based Cholesky solver
+presented in this section are based on the same STF-based code
+corresponding to the pseudo-code shown in
+Figure~\ref{fig:spllt-facto-pseudocode}. In this code the sparse
+Cholesky factorization is decomposed into six different type of tasks
+associated to the following kernels that are based on the routines
+found in \ma:
 
+\begin{itemize}
+\item \texttt{alloc(snode)}: allocates the data structures
+  such as the blocks containing the factors.
+\item \texttt{init(snode)}: initializes the supernode \texttt{snode}
+  such as copying the coefficient form the original matrix into the
+  blocks.
+\item \texttt{factorize(bc\_kk)}: factorizes the diagonal block \texttt{bc\_kk}. %% This
+  %% is done with the \texttt{potrf} routine from LAPACK.
+\item \texttt{solve(bc\_kk, bc\_ik)}: perform the triangular solve of
+  an off-diagonal block \texttt{bc\_ik} with the block resulting from
+  the factorization of the diagonal block \texttt{bc\_kk} in its
+  column.
+\item \texttt{update(bc\_ik, bc\_jk, bc\_ij)}: perform the update
+  operation of a block \texttt{bc\_ij} within a supernode using the
+  blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
+  processed.
+\item \texttt{update\_between(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
+  perform the update operation of the block \texttt{bc\_ij} from the
+  supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
+  \texttt{bc\_jk} from the descendent supernode \texttt{snode}.
+\end{itemize}
+
+Following the sequential algorithm, the supernodes are processed
+according to a topological order (e.g. a post-order) and similarly the
+numerical tasks are submitted in the same order as in sequential. In
+order to guarantee the correctness of the algorithm, the runtime
+ensure sequential consistency by using the data-access information
+that we provide with the task submission. Note that the \texttt{alloc}
+task is done sequentially because we need to allocate the data
+structure of blocks to be able to submitted the task working on these
+blocks. In the case of \openmp, blocks are identified using data
+pointer and we associate these pointer with a data access when
+submitting a task. Therefore we must allocate blocks before the being
+able to submit tasks manipulating them. In the case of \starpu, blocks
+are associated with a handle that is set up in this \texttt{alloc}
+routine. Tasks are then associated with this handle instead of using a
+pointer as we do with \openmp. They are several advantages associated
+with the use of this handle. For example \starpu is capable of
+detecting when a data is written for the first time and allocate it
+using the information contained in the handle.
+
+The \texttt{init} task is responsible for setting up the block by in
+a given supernode. In our code a supernode is represented by a
+symbolic data structure denoted \texttt{snode} and we indicate that we
+modify this structure by using the \textit{write} data-access in the
+\texttt{init} task. This \texttt{snode} symbolic structure represent
+the information associated with a supernode as well as the blocks
+associated with the nodal matrix. 
 
 \begin{figure}[!h]
   \centering \lstinputlisting{listings/spllt_facto_stf.f90}
-\caption{\label{fig:activation-pseudocode-1d}Pseudo-code for the
+\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the
   sparse Cholesky factorization using a STF model.}
 \end{figure}
 

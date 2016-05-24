@@ -385,6 +385,7 @@ contains
     return
   end subroutine spllt_analyse
 
+#if defined(SPLLT_USE_PARSEC)
   subroutine spllt_compute_dep(adata, fdata, keep, map)
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -521,6 +522,7 @@ contains
 
     return
   end subroutine spllt_compute_dep
+#endif
 
   ! tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree

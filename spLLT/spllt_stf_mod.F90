@@ -298,193 +298,145 @@ contains
              end do
           end do
           
-! #if defined(SPLLT_USE_STARPU)
-!           call starpu_f_task_wait_for_all()
-! #endif
+          ! move to next block column in snode
+          dblk = blocks(dblk)%last_blk + 1
+          ! numrow = numrow - s_nb
+       end do
 
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
 
-!           ! DEBUG
-!           dblk = blocks(dblk)%last_blk + 1
+       ! update between
+       
+       !  Loop over ancestors of snode
+       a_num = node%parent  
+       !  Initialize cptr to correspond to the first row of the rectangular part of 
+       !  the snode matrix.
+       cptr = 1 + numcol
+       ! write(*,*)"numrow: ", numrow
+       do while(a_num.gt.0)
+          anode => keep%nodes(a_num) 
+          a_node => fdata%nodes(a_num)
+          ! Skip columns that come from other children
+          do cptr = cptr, numrow
+             if(node%index(cptr).ge.anode%sa) exit
+          end do
+          if(cptr.gt.numrow) exit ! finished with node
 
-!        end do
+          map_done = .false. ! We will only build a map when we need it
 
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
+          ! Loop over affected block columns of anode
+          bcols: do
+             if(cptr.gt.numrow) exit
+             if(node%index(cptr).gt.anode%en) exit
 
-!        dblk = node%blk_sa
-
-!        do kk = 1, nc
-!           bc_kk => fdata%bc(dblk)
-
-!           ! END DEBUG
-
-          ! map update between current block column and ancestors
-          ! rsrc = 0
-          ! csrc = 0
-          ! call map_update_between(keep%nodes, keep%blocks, &
-          !      & snode, kk, dblk, csrc, map)
-
-          ! update between
-
-          !  Loop over ancestors of snode
-          a_num = node%parent  
-          !  Initialize cptr to correspond to the first row of the rectangular part of 
-          !  the snode matrix.
-          cptr = 1 + numcol
-          ! write(*,*)"numrow: ", numrow
-          do while(a_num.gt.0)
-             anode => keep%nodes(a_num) 
-             a_node => fdata%nodes(a_num)
-             ! Skip columns that come from other children
-             do cptr = cptr, numrow
-                if(node%index(cptr).ge.anode%sa) exit
+             ! compute local index of block column in anode and find the id of 
+             ! its diagonal block
+             cb = (node%index(cptr) - anode%sa)/anode%nb + 1
+             a_dblk = anode%blk_sa
+             do jb = 2, cb
+                a_dblk = blocks(a_dblk)%last_blk + 1
              end do
-             if(cptr.gt.numrow) exit ! finished with node
 
-             map_done = .false. ! We will only build a map when we need it
-             
-             ! Loop over affected block columns of anode
-             bcols: do
-                if(cptr.gt.numrow) exit
-                if(node%index(cptr).gt.anode%en) exit
-                
-                ! compute local index of block column in anode and find the id of 
-                ! its diagonal block
-                cb = (node%index(cptr) - anode%sa)/anode%nb + 1
-                a_dblk = anode%blk_sa
-                do jb = 2, cb
-                   a_dblk = blocks(a_dblk)%last_blk + 1
-                end do
+             ! Find cptr2
+             jlast = min(anode%sa + cb*anode%nb - 1, anode%en)
+             do cptr2 = cptr,numrow
+                if(nodes(snode)%index(cptr2) > jlast) exit
+             end do
+             cptr2 = cptr2 - 1
+             ! write(*,*)"j: ", nodes(snode)%index(cptr), ", jlast: ", nodes(snode)%index(cptr2)
+             ! Set info for source block csrc (hold start location
+             ! and number of entries)
 
-                ! Find cptr2
-                jlast = min(anode%sa + cb*anode%nb - 1, anode%en)
-                do cptr2 = cptr,numrow
-                   if(nodes(snode)%index(cptr2) > jlast) exit
-                end do
-                cptr2 = cptr2 - 1
-                ! write(*,*)"j: ", nodes(snode)%index(cptr), ", jlast: ", nodes(snode)%index(cptr2)
-                ! Set info for source block csrc (hold start location
-                ! and number of entries)
+             ! csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
+             ! csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
 
-                ! csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
-                ! csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
+             ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
+             ! Build a map of anode's blocks if this is first for anode
+             if(.not.map_done) call spllt_build_rowmap(anode, tmpmap) 
+             ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
 
-                ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
-                ! Build a map of anode's blocks if this is first for anode
-                if(.not.map_done) call spllt_build_rowmap(anode, tmpmap) 
-                ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
+             ! Loop over the blocks of snode
+             ii = tmpmap(node%index(cptr)) 
+             ! ii = -1 
+             ilast = cptr ! Set start of current block
 
-                ! Loop over the blocks of snode
-                ii = tmpmap(node%index(cptr)) 
-                ! ii = -1 
-                ilast = cptr ! Set start of current block
+             do i = cptr, numrow
+                k = tmpmap(node%index(i))
 
-                do i = cptr, numrow
-                   k = tmpmap(node%index(i))
-                   ! write(*,*) "i:",i," k:",k
-                   blk = bc_kk%blk%id + (i-1)/s_nb - (kk-1)
-                   ! bc => keep%blocks(blk) ! current block in node
-                   bc => fdata%bc(blk) ! current block in node
+                if(k.ne.ii) then
+                   a_blk = a_dblk + ii - cb
+                   ! a_bc => keep%blocks(a_blk)
+                   a_bc => fdata%bc(a_blk)
 
-                   if(k.ne.ii) then
-                      a_blk = a_dblk + ii - cb
-                      ! a_bc => keep%blocks(a_blk)
-                      a_bc => fdata%bc(a_blk)
+                   ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+                   ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
 
-                      ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
-                      ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
+                   dblk = node%blk_sa
+                   ! Loop over the block columns in node. 
+                   do kk = 1, nc
+                      
+                      bc_kk => fdata%bc(dblk)
 
                       call spllt_update_between_task( &
                            & fdata, &
-                           ! & bc, &
+                                ! & bc, &
                            & bc_kk, &
                            & node, a_bc, a_node, &
-                           ! & csrc, rsrc, &
+                                ! & csrc, rsrc, &
                            & cptr, cptr2, ilast, i-1, &
                            & row_list, col_list, fdata%workspace, &
                            & keep%lfact, keep%blocks, fdata%bc, &
                            & control, prio)
 
-                      ii = k
-                      ilast = i ! Update start of current block
-                   end if
-                end do
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
-                ! i = min(i,numrow)
-                a_blk = a_dblk + ii - cb
-                ! a_bc => keep%blocks(a_blk)
-                a_bc => fdata%bc(a_blk)
+                         dblk = blocks(dblk)%last_blk + 1
+                   end do
 
-                ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
-                ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
-                
+                   ii = k
+                   ilast = i ! Update start of current block
+                end if
+             end do
+             ! #if defined(SPLLT_USE_OMP)
+             ! !$omp taskwait
+             ! #endif
+             ! i = min(i,numrow)
+             a_blk = a_dblk + ii - cb
+             ! a_bc => keep%blocks(a_blk)
+             a_bc => fdata%bc(a_blk)
+
+             ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+             ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
+
+             dblk = node%blk_sa
+             ! Loop over the block columns in node. 
+             do kk = 1, nc
+
+                bc_kk => fdata%bc(dblk)
+
                 call spllt_update_between_task( &
                      & fdata, &
-                     ! & bc, &
+                                ! & bc, &
                      & bc_kk, &
                      & node, a_bc, a_node, &
-                     ! & csrc, rsrc, &
+                                ! & csrc, rsrc, &
                      & cptr, cptr2, ilast, i-1, &
                      & row_list, col_list, fdata%workspace, &
                      & keep%lfact, keep%blocks, fdata%bc, &
                      & control, prio)
-                                         
-                ! Move cptr down, ready for next block column of anode
-                cptr = cptr2 + 1
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endifx
-             end do bcols
-          
-             a_num = anode%parent
-          end do
 
-          ! DEBUG
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
-!           do jj = kk+1,nc
+                dblk = blocks(dblk)%last_blk + 1
+             end do
 
-!              ! L_jk
-!              blk2 = dblk+jj-kk
-!              bc_jk => fdata%bc(blk2)
+             ! Move cptr down, ready for next block column of anode
+             cptr = cptr2 + 1
+          end do bcols
 
-!              do ii = jj,nr
-
-!                 ! L_ik
-!                 blk1 = dblk+ii-kk                
-!                 bc_ik => fdata%bc(blk1)
-
-!                 ! A_ij
-!                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
-!                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
-!                 bc_ij => fdata%bc(blk)
-!                 call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
-
-!              end do
-!           end do
-          ! END DEBUG
-          
-          ! move to next block column in snode
-          dblk = blocks(dblk)%last_blk + 1
-          ! numrow = numrow - s_nb
-
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
-
+          a_num = anode%parent
        end do
-
-! #if defined(SPLLT_USE_OMP)
-! !$omp taskwait
-! #endif
-
+          
+       !    ! move to next block column in snode
+       !    dblk = blocks(dblk)%last_blk + 1
+       !    ! numrow = numrow - s_nb
+       ! end do
+          
     end do
 
 #if defined(SPLLT_USE_STARPU)

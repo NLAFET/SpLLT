@@ -21,8 +21,10 @@ starpu_init();
 
 /* declaration of data handles */
 for (i = 0; i < N; i++) {  >\label{code:ex1}>
-  starpu_variable_data_register(&x_handle[i], STARPU_MAIN_RAM, (uintptr_t) &x[i], sizeof(double));
-  starpu_variable_data_register(&y_handle[i], STARPU_MAIN_RAM, (uintptr_t) &y[i], sizeof(double));
+  starpu_variable_data_register(&x_handle[i], STARPU_MAIN_RAM, 
+                                (uintptr_t) &x[i], sizeof(double));
+  starpu_variable_data_register(&y_handle[i], STARPU_MAIN_RAM, 
+                                (uintptr_t) &y[i], sizeof(double));
  }
 
 /* tasks submission */
@@ -37,7 +39,6 @@ for (i = 1; i < N; i++) {  >\label{code:ex2}>
                      STARPU_R, y_handle[i-1],
                      STARPU_W, y_handle[i],
                      0);
-
 }
 
 starpu_task_wait_for_all();  >\label{code:ex3}>
