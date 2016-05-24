@@ -148,7 +148,7 @@ efficient on parallel architectures.
 \vspace{0.6cm}
 
 \begin{description}
-\item [Keywords:] sparse Cholesky, SPD systems, runtime systems, STARPU, PaRSEC
+\item [Keywords:] sparse Cholesky, SPD systems, runtime systems, STARPU, OpenMP
 \item [AMS(MOS) subject classifications:]  65F30, 65F50
 \end{description}
 
@@ -182,37 +182,66 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 In this work we investigate the use a runtime system for the
 implementation of a sparse Cholesky solver with the aim to efficiently
 exploit multicore architectures. Since their introduction multicore
-processor have become increasingly popular and can be found nowadays
+processors have become increasingly popular and can be found nowadays
 in the vast majority of high performance computing platforms. Despite
 their popularity, exploiting the capabilities of multicore processors
 remain a challenge. To cope with these multicore hardware, DAG-based
 algorithms have been shown to be extremely efficient in terms of
-performance and scalability. They have been widely employed in the
-context dense linear algebra such as in the
-PLASMA~\cite{a.d.d.h.ea:09} software package and because of their
-deficiencies in this context they have then been used to implement
-sparse algorithm. For example, The \texttt{HSL\_MA87} solver
-implements a task-based sparse Cholesky factorization and the
-\texttt{qr\_mumps} implements a multifrontal QR method.
+performance and scalability. They first have been widely employed in
+the context dense linear algebra such as in the
+PLASMA~\cite{a.d.d.h.ea:09} software package. Motivated by the extreme
+efficiency provided by these algorithms, they have been adapted to
+sparse algorithms. For example, The \texttt{HSL\_MA87}
+solver~\cite{h.r.s:10} implements a DAG-based sparse Cholesky
+factorization and the \texttt{qr\_mumps} solver~\cite{b:13} implements
+a DAG-based multifrontal QR method.
 
-When designing scientific computing libraries for shared-memory
-multicore architecture, the classical approach consists in developing
-ad-hoc scheduler which rely on the knowledge of the algorithm and
-implemented using a low-level multithreading library such as pthread
-(POSIX threads) to manage synchronisations and enforce dependencies
-between processes. In this work, instead, we use a runtime system as a
-software layer between the architecture and the application. In this
-approach the application is then implemented using a high-level API
-provided by the runtime system the low level details such as data
-consistency across the architecture and task scheduling are delegated
-to the runtime system. In addition, in this work we use a Sequential
-Task Flow (STF) programming model which allows us to simply express
-the parallel code from the sequential one.
+Classically the development of task-based algorithms include the
+development of an ad-hoc scheduler which relies on the knowledge of
+the algorithm and implemented using a low-level multithreading library
+such as pthread (POSIX threads) to manage synchronisations and enforce
+dependencies between processes. In this work, instead, we explore
+another approach based on the use of a runtime system which can be
+seen as a software layer between the architecture and the
+application. In this context the application is then implemented using
+a high-level API provided by the runtime system the low level details
+such as data consistency across the architecture and task scheduling
+are delegated to the runtime system. On top of this, we focus on the
+exploitation of a Sequential Task Flow (STF) programming model which
+allows us to simply express the parallel code from the sequential
+one. We show that this STF model implemented with a task-based runtime
+system can lead to the implementation of a complex algorithm such as a
+sparse matrix factorization which is as efficient as a
+state-of-the-art solver on a multicore system.
 
 \section{Sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
 \setcounter{table}{0}
 \setcounter{figure}{0}
+
+In this section we describe the supernodal Cholesky method that we use
+for solving SPD sparse systems. In particular we will focus on a
+DAG-based variant of this algorithm that has been proven to be
+extremely efficient on multicore architectures such as
+in~\cite{h.r.s:10} with the \ma solver that will constitutes the basis
+of this work.
+
+The supernodal method is a factorization algorithm for sparse matrices
+relying on an \textit{elimination tree} that expresses the
+dependencies between the coefficients during the elimination of
+unknowns. The elimination tree is computed during an analysis phase
+preceding the factorization and in our case we obtain it by using the
+software package HSL\_MC78. At each node of the tree we have a dense
+matrix referred to as \textit{nodal} matrix or \textit{supernode} that
+are associated with a set of unknowns. The supernode correspond to a
+set of column in the matrix that have a similar non-zero pattern. The
+factorization is performed by traversing the elimination tree in a
+topological order and performing a dense Cholesky factorization on
+supernodes. Regarding the update of supernodes with respect to other
+nodal factorizations they are several strategies such as
+\textit{right-looking} updates where all ancestors nodes are updated
+wit respect to the current node, or, \textit{left-looking} updates
+where nodes are updated just before being factorized.
 
 \section{Sequential Task Flow parallel programming model}\label{sec:runtime}
 

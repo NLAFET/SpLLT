@@ -32,9 +32,6 @@ contains
     type(spllt_cntl)      :: cntl
 
     ! local arrays
-    ! integer, dimension(:), allocatable ::  invp ! used to hold inverse ordering
-    integer, dimension(:), allocatable ::  colmap ! allocated to have size n.
-
     integer, dimension(:), allocatable ::  map ! allocated to have size n.
 
     ! used in copying entries of user's matrix a into factor storage 
@@ -144,10 +141,6 @@ contains
     allocate(tmpmap(n),stat=st)
     if(st.ne.0) go to 10
     
-    ! allocate array for colomn mapping beween snode and ancestors
-    ! allocate(colmap(n),stat=st)
-    ! if(st.ne.0) go to 10
-
     ! init facto    
 
 #if defined(SPLLT_USE_STARPU)
@@ -232,10 +225,7 @@ contains
 
        ! write(*,'("numrow,numcol = ",i5,i5)')numrow, numcol
        ! write(*,'("nr,nc = ",i5,i5)')nr, nc
-       
-       ! init column mapping
-       ! colmap = 0
-       
+              
        ! first block in node
        dblk = node%blk_sa
 
@@ -481,64 +471,191 @@ contains
     return
   end subroutine spllt_stf_factorize
 
-  ! TODO comments!
-
-  subroutine spllt_build_colmap(node, anode, cptr, colmap, ncolmap)
+  ! left looking variant of the STF algorithm
+  subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
+    use spllt_mod
     use hsl_ma87_double
+    use spllt_factorization_mod
+#if defined(SPLLT_USE_STARPU) 
+    use iso_c_binding
+    use starpu_f_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#endif
+    use spllt_kernels_mod
     implicit none
 
-    type(node_type), intent(in) :: node  ! current node in the atree
-    type(node_type), intent(in) :: anode  ! ancestor node in the atree
-    integer, dimension(:), intent(out) :: colmap ! Workarray to hold map from row 
-    integer, intent(inout) :: cptr  ! Position in snode of the first row
-    ! matching a column of the current block column of anode.    
-    integer, intent(inout) :: ncolmap ! number of entries in colmap
+    integer, intent(in) :: n ! order of A
+    integer, intent(in) :: row(:) ! row indices of lower triangular part
+    integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
+    real(wp), intent(in) :: val(:) ! matrix values
+    integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
+    ! since the analyse phase)
 
-    integer :: sa, en
-    integer :: numrow, numcol ! number of row/col in node
-    integer :: cptr2  ! Position in snode of the last row 
-    ! matching a column of the current block column of anode.
-    integer :: jlast ! Last column in the cb-th block column of anode
-    integer :: cb
-    integer :: a_nb
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(MA87_control), intent(in) :: control 
+    type(MA87_info), intent(out) :: info 
+
+    type(spllt_data_type), target :: fdata
+    type(spllt_cntl)      :: cntl
+
+    type(block_type), dimension(:), pointer :: blocks ! block info. 
+    type(node_type), dimension(:), pointer :: nodes 
+    integer :: snode, num_nodes
+    type(node_type), pointer     :: node ! node in the atree    
+
+    integer, dimension(:), allocatable ::  map ! allocated to have size n.
+    ! used in copying entries of user's matrix a into factor storage 
+    ! (keep%fact).
+    integer, dimension(:), allocatable ::  tmpmap
+
+    integer :: st ! stat parameter
+    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
+    integer :: stf_start_t, stf_stop_t, stf_rate_t
+
+    ! shortcut
+    blocks => keep%blocks
+    nodes  => keep%nodes
+    num_nodes = keep%info%num_nodes
+
+    ! allocate col_lsit and row_list arrays
+    allocate(col_list(1), row_list(1), stat=st)
+    if(st.ne.0) goto 9999
+
+    ! allocate L factors
+    deallocate (keep%lfact,stat=st)
+    allocate (keep%lfact(keep%nbcol),stat=st)
+    if(st.ne.0) go to 9999
+
+    ! allocate arrays used for mapping matrix coefficients
+    allocate(map(n),stat=st)
+    if(st.ne.0) go to 9999
+
+    allocate(tmpmap(n),stat=st)
+    if(st.ne.0) go to 9999
     
-    sa = node%sa
-    en = node%en
-    numcol = en - sa + 1
-    numrow = size(node%index)
+    ! init facto    
+
+#if defined(SPLLT_USE_STARPU)
     
-    a_nb = anode%nb
+    ! register workspace handle
+    call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+#elif defined(SPLLT_USE_OMP)
 
-    ncolmap = 0
+    nt = 1
+!$  nt = omp_get_num_threads()
+    allocate(fdata%workspace(0:nt-1))
 
-    ! Skip columns that come from other children
-    do cptr = cptr, numrow
-       if(node%index(cptr).ge.anode%sa) exit
+    do i=0,nt-1
+       allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
     end do
-    if(cptr.gt.numrow) return ! finished with node
+#else
+    allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    if(st.ne.0) goto 9999
+#endif
 
-    ! Loop over affected block columns of anode
-    acols: do
-       if(cptr.gt.numrow) exit
-       if(node%index(cptr).gt.anode%en) exit
+    do snode = 1, num_nodes ! loop over nodes
+#if defined(SPLLT_USE_STARPU)
+       ! TODO put in activate routine
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+#endif
+       ! activate node: allocate factors, register handles
+       call spllt_activate_node(snode, keep, fdata)
+    end do
 
-       cb = (node%index(cptr) - anode%sa)/anode%nb + 1
-       ! Find cptr2
-       jlast = min(anode%sa + cb*a_nb - 1, anode%en)
-       do cptr2 = cptr, numrow
-          if(node%index(cptr2) > jlast) exit
-       end do
-       cptr2 = cptr2 - 1 
-       
-       ncolmap = ncolmap + 1 
-       colmap(ncolmap) = cptr2
+    call system_clock(stf_start_t, stf_rate_t)
 
-       ! Move cptr down, ready for next block column of anode
-       cptr = cptr2 + 1
-    end do acols
-    
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif    
+    ! write(*,*)"num_nodes: ", num_nodes
+    do snode = 1, num_nodes ! loop over nodes
+       ! init node
+       call spllt_init_node_task(fdata, fdata%nodes(snode), n, val, map, keep, huge(1))
+    end do
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif
+
+    do snode = 1, num_nodes
+
+       node => keep%nodes(snode)
+
+    end do
+
+    call system_clock(stf_stop_t)
+    write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)
+
     return
-  end subroutine spllt_build_colmap
+
+9999 if(st.ne.0) then
+     info%flag = spllt_error_allocation
+     info%stat = st
+     call spllt_print_err(info%flag, context='spllt_stf_factorize',st=st)
+     return
+  endif
+
+  end subroutine spllt_stf_ll_factorize
+
+  ! TODO comments!
+
+  ! subroutine spllt_build_colmap(node, anode, cptr, colmap, ncolmap)
+  !   use hsl_ma87_double
+  !   implicit none
+
+  !   type(node_type), intent(in) :: node  ! current node in the atree
+  !   type(node_type), intent(in) :: anode  ! ancestor node in the atree
+  !   integer, dimension(:), intent(out) :: colmap ! Workarray to hold map from row 
+  !   integer, intent(inout) :: cptr  ! Position in snode of the first row
+  !   ! matching a column of the current block column of anode.    
+  !   integer, intent(inout) :: ncolmap ! number of entries in colmap
+
+  !   integer :: sa, en
+  !   integer :: numrow, numcol ! number of row/col in node
+  !   integer :: cptr2  ! Position in snode of the last row 
+  !   ! matching a column of the current block column of anode.
+  !   integer :: jlast ! Last column in the cb-th block column of anode
+  !   integer :: cb
+  !   integer :: a_nb
+    
+  !   sa = node%sa
+  !   en = node%en
+  !   numcol = en - sa + 1
+  !   numrow = size(node%index)
+    
+  !   a_nb = anode%nb
+
+  !   ncolmap = 0
+
+  !   ! Skip columns that come from other children
+  !   do cptr = cptr, numrow
+  !      if(node%index(cptr).ge.anode%sa) exit
+  !   end do
+  !   if(cptr.gt.numrow) return ! finished with node
+
+  !   ! Loop over affected block columns of anode
+  !   acols: do
+  !      if(cptr.gt.numrow) exit
+  !      if(node%index(cptr).gt.anode%en) exit
+
+  !      cb = (node%index(cptr) - anode%sa)/anode%nb + 1
+  !      ! Find cptr2
+  !      jlast = min(anode%sa + cb*a_nb - 1, anode%en)
+  !      do cptr2 = cptr, numrow
+  !         if(node%index(cptr2) > jlast) exit
+  !      end do
+  !      cptr2 = cptr2 - 1 
+       
+  !      ncolmap = ncolmap + 1 
+  !      colmap(ncolmap) = cptr2
+
+  !      ! Move cptr down, ready for next block column of anode
+  !      cptr = cptr2 + 1
+  !   end do acols
+    
+  !   return
+  ! end subroutine spllt_build_colmap
 
   ! subroutine spllt_factorization_init(keep, data)
   !   use hsl_ma87_double
