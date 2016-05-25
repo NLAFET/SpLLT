@@ -176,8 +176,15 @@ contains
     call system_clock(start_t, rate_t)
     ! TODO create factorize method
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
+
+#if defined(SPLLT_STF_LL)
+    call spllt_stf_ll_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
+    
+#else
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
+#endif
+
 #elif defined(SPLLT_USE_PARSEC)
     call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)
 #endif

@@ -85,10 +85,12 @@ include Makefile.rules.inc
 #spllt_starpu_test:  DEFS += -DSPLLT_USE_STARPU
 stf:
 	($(MAKE) spllt_stf_test DEFS=-DSPLLT_USE_STF)
+stf_ll:
+	($(MAKE) spllt_stf_test DEFS+=-DSPLLT_USE_STF DEFS+=-DSPLLT_STF_LL)
 starpu:
-	($(MAKE) spllt_starpu_test DEFS=-DSPLLT_USE_STARPU)
+	($(MAKE) spllt_starpu_test DEFS+=-DSPLLT_USE_STARPU DEFS+=-DSPLLT_STF_LL)
 omp:
-	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
+	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP DEFS+=-DSPLLT_STF_LL)
 omp_trace:
 	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
 parsec:
