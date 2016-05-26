@@ -51,10 +51,17 @@ factorize_block(diag_idx)
    /* id of prev diag block */
    prev_id_kk = inline_c %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
 
+   upd_count = inline_c %{ return get_upd_count(bcs, id_kk); %}
+
+   /* Number of update_bet task depending on this task */
+   dep_out_count = inline_c %{ return get_dep_out_count(bcs, id_kk); %}
+
    : blk(id_kk)
 
-   RW bc_kk <- (id_kk == blk_sa) ? blk(id_kk) : bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1)
+   RW bc_kk <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count) : blk(id_kk) 
+            <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1)
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
+            -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count)
             /* -> blk(id) */
 
    /* RW bc_kk <- (id == blk_sa) ? blk(id) : bc_ij update_block(prev_diag, 1, id, id) */
@@ -100,6 +107,9 @@ solve_block(diag_idx, id_ik)
    /* idx of ik and ik blocks within current column */
    id_ik_idx = id_ik - id_kk
 
+   /* Number of update_bet task depending on this task */
+   dep_out_count = inline_c %{ return get_dep_out_count(bcs, id_kk); %}
+
    : blk(id_ik)
 
    READ  bc_kk <- bc_kk factorize_block(diag_idx)
@@ -107,6 +117,7 @@ solve_block(diag_idx, id_ik)
                -> (bcol == ncol) ? blk(id_ik)
                -> (bcol < ncol) ? bc_jk update_block(diag_idx, id_ik, (id_kk+1)..last_blk)
                -> (bcol < ncol) ? bc_ik update_block(diag_idx, (id_kk+1)..(id_kk+ncol_upd), id_ik)
+               -> (dep_out_count > 0) ? bc update_between_aux(id_ik, 1..dep_out_count)
                /* -> blk(id_ik) */
 
 BODY
@@ -179,6 +190,58 @@ BODY
 
    spllt_update_block_c(m, n, bc_ij, diag, n1, bc_jk, bc_ik);
 
+}
+END
+
+
+// update between auxiliary function
+
+update_between_aux(id, p)
+
+  id = 1..nbc
+
+  dep_out_count = inline_c %{ return get_dep_out_count(bcs, id); %}
+
+  p = 1..dep_out_count
+
+  isDiag = inline_c %{ return is_diag(bcs, id); %}
+  
+  bcol = inline_c %{ return get_bcol(bcs, id); %}
+  diag_idx = bcol-1 
+
+  : blk(id) 
+
+  READ bc <- (isDiag) ? bc_kk factorize_block(diag_idx) : bc_ik solve_block(diag_idx, id)
+          -> blk(id)
+      
+BODY
+{
+   printf("[update_between_aux] id: %d, p: %d\n", id, p);
+}
+END
+
+// update between block
+
+update_between(id, i)
+
+  id = 1..nbc
+  upd_count = inline_c %{ return get_upd_count(bcs, id); %}
+  i = 1..upd_count
+
+  isDiag = inline_c %{ return is_diag(bcs, id); %}
+  
+  bcol = inline_c %{ return get_bcol(bcs, id); %}
+  diag_idx = bcol-1 
+
+  : blk(id) 
+
+  RW bc_ij <- blk(id)
+           -> (isDiag) ? bc_kk factorize_block(diag_idx) : blk(id)
+
+BODY
+{
+   printf("[update_between] id: %d, i: %d\n", id, i);
+   
 }
 END
 

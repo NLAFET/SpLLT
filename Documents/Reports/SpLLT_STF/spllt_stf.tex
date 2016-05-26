@@ -179,39 +179,39 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 
 \section{Introduction} \label{sec:introduction}
 
-In this work we investigate the use a runtime system for the
-implementation of a sparse Cholesky solver with the aim to efficiently
-exploit multicore architectures. Since their introduction multicore
+In this work we investigate the use of a runtime system for the
+implementation of a sparse Cholesky solver with the aim of efficiently
+exploiting multicore architectures. Since their introduction multicore
 processors have become increasingly popular and can be found nowadays
 in the vast majority of high performance computing platforms. Despite
 their popularity, exploiting the capabilities of multicore processors
-remain a challenge. To cope with these multicore hardware, DAG-based
+remain a challenge. To cope with multicore hardware, DAG-based
 algorithms have been shown to be extremely efficient in terms of
-performance and scalability. They first have been widely employed in
-the context dense linear algebra such as in the
-PLASMA~\cite{a.d.d.h.ea:09} software package. Motivated by the extreme
+performance and scalability. Initially they have been employed in the
+context of dense linear algebra such as in the
+PLASMA~\cite{a.d.d.h.ea:09} software package. Motivated by the high
 efficiency provided by these algorithms, they have been adapted to
-sparse algorithms. For example, The \texttt{HSL\_MA87}
-solver~\cite{h.r.s:10} implements a DAG-based sparse Cholesky
+sparse algorithms with the example of the \texttt{HSL\_MA87}
+solver~\cite{h.r.s:10} that implements a DAG-based sparse Cholesky
 factorization and the \texttt{qr\_mumps} solver~\cite{b:13} implements
 a DAG-based multifrontal QR method.
 
-Classically the development of task-based algorithms include the
-development of an ad-hoc scheduler which relies on the knowledge of
-the algorithm and implemented using a low-level multithreading library
+Classically, the development of task-based algorithms includes the
+development of an adhoc scheduler which relies on the knowledge of the
+algorithm and is implemented using a low-level multithreading library
 such as pthread (POSIX threads) to manage synchronisations and enforce
-dependencies between processes. In this work, instead, we explore
-another approach based on the use of a runtime system which can be
+dependencies between processes. In this work, instead, we explore an
+alternative approach based on the use of a runtime system which can be
 seen as a software layer between the architecture and the
 application. In this context the application is then implemented using
-a high-level API provided by the runtime system the low level details
+a high-level API provided by the runtime system and low level details
 such as data consistency across the architecture and task scheduling
-are delegated to the runtime system. On top of this, we focus on the
+are delegated to the runtime system. In this work, we focus on the
 exploitation of a Sequential Task Flow (STF) programming model which
 allows us to simply express the parallel code from the sequential
-one. We show that this STF model implemented with a task-based runtime
-system can lead to the implementation of a complex algorithm such as a
-sparse matrix factorization which is as efficient as a
+one. We show that this STF model, implemented with a task-based
+runtime system, can lead to the implementation of a complex algorithm
+such as a sparse matrix factorization which is as efficient as a
 state-of-the-art solver on a multicore system.
 
 \section{Sparse Cholesky factorization}\label{sec:chol}
@@ -220,58 +220,59 @@ state-of-the-art solver on a multicore system.
 \setcounter{figure}{0}
 
 In this section we describe the supernodal Cholesky method that we use
-for solving SPD sparse systems. In particular we will focus on a
+for solving sparse SPD systems. In particular we will focus on a
 DAG-based variant of this algorithm that has been proven to be
 extremely efficient on multicore architectures such as
-in~\cite{h.r.s:10} with the \ma solver that will constitutes the basis
-of this work.
+in~\cite{h.r.s:10} the \ma solver that will constitutes the basis of
+this work.
 
 The supernodal method is a factorization algorithm for sparse matrices
-relying on an \textit{elimination tree} that expresses the
-dependencies between the coefficients during the elimination of
-unknowns. The elimination tree is computed during an analysis phase
-preceding the factorization and in our case we obtain it by using the
-software package HSL\_MC78. At each node of the tree we have a dense
-matrix referred to as \textit{nodal} matrix or \textit{supernode} that
-are associated with a set of unknowns. The supernode correspond to a
-set of column in the matrix that have a similar non-zero pattern. The
-factorization is performed by traversing the elimination tree in a
-topological order and performing a dense Cholesky factorization on
-supernodes. Regarding the update of supernodes with respect to other
-nodal factorizations they are several strategies such as
-\textit{right-looking} updates where all ancestors nodes are updated
-wit respect to the current node, or, \textit{left-looking} updates
-where nodes are updated just before being factorized.
+that relies on an \textit{elimination tree} that expresses the
+dependencies during the elimination. The elimination tree is computed
+during an analysis phase preceding the factorization and in our case
+we obtain it by using the software package HSL\_MC78. At each node of
+the tree there is a dense matrix referred to as \textit{nodal} matrix
+or \textit{supernode} associated with a set of unknowns. A supernode
+corresponds to a set of columns of the matrix that have a similar
+nonzero pattern. The factorization is effected by traversing the
+elimination tree in a topological order and performing a dense
+Cholesky factorization on supernodes and then update the ancestor
+nodes with respect to the nodal factorization. Note that they are
+several strategies for performing updates such as
+\textit{right-looking} updates where ancestors nodes are updated as
+soon as the nodal factorization is done, or, \textit{left-looking}
+updates where the current supernode is updated just before being
+factorized.
 
 \section{Sequential Task Flow parallel programming model}\label{sec:runtime}
 
-In this work we propose to exploit a \textit{Sequential Task Flow
+In this work we propose exploiting a \textit{Sequential Task Flow
   (STF)} programming model for the implementation of a parallel
 task-based Cholesky factorization on top of a runtime system. In this
-model the detection of dependencies between task relies on a data
+model the detection of dependencies between tasks relies on a data
 analysis of input and output data in order to guarantee the
 \textit{sequential consistency} of operations during a parallel
-execution. This analysis is often refer to as a \textit{superscalar}
-analysis in reference to the dependency detection between instructions
-that are performed in superscalar processors. In this context the
-dependency graph is used to allow the parallel execution of
-independent instructions which is referred to as instruction-level
-parallelism and increases the instruction throughput. The STF model is
-the most commonly used paradigm for the parallelization of DAG-based
-algorithms that have become more and more popular in the scientific
-computing community. For example, several dense linear algebra
-software packages such as PLASMA~\cite{a.d.d.h.ea:09} and
-FLAME~\cite{i.c.q.q.ea:12} use this paradigm in their
-implementations. One reason for such a popularity is that it is
-extremely easy to use this model as it the parallel code is very
-similar from the sequential one. Essentially, for a given sequential
-algorithm, the STF code is implemented by replacing the function calls
-(i.e. the execution of tasks in the case of a DAG-based algorithm)
-with the asynchronous submission of this task to a runtime system in
-charge of the scheduling. Depending of the data access that are
+execution. This analysis is often referred to as a
+\textit{superscalar} analysis in reference to the dependency detection
+between instructions that are performed in superscalar processors. In
+this context the dependency graph is used to allow the parallel
+execution of independent instructions which is referred to as
+instruction-level parallelism and increases the instruction
+throughput. The STF model is the most commonly used paradigm for the
+parallelization of DAG-based algorithms that have become more and more
+popular in the scientific computing community. For example, several
+dense linear algebra software packages such as
+PLASMA~\cite{a.d.d.h.ea:09} and FLAME~\cite{i.c.q.q.ea:12} use this
+paradigm in their implementation. One reason for such a popularity is
+that it is extremely easy to use this model as the parallel code is
+very similar to the sequential one. Essentially, for a given
+sequential algorithm, the STF code is implemented by replacing the
+function calls (i.e. the execution of tasks in the case of a DAG-based
+algorithm) with the asynchronous submission of this task to a runtime
+system in charge of the scheduling. Depending on the data access
 provided, the runtime system automatically detects the dependencies
 between the tasks. The sequential consistency is then ensured by the
-fact that the order of submission of tasks correspond to the
+fact that the order of submission of tasks corresponds to the
 sequential order.
 
 \begin{figure}[!h]
@@ -301,40 +302,39 @@ parallel version of this code is illustrated in
 Figure~\ref{fig:stf-example}. In the sequential code, the two
 functions \textit{f} and \textit{g} manipulate arrays \textit{x} and
 \textit{y}. The STF code is obtain by submitting the tasks that
-consists of a kernels funtion (\textit{f} or \textit{g} in this
-example) together with a data which is associated with a data access
-which can possibly be \textit{R} when the data is read, \textit{W}
-when the data is modified and \textit{RW} when the data is read and
-modified.
+consist of a kernels funtion (\textit{f} or \textit{g} in this
+example) together with data which are associated with a data access
+which can be \textit{R} when the data is read, \textit{W} when the
+data is modified, and \textit{RW} when the data is read and modified.
 
-As we have seen with this simple example is that the STF model is
-extremely easy to exploit and this characteristic is certainly one of
-the main reason for its extreme popularity in the HPC community. This
-model, however, has several drawbacks that may affect the performance
-and scalability of parallel codes relying on it. First the task are
-issued and submitted to the runtime system sequentially. In the case
-where, for a given DAG, the task granularity is small compared to the
-time needed for building and submitting a task, the parallel execution
-might be constraint by the time spent in the submission loop that is
-setting up the DAG. To avoid this issue, it might be interesting to
-consider a \textit{recursive} model where tasks might be used to
+As we have seen with this simple example, the STF model is extremely
+easy to use and this characteristic is certainly one of the main
+reasons for its popularity in the HPC community. This model, however,
+has several drawbacks that may affect the performance and scalability
+of parallel codes relying on it. The task are issued and submitted to
+the runtime system sequentially. In the case where, for a given DAG,
+the task granularity is small compared to the time needed for building
+and submitting a task, the parallel execution might be constrained
+by the time spent in the submission loop that is setting up the
+DAG. To avoid this issue, it might be interesting to consider a
+\textit{recursive} model where intermediate tasks might be used to
 submit other tasks enabling the distribution of the cost for building
 the DAG between the resources instead of doing it in a single
-submission loop. This might be implemented for example with
+submission loop. This might be implemented for example using
 \textit{callback} functions that are executed upon task completion and
-can be use for the submission of tasks depending on the task that just
+can trigger the submission of tasks depending on the task that just
 finished its execution. Another issue arising with the STF model comes
 from the fact that the whole DAG is unrolled during the parallel
-execution and every tasks in the DAG is stored in order to track task
+execution and every task in the DAG is stored in order to track task
 dependencies. In the case where the DAG is extremely large, handling
 and storing the DAG might represent an important overhead in terms of
-computational cost and memory storage. Regarding this issue, even if
-the recursive model allows to mitigate the problem, it my be necessary
-to consider a radically different model such a the Parametrized Task
-Graph (PTG) model which is introduced in~\cite{c.l:95}. In this model,
-task dependencies are explicitly encoded according to the data-flow of
-each task and as a results the whole DAG can be expressed in a compact
-format. 
+computational cost and memory storage. Even if the recursive model
+allows us to mitigate the problem it doesn't remove it, and it may be
+necessary to consider a radically different model such as the
+Parametrized Task Graph (PTG) model introduced in~\cite{c.l:95}. In
+this model, task dependencies are explicitly encoded with the dataflow
+of each task and as a results the whole DAG can be expressed in a
+compact format.
 
 %% In the present paper we mainly focus on the 
 
@@ -343,49 +343,61 @@ format.
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-The popularity of task-based algorithms pushed the OpenMP board to
-introduce the \textit{task} construct in the version 3.0 its API. Then
+The popularity of task-based algorithms persuaded the OpenMP board to
+introduce the \textit{task} construct in Version 3.0 its API. Then
 motivated by the popularity of the STF model, the OpenMP board decided
-to include the \textit{depend} construct in the version 4.0 allowing
-users to express dependencies between tasks in a way complying with
-the STF model. In this work we propose an OpenMP implementation of our
-Cholesky solver and show advantages of using this standard in terms of
-performance, scalability and productivity. However because many
-features are still unavailable in the standard we also developed
-another version based on the StarPU runtime system. Both
+to include the \textit{depend} construct in Version 4.0 allowing users
+to express dependencies between tasks in a similar way to the STF
+model. In this work we propose an OpenMP implementation of our
+Cholesky solver and show advantages of using this in terms of
+performance, scalability and productivity. However, because many
+features are still unavailable in the OpenMP standard we also
+developed another version based on the StarPU runtime system. Both
 implementations of our solver rely on a STF model, but the
-StarPU-based implementation might benefit from a wider range of
-feature available with StarPU. For example, although we focus on
-shared-memory architectures in this work, the StarPU version might be
-extended into a distributed-memory version whereas OpenMP doesn't
-provide any possibility to run on distributed memory architectures.
+StarPU-based implementation can benefit from a wider range of features
+available with StarPU. For example, although we focus on shared-memory
+architectures in this work, the StarPU version might be extended to a
+distributed-memory version whereas OpenMP doesn't provide any
+possibility for execution on distributed memory architectures.
 
-In order to introduce the features provided by StarPU API and the
-features provided by this runtime system, we show in
-Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
+We present an example of a parallel implementation for the sequential
+code in Figure~\ref{fig:seq-example} using OpenMP in
+Figure~\ref{fig:stf-openmp-example}.
+
+\begin{figure}[!h]
+  \lstset{language=C, procnamekeys={},escapechar=>}
+  \centering \lstinputlisting{listings/stf-openmp-example.c}
+  \caption{\label{fig:stf-openmp-example}Simple example of a parallel version
+    of the sequential code in Figure~\ref{fig:seq-example} using a STF
+    model with \openmp.}
+\end{figure}
+
+In order to introduce the features provided by the StarPU API, we show
+in Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
 implementation for the simple example presented in
 Figure~\ref{fig:seq-example}. The task submission is done through the
-\texttt{starpu\_task\_insert} function that tasks in input a
-\textit{codelet} and a set of \textit{handles}. A codelet correspond
-to the description of a task and include a list of computational
+\texttt{starpu\_insert\_task} function that takes as input a
+\textit{codelet} and a set of \textit{handles}. A codelet corresponds
+to the description of a task and includes a list of computational
 resources where the task can be executed as well as the corresponding
-computational kernels. In our example the codelet \texttt{g\_cl}
-describe a task that can be executed on a CPU and a CUDA device
-(\texttt{STARPU\_CPU | STARPU\_CUDA}) respectively with the kernels
-\texttt{g\_cpu\_func} and \texttt{g\_cuda\_func}. The data handles
-represents a piece of data that is accessed in the task and can be
-read (\texttt{STARPU\_R}), written (\texttt{STARPU\_W}) or read and
-written (\texttt{STARPU\_RW}). In order to be accessed, a data handle
-must be \textit{registered} to the runtime system by providing
-information such as a pointer on the data, its size and type. These
-information allows StarPU to automatically perform the data transfer
-between the memory nodes during the execution. For example, when a
-data needs to be accessed on a GPU device, the runtime system
-automatically transfer it to the device memory node. As a results
-StarPU is capable of ensuring the data consistency multiple
-nodes. When all the tasks have been submitted to the runtime system,
-we wait for their completion by calling the routine
-\texttt{starpu\_task\_wait\_for\_all}.
+computational kernels. In our example the codelet \texttt{g\_cl} in
+line~\ref{code:stf-starpu-example1} describes a task that can be
+executed on a CPU and a CUDA device (\texttt{STARPU\_CPU |
+  STARPU\_CUDA}) respectively with the kernels \texttt{g\_cpu\_func}
+and \texttt{g\_cuda\_func}. The data handles, declared in
+line~\ref{code:stf-starpu-example3} in our example, represent a piece
+of data that is accessed in the task and can be read
+(\texttt{STARPU\_R}), written (\texttt{STARPU\_W}), or read and
+written (\texttt{STARPU\_RW}). In order to be used, a data handle must
+be \textit{registered} to the runtime system by providing information
+such as a pointer on the data, its size and type. These information
+allows StarPU to automatically perform the data transfer between the
+memory nodes during the execution. For example, when data needs to be
+accessed on a GPU device, the runtime system automatically transfer it
+to the device memory node. As a results StarPU is capable of ensuring
+data consistency over multiple nodes. When all the tasks have been
+submitted to the runtime system, we wait for their completion by
+calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
@@ -395,65 +407,66 @@ we wait for their completion by calling the routine
     model with \starpu.}
 \end{figure}
 
-\section{Parallelisation of a task-based Cholesky factorization using a STF programming model}
+\section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:experiments}
 
-The two parallel implementations of our task-based Cholesky solver
-presented in this section are based on the same STF-based code
+In this section we present the two parallel implementations of our
+task-based Cholesky solver with both OpenMP and the StarPU runtime
+system. These implementations are based on the same STF-based code
 corresponding to the pseudo-code shown in
 Figure~\ref{fig:spllt-facto-pseudocode}. In this code the sparse
-Cholesky factorization is decomposed into six different type of tasks
-associated to the following kernels that are based on the routines
-found in \ma:
+Cholesky factorization is decomposed into six different type of task
+associated with the following kernels:
 
 \begin{itemize}
 \item \texttt{alloc(snode)}: allocates the data structures
   such as the blocks containing the factors.
 \item \texttt{init(snode)}: initializes the supernode \texttt{snode}
-  such as copying the coefficient form the original matrix into the
+  such as copying the coefficient from the original matrix into the
   blocks.
 \item \texttt{factorize(bc\_kk)}: factorizes the diagonal block \texttt{bc\_kk}. %% This
   %% is done with the \texttt{potrf} routine from LAPACK.
-\item \texttt{solve(bc\_kk, bc\_ik)}: perform the triangular solve of
+\item \texttt{solve(bc\_kk, bc\_ik)}: performs the triangular solve of
   an off-diagonal block \texttt{bc\_ik} with the block resulting from
   the factorization of the diagonal block \texttt{bc\_kk} in its
   column.
-\item \texttt{update(bc\_ik, bc\_jk, bc\_ij)}: perform the update
+\item \texttt{update(bc\_ik, bc\_jk, bc\_ij)}: performs the update
   operation of a block \texttt{bc\_ij} within a supernode using the
   blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
   processed.
 \item \texttt{update\_between(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
-  perform the update operation of the block \texttt{bc\_ij} from the
+  performs the update operation of the block \texttt{bc\_ij} from the
   supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
-  \texttt{bc\_jk} from the descendent supernode \texttt{snode}.
+  \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
 \end{itemize}
 
 Following the sequential algorithm, the supernodes are processed
 according to a topological order (e.g. a post-order) and similarly the
-numerical tasks are submitted in the same order as in sequential. In
-order to guarantee the correctness of the algorithm, the runtime
-ensure sequential consistency by using the data-access information
-that we provide with the task submission. Note that the \texttt{alloc}
-task is done sequentially because we need to allocate the data
-structure of blocks to be able to submitted the task working on these
-blocks. In the case of \openmp, blocks are identified using data
-pointer and we associate these pointer with a data access when
-submitting a task. Therefore we must allocate blocks before the being
-able to submit tasks manipulating them. In the case of \starpu, blocks
-are associated with a handle that is set up in this \texttt{alloc}
+numerical tasks are submitted in the same order as in sequential
+mode. In order to guarantee the correctness of the algorithm, the
+runtime system ensures the sequential consistency by using the
+data-access information that we provided with the task
+submission. Note that the \texttt{alloc} task is done sequentially
+because we need to allocate the data structure of blocks to be able to
+submit tasks working on these blocks. In the case of \openmp, blocks
+are identified using data pointers and these pointer are associated
+with a data access when generating a task. Therefore we must allocate
+blocks before being able to submit tasks manipulating them and this is
+done in this \texttt{alloc} routine. In the case of \starpu, blocks
+are associated with a handle that is set up in the \texttt{alloc}
 routine. Tasks are then associated with this handle instead of using a
 pointer as we do with \openmp. They are several advantages associated
 with the use of this handle. For example \starpu is capable of
-detecting when a data is written for the first time and allocate it
+detecting when data are written for the first time and allocate it
 using the information contained in the handle.
 
-The \texttt{init} task is responsible for setting up the block by in
-a given supernode. In our code a supernode is represented by a
-symbolic data structure denoted \texttt{snode} and we indicate that we
-modify this structure by using the \textit{write} data-access in the
+The \texttt{init} task is responsible for setting up the blocks in a
+given supernode. In our code a supernode is represented by a symbolic
+data structure denoted \texttt{snode} and we indicate that we modify
+this structure by using the \textit{write} data-access in the
 \texttt{init} task. This \texttt{snode} symbolic structure represent
 the information associated with a supernode as well as the blocks
-associated with the nodal matrix. 
+associated with the nodal matrix.
 
 \begin{figure}[!h]
   \centering \lstinputlisting{listings/spllt_facto_stf.f90}
@@ -467,11 +480,11 @@ associated with the nodal matrix.
     \begin{center}
       \input{data/table_cmp_facto.tex}
     \end{center}
-    \caption{Factorization times (second) obtained with MA87 and SpLLT
-      (i.e. MA87\_starpu). The factorizations were run with the block
-      sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores and
-      \texttt{nemin=32}. The lowest factorization times are
-      represented in bold.}
+    \caption{Factorization times (seconds) obtained with MA87 and
+      SpLLT (i.e. MA87\_starpu). The factorizations were run with the
+      block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
+      and \texttt{nemin=32}. The lowest factorization times are shown
+      in bold.}
 \end{table}
 
 \section{Concluding remarks}\label{sec:conclusions}

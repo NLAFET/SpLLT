@@ -357,6 +357,8 @@ contains
     call spllt_update_between(m, n, a_bc, dcol, anode, &
          & n1, scol, snode, &
          & lij, &
+         ! & ljk(csrc:csrc+csrc2-1), &
+         ! & lik(rsrc:rsrc+rsrc2-1), &
          & ljk(csrc:csrc+csrc2-1), &
          & lik(rsrc:rsrc+rsrc2-1), &
          & row_list, col_list, work, &

@@ -7,15 +7,15 @@ struct starpu_codelet f_cl =
   };
 
 /* Codelet definition for kernel g */
-struct starpu_codelet g_cl =
+struct starpu_codelet g_cl = >\label{code:stf-starpu-example1}>
   {
     .where = STARPU_CPU | STARPU_CUDA,
     .cpu_funcs = { g_cpu_func },
     .cuda_funcs = { g_cuda_func },
     .nbuffers = 3
-  };
+  }; >\label{code:stf-starpu-example2}>
 
-starpu_data_handle_t x_handle[N], y_handle[N];
+starpu_data_handle_t x_handle[N], y_handle[N]; >\label{code:stf-starpu-example3}>
 
 starpu_init();
 

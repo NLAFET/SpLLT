@@ -87,6 +87,50 @@ contains
 
   end function get_dest_blk_id
 
+  ! get number of internode updates to be performed on block id 
+  function get_dep_out_count(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int)             :: get_dep_out_count
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_out_count = 0
+    
+    if (associated(bc(id)%dep_out)) then
+       get_dep_out_count = size(bc(id)%dep_out)
+    end if
+
+  end function get_dep_out_count
+
+  ! get number of internode updates to be performed on block id 
+  function get_upd_count(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int)             :: get_upd_count
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_upd_count = 0
+    
+    if (associated(bc(id)%dep_in)) then
+       get_upd_count = size(bc(id)%dep_in)
+    end if
+
+  end function get_upd_count
+
   function get_next_dblk(bcs_c, diag) bind(C)
     use iso_c_binding
     use spllt_mod

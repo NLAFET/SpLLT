@@ -14,9 +14,9 @@ program spllt_test
   n   = 512
   nnz = 10000
 
-  ! call spllt_test_rand(n, nnz, cntl)
+  call spllt_test_rand(n, nnz, cntl)
 
-  call spllt_test_mat("matrix.rb", cntl)
+  ! call spllt_test_mat("matrix.rb", cntl)
   
   stop
 
