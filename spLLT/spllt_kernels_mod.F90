@@ -416,6 +416,58 @@ contains
 
   end subroutine spllt_update_between
 
+  ! C wrapper
+  
+  subroutine spllt_update_between_c(m, n, bcs_c, id_ij, &
+       & dcol, nodes_c, dnode, n1, scol, snode, dest_c, & 
+       & csrc_c, rsrc_c, buffer_c, min_width_blas) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer(c_int), value :: m ! number of rows in dest
+    integer(c_int), value :: n ! number of columns in dest
+    type(c_ptr), value :: bcs_c ! blocks array pointer
+    integer(long), value :: id_ij
+    integer(c_int), value :: dcol
+    type(c_ptr), value :: nodes_c ! blocks array pointer
+    integer(c_int), value :: dnode
+    integer(c_int), value :: n1 ! number of columns in source block column
+    integer(c_int), value :: scol
+    integer(c_int), value :: snode
+    type(c_ptr), value :: dest_c ! holds block in L
+    type(c_ptr), value :: csrc_c, rsrc_c ! holds block in L
+    type(c_ptr), value :: buffer_c
+    integer(c_int), value :: min_width_blas
+
+    real(wp), pointer, dimension(:) :: dest, csrc, rsrc
+    integer, dimension(:), allocatable :: row_list ! reallocated to min size m
+    integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+    real(wp), pointer :: buffer(:)
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(node_type), pointer :: nodes(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id_ij/))    
+    call c_f_pointer(nodes_c, nodes,(/dnode/))    
+
+    call c_f_pointer(dest_c, dest, (/m*n/))
+    call c_f_pointer(csrc_c, csrc, (/n*n1/))
+    call c_f_pointer(rsrc_c, rsrc, (/m*n1/))    
+
+    ! call c_f_pointer(buffer_c, buffer, (/m*n/))    
+    allocate(buffer(m*n))
+    allocate(row_list(1), col_list(1))
+
+    call spllt_update_between(m, n, bc(id_ij)%blk, dcol, nodes(dnode), n1, scol, nodes(snode), dest, & 
+         & csrc, rsrc, row_list, col_list, buffer, min_width_blas)
+
+    deallocate(buffer)
+    deallocate(row_list, col_list)
+
+    return
+  end subroutine spllt_update_between_c
+
   ! init node
   subroutine spllt_init_node(snode, n, val, map, keep)
     use spllt_mod

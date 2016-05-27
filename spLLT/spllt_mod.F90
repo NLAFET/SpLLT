@@ -49,6 +49,8 @@ module spllt_mod
      integer :: nb   = 16 ! blocking size
      integer :: nemin = 32 ! node amalgamation parameter
      logical :: prune_tree = .false.
+     integer :: min_width_blas  = 8      ! Minimum width of source block
+         ! before we use an indirect update_between
   end type spllt_cntl
 
   ! node type
@@ -60,23 +62,38 @@ module spllt_mod
 #endif     
   end type spllt_node_type
 
-  type spllt_dep_upd
-     integer(long) :: id_kk  = 0
+  ! type spllt_dep_upd
+  !    integer(long) :: id_kk  = 0
+  !    integer(long) :: id_jk = 0
+  !    integer(long) :: id_ik = 0
+  !    integer(long) :: id_ij  = 0
+  ! end type spllt_dep_upd
+
+  ! input dependency
+  type spllt_dep_upd_in
      integer(long) :: id_jk = 0
+     integer :: p1 = 0
      integer(long) :: id_ik = 0
-     integer(long) :: id_ij  = 0
-  end type spllt_dep_upd
+     integer :: p2 = 0
+  end type spllt_dep_upd_in
 
-  type spllt_dep_node
-     type(spllt_dep_upd)           :: upd
-     type(spllt_dep_node), pointer :: prev => null()     
-     type(spllt_dep_node), pointer :: next => null()     
-  end type spllt_dep_node
+  ! input dependency
+  type spllt_dep_upd_out
+     integer :: flow = 0 ! 1 -> ljk and 2 -> ljk  
+     integer(long) :: id_ij = 0
+     integer :: p = 0
+  end type spllt_dep_upd_out
 
-  type spllt_dep_list
-     type(spllt_dep_node), pointer :: head => null()
-     type(spllt_dep_node), pointer :: tail => null()
-  end type spllt_dep_list
+  ! type spllt_dep_node
+  !    type(spllt_dep_upd)           :: upd
+  !    type(spllt_dep_node), pointer :: prev => null()     
+  !    type(spllt_dep_node), pointer :: next => null()     
+  ! end type spllt_dep_node
+
+  ! type spllt_dep_list
+  !    type(spllt_dep_node), pointer :: head => null()
+  !    type(spllt_dep_node), pointer :: tail => null()
+  ! end type spllt_dep_list
 
   ! block type  
   type spllt_bc_type
@@ -91,10 +108,10 @@ module spllt_mod
 #if defined(SPLLT_USE_PARSEC)
      ! store ids of blocks contributing to this block
      ! type(spllt_dep_list), pointer :: dep_in  => null()
-     type(spllt_dep_upd), pointer :: dep_in(:)  => null()
+     type(spllt_dep_upd_in), pointer :: dep_in(:)  => null()
      ! store ids of blocks for which this block contributes to 
      ! type(spllt_dep_list), pointer :: dep_out => null()
-     type(spllt_dep_upd), pointer :: dep_out(:) => null()
+     type(spllt_dep_upd_out), pointer :: dep_out(:) => null()
 #endif
   end type spllt_bc_type
   
@@ -142,50 +159,107 @@ module spllt_mod
 
 contains
 
-  subroutine spllt_dep_array_init(dep_arr, dep)
-    implicit none
+  ! subroutine spllt_dep_array_init(dep_arr, dep)
+  !   implicit none
 
-    type(spllt_dep_upd), dimension(:), pointer :: dep_arr
-    type(spllt_dep_upd) :: dep
+  !   type(spllt_dep_upd), dimension(:), pointer :: dep_arr
+  !   type(spllt_dep_upd) :: dep
 
-    if (.not. associated(dep_arr)) then
-       allocate(dep_arr(1))
-       dep_arr(1) = dep
-    end if
+  !   if (.not. associated(dep_arr)) then
+  !      allocate(dep_arr(1))
+  !      dep_arr(1) = dep
+  !   end if
     
-    return
-  end subroutine spllt_dep_array_init
+  !   return
+  ! end subroutine spllt_dep_array_init
 
-  subroutine spllt_dep_array_add(dep_arr, id_kk, id_jk, id_ik, id_ij)
+  function spllt_dep_in_add(dep_in_arr, id_jk, id_ik)
     implicit none
 
-    type(spllt_dep_upd), dimension(:), pointer :: dep_arr
-    integer(long) :: id_kk, id_jk, id_ik, id_ij
+    type(spllt_dep_upd_in), dimension(:), pointer :: dep_in_arr
+    integer(long) :: id_jk, id_ik
+    integer :: spllt_dep_in_add
 
     integer :: sz
-    type(spllt_dep_upd), dimension(:), pointer :: new_dep_arr => null()
-
-    sz = size(dep_arr)
+    type(spllt_dep_upd_in), dimension(:), pointer :: new_dep_in_arr => null()
     
-    if (.not. associated(dep_arr)) then
-       allocate(dep_arr(1))
-       dep_arr(1)%id_kk = id_kk
-       dep_arr(1)%id_jk = id_jk
-       dep_arr(1)%id_ik = id_ik
-       dep_arr(1)%id_ij = id_ij
+    if (.not. associated(dep_in_arr)) then
+       allocate(dep_in_arr(1))
+       dep_in_arr(1)%id_jk = id_jk
+       dep_in_arr(1)%id_ik = id_ik
     else
-       allocate(new_dep_arr(sz+1))
-       new_dep_arr(1:sz) = dep_arr(1:sz)
-       new_dep_arr(sz+1)%id_kk = id_kk
-       new_dep_arr(sz+1)%id_jk = id_jk
-       new_dep_arr(sz+1)%id_ik = id_ik
-       new_dep_arr(sz+1)%id_ij = id_ij       
-       deallocate(dep_arr)
-       dep_arr => new_dep_arr
+       sz = size(dep_in_arr)
+       allocate(new_dep_in_arr(sz+1))
+       new_dep_in_arr(1:sz) = dep_in_arr(1:sz)       
+       new_dep_in_arr(sz+1)%id_jk = id_jk
+       new_dep_in_arr(sz+1)%id_ik = id_ik
+       deallocate(dep_in_arr)
+       dep_in_arr => new_dep_in_arr
     end if
+
+    spllt_dep_in_add = size(dep_in_arr)
+
+  end function spllt_dep_in_add
+
+  function spllt_dep_out_add(dep_out_arr, id_ij, flow)
+    implicit none
+
+    type(spllt_dep_upd_out), dimension(:), pointer :: dep_out_arr
+    integer(long) :: id_ij
+    integer :: flow
+    integer :: spllt_dep_out_add
+
+    integer :: sz
+    type(spllt_dep_upd_out), dimension(:), pointer :: new_dep_out_arr => null()
     
-    return
-  end subroutine spllt_dep_array_add
+    if (.not. associated(dep_out_arr)) then
+       allocate(dep_out_arr(1))
+       dep_out_arr(1)%id_ij = id_ij
+       dep_out_arr(1)%flow = flow
+    else
+       sz = size(dep_out_arr)
+       allocate(new_dep_out_arr(sz+1))
+       new_dep_out_arr(1:sz) = dep_out_arr(1:sz)       
+       new_dep_out_arr(sz+1)%id_ij = id_ij
+       new_dep_out_arr(sz+1)%flow = flow
+       deallocate(dep_out_arr)
+       dep_out_arr => new_dep_out_arr
+    end if
+
+    spllt_dep_out_add = size(dep_out_arr)
+
+  end function spllt_dep_out_add
+
+  ! subroutine spllt_dep_array_add(dep_arr, id_kk, id_jk, id_ik, id_ij)
+  !   implicit none
+
+  !   type(spllt_dep_upd), dimension(:), pointer :: dep_arr
+  !   integer(long) :: id_kk, id_jk, id_ik, id_ij
+
+  !   integer :: sz
+  !   type(spllt_dep_upd), dimension(:), pointer :: new_dep_arr => null()
+
+  !   sz = size(dep_arr)
+    
+  !   if (.not. associated(dep_arr)) then
+  !      allocate(dep_arr(1))
+  !      dep_arr(1)%id_kk = id_kk
+  !      dep_arr(1)%id_jk = id_jk
+  !      dep_arr(1)%id_ik = id_ik
+  !      dep_arr(1)%id_ij = id_ij
+  !   else
+  !      allocate(new_dep_arr(sz+1))
+  !      new_dep_arr(1:sz) = dep_arr(1:sz)
+  !      new_dep_arr(sz+1)%id_kk = id_kk
+  !      new_dep_arr(sz+1)%id_jk = id_jk
+  !      new_dep_arr(sz+1)%id_ik = id_ik
+  !      new_dep_arr(sz+1)%id_ij = id_ij       
+  !      deallocate(dep_arr)
+  !      dep_arr => new_dep_arr
+  !   end if
+    
+  !   return
+  ! end subroutine spllt_dep_array_add
 
   ! subroutine spllt_dep_list_init(dep_list, dep)
   !   implicit none

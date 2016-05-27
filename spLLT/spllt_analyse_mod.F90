@@ -408,8 +408,9 @@ contains
     integer :: blk_jk_sa, blk_jk_en
     integer :: lik, ljk, ljk_sa, ljk_en
     integer :: nr, nc
-    integer(long) :: id_lik, id_ljk, id
+    integer(long) :: id_ik, id_jk, id
     type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
+    integer :: p, p1, p2
 
     write(*,*)'[spllt_analyse_mod][compute_dep]'
 
@@ -466,8 +467,8 @@ contains
              end do
              cptr2 = cptr2 - 1
              
-             ljk_sa = (cptr -1)/s_nb+1
-             ljk_en = (cptr2-1)/s_nb+1
+             ljk_sa = (cptr -1)/s_nb
+             ljk_en = (cptr2-1)/s_nb
              
              if(.not.map_done) call spllt_build_rowmap(anode, map) 
 
@@ -489,20 +490,26 @@ contains
                       dblk = node%blk_sa
                       do lik=1,nc
                          
-                         id_lik = dblk + (i-1)/s_nb - (lik-1)
-                         id_ljk = dblk + ljk - (lik-1)
+                         id_jk = dblk + ljk - (lik-1)
+                         id_ik = dblk + (i-1)/s_nb - (lik-1)
 
-                         write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_lik: ', &
-                              & id_lik, ', id_ljk: ', id_ljk, ', anum: ', anum
+                         write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_ik: ', &
+                              & id_ik, ', id_jk: ', id_jk, ', id_ij: ', a_blk, ', anum: ', anum
 
-                         bc_jk => fdata%bc(id_ljk)
-                         bc_ik => fdata%bc(id_lik)
+                         bc_jk => fdata%bc(id_jk)
+                         bc_ik => fdata%bc(id_ik)
                          bc_ij => fdata%bc(a_blk)
                          
-                         call spllt_dep_array_add(bc_jk%dep_out, dblk, id_ljk, id_lik, a_blk)
-                         call spllt_dep_array_add(bc_ik%dep_out, dblk, id_ljk, id_lik, a_blk)
-                         call spllt_dep_array_add(bc_ij%dep_in, dblk, id_ljk, id_lik, a_blk)
-                         
+                         p  = spllt_dep_in_add(bc_ij%dep_in, id_jk, id_ik)
+                         p1 = spllt_dep_out_add(bc_jk%dep_out, a_blk, 1)
+                         p2 = spllt_dep_out_add(bc_ik%dep_out, a_blk, 2)
+
+                         bc_ij%dep_in(p)%p1 = p1
+                         bc_ij%dep_in(p)%p2 = p2
+
+                         bc_jk%dep_out(p1)%p = p
+                         bc_ik%dep_out(p2)%p = p
+
                          dblk = keep%blocks(dblk)%last_blk + 1
                       end do
                    end do

@@ -20,6 +20,7 @@ bcs            [type = "void *"]
 nbc            [type = int]
 diags          [type = "long int *"]
 ndiag          [type = int]
+min_width_blas [type = int]
 
 /* init_blk(id) */
 
@@ -58,11 +59,11 @@ factorize_block(diag_idx)
 
    : blk(id_kk)
 
-   RW bc_kk <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count) : blk(id_kk) 
+   RW bc_kk <- (id_kk == blk_sa && upd_count == 0) ? blk(id_kk)
+            <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count)
             <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1)
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count)
-            /* -> blk(id) */
 
    /* RW bc_kk <- (id == blk_sa) ? blk(id) : bc_ij update_block(prev_diag, 1, id, id) */
 
@@ -107,13 +108,17 @@ solve_block(diag_idx, id_ik)
    /* idx of ik and ik blocks within current column */
    id_ik_idx = id_ik - id_kk
 
+   upd_count = inline_c %{ return get_upd_count(bcs, id_ik); %}
+
    /* Number of update_bet task depending on this task */
-   dep_out_count = inline_c %{ return get_dep_out_count(bcs, id_kk); %}
+   dep_out_count = inline_c %{ return get_dep_out_count(bcs, id_ik); %}
 
    : blk(id_ik)
 
    READ  bc_kk <- bc_kk factorize_block(diag_idx)
-   RW    bc_ik <- (id_kk == blk_sa) ? blk(id_ik) : bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+id_ik_idx+1)
+   RW    bc_ik <- (id_kk == blk_sa && upd_count == 0) ? blk(id_ik)
+               <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_ik, upd_count)
+               <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+id_ik_idx+1)
                -> (bcol == ncol) ? blk(id_ik)
                -> (bcol < ncol) ? bc_jk update_block(diag_idx, id_ik, (id_kk+1)..last_blk)
                -> (bcol < ncol) ? bc_ik update_block(diag_idx, (id_kk+1)..(id_kk+ncol_upd), id_ik)
@@ -165,13 +170,17 @@ update_block(diag_idx, id_jk, id_ik)
    /* id of prev diag block */
    prev_id_kk = inline_c %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}   
 
+   upd_count = inline_c %{ return get_upd_count(bcs, id_ik); %}
+
    : blk(id_ij)
 
    READ bc_jk <- bc_ik solve_block(diag_idx, id_jk)
 
    READ bc_ik <- bc_ik solve_block(diag_idx, id_ik)
 
-   RW bc_ij <- (id_kk == blk_sa) ? blk(id_ij) : bc_ij update_block(diag_idx-1, prev_id_kk+id_jk_idx+1, prev_id_kk+id_ik_idx+1)
+   RW bc_ij <- (id_kk == blk_sa && upd_count == 0) ? blk(id_ij)
+            <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_ij, upd_count) 
+            <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+id_jk_idx+1, prev_id_kk+id_ik_idx+1)
             -> ( (bcol == bcol_diag+1) && (id_jk == id_ik)) ? bc_kk factorize_block(diag_idx+1)
             -> ( (bcol == bcol_diag+1) && (id_jk != id_ik)) ? bc_ik solve_block(diag_idx+1, next_id_kk+id_ik_idx-1)
             -> (bcol > bcol_diag+1) ? bc_ij update_block(diag_idx+1, next_id_kk+id_jk_idx-1,next_id_kk+id_ik_idx-1)
@@ -196,27 +205,33 @@ END
 
 // update between auxiliary function
 
-update_between_aux(id, p)
+update_between_aux(id, i)
 
   id = 1..nbc
 
   dep_out_count = inline_c %{ return get_dep_out_count(bcs, id); %}
 
-  p = 1..dep_out_count
+  i = 1..dep_out_count
 
   isDiag = inline_c %{ return is_diag(bcs, id); %}
   
   bcol = inline_c %{ return get_bcol(bcs, id); %}
   diag_idx = bcol-1 
 
-  : blk(id) 
+  p = inline_c %{ return get_dep_out_p(bcs, id, i); %}
+  id_ij = inline_c %{ return get_dep_out_id_ij(bcs, id, i); %}
+  flow = inline_c %{ return get_dep_out_flow(bcs, id, i); %}
 
-  READ bc <- (isDiag) ? bc_kk factorize_block(diag_idx) : bc_ik solve_block(diag_idx, id)
-          -> blk(id)
+  : blk(id)
+
+  RW bc <- (isDiag) ? bc_kk factorize_block(diag_idx) : bc_ik solve_block(diag_idx, id)
+        /* -> bc_ik update_between(id_ij, p) */
+        -> (flow == 1) ? bc_jk update_between(id_ij, p)
+        -> (flow == 2) ? bc_ik update_between(id_ij, p)
       
 BODY
 {
-   printf("[update_between_aux] id: %d, p: %d\n", id, p);
+   /* printf("[update_between_aux] id: %d, i: %d, id_ij: %d, flow: %d, p: %d\n", id, i, id_ij, flow, p); */
 }
 END
 
@@ -233,15 +248,45 @@ update_between(id, i)
   bcol = inline_c %{ return get_bcol(bcs, id); %}
   diag_idx = bcol-1 
 
+  /* get first (diag) block id in current node */
+  blk_sa =  inline_c %{ return get_blk_sa(snodes, nnodes, bcs, id); %}
+  /* get the first block column in current node */
+  bcol_sa = inline_c %{ return get_bcol(bcs, blk_sa); %}
+  diag_sa_idx = bcol_sa-1
+
+  /* lkj */
+  p1 = inline_c %{ return get_dep_in_p1(bcs, id, i); %}
+  id_jk = inline_c %{ return get_dep_in_id_jk(bcs, id, i); %}
+  
+  /* lij */
+  p2 = inline_c %{ return get_dep_in_p2(bcs, id, i); %}
+  id_ik = inline_c %{ return get_dep_in_id_ik(bcs, id, i); %}
+
+  /* flow toward update block task */
+
+  /* id of current diag block */
+  id_kk  = inline_c %{ return diags[diag_idx]; %}
+
+  /* column index of current block in node */
+  id_jk_idx = bcol_sa-bcol 
+  /* row index of current block in node */
+  id_ik_idx = id_ik - id_kk
+
   : blk(id) 
 
-  RW bc_ij <- blk(id)
-           -> (isDiag) ? bc_kk factorize_block(diag_idx) : blk(id)
+  READ bc_jk <- bc update_between_aux(id_jk, p1)
+
+  READ bc_ik <- bc update_between_aux(id_ik, p2)
+
+  RW bc_ij <- (i > 1) ? bc_ij update_between(id, i-1) : blk(id) 
+           -> (i < upd_count) ? bc_ij update_between(id, i+1)
+           -> (i == upd_count && bcol == bcol_sa && id == blk_sa) ? bc_kk factorize_block(diag_idx)
+           -> (i == upd_count && bcol == bcol_sa && id != blk_sa) ? bc_ik solve_block(diag_idx, id)
+           -> (i == upd_count && bcol != bcol_sa) ? bc_ij update_block(diag_sa_idx, diag_sa_idx+id_jk_idx, diag_sa_idx+id_jk_idx+id_ik_idx) 
 
 BODY
 {
-   printf("[update_between] id: %d, i: %d\n", id, i);
-   
+   printf("[update_between] id: %d, i: %d\n", id, i);   
 }
 END
 
@@ -250,7 +295,8 @@ extern "C" %{
    
    dague_handle_t* spllt_parsec_factorize(void *snodes, int nnodes, 
                                           void *bcs, int nbc, 
-                                          long int *diags, int ndiag) {
+                                          long int *diags, int ndiag, 
+                                          int min_width_blas) {
 
       dague_factorize_handle_t* fac_hdl;
 
@@ -279,7 +325,8 @@ extern "C" %{
       fac_hdl = dague_factorize_new(blk_desc, 
                                     snodes, nnodes, 
                                     bcs, nbc, 
-                                    diags, ndiag);
+                                    diags, ndiag,
+                                    min_width_blas);
 
       assert( NULL != fac_hdl );
 

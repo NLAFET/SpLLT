@@ -1,11 +1,13 @@
 module spllt_parsec_factorization_mod
 
   interface
-     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc, diags, ndiag) bind(C)
+     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc, diags, ndiag, &
+          & min_width_blas) bind(C)
        use iso_c_binding
        use dague_f08_interfaces
        type(c_ptr), value      :: nodes, bcs, diags
        integer(c_int), value   :: num_nodes, nbc, ndiag
+       integer(c_int), value   :: min_width_blas
        type(dague_handle_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
 
@@ -108,6 +110,161 @@ contains
     end if
 
   end function get_dep_out_count
+
+  function get_dep_out_p(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_out_p
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_out_p = 0
+
+    if (associated(bc(id)%dep_out)) then
+       get_dep_out_p = bc(id)%dep_out(i)%p
+    end if
+
+  end function get_dep_out_p
+
+  ! get number of internode updates to be performed on block id 
+  function get_dep_out_id_ij(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(long)              :: get_dep_out_id_ij
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_out_id_ij = 0
+
+    if (associated(bc(id)%dep_out)) then
+       get_dep_out_id_ij = bc(id)%dep_out(i)%id_ij
+    end if
+
+  end function get_dep_out_id_ij
+
+  function get_dep_out_flow(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer                    :: get_dep_out_flow
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_out_flow = 0
+
+    if (associated(bc(id)%dep_out)) then
+       get_dep_out_flow = bc(id)%dep_out(i)%flow
+    end if
+
+  end function get_dep_out_flow
+
+  function get_dep_in_p1(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_in_p1
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_p1 = 0
+    ! write(*,*) 'i: ', i
+    if (associated(bc(id)%dep_in)) then
+       get_dep_in_p1 = bc(id)%dep_in(i)%p1
+    end if
+
+  end function get_dep_in_p1
+
+  function get_dep_in_id_jk(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(long)              :: get_dep_in_id_jk
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_id_jk = 0
+
+    if (associated(bc(id)%dep_in)) then
+       get_dep_in_id_jk = bc(id)%dep_in(i)%id_jk
+    end if
+
+  end function get_dep_in_id_jk
+
+  function get_dep_in_p2(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_in_p2
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_p2 = 0
+
+    if (associated(bc(id)%dep_in)) then
+       get_dep_in_p2 = bc(id)%dep_in(i)%p2
+    end if
+
+  end function get_dep_in_p2
+
+  function get_dep_in_id_ik(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(long)              :: get_dep_in_id_ik
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_id_ik = 0
+
+    if (associated(bc(id)%dep_in)) then
+       get_dep_in_id_ik = bc(id)%dep_in(i)%id_ik
+    end if
+
+  end function get_dep_in_id_ik
 
   ! get number of internode updates to be performed on block id 
   function get_upd_count(bcs_c, id) bind(C)
