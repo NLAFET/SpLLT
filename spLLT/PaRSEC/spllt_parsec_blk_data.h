@@ -9,4 +9,9 @@ typedef struct blk_desc {
    int typesize;
 } blk_desc_t;
 
+void *get_blk_ptr(void *bcs, long int id);
+size_t get_blk_sze(void *bcs, long int id);
+
+void spllt_parsec_blk_data_init(blk_desc_t *desc, void *bcs, int nbc,
+                                int nodes, int myrank);
 #endif

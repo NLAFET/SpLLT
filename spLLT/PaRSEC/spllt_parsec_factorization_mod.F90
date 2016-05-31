@@ -21,6 +21,24 @@ module spllt_parsec_factorization_mod
 
 contains
 
+  function get_node(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int)              :: get_node
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_node = bc(id)%blk%node 
+    
+  end function get_node
+
   function get_blk_sa(nodes_c, nnodes, bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod
@@ -387,7 +405,7 @@ contains
     implicit none
 
     type(c_ptr), value, target :: bcs_c
-    integer, value             :: id
+    integer(long), value             :: id
     integer(c_int)             :: is_diag
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
@@ -406,7 +424,7 @@ contains
     implicit none
 
     type(c_ptr), value, target :: bcs_c
-    integer(c_int), value      :: id
+    integer(long), value      :: id
     integer(c_int)             :: get_blk_m
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
@@ -423,7 +441,7 @@ contains
     implicit none
 
     type(c_ptr), value, target :: bcs_c
-    integer(c_int), value      :: id
+    integer(long), value      :: id
     integer(c_int)             :: get_blk_n
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
@@ -434,13 +452,35 @@ contains
 
   end function get_blk_n
 
+  function get_blk(bcs_c, id) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value      :: id
+    type(c_ptr)                :: get_blk
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    ! write(*,*)'[get_blk_ptr] id: ', id
+    get_blk = c_null_ptr
+
+    call c_f_pointer(bcs_c, bc,(/id/))
+    
+    get_blk = c_loc(bc(id)%blk)
+
+    ! write(*,*)'[get_blk_ptr] id:', id, ', ptr:', get_blk_ptr
+    
+  end function get_blk
+
   function get_blk_ptr(bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod
     implicit none
 
     type(c_ptr), value, target :: bcs_c
-    integer(c_int), value      :: id
+    integer(long), value      :: id
     type(c_ptr)                :: get_blk_ptr
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
@@ -462,7 +502,7 @@ contains
     implicit none
 
     type(c_ptr), value, target :: bcs_c
-    integer, value             :: id
+    integer(long), value             :: id
     integer(c_size_t)          :: get_blk_sze
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
@@ -483,7 +523,7 @@ contains
     implicit none
 
     type(c_ptr), target :: lfact_c
-    integer :: bcol
+    integer(c_int) :: bcol
     type(c_ptr) :: get_lcol_ptr
 
     type(lfactor), dimension(:), pointer :: lfact    
@@ -501,7 +541,7 @@ contains
     implicit none
 
     type(c_ptr), target :: lfact_c
-    integer :: bcol
+    integer(c_int) :: bcol
     integer(c_size_t) :: get_lcol_sze
 
     type(lfactor), dimension(:), pointer :: lfact    

@@ -70,13 +70,14 @@ contains
 
     ! timing
     integer :: start_t, stop_t, rate_t
-    integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
-    integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
 
     ! StarPU
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
     integer(c_int) :: ret
+    ! timing
+    integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
+    integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
 #endif
 
     call splllt_parse_args(options)
@@ -252,7 +253,7 @@ contains
 #endif
 #endif
 
-#if defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU)
+#if defined(SPLLT_USE_STF) || defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU)
     use spllt_stf_mod
 #elif defined(SPLLT_USE_PARSEC)
     use dague_f08_interfaces
@@ -269,8 +270,8 @@ contains
     type(spllt_options) :: options
 
     ! mc68
-    type(mc68_control) :: order_control
-    type(mc68_info) :: order_info
+    ! type(mc68_control) :: order_control
+    ! type(mc68_info) :: order_info
     
     ! ma87
     type(ma87_keep) :: keep
@@ -282,7 +283,7 @@ contains
     integer :: iseed
     type(zd11_type) :: a
     real(wp), dimension(:), allocatable :: b, x
-    integer :: i, nrhs
+    integer :: nrhs
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, resid
 

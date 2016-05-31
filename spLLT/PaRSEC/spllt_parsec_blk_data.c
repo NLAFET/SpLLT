@@ -64,7 +64,7 @@ static dague_data_t *blk_data_of(dague_ddesc_t *desc, ... ) {
 
     /* nbcol = blk_desc->nbcol; */
     bcs = blk_desc->bcs;
-    bc  = get_blk_ptr(bcs, id);
+    bc  = (void *) get_blk_ptr(bcs, id);
     /* bc  = NULL; */
 
     key  = blk_key(id);
@@ -72,7 +72,7 @@ static dague_data_t *blk_data_of(dague_ddesc_t *desc, ... ) {
     size = get_blk_sze(bcs, id);
 
     /* printf("[blk_data_of] id: %d, key: %zu\n", id, key); */
-    /* printf("[blk_data_of] key: %d, bc: %p, size: %d\n", key, bc, size); */
+    /* printf("[blk_data_of] key: %d, bc: %p, size: %zu\n", key, bc, size); */
     /* size = sizeof(double); */
 
     return dague_data_create(blk_desc->data_map + pos, desc, key, bc, size);

@@ -58,6 +58,7 @@ endif
 
 ifneq ($(useparsec),)
 spllt_ptg_mod.o: spllt_parsec_factorization_mod.o 
+factorize.o: spllt_parsec_blk_data.o
 endif
 
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o
