@@ -26,7 +26,7 @@ CFLAGS += -m64 -mcx16
 LIBS += $(LPARSEC) $(LHWLOC) $(LMPI)
 
 parsecobjs := spllt_ptg_mod.o
-parsecobjs += spllt_parsec_data.o factorize.o
+parsecobjs += factorize.o
 parsecobjs += spllt_parsec_factorization_mod.o
 parsecobjs += spllt_parsec_blk_data.o
 endif

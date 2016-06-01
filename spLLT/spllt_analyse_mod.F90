@@ -445,8 +445,8 @@ contains
              csrc  = 1 + (mod(cptr-1, s_nb))*n1
              rsrc  = 1 + (mod(rptr-1, s_nb))*n1
 
-             write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_jk: ', &
-                  & id_jk, ', id_ik: ', id_ik, ', id_ij: ', dest_blk
+             ! write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_jk: ', &
+             !      & id_jk, ', id_ik: ', id_ik, ', id_ij: ', dest_blk
              
              bc_jk => fdata%bc(id_jk)
              bc_ik => fdata%bc(id_ik)

@@ -74,7 +74,7 @@ BODY
    int m = get_blk_m(bcs, id_kk);
    int n = get_blk_n(bcs, id_kk);
    
-   printf("[factorize_block] blk id: %d, m: %d, n: %d\n", id_kk, m, n);
+   /* printf("[factorize_block] blk id: %d, m: %d, n: %d\n", id_kk, m, n); */
    /* printf("[factorize_block] diag idx: %ld\n", diags[diag_idx]); */
    /* printf("[factorize_block] bc_kk: %p\n", bc_kk); */
 
@@ -132,7 +132,7 @@ solve_block(diag_idx, id_ik)
 
 BODY
 {
-   printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik);
+   /* printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik); */
 
    int m = get_blk_m(bcs, id_ik);
    int n = get_blk_n(bcs, id_ik);
@@ -195,7 +195,7 @@ update_block(diag_idx, id_jk, id_ik)
 
 BODY
 {
-   printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij);
+   /* printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij); */
 
    int m = get_blk_m(bcs, id_ij);
    int n = get_blk_n(bcs, id_ij);
@@ -301,7 +301,7 @@ BODY
 
    int sync = get_dep_in_sync(bcs, id, i);
 
-   printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);   
+   /* printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);    */
    /* printf("[update_between] bcol: %d, bcol_sa: %d\n", bcol, bcol_sa);    */
 
    
