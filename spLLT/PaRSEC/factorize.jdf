@@ -103,8 +103,12 @@ solve_block(diag_idx, id_ik)
    ncol =  inline_c %{ return get_nc(snodes, nnodes, bcs, id_kk); %}
    /* current block column*/
    bcol =  inline_c %{ return get_bcol(bcs, id_kk); %}
+   /* first block column in node */
+   bcol_sa =  inline_c %{ return get_bcol(bcs, blk_sa); %}
+   /* local column index */
+   col = bcol - bcol_sa + 1
    /* number of block column to update */
-   ncol_upd = ncol-bcol
+   ncol_upd = ncol - col
 
    /* idx of ik and ik blocks within current column */
    id_ik_idx = id_ik - id_kk
@@ -120,9 +124,9 @@ solve_block(diag_idx, id_ik)
    RW    bc_ik <- (id_kk == blk_sa && upd_count == 0) ? blk(id_ik)
                <- (id_kk == blk_sa && upd_count > 0) ? /* blk(id_ik) */ bc_ij update_between(id_ik, upd_count)
                <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+id_ik_idx+1) /* blk(id_ik) */
-               -> (bcol == ncol) ? blk(id_ik)
-               -> (bcol < ncol) ? bc_jk update_block(diag_idx, id_ik, (id_kk+1)..last_blk) /* blk(id_ik) */
-               -> (bcol < ncol) ? bc_ik update_block(diag_idx, (id_kk+1)..(id_kk+ncol_upd), id_ik) /* blk(id_ik) */
+               -> (col == ncol) ? blk(id_ik)
+               -> (col < ncol) ? bc_jk update_block(diag_idx, id_ik, (id_kk+1)..last_blk) /* blk(id_ik) */
+               -> (col < ncol) ? bc_ik update_block(diag_idx, (id_kk+1)..(id_kk+ncol_upd), id_ik) /* blk(id_ik) */
                -> (dep_out_count > 0) ? bc update_between_aux(id_ik, 1..dep_out_count) /* blk(id_ik) */
                /* -> blk(id_ik) */
 
@@ -152,9 +156,11 @@ update_block(diag_idx, id_jk, id_ik)
    bcol_diag =  inline_c %{ return get_bcol(bcs, id_kk); %}
    /* get first (diag) block id in current node */
    blk_sa =  inline_c %{ return get_blk_sa(snodes, nnodes, bcs, id_kk); %}
+   /* get column number of first block in node */
+   bcol_sa =  inline_c %{ return get_bcol(bcs, blk_sa); %}
 
    /* number of column to be updated */
-   ncol_upd = ncol-bcol_diag
+   ncol_upd = ncol-(bcol_diag-bcol_sa+1)
 
    id_jk = (id_kk+1)..(id_kk+ncol_upd)
 
@@ -171,7 +177,7 @@ update_block(diag_idx, id_jk, id_ik)
    /* id of prev diag block */
    prev_id_kk = inline_c %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
 
-   upd_count = inline_c %{ return get_upd_count(bcs, id_ik); %}
+   upd_count = inline_c %{ return get_upd_count(bcs, id_ij); %}
 
    : blk(id_ij)
 
@@ -182,8 +188,8 @@ update_block(diag_idx, id_jk, id_ik)
    RW bc_ij <- (id_kk == blk_sa && upd_count == 0) ? blk(id_ij)
             <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_ij, upd_count) /* blk(id_ij) */
             <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+id_jk_idx+1, prev_id_kk+id_ik_idx+1)
-            -> ( (bcol == bcol_diag+1) && (id_jk == id_ik)) ? bc_kk factorize_block(diag_idx+1)
-            -> ( (bcol == bcol_diag+1) && (id_jk != id_ik)) ? bc_ik solve_block(diag_idx+1, next_id_kk+id_ik_idx-1)
+            -> ((bcol == bcol_diag+1) && (id_jk == id_ik)) ? bc_kk factorize_block(diag_idx+1)
+            -> ((bcol == bcol_diag+1) && (id_jk != id_ik)) ? bc_ik solve_block(diag_idx+1, next_id_kk+id_ik_idx-1)
             -> (bcol > bcol_diag+1) ? bc_ij update_block(diag_idx+1, next_id_kk+id_jk_idx-1,next_id_kk+id_ik_idx-1)
    /* -> ( (bcol == bcol_diag+1) && !isDiag_ij) ?  */
 
@@ -251,7 +257,7 @@ update_between(id, i)
   blk_sa =  inline_c %{ return get_blk_sa(snodes, nnodes, bcs, id); %}
   /* get the first block column in current node */
   bcol_sa = inline_c %{ return get_bcol(bcs, blk_sa); %}
-  diag_sa_idx = bcol_sa-1
+  diag_idx_sa = bcol_sa-1
 
   /* lkj */
   p1 = inline_c %{ return get_dep_in_p1(bcs, id, i); %}
@@ -266,10 +272,13 @@ update_between(id, i)
   /* id of current diag block */
   id_kk  = inline_c %{ return diags[diag_idx]; %}
 
+  /* id of first diag block */
+  id_kk_sa  = inline_c %{ return diags[diag_idx_sa]; %}
+
   /* column index of current block in node */
   id_jk_idx = bcol - bcol_sa
   /* row index of current block in node */
-  id_ik_idx = id_ik - id_kk
+  id_ik_idx = id - id_kk
 
   : blk(id) 
 
@@ -281,7 +290,7 @@ update_between(id, i)
            -> (i < upd_count) ? bc_ij update_between(id, i+1)
            -> (i == upd_count && bcol == bcol_sa && id == blk_sa) ? bc_kk factorize_block(diag_idx)
            -> (i == upd_count && bcol == bcol_sa && id != blk_sa) ? bc_ik solve_block(diag_idx, id)
-           -> (i == upd_count && bcol != bcol_sa) ? bc_ij update_block(diag_sa_idx, diag_sa_idx+id_jk_idx, diag_sa_idx+id_jk_idx+id_ik_idx)
+           -> (i == upd_count && bcol != bcol_sa) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
 
   READ bc_jk <- bc update_between_aux(id_jk, p1)
 
@@ -293,6 +302,7 @@ BODY
    int sync = get_dep_in_sync(bcs, id, i);
 
    printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);   
+   /* printf("[update_between] bcol: %d, bcol_sa: %d\n", bcol, bcol_sa);    */
 
    
    /* printf("[update_between] bc_ij: %p, bc_jk: %p, bc_ik: %p\n", bc_ij, bc_jk, bc_ik);    */
