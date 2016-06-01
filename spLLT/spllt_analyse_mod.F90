@@ -386,6 +386,94 @@ contains
   end subroutine spllt_analyse
 
 #if defined(SPLLT_USE_PARSEC)
+  subroutine spllt_compute_upd_bet_add(fdata, keep, node, cptr, cptr2, rptr, rptr2, dest_blk)
+    use hsl_ma87_double
+    use spllt_mod
+    implicit none
+
+    type(spllt_data_type), target, intent(inout) :: fdata ! data related to the factorization
+    type(MA87_keep), target, intent(in) :: keep
+    type(node_type)     :: node
+    integer :: cptr, cptr2, rptr, rptr2
+    integer(long)     :: dest_blk
+
+    integer :: s_nb ! block size in node
+    integer :: numcol ! number of column in node
+    integer :: nc ! number of block column in node
+    integer(long) :: dblk ! diag block
+    integer :: c ! block column index
+    integer :: ljk_sa, ljk_en ! start and end index for ljk contribution
+    integer :: lik_sa, lik_en ! start and end index for lik contribution
+    integer(long) :: id_ik, id_jk
+    integer :: i, j ! index
+    type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
+    logical :: sync ! true if task is use for synchronization purpose
+    integer :: n1 ! column width of blocks Ljk and Lik
+    integer :: csrc, rsrc ! start of fist row respectively in Ljk and Lik block 
+    integer :: p, p1, p2 ! dependency index
+
+    ! numcol is number of columns in node
+    numcol = node%en-node%sa + 1
+    ! block size
+    s_nb = node%nb
+    ! number of block colum
+    nc = (numcol-1) / s_nb + 1 
+
+    ljk_sa = (cptr -1)/s_nb
+    ljk_en = (cptr2-1)/s_nb
+    
+    lik_sa = (rptr -1)/s_nb
+    lik_en = (rptr2-1)/s_nb    
+
+    ! first (diag) block
+    dblk = node%blk_sa
+    
+    do c = 1,nc
+
+       sync = .true.
+
+       do j = ljk_en,ljk_sa,-1
+          do i = lik_en,lik_sa,-1
+                          
+             ! compute current ljk block id
+             id_jk = dblk + j - (c-1)
+             ! compute current lik block id
+             id_ik = dblk + i - (c-1)
+
+             ! compute first row of Ljk block
+             n1 = keep%blocks(dblk)%blkn
+             csrc  = 1 + (mod(cptr-1, s_nb))*n1
+             rsrc  = 1 + (mod(rptr-1, s_nb))*n1
+
+             write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_jk: ', &
+                  & id_jk, ', id_ik: ', id_ik, ', id_ij: ', dest_blk
+             
+             bc_jk => fdata%bc(id_jk)
+             bc_ik => fdata%bc(id_ik)
+             bc_ij => fdata%bc(dest_blk)
+
+             if ((j .eq. ljk_sa) .and. (i .eq. lik_sa)) sync = .false.
+
+             p  = spllt_dep_in_add(bc_ij%dep_in, id_jk, id_ik, csrc, rsrc, sync)
+
+             p1 = spllt_dep_out_add(bc_jk%dep_out, dest_blk, 1)
+             p2 = spllt_dep_out_add(bc_ik%dep_out, dest_blk, 2)
+             
+             bc_ij%dep_in(p)%p1 = p1
+             bc_ij%dep_in(p)%p2 = p2
+
+             bc_jk%dep_out(p1)%p = p
+             bc_ik%dep_out(p2)%p = p
+             
+          end do
+       end do
+
+       dblk = keep%blocks(dblk)%last_blk + 1
+    end do
+
+    return
+  end subroutine spllt_compute_upd_bet_add
+
   subroutine spllt_compute_dep(adata, fdata, keep, map)
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -401,6 +489,7 @@ contains
     integer :: numcol, numrow
     integer :: s_nb
     integer :: cptr, cptr2
+    integer :: n1 ! column width
     logical :: map_done
     integer :: jb, cb, jlast
     integer(long) :: blk, dblk, a_blk, a_dblk
@@ -408,9 +497,8 @@ contains
     integer :: blk_jk_sa, blk_jk_en
     integer :: lik, ljk, ljk_sa, ljk_en
     integer :: nr, nc
-    integer(long) :: id_ik, id_jk, id
+    integer(long) :: id_ik, id_jk, id, id_jk_sa, id_jk_en
     type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
-    integer :: p, p1, p2
 
     write(*,*)'[spllt_analyse_mod][compute_dep]'
 
@@ -473,50 +561,27 @@ contains
              if(.not.map_done) call spllt_build_rowmap(anode, map) 
 
              ! Loop over the blocks of snode
-             ! ii = map(node%index(cptr)) 
-             ii = -1 
+             ii = map(node%index(cptr)) 
+             ! ii = -1 
              ilast = cptr ! Set start of current block
              
              do i = cptr, numrow
                 k = map(node%index(i))
 
                 if(k.ne.ii) then
-                   ii = k
+
                    a_blk = a_dblk + ii - cb
+                   ! add dep for updating a_blk block 
+                   call spllt_compute_upd_bet_add(fdata, keep, node, cptr, cptr2, ilast, i-1, a_blk)
                    
-                   ! loop over ljk blocks
-                   ljk=ljk_sa
-                   ! do ljk=ljk_sa,ljk_en
-                   ! loop over lik blocks
-                   dblk = node%blk_sa
-                   do lik=1,nc
-
-                      id_jk = dblk + ljk - (lik-1)
-                      id_ik = dblk + (i-1)/s_nb - (lik-1)
-
-                      write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_ik: ', &
-                           & id_ik, ', id_jk: ', id_jk, ', id_ij: ', a_blk, ', anum: ', anum
-
-                      bc_jk => fdata%bc(id_jk)
-                      bc_ik => fdata%bc(id_ik)
-                      bc_ij => fdata%bc(a_blk)
-
-                      p  = spllt_dep_in_add(bc_ij%dep_in, id_jk, id_ik)
-                      p1 = spllt_dep_out_add(bc_jk%dep_out, a_blk, 1)
-                      p2 = spllt_dep_out_add(bc_ik%dep_out, a_blk, 2)
-
-                      bc_ij%dep_in(p)%p1 = p1
-                      bc_ij%dep_in(p)%p2 = p2
-
-                      bc_jk%dep_out(p1)%p = p
-                      bc_ik%dep_out(p2)%p = p
-
-                      dblk = keep%blocks(dblk)%last_blk + 1
-                   end do
-                   ! end do
-                   
+                   ii = k
+                   ilast = i ! Update start of current block
                 end if
              end do
+
+             a_blk = a_dblk + ii - cb
+             ! add dep for updating a_blk block 
+             call spllt_compute_upd_bet_add(fdata, keep, node, cptr, cptr2, ilast, i-1, a_blk)
 
              ! Move cptr down, ready for next block column of anode
              cptr = cptr2 + 1

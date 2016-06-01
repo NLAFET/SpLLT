@@ -290,7 +290,9 @@ update_between(id, i)
 BODY
 {
 
-   printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d\n", id, id_jk, id_ik);   
+   int sync = get_dep_in_sync(bcs, id, i);
+
+   printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);   
 
    
    /* printf("[update_between] bc_ij: %p, bc_jk: %p, bc_ik: %p\n", bc_ij, bc_jk, bc_ik);    */
@@ -300,37 +302,45 @@ BODY
    /* printf("[update_between] id_jk: %d, p1: %d\n", id_jk, p1);    */
    /* printf("[update_between] id_ik: %d, p2: %d\n", id_ik, p2);    */
 
-   int m = get_blk_m(bcs, id);
-   int n = get_blk_n(bcs, id);
+   if (!sync) {
+      
+      int m = get_blk_m(bcs, id);
+      int n = get_blk_n(bcs, id);
 
-   int dcol = bcol-bcol_sa+1;
+      int dcol = bcol-bcol_sa+1;
 
-   int sbcol = get_bcol(bcs, id_jk);
-   int sblk_sa = get_blk_sa(snodes, nnodes, bcs, id_jk);
-   int sbcol_sa = get_bcol(bcs, sblk_sa);
-   int scol = sbcol - sbcol_sa + 1;
+      int sbcol = get_bcol(bcs, id_jk);
+      int sblk_sa = get_blk_sa(snodes, nnodes, bcs, id_jk);
+      int sbcol_sa = get_bcol(bcs, sblk_sa);
+      int scol = sbcol - sbcol_sa + 1;
 
-   void *blk = get_blk(bcs, id);
+      void *blk = get_blk(bcs, id);
 
-   int n1 = get_blk_n(bcs, id_jk);
+      int n1 = get_blk_n(bcs, id_jk);
 
-   double *src1 = (double *)bc_jk;
-   double *src2 = (double *)bc_ik;
-   double *dest = (double *)bc_ij;
+      double *src1 = (double *)bc_jk;
+      double *src2 = (double *)bc_ik;
+      double *dest = (double *)bc_ij;
    
-   double *buffer = NULL; // not used for now
+      double *buffer = NULL; // not used for now
 
-   int snode = get_node(bcs, id_jk);
+      int snode = get_node(bcs, id_jk);
 
-   /* printf("[update_between] dest: %p\n", dest); */
+      int csrc = get_dep_in_csrc(bcs, id, i);
+      int rsrc = get_dep_in_rsrc(bcs, id, i);
 
-   /* printf("[update_between] dest: %p, src1: %p, src2: %p\n", dest, src1, src2);    */
 
-   spllt_update_between_c(m, n, blk,
-                          dcol, snodes, nnodes, n1, scol, snode,
-                          /* dest, src1, src2, */
-                          bc_ij, bc_jk, bc_ik,
-                          buffer, min_width_blas);
+      /* printf("[update_between] csrc: %d, rsrc: %d\n", csrc, rsrc); */
+      /* printf("[update_between] dest: %p\n", dest); */
+
+      /* printf("[update_between] dest: %p, src1: %p, src2: %p\n", dest, src1, src2);    */
+
+      spllt_update_between_c(m, n, blk,
+                             dcol, snodes, nnodes, n1, scol, snode,
+                             dest, src1 + csrc-1, src2 + rsrc-1,
+                             /* bc_ij, bc_jk, bc_ik, */
+                             buffer, min_width_blas);
+   }
 }
 END
 

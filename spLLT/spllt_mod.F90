@@ -75,6 +75,9 @@ module spllt_mod
      integer :: p1 = 0
      integer(long) :: id_ik = 0
      integer :: p2 = 0
+     integer :: csrc = 0 ! first row in Ljk
+     integer :: rsrc = 0 ! first row in Lik
+     logical :: sync = .true.
   end type spllt_dep_upd_in
 
   ! input dependency
@@ -173,26 +176,41 @@ contains
   !   return
   ! end subroutine spllt_dep_array_init
 
-  function spllt_dep_in_add(dep_in_arr, id_jk, id_ik)
+  function spllt_dep_in_add(dep_in_arr, id_jk, id_ik, csrc, rsrc, sync)
     implicit none
 
     type(spllt_dep_upd_in), dimension(:), pointer :: dep_in_arr
     integer(long) :: id_jk, id_ik
+    integer :: csrc, rsrc
     integer :: spllt_dep_in_add
+    logical, optional :: sync
 
     integer :: sz
+    logical :: s
     type(spllt_dep_upd_in), dimension(:), pointer :: new_dep_in_arr => null()
+
+    if (present(sync)) then
+       s = sync
+    else
+       s = .true.
+    end if
     
     if (.not. associated(dep_in_arr)) then
        allocate(dep_in_arr(1))
        dep_in_arr(1)%id_jk = id_jk
        dep_in_arr(1)%id_ik = id_ik
+       dep_in_arr(1)%csrc = csrc
+       dep_in_arr(1)%rsrc = rsrc
+       dep_in_arr(1)%sync = s
     else
        sz = size(dep_in_arr)
        allocate(new_dep_in_arr(sz+1))
        new_dep_in_arr(1:sz) = dep_in_arr(1:sz)       
        new_dep_in_arr(sz+1)%id_jk = id_jk
        new_dep_in_arr(sz+1)%id_ik = id_ik
+       new_dep_in_arr(sz+1)%csrc = csrc
+       new_dep_in_arr(sz+1)%rsrc = rsrc
+       new_dep_in_arr(sz+1)%sync = s
        deallocate(dep_in_arr)
        dep_in_arr => new_dep_in_arr
     end if

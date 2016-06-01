@@ -196,6 +196,72 @@ contains
 
   end function get_dep_out_flow
 
+  function get_dep_in_csrc(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_in_csrc
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_csrc = 0
+    ! write(*,*) 'i: ', i
+    if (associated(bc(id)%dep_in)) then
+        get_dep_in_csrc = bc(id)%dep_in(i)%csrc
+    end if
+
+  end function get_dep_in_csrc
+
+  function get_dep_in_rsrc(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_in_rsrc
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_rsrc = 0
+    ! write(*,*) 'i: ', i
+    if (associated(bc(id)%dep_in)) then
+        get_dep_in_rsrc = bc(id)%dep_in(i)%rsrc
+    end if
+
+  end function get_dep_in_rsrc
+
+  function get_dep_in_sync(bcs_c, id, i) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    implicit none
+
+    type(c_ptr), value, target :: bcs_c
+    integer(long), value       :: id
+    integer(c_int), value      :: i
+    integer(c_int)             :: get_dep_in_sync
+
+    type(spllt_bc_type), pointer :: bc(:) ! blocks
+
+    call c_f_pointer(bcs_c, bc,(/id/))    
+
+    get_dep_in_sync = 0
+    ! write(*,*) 'i: ', i
+    if (associated(bc(id)%dep_in)) then
+        if (bc(id)%dep_in(i)%sync) get_dep_in_sync = 1
+    end if
+
+  end function get_dep_in_sync
+  
   function get_dep_in_p1(bcs_c, id, i) bind(C)
     use iso_c_binding
     use spllt_mod
