@@ -317,12 +317,12 @@ void spllt_starpu_init_node_cpu_func(void *buffers[], void *cl_arg);
 
 void spllt_starpu_codelet_unpack_args_init_node(void *cl_arg,
                                                 int *snode,
-                                                int *n, void *val, 
-                                                void *map, void *keep) {
+                                                void *val, int *nval, 
+                                                void *keep) {
    
    starpu_codelet_unpack_args(cl_arg,
                               snode,
-                              n, val, map, keep);
+                              val, nval, keep);
 
    return;
 }
@@ -340,8 +340,7 @@ struct starpu_codelet cl_init_node = {
 };
 
 void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle, 
-                                   int snode, int n,
-                                   void *val, void *map, void *keep, 
+                                   int snode, void *val, int nval, void *keep, 
                                    int prio) {
    
    
@@ -349,9 +348,8 @@ void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle,
 
    ret = starpu_task_insert(&cl_init_node,
                             STARPU_VALUE, &snode, sizeof(int),
-                            STARPU_VALUE, &n, sizeof(int),
                             STARPU_VALUE, &val, sizeof(void*),
-                            STARPU_VALUE, &map, sizeof(void*),
+                            STARPU_VALUE, &nval, sizeof(int),
                             STARPU_VALUE, &keep, sizeof(void*),
                             STARPU_RW, node_handle,
                             STARPU_PRIORITY, prio,

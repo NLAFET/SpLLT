@@ -32,7 +32,7 @@ contains
     type(spllt_cntl)      :: cntl
 
     ! local arrays
-    integer, dimension(:), allocatable ::  map ! allocated to have size n.
+    ! integer, dimension(:), allocatable ::  map ! allocated to have size n.
 
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
@@ -132,8 +132,8 @@ contains
     !
     ! Copy matrix values across from a into keep%lfact
     !
-    allocate(map(n),stat=st)
-    if(st.ne.0) go to 10
+    ! allocate(map(n),stat=st)
+    ! if(st.ne.0) go to 10
 
     allocate(tmpmap(n),stat=st)
     if(st.ne.0) go to 10
@@ -176,7 +176,7 @@ contains
     ! write(*,*)"num_nodes: ", num_nodes
     do snode = 1, num_nodes ! loop over nodes
        ! init node
-       call spllt_init_node_task(fdata, fdata%nodes(snode), n, val, map, keep, huge(1))
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
     end do
     ! call system_clock(stop_cpya2l_t)
 ! #if defined(SPLLT_USE_STARPU)
@@ -501,9 +501,6 @@ contains
     integer :: snode, num_nodes
     type(node_type), pointer     :: node, dnode ! node in the atree    
 
-    integer, dimension(:), allocatable ::  map ! allocated to have size n.
-    ! used in copying entries of user's matrix a into factor storage 
-    ! (keep%fact).
     integer, dimension(:), allocatable ::  tmpmap
 
     integer :: st ! stat parameter
@@ -548,10 +545,6 @@ contains
     allocate (keep%lfact(keep%nbcol),stat=st)
     if(st.ne.0) go to 9999
 
-    ! allocate arrays used for mapping matrix coefficients
-    allocate(map(n),stat=st)
-    if(st.ne.0) go to 9999
-
     allocate(tmpmap(n),stat=st)
     if(st.ne.0) go to 9999
     
@@ -593,7 +586,7 @@ contains
     ! write(*,*)"num_nodes: ", num_nodes
     do snode = 1, num_nodes ! loop over nodes
        ! init node
-       call spllt_init_node_task(fdata, fdata%nodes(snode), n, val, map, keep, huge(1))
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
     end do
 ! #if defined(SPLLT_USE_STARPU)
 !     call starpu_f_task_wait_for_all()

@@ -474,19 +474,19 @@ contains
   end subroutine spllt_update_between_c
 
   ! init node
-  subroutine spllt_init_node(snode, n, val, map, keep)
+  ! copy matrix coefficients into lfact array within snode
+  subroutine spllt_init_node(snode, val, keep)
     use spllt_mod
     use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: snode
-    integer, intent(in) :: n      ! order of matrix 
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-#if defined(SPLLT_USE_OMP)
-    integer, pointer, intent(inout) :: map(:)  ! mapping array. Reset for each node
-#else
-    integer, intent(inout) :: map(n)  ! mapping array. Reset for each node
-#endif
+! #if defined(SPLLT_USE_OMP)
+!     integer, pointer, intent(inout) :: map(:)  ! mapping array. Reset for each node
+! #else
+!     integer, intent(inout) :: map(n)  ! mapping array. Reset for each node
+! #endif
     ! so that, if variable (row) i is involved in node,
     ! map(i) is set to its local row index
     type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
@@ -508,10 +508,10 @@ contains
     ! write(*,*)"size map: ", size(map), ", snode: ", snode
     ! write(*,*)"size nodes: ", size(keep%nodes), ", snode: ", snode
     ! Build a map from global to local indices
-    do j = 1, size(keep%nodes(snode)%index)
-       i = keep%nodes(snode)%index(j)
-       map(i) = j - 1
-    end do
+    ! do j = 1, size(keep%nodes(snode)%index)
+    !    i = keep%nodes(snode)%index(j)
+    !    map(i) = j - 1
+    ! end do
 
     ! Fill in keep%lfact by block columns
     dblk = keep%nodes(snode)%blk_sa
@@ -540,6 +540,64 @@ contains
 
     return
   end subroutine spllt_init_node
+
+  ! init blk
+  ! copy matrix coefficicents into blk
+  subroutine spllt_init_blk(id, val, keep)
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer(long) :: id
+    real(wp), dimension(*), intent(in) :: val ! user's matrix values
+    type(MA87_keep), target, intent(inout) :: keep 
+
+    type(block_type), pointer :: blk
+    integer :: sa
+    integer :: sz
+    integer :: bcol
+    integer :: i, j
+
+    blk => keep%blocks(id)
+    
+    sa = blk%sa
+    sz = blk%blkn*blk%blkm
+    bcol = blk%bcol
+
+    keep%lfact(bcol)%lcol(sa:sa+sz-1) = zero
+
+    do i = 1, keep%lmap(bcol)%len_map
+       j = keep%lmap(bcol)%map(1,i)
+       if ((j .ge. sa) .and. (j .le. sa+sz-1)) then
+          keep%lfact(bcol)%lcol(j) = &
+               val(keep%lmap(bcol)%map(2,i))
+       end if
+    end do
+    
+    return
+  end subroutine spllt_init_blk
+
+  subroutine spllt_init_blk_c(id, val_c, nval, keep_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer(long), value  :: id
+    type(c_ptr), value    :: val_c
+    integer, value        :: nval
+    type(c_ptr), value    :: keep_c
+
+    real(wp), pointer :: val(:) ! user's matrix values
+    type(MA87_keep), pointer :: keep 
+
+    call c_f_pointer(val_c, val, (/nval/))
+    call c_f_pointer(keep_c, keep)
+    
+    call spllt_init_blk(id, val, keep)
+
+    return
+  end subroutine spllt_init_blk_c
 
   subroutine spllt_activate_node(snode, keep, fdata)
     use iso_c_binding

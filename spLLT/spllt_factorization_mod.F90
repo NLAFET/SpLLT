@@ -937,7 +937,7 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task(fdata, node, n, val, map, keep, prio)
+  subroutine spllt_init_node_task(fdata, node, val, keep, prio)
     use spllt_mod
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -953,9 +953,7 @@ contains
 
     type(spllt_data_type), target, intent(in)  :: fdata    
     type(spllt_node_type), intent(in) :: node
-    integer, intent(in) :: n      ! order of matrix 
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
-    integer, target, intent(inout) :: map(n)  ! mapping array. Reset for each node
 
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
@@ -965,14 +963,14 @@ contains
 
     integer :: p
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, map_c, keep_c
+    type(c_ptr) :: val_c, keep_c
+    integer(c_int) :: nval
 #endif
 
 #if defined(SPLLT_USE_OMP)
     integer :: snum
     integer :: th_id
     ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    integer, pointer         :: p_map(:)  
     type(MA87_keep), pointer :: p_keep 
     real(wp), pointer :: p_val(:)
 #endif
@@ -984,20 +982,19 @@ contains
     end if
 
 #if defined(SPLLT_USE_STARPU)
+    nval = size(val,1)
     val_c  = c_loc(val(1)) 
-    map_c  = c_loc(map(1)) 
     keep_c = c_loc(keep)
 
     call spllt_insert_init_node_task_c(node%hdl, &
-         & node%num, n, val_c, map_c, keep_c, p)
+         & node%num, val_c, nval, keep_c, p)
 #elif defined(SPLLT_USE_OMP)
 
     snum = node%num
-    p_map => map
     p_keep => keep
     p_val => val
 
-!$omp task firstprivate(snum) firstprivate(n, p_map, p_keep, p_val) &
+!$omp task firstprivate(snum) firstprivate(p_keep, p_val) &
 #if defined(SPLLT_OMP_TRACE)
 !$omp    & shared(ini_nde_id) &
 #endif
@@ -1009,7 +1006,7 @@ contains
     call trace_event_start(ini_nde_id, th_id)
 #endif
 
-    call spllt_init_node(snum, n, p_val, p_map, p_keep)
+    call spllt_init_node(snum, p_val, p_keep)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(ini_nde_id, th_id)
@@ -1018,7 +1015,7 @@ contains
 !$omp end task
 
 #else
-    call spllt_init_node(node%num, n, val, map, keep)
+    call spllt_init_node(node%num, val, keep)
 #endif
     
     return
