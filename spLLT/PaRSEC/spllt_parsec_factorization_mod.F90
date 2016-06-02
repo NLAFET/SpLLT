@@ -39,27 +39,43 @@ contains
     
   end function get_node
 
-  function get_blk_sa(nodes_c, nnodes, bcs_c, id) bind(C)
+  function get_blk_sa(nodes_c, snode) bind(C)
     use iso_c_binding
     use spllt_mod
     use hsl_ma87_double
     implicit none
 
-    type(c_ptr), value, target :: nodes_c, bcs_c
-    integer(c_int)             :: nnodes
-    integer(long), value       :: id
+    type(c_ptr), value, target :: nodes_c
+    integer(c_int), value      :: snode
     integer(long)              :: get_blk_sa
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
     type(node_type), pointer :: node, nodes(:)
     
-    call c_f_pointer(nodes_c, nodes, (/nnodes/))    
-    call c_f_pointer(bcs_c, bc,(/id/))    
+    call c_f_pointer(nodes_c, nodes, (/snode/))    
 
-    node => nodes(bc(id)%blk%node)
+    node => nodes(snode)
     get_blk_sa = node%blk_sa 
     
   end function get_blk_sa
+
+  function get_blk_en(nodes_c, snode) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: nodes_c
+    integer(c_int), value      :: snode
+    integer(long)              :: get_blk_en
+
+    type(node_type), pointer :: node, nodes(:)
+    
+    call c_f_pointer(nodes_c, nodes, (/snode/))    
+
+    node => nodes(snode)
+    get_blk_en = node%blk_en 
+    
+  end function get_blk_en
 
   function get_nc(nodes_c, nnodes, bcs_c, id) bind(C)
     use iso_c_binding

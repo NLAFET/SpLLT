@@ -25,10 +25,35 @@ val            [type = "void *"]
 nval           [type = int]
 keep           [type = "void *"]
 
+init_node(snode)
+
+   snode = 1..nnodes
+   /* id of first block in column */
+   blk_sa =  %{ return get_blk_sa(snodes, snode); %}
+   /* id of last block in column */
+   blk_en =  %{ return get_blk_en(snodes, snode); %}
+
+   : blk(blk_sa)
+
+   CTL ctl -> ctl init_block(blk_sa..blk_en)
+
+   ; (nnodes - snode +1)*4
+
+BODY
+{
+   
+   /* printf("[init_node] snode: %d, blk_sa: %ld, blk_en: %ld\n", snode, blk_sa, blk_en); */
+   
+   spllt_init_node_c(snode, val, nval, keep);
+}
+END
+
 init_block(id)
 
    id = 1..nbc
 
+   /* current node */
+   snode = %{ return get_node(bcs, id); %}
    /* number of update between on current block */
    upd_count = %{ return get_upd_count(bcs, id); %}
 
@@ -40,7 +65,7 @@ init_block(id)
 
    isDiag =  %{ return is_diag(bcs, id); %}
    /* id of first block in column */
-   blk_sa =  %{ return get_blk_sa(snodes, nnodes, bcs, id); %}
+   blk_sa =  %{ return get_blk_sa(snodes, snode); %}
    /* first block column in node */
    bcol_sa =   %{ return get_bcol(bcs, blk_sa); %}
    /* index of diag block on first column within current node */
@@ -52,9 +77,9 @@ init_block(id)
    /* row index of current block in node */
    id_ik_idx = id - id_kk
 
-   node = %{ return get_node(bcs, id); %}
-
    : blk(id)
+
+   CTL ctl <- ctl init_node(snode) 
 
    RW bc <- blk(id)
          -> ((upd_count == 0) && (bcol == bcol_sa) &&  isDiag) ? bc_kk factorize_block(diag_idx)
@@ -62,13 +87,17 @@ init_block(id)
          -> ((upd_count == 0) && (bcol != bcol_sa)) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
          -> (upd_count > 0) ? bc_ij update_between(id, 1) 
 
-   ; (nnodes - node +1)*4
+   ; (nnodes - snode +1)*4
 
 BODY
 {
    /* printf("[init_blk] blk: %d\n", id); */
    
-   spllt_init_blk_c(id, val, nval, keep);
+   /* spllt_init_blk_c(id, val, nval, keep); */
+
+   /* if (id == blk_sa) { */
+   /*    spllt_init_blk_c(snode, val, nval, keep); */
+   /* } */
 }
 END
 
@@ -78,12 +107,11 @@ factorize_block(diag_idx)
 
    diag_idx = 0..(ndiag-1)
    /* id = 1 */
-   id_kk = %{ return diags[diag_idx]; %}
-   
-   /* id = inline_c %{ return get_blk_sa(snodes, nnodes, bcs, id); %} */
-   
+   id_kk = %{ return diags[diag_idx]; %}   
+   /* current node */
+   snode = %{ return get_node(bcs, id_kk); %}   
    /* get first (diag) block id in current node */
-   blk_sa =  %{ return get_blk_sa(snodes, nnodes, bcs, id_kk); %}
+   blk_sa =  %{ return get_blk_sa(snodes, snode); %}
    
    last_blk = %{ return get_last_blk(bcs, id_kk); %}
 
@@ -95,8 +123,6 @@ factorize_block(diag_idx)
    /* Number of update_bet task depending on this task */
    dep_out_count = %{ return get_dep_out_count(bcs, id_kk); %}
 
-   /* current node */
-   node = %{ return get_node(bcs, id_kk); %}
 
    : blk(id_kk)
 
@@ -106,7 +132,7 @@ factorize_block(diag_idx)
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count) /* blk(id_kk) */
 
-   ; (nnodes - node +1)*4 + 3
+   ; (nnodes - snode +1)*4 + 3
 
    /* RW bc_kk <- (id == blk_sa) ? blk(id) : bc_ij update_block(prev_diag, 1, id, id) */
 
@@ -133,10 +159,12 @@ solve_block(diag_idx, id_ik)
    diag_idx  = 0..(ndiag-1)
    /* id of current diag block */
    id_kk =  %{ return diags[diag_idx]; %}
+   /* current node */
+   snode = %{ return get_node(bcs, id_kk); %}
    /* id of prev diag block */
    prev_id_kk =  %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
    /* id of first block in column */
-   blk_sa =  %{ return get_blk_sa(snodes, nnodes, bcs, id_kk); %}
+   blk_sa =  %{ return get_blk_sa(snodes, snode); %}
    /* id of last block in column */
    last_blk =  %{ return get_last_blk(bcs, id_kk); %}
    /* iterator on subdiag blocks */
@@ -161,9 +189,6 @@ solve_block(diag_idx, id_ik)
    /* Number of update_bet task depending on this task */
    dep_out_count =  %{ return get_dep_out_count(bcs, id_ik); %}
 
-   /* current node */
-   node = %{ return get_node(bcs, id_ik); %}
-
    : blk(id_ik)
 
    READ  bc_kk <- bc_kk factorize_block(diag_idx)
@@ -176,7 +201,7 @@ solve_block(diag_idx, id_ik)
                -> (dep_out_count > 0) ? bc update_between_aux(id_ik, 1..dep_out_count) /* blk(id_ik) */
                /* -> blk(id_ik) */
 
-   ; (nnodes - node +1)*4 + 2
+   ; (nnodes - snode +1)*4 + 2
 
 BODY
 {
@@ -196,6 +221,8 @@ update_block(diag_idx, id_jk, id_ik)
    diag_idx = 0..(ndiag-1)
    /* id of current diag block */
    id_kk  =  %{ return diags[diag_idx]; %}
+   /* current node */
+   snode = %{ return get_node(bcs, id_kk); %}
    /* get last block id in current block column */
    last_blk =  %{ return get_last_blk(bcs, id_kk); %}
    /* get number of block column in current node */
@@ -203,7 +230,7 @@ update_block(diag_idx, id_jk, id_ik)
    /* get column number of diag block */
    bcol_diag =   %{ return get_bcol(bcs, id_kk); %}
    /* get first (diag) block id in current node */
-   blk_sa =   %{ return get_blk_sa(snodes, nnodes, bcs, id_kk); %}
+   blk_sa =   %{ return get_blk_sa(snodes, snode); %}
    /* get column number of first block in node */
    bcol_sa =   %{ return get_bcol(bcs, blk_sa); %}
 
@@ -227,8 +254,6 @@ update_block(diag_idx, id_jk, id_ik)
 
    upd_count =  %{ return get_upd_count(bcs, id_ij); %}
 
-   /* current node */
-   node = %{ return get_node(bcs, id_ij); %}
 
    : blk(id_ij)
 
@@ -244,7 +269,7 @@ update_block(diag_idx, id_jk, id_ik)
             -> (bcol > bcol_diag+1) ? bc_ij update_block(diag_idx+1, next_id_kk+id_jk_idx-1,next_id_kk+id_ik_idx-1)
    /* -> ( (bcol == bcol_diag+1) && !isDiag_ij) ?  */
 
-   ; (nnodes - node +1)*4 + 1
+   ; (nnodes - snode +1)*4 + 1
 
 BODY
 {
@@ -268,6 +293,8 @@ END
 update_between_aux(id, i)
 
   id = 1..nbc
+  /* current node */
+  snode = %{ return get_node(bcs, id); %}
 
   dep_out_count =  %{ return get_dep_out_count(bcs, id); %}
 
@@ -282,8 +309,6 @@ update_between_aux(id, i)
   p =  %{ return get_dep_out_p(bcs, id, i); %}
   id_ij =  %{ return get_dep_out_id_ij(bcs, id, i); %}
   flow =  %{ return get_dep_out_flow(bcs, id, i); %}
-  /* current node */
-  node = %{ return get_node(bcs, id); %}
 
   : blk(id)
 
@@ -291,7 +316,7 @@ update_between_aux(id, i)
         -> (flow == 1) ? bc_jk update_between(id_ij, p)
         -> (flow == 2) ? bc_ik update_between(id_ij, p)
 
-   ; (nnodes - node +1)*4
+   ; (nnodes - snode +1)*4
       
 BODY
 {
@@ -304,14 +329,18 @@ END
 update_between(id, i)
 
   id = 1..nbc
+  /* current node */
+  snode = %{ return get_node(bcs, id); %}
+  /* number of update on blk id */
   upd_count =  %{ return get_upd_count(bcs, id); %}
+  /* update index */  
   i = 1..upd_count
   
   bcol =  %{ return get_bcol(bcs, id); %}
   diag_idx = bcol-1
 
   /* get first (diag) block id in current node */
-  blk_sa =   %{ return get_blk_sa(snodes, nnodes, bcs, id); %}
+  blk_sa =   %{ return get_blk_sa(snodes, snode); %}
   /* get the first block column in current node */
   bcol_sa =  %{ return get_bcol(bcs, blk_sa); %}
   diag_idx_sa = bcol_sa-1
@@ -336,8 +365,6 @@ update_between(id, i)
   id_jk_idx = bcol - bcol_sa
   /* row index of current block in node */
   id_ik_idx = id - id_kk
-  /* current node */
-  node = %{ return get_node(bcs, id); %}
 
   : blk(id) 
 
@@ -355,7 +382,7 @@ update_between(id, i)
 
   READ bc_ik <- bc update_between_aux(id_ik, p2)
 
-  ; (nnodes - node +1)*4
+  ; (nnodes - snode +1)*4
 
 BODY
 {
@@ -380,8 +407,10 @@ BODY
 
       int dcol = bcol-bcol_sa+1;
 
+      int src_node = get_node(bcs, id_jk);
+
       int sbcol = get_bcol(bcs, id_jk);
-      int sblk_sa = get_blk_sa(snodes, nnodes, bcs, id_jk);
+      int sblk_sa = get_blk_sa(snodes, src_node);
       int sbcol_sa = get_bcol(bcs, sblk_sa);
       int scol = sbcol - sbcol_sa + 1;
 
@@ -395,7 +424,6 @@ BODY
    
       double *buffer = NULL; // not used for now
 
-      int snode = get_node(bcs, id_jk);
 
       int csrc = get_dep_in_csrc(bcs, id, i);
       int rsrc = get_dep_in_rsrc(bcs, id, i);
@@ -407,7 +435,7 @@ BODY
       /* printf("[update_between] dest: %p, src1: %p, src2: %p\n", dest, src1, src2);    */
 
       spllt_update_between_c(m, n, blk,
-                             dcol, snodes, nnodes, n1, scol, snode,
+                             dcol, snodes, nnodes, n1, scol, src_node,
                              dest, src1 + csrc-1, src2 + rsrc-1,
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);

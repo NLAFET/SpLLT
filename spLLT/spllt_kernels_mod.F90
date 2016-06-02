@@ -541,6 +541,29 @@ contains
     return
   end subroutine spllt_init_node
 
+  ! C wrapper
+  subroutine spllt_init_node_c(snode, val_c, nval, keep_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer(c_int), value  :: snode
+    type(c_ptr), value     :: val_c
+    integer(c_int), value  :: nval
+    type(c_ptr), value     :: keep_c
+    
+    real(wp), pointer :: val(:) ! user's matrix values
+    type(MA87_keep), pointer :: keep 
+
+    call c_f_pointer(val_c, val, (/nval/))
+    call c_f_pointer(keep_c, keep)    
+
+    call spllt_init_node(snode, val, keep)
+
+    return
+  end subroutine spllt_init_node_c
+  
   ! init blk
   ! copy matrix coefficicents into blk
   subroutine spllt_init_blk(id, val, keep)
@@ -585,7 +608,7 @@ contains
 
     integer(long), value  :: id
     type(c_ptr), value    :: val_c
-    integer, value        :: nval
+    integer(c_int), value        :: nval
     type(c_ptr), value    :: keep_c
 
     real(wp), pointer :: val(:) ! user's matrix values
