@@ -52,6 +52,8 @@ init_block(id)
    /* row index of current block in node */
    id_ik_idx = id - id_kk
 
+   node = %{ return get_node(bcs, id); %}
+
    : blk(id)
 
    RW bc <- blk(id)
@@ -59,6 +61,8 @@ init_block(id)
          -> ((upd_count == 0) && (bcol == bcol_sa) && !isDiag) ? bc_ik solve_block(diag_idx, id)
          -> ((upd_count == 0) && (bcol != bcol_sa)) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
          -> (upd_count > 0) ? bc_ij update_between(id, 1) 
+
+   ; (nnodes - node +1)*4
 
 BODY
 {
@@ -91,6 +95,9 @@ factorize_block(diag_idx)
    /* Number of update_bet task depending on this task */
    dep_out_count = %{ return get_dep_out_count(bcs, id_kk); %}
 
+   /* current node */
+   node = %{ return get_node(bcs, id_kk); %}
+
    : blk(id_kk)
 
    RW bc_kk <- (id_kk == blk_sa && upd_count == 0) ? bc init_block(id_kk)
@@ -98,6 +105,8 @@ factorize_block(diag_idx)
             <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1) /* blk(id_kk) */
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count) /* blk(id_kk) */
+
+   ; (nnodes - node +1)*4 + 3
 
    /* RW bc_kk <- (id == blk_sa) ? blk(id) : bc_ij update_block(prev_diag, 1, id, id) */
 
@@ -152,6 +161,9 @@ solve_block(diag_idx, id_ik)
    /* Number of update_bet task depending on this task */
    dep_out_count =  %{ return get_dep_out_count(bcs, id_ik); %}
 
+   /* current node */
+   node = %{ return get_node(bcs, id_ik); %}
+
    : blk(id_ik)
 
    READ  bc_kk <- bc_kk factorize_block(diag_idx)
@@ -163,6 +175,8 @@ solve_block(diag_idx, id_ik)
                -> (col < ncol) ? bc_ik update_block(diag_idx, (id_kk+1)..(id_kk+ncol_upd), id_ik) /* blk(id_ik) */
                -> (dep_out_count > 0) ? bc update_between_aux(id_ik, 1..dep_out_count) /* blk(id_ik) */
                /* -> blk(id_ik) */
+
+   ; (nnodes - node +1)*4 + 2
 
 BODY
 {
@@ -213,6 +227,9 @@ update_block(diag_idx, id_jk, id_ik)
 
    upd_count =  %{ return get_upd_count(bcs, id_ij); %}
 
+   /* current node */
+   node = %{ return get_node(bcs, id_ij); %}
+
    : blk(id_ij)
 
    READ bc_jk <- bc_ik solve_block(diag_idx, id_jk)
@@ -226,6 +243,8 @@ update_block(diag_idx, id_jk, id_ik)
             -> ((bcol == bcol_diag+1) && (id_jk != id_ik)) ? bc_ik solve_block(diag_idx+1, next_id_kk+id_ik_idx-1)
             -> (bcol > bcol_diag+1) ? bc_ij update_block(diag_idx+1, next_id_kk+id_jk_idx-1,next_id_kk+id_ik_idx-1)
    /* -> ( (bcol == bcol_diag+1) && !isDiag_ij) ?  */
+
+   ; (nnodes - node +1)*4 + 1
 
 BODY
 {
@@ -263,12 +282,16 @@ update_between_aux(id, i)
   p =  %{ return get_dep_out_p(bcs, id, i); %}
   id_ij =  %{ return get_dep_out_id_ij(bcs, id, i); %}
   flow =  %{ return get_dep_out_flow(bcs, id, i); %}
+  /* current node */
+  node = %{ return get_node(bcs, id); %}
 
   : blk(id)
 
   RW bc <- /* blk(id) */ (isDiag) ? bc_kk factorize_block(diag_idx) : bc_ik solve_block(diag_idx, id)
         -> (flow == 1) ? bc_jk update_between(id_ij, p)
         -> (flow == 2) ? bc_ik update_between(id_ij, p)
+
+   ; (nnodes - node +1)*4
       
 BODY
 {
@@ -313,6 +336,8 @@ update_between(id, i)
   id_jk_idx = bcol - bcol_sa
   /* row index of current block in node */
   id_ik_idx = id - id_kk
+  /* current node */
+  node = %{ return get_node(bcs, id); %}
 
   : blk(id) 
 
@@ -329,6 +354,8 @@ update_between(id, i)
   READ bc_jk <- bc update_between_aux(id_jk, p1)
 
   READ bc_ik <- bc update_between_aux(id_ik, p2)
+
+  ; (nnodes - node +1)*4
 
 BODY
 {
