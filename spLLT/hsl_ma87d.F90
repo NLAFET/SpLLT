@@ -606,8 +606,8 @@ subroutine MA87_analyse_double(n, ptr, row, order, keep, control, info)
       ! DEBUG deactivated the following oprimisation to avoid small blocks
       ! l_nb = min(huge(l_nb)/2_long, &
       !    (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
-      ! l_nb = (l_nb-1) / 8 + 1
-      ! l_nb = 8 * l_nb
+      l_nb = (l_nb-1) / 8 + 1
+      l_nb = 8 * l_nb
       keep%nodes(node)%nb = l_nb !
 
       ! Copy row list into keep%nodes
