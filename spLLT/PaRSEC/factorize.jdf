@@ -3,6 +3,7 @@ extern "C" %{
 #include "dague.h"
 
 #include "dague_internal.h"
+#include "dague/private_mempool.h"
    //#include "data_dist/matrix/two_dim_rectangle_cyclic.h"
 #include "data_dist/matrix/matrix.h"
 #include "data_dist/matrix/two_dim_tabular.h"
@@ -21,9 +22,12 @@ nbc            [type = int]
 diags          [type = "long int *"]
 ndiag          [type = int]
 min_width_blas [type = int]
+maxmn          [type = int]
 val            [type = "void *"]
 nval           [type = int]
 keep           [type = "void *"]
+p_work         [type = "dague_memory_pool_t *" size = "(sizeof(double)*maxmn*maxmn)"]
+
 
 /* init_node(snode) */
 
@@ -422,9 +426,6 @@ BODY
       double *src2 = (double *)bc_ik;
       double *dest = (double *)bc_ij;
    
-      double *buffer = NULL; // not used for now
-
-
       int csrc = get_dep_in_csrc(bcs, id, i);
       int rsrc = get_dep_in_rsrc(bcs, id, i);
 
@@ -434,11 +435,17 @@ BODY
 
       /* printf("[update_between] dest: %p, src1: %p, src2: %p\n", dest, src1, src2);    */
 
+      /* double *buffer = NULL; // not used for now */
+      void *buffer = dague_private_memory_pop( p_work );
+
       spllt_update_between_c(m, n, blk,
                              dcol, snodes, nnodes, n1, scol, src_node,
                              dest, src1 + csrc-1, src2 + rsrc-1,
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);
+
+      dague_private_memory_push( p_work, buffer );
+
    }
 }
 END
@@ -449,7 +456,7 @@ extern "C" %{
    dague_handle_t* spllt_parsec_factorize(void *snodes, int nnodes, 
                                           void *bcs, int nbc, 
                                           long int *diags, int ndiag,
-                                          int min_width_blas,
+                                          int min_width_blas, int maxmn,
                                           void *val, int nval, void *keep) {
 
       dague_factorize_handle_t* fac_hdl;
@@ -480,11 +487,25 @@ extern "C" %{
                                     snodes, nnodes, 
                                     bcs, nbc, 
                                     diags, ndiag,
-                                    min_width_blas,
-                                    val, nval, keep);
+                                    min_width_blas, maxmn,
+                                    val, nval, keep, 
+                                    NULL);
+
+      fac_hdl->p_work = (dague_memory_pool_t*)malloc(sizeof(dague_memory_pool_t));
+      dague_private_memory_init( fac_hdl->p_work, maxmn * maxmn * sizeof(double) );
 
       assert( NULL != fac_hdl );
 
       return &fac_hdl->super;    
+   }
+
+   void spllt_parsec_factorize_finalize(dague_handle_t *handle) {
+      
+      dague_factorize_handle_t *fac_hdl = (dague_factorize_handle_t *)handle;
+      
+      dague_private_memory_fini(fac_hdl->p_work);
+      free(fac_hdl->p_work);
+
+      dague_handle_free(handle);
    }
 %}

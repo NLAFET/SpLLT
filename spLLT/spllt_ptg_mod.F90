@@ -71,7 +71,7 @@ contains
     nval = size(val, 1)
 
     fac_hdl = spllt_parsec_factorize(nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
-         & cntl%min_width_blas, val_c, nval, keep_c)
+         & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
 
     ! add factorization DAG to PaRSEC
     call dague_enqueue(ctx, fac_hdl)

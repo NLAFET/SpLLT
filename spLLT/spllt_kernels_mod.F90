@@ -443,7 +443,7 @@ contains
     real(wp), pointer, dimension(:) :: dest, src1, src2
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
-    real(wp), pointer :: work(:)
+    real(wp), pointer :: buffer(:)
     type(spllt_bc_type), pointer :: bc(:) ! blocks
     type(node_type), pointer :: nodes(:) ! blocks
     type(block_type), pointer :: blk
@@ -455,8 +455,8 @@ contains
     call c_f_pointer(src1_c, src1, (/n*n1/))
     call c_f_pointer(src2_c, src2, (/m*n1/))    
     
-    ! call c_f_pointer(work_c, work, (/m*n/))    
-    allocate(work(m*n))
+    call c_f_pointer(buffer_c, buffer, (/m*n/))    
+    ! allocate(work(m*n))
     allocate(row_list(1), col_list(1))
 
     ! write(*,*)"node: ", blk%node
@@ -465,9 +465,9 @@ contains
     ! write(*,*)'min_width_blas: ', min_width_blas
 
     call spllt_update_between(m, n, blk, dcol, nodes(blk%node), n1, scol, nodes(snode), dest, & 
-         & src1, src2, row_list, col_list, work, min_width_blas)
+         & src1, src2, row_list, col_list, buffer, min_width_blas)
 
-    deallocate(work)
+    ! deallocate(work)
     deallocate(row_list, col_list)
 
     return
