@@ -25,28 +25,28 @@ val            [type = "void *"]
 nval           [type = int]
 keep           [type = "void *"]
 
-init_node(snode)
+/* init_node(snode) */
 
-   snode = 1..nnodes
-   /* id of first block in column */
-   blk_sa =  %{ return get_blk_sa(snodes, snode); %}
-   /* id of last block in column */
-   blk_en =  %{ return get_blk_en(snodes, snode); %}
+/*    snode = 1..nnodes */
+/*    /\* id of first block in column *\/ */
+/*    blk_sa =  %{ return get_blk_sa(snodes, snode); %} */
+/*    /\* id of last block in column *\/ */
+/*    blk_en =  %{ return get_blk_en(snodes, snode); %} */
 
-   : blk(blk_sa)
+/*    : blk(blk_sa) */
 
-   CTL ctl -> ctl init_block(blk_sa..blk_en)
+/*    CTL ctl -> ctl init_block(blk_sa..blk_en) */
 
-   ; (nnodes - snode +1)*4
+/*    ; (nnodes - snode +1)*4 */
 
-BODY
-{
+/* BODY */
+/* { */
    
-   /* printf("[init_node] snode: %d, blk_sa: %ld, blk_en: %ld\n", snode, blk_sa, blk_en); */
+/*    /\* printf("[init_node] snode: %d, blk_sa: %ld, blk_en: %ld\n", snode, blk_sa, blk_en); *\/ */
    
-   spllt_init_node_c(snode, val, nval, keep);
-}
-END
+/*    spllt_init_node_c(snode, val, nval, keep); */
+/* } */
+/* END */
 
 init_block(id)
 
@@ -79,7 +79,7 @@ init_block(id)
 
    : blk(id)
 
-   CTL ctl <- ctl init_node(snode) 
+   /* CTL ctl <- ctl init_node(snode)  */
 
    RW bc <- blk(id)
          -> ((upd_count == 0) && (bcol == bcol_sa) &&  isDiag) ? bc_kk factorize_block(diag_idx)
@@ -93,7 +93,7 @@ BODY
 {
    /* printf("[init_blk] blk: %d\n", id); */
    
-   /* spllt_init_blk_c(id, val, nval, keep); */
+   spllt_init_blk_c(id, val, nval, keep);
 
    /* if (id == blk_sa) { */
    /*    spllt_init_blk_c(snode, val, nval, keep); */
