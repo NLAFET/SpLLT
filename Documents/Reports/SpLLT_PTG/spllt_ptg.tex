@@ -131,6 +131,19 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 
 \section{Introduction} \label{sec:introduction}
 
+\section{Experimental results}\label{sec:experiments}
+
+\begin{table}[htbp]
+    \begin{center}
+      \input{data/table_cmp_facto_ptg.tex}
+    \end{center}
+    \caption{Factorization times (seconds) obtained with MA87 and
+      SpLLT (with PaRSEC). The factorizations were run with the
+      block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
+      and \texttt{nemin=32}. The lowest factorization times are shown
+      in bold.}
+\end{table}
+
 \section{Concluding remarks}\label{sec:conclusions}
 This report has described in detail the development of a new
 
