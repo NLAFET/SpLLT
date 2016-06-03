@@ -31,6 +31,7 @@ contains
     type(dague_handle_t)            :: fac_hdl
     type(c_ptr) :: bc_c, nodes_c, diags_c, keep_c, val_c
     integer(c_int) :: nbc, nval
+    integer :: start_setup_t, stop_setup_t, rate_setup_t
 #endif
 
     integer(long) :: id
@@ -70,11 +71,14 @@ contains
     val_c = c_loc(val(1))
     nval = size(val, 1)
 
+    call system_clock(start_setup_t, rate_setup_t)
     fac_hdl = spllt_parsec_factorize(nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
-
+    
     ! add factorization DAG to PaRSEC
     call dague_enqueue(ctx, fac_hdl)
+    call system_clock(stop_setup_t)
+    write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
     ! start factorization
     call dague_context_start(ctx)
