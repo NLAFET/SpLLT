@@ -12,6 +12,11 @@ extern "C" %{
 
 #include "spllt_parsec_blk_data.h"
 
+/* #if defined(DAGUE_HAVE_MPI) */
+/* #include <mpi.h> */
+/* static MPI_Datatype block; */
+/* #endif */
+
 %}
 
 blk            [type = "struct blk_desc*"]
@@ -464,7 +469,7 @@ extern "C" %{
       int nodes = 1;
       int rank  = 0;
 
-#ifdef HAVE_MPI
+#if defined(DAGUE_HAVE_MPI)
       {
          int provided;
          MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
@@ -491,17 +496,22 @@ extern "C" %{
                                     val, nval, keep, 
                                     NULL);
 
-      fac_hdl->p_work = (dague_memory_pool_t*)malloc(sizeof(dague_memory_pool_t));
-      dague_private_memory_init( fac_hdl->p_work, maxmn * maxmn * sizeof(double) );
-
       assert( NULL != fac_hdl );
 
+      fac_hdl->p_work = ( dague_memory_pool_t* ) malloc(sizeof(dague_memory_pool_t));
+      dague_private_memory_init( fac_hdl->p_work, maxmn * maxmn * sizeof(double) );
+
+      dague_matrix_add2arena( fac_hdl->arenas[DAGUE_factorize_DEFAULT_ARENA], dague_datatype_double_t,
+                              matrix_UpperLower, 1,
+                              maxmn, maxmn, maxmn,
+                              DAGUE_ARENA_ALIGNMENT_SSE, -1 );
+      
       return &fac_hdl->super;    
    }
 
-   void spllt_parsec_factorize_finalize(dague_handle_t *handle) {
+   void spllt_parsec_factorize_finalize( dague_handle_t *handle ) {
       
-      dague_factorize_handle_t *fac_hdl = (dague_factorize_handle_t *)handle;
+      dague_factorize_handle_t *fac_hdl = (dague_factorize_handle_t *) handle;
       
       dague_private_memory_fini(fac_hdl->p_work);
       free(fac_hdl->p_work);
