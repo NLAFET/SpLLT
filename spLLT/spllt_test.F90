@@ -167,6 +167,8 @@ contains
 #endif
 
 #elif defined(SPLLT_USE_PARSEC)
+
+
     call dague_init(cntl%ncpu, ctx)
 #endif
 

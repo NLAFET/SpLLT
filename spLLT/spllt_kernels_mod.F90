@@ -166,6 +166,134 @@ contains
     return
   end subroutine spllt_update_block_c
 
+  subroutine spllt_update_between_block(m, n, dest, n1, csrc, rsrc, &
+       & dcol, scol, &
+       & blk_dest, dnode, blk_csrc, blk_rsrc, snode, &
+       & min_width_blas, row_list, col_list, buffer)
+    use spllt_mod
+    implicit none
+
+    integer, intent(in) :: m  ! number of rows in destination block
+    integer, intent(in) :: n  ! number of columns in destination block
+    integer :: n1 ! number of columns in source block column
+    real(wp), dimension(*), intent(inout) :: dest ! holds block in L
+    ! that is to be updated.
+    real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
+    real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
+    type(block_type), intent(in) :: blk_dest ! destination block
+    type(block_type), intent(in) :: blk_csrc ! destination block
+    type(block_type), intent(in) :: blk_rsrc ! destination block
+    type(node_type), intent(in) :: dnode ! Node to which blk belongs
+    type(node_type), intent(in) :: snode ! Node to which src belongs
+    integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
+    integer, intent(in) :: scol ! index of block column that blk belongs to in node
+    integer, intent(in) :: min_width_blas      ! Minimum width of source block
+         ! before we use an indirect update_between    
+    integer, dimension(:), allocatable :: row_list ! reallocated to min size m
+    integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+    real(wp), dimension(:), pointer :: buffer
+
+    ! Local
+    integer :: i
+    logical :: diag ! set to true if blk is the diagonal block
+    integer :: size_dnode ! size(dnode%index)
+    integer :: size_snode ! size(snode%index)
+    integer :: col_list_sz ! initialise to 0. then increment while
+    ! rows involed in csrc are recorded, until
+    ! holds the number of columns in blk (= number
+    ! of rows in csrc)
+    integer :: row_list_sz ! initialise to 0. then increment while
+    ! rows involed in rsrc are recorded, until
+    ! holds the number of rows in blk (= number of rows in rsrc)
+    integer :: dcen ! index of end column in dcol
+    ! integer :: dcol ! index of block column that blk belongs to in dnode
+    integer :: dcsa ! index of first column in dcol
+    integer :: cptr ! used in determining the rows that belong to the
+    ! source block csrc
+    integer :: rptr ! used in determining the rows that belong to the
+    ! source block rsrc
+    integer :: drsa, dren ! point to first and last rows of destination
+    ! block blk
+    integer :: s1sa, s1en ! point to the first and last rows of
+    ! the block csrc within scol
+    integer :: s2sa, s2en ! point to the first and last rows of
+    ! the block rsrc within scol
+
+    ! TODO error managment
+    integer :: st
+
+    ! set diag to true if blk is block on diagonal
+    diag = (blk_dest%dblk.eq.blk_dest%id)
+
+    if(size(col_list).lt.n) then
+       deallocate(col_list, stat=st)
+       allocate(col_list(n), stat=st)
+       ! if (st.ne.0) go to 10
+    endif
+    if(size(row_list).lt.m) then
+       deallocate(row_list, stat=st)
+       allocate(row_list(m), stat=st)
+       ! if (st.ne.0) go to 10
+    endif
+
+    col_list_sz = 0
+    row_list_sz = 0
+
+    size_dnode = size(dnode%index)
+    size_snode = size(snode%index)
+
+    ! Set dcsa and dcen to hold indices
+    ! of start and end columns in dcol (global column indices)
+    dcsa = dnode%sa + (dcol-1)*dnode%nb                
+    dcen = min(dnode%sa + dcol*dnode%nb-1, dnode%en)
+
+    ! Find first and last rows of csrc block
+    i = scol + blk_csrc%id - blk_csrc%dblk ! block in snode
+    cptr = 1 + (i-1)*snode%nb
+
+    ! loop while row index within scol is less the index
+    ! of the first column in blk
+    
+    do while(snode%index(cptr).lt.dcsa)
+       cptr = cptr + 1
+       if(cptr .gt. min(size_snode, i*snode%nb)) return ! No incident columns
+    end do
+
+    ! Set s1sa to point to first row in csrc
+    s1sa = cptr 
+
+    ! Now record the rows in csrc. Local row numbers
+    ! are held in col_list(1:slen-slsa+1)
+    do while(snode%index(cptr).le.dcen)
+       col_list_sz = col_list_sz + 1
+       col_list(col_list_sz) = snode%index(cptr) - dcsa + 1
+       cptr = cptr + 1
+       if(cptr .gt. min(size_snode, i*snode%nb)) exit ! No more rows
+    end do
+
+    ! Set slen to point to last row in csrc
+    s1en = cptr - 1 
+
+    ! Loop over rsrc rows, building row list. Identify required data, form
+    ! outer product of it into buffer.
+    
+    ! Find first and last rows of destination block
+    i = dcol + blk_dest%id - blk_dest%dblk ! block in snode
+    drsa = dnode%index(1 + (i-1)*dnode%nb)
+    dren = dnode%index(min(1 + i*dnode%nb - 1, size_dnode))
+
+    ! Find first row in rsrc
+    i = scol + blk_rsrc%id - blk_rsrc%dblk ! block in snode
+    rptr = 1 + (i-1)*snode%nb
+
+    do while(snode%index(rptr).lt.drsa)
+       rptr = rptr + 1
+       if(rptr .gt. min(size_snode, i*snode%nb)) return ! No incident row! Shouldn't happen.
+    end do
+    s2sa = rptr ! Points to first row in rsrc
+
+  end subroutine spllt_update_between_block
+  
   !*************************************************
   
   !   Given a destination block dest, update_between performs the update
