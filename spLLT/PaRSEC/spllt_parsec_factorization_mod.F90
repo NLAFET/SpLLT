@@ -21,7 +21,27 @@ module spllt_parsec_factorization_mod
 
 contains
 
-  function get_node(bcs_c, id) bind(C)
+  ! get C ptr on node snode
+
+  function get_node(nodes_c, snode) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(c_ptr), value, target :: nodes_c
+    integer(c_int), value      :: snode
+    type(c_ptr)                :: get_node
+
+    type(node_type), pointer :: nodes(:)
+
+    call c_f_pointer(nodes_c, nodes, (/snode/))    
+    
+    get_node = c_loc(nodes(snode))
+    
+  end function get_node
+
+  function get_blk_node(bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod
     use hsl_ma87_double
@@ -29,15 +49,15 @@ contains
 
     type(c_ptr), value, target :: bcs_c
     integer(long), value       :: id
-    integer(c_int)              :: get_node
+    integer(c_int)              :: get_blk_node
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
     
     call c_f_pointer(bcs_c, bc,(/id/))    
 
-    get_node = bc(id)%blk%node 
+    get_blk_node = bc(id)%blk%node 
     
-  end function get_node
+  end function get_blk_node
 
   function get_blk_sa(nodes_c, snode) bind(C)
     use iso_c_binding

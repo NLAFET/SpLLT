@@ -428,13 +428,15 @@ contains
     ! first (diag) block
     dblk = node%blk_sa
     
-    do c = 1,nc
+    do c = 1, nc
 
        sync = .true.
 
        do j = ljk_en,ljk_sa,-1
-          do i = lik_en,lik_sa,-1
-                          
+          do i = lik_en, max(lik_sa, j), -1
+             
+             ! if (i .lt. j) cycle
+
              ! compute current ljk block id
              id_jk = dblk + j - (c-1)
              ! compute current lik block id
@@ -453,6 +455,7 @@ contains
              bc_ij => fdata%bc(dest_blk)
 
              if ((j .eq. ljk_sa) .and. (i .eq. lik_sa)) sync = .false.
+             ! sync = .false.
 
              p  = spllt_dep_in_add(bc_ij%dep_in, id_jk, id_ik, csrc, rsrc, sync)
 

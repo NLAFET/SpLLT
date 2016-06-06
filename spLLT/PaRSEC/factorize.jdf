@@ -62,7 +62,7 @@ init_block(id)
    id = 1..nbc
 
    /* current node */
-   snode = %{ return get_node(bcs, id); %}
+   snode = %{ return get_blk_node(bcs, id); %}
    /* number of update between on current block */
    upd_count = %{ return get_upd_count(bcs, id); %}
 
@@ -118,7 +118,7 @@ factorize_block(diag_idx)
    /* id = 1 */
    id_kk = %{ return diags[diag_idx]; %}   
    /* current node */
-   snode = %{ return get_node(bcs, id_kk); %}   
+   snode = %{ return get_blk_node(bcs, id_kk); %}   
    /* get first (diag) block id in current node */
    blk_sa =  %{ return get_blk_sa(snodes, snode); %}
    
@@ -169,7 +169,7 @@ solve_block(diag_idx, id_ik)
    /* id of current diag block */
    id_kk =  %{ return diags[diag_idx]; %}
    /* current node */
-   snode = %{ return get_node(bcs, id_kk); %}
+   snode = %{ return get_blk_node(bcs, id_kk); %}
    /* id of prev diag block */
    prev_id_kk =  %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
    /* id of first block in column */
@@ -231,7 +231,7 @@ update_block(diag_idx, id_jk, id_ik)
    /* id of current diag block */
    id_kk  =  %{ return diags[diag_idx]; %}
    /* current node */
-   snode = %{ return get_node(bcs, id_kk); %}
+   snode = %{ return get_blk_node(bcs, id_kk); %}
    /* get last block id in current block column */
    last_blk =  %{ return get_last_blk(bcs, id_kk); %}
    /* get number of block column in current node */
@@ -303,7 +303,7 @@ update_between_aux(id, i)
 
   id = 1..nbc
   /* current node */
-  snode = %{ return get_node(bcs, id); %}
+  snode = %{ return get_blk_node(bcs, id); %}
 
   dep_out_count =  %{ return get_dep_out_count(bcs, id); %}
 
@@ -339,7 +339,7 @@ update_between(id, i)
 
   id = 1..nbc
   /* current node */
-  snode = %{ return get_node(bcs, id); %}
+  snode = %{ return get_blk_node(bcs, id); %}
   /* number of update on blk id */
   upd_count =  %{ return get_upd_count(bcs, id); %}
   /* update index */  
@@ -409,49 +409,87 @@ BODY
    /* printf("[update_between] id_jk: %d, p1: %d\n", id_jk, p1);    */
    /* printf("[update_between] id_ik: %d, p2: %d\n", id_ik, p2);    */
 
-   if (!sync) {
+   /* if (!sync) { */
       
-      int m = get_blk_m(bcs, id);
-      int n = get_blk_n(bcs, id);
+   /*    int m = get_blk_m(bcs, id); */
+   /*    int n = get_blk_n(bcs, id); */
 
-      int dcol = bcol-bcol_sa+1;
+   /*    int dcol = bcol-bcol_sa+1; */
 
-      int src_node = get_node(bcs, id_jk);
+   /*    int src_node = get_blk_node(bcs, id_jk); */
 
-      int sbcol = get_bcol(bcs, id_jk);
-      int sblk_sa = get_blk_sa(snodes, src_node);
-      int sbcol_sa = get_bcol(bcs, sblk_sa);
-      int scol = sbcol - sbcol_sa + 1;
+   /*    int sbcol = get_bcol(bcs, id_jk); */
+   /*    int sblk_sa = get_blk_sa(snodes, src_node); */
+   /*    int sbcol_sa = get_bcol(bcs, sblk_sa); */
+   /*    int scol = sbcol - sbcol_sa + 1; */
 
-      void *blk = get_blk(bcs, id);
+   /*    void *blk_ij = get_blk(bcs, id); */
 
-      int n1 = get_blk_n(bcs, id_jk);
+   /*    int n1 = get_blk_n(bcs, id_jk); */
 
-      double *src1 = (double *)bc_jk;
-      double *src2 = (double *)bc_ik;
-      double *dest = (double *)bc_ij;
+   /*    double *src1 = (double *)bc_jk; */
+   /*    double *src2 = (double *)bc_ik; */
+   /*    double *dest = (double *)bc_ij; */
    
-      int csrc = get_dep_in_csrc(bcs, id, i);
-      int rsrc = get_dep_in_rsrc(bcs, id, i);
+   /*    int csrc = get_dep_in_csrc(bcs, id, i); */
+   /*    int rsrc = get_dep_in_rsrc(bcs, id, i); */
 
+   /*    void *buffer = dague_private_memory_pop( p_work ); */
 
-      /* printf("[update_between] csrc: %d, rsrc: %d\n", csrc, rsrc); */
-      /* printf("[update_between] dest: %p\n", dest); */
+   /*    void *blk_jk = get_blk(bcs, id_jk); */
+   /*    void *blk_ik = get_blk(bcs, id_ik); */
 
-      /* printf("[update_between] dest: %p, src1: %p, src2: %p\n", dest, src1, src2);    */
+   /*    spllt_update_between_c(m, n, blk_ij, */
+   /*                           dcol, snodes, nnodes, n1, scol, src_node, */
+   /*                           dest, src1 + csrc-1, src2 + rsrc-1, */
+   /*                           /\* bc_ij, bc_jk, bc_ik, *\/ */
+   /*                           buffer, min_width_blas); */
 
-      /* double *buffer = NULL; // not used for now */
-      void *buffer = dague_private_memory_pop( p_work );
+   /*    dague_private_memory_push( p_work, buffer ); */
 
-      spllt_update_between_c(m, n, blk,
-                             dcol, snodes, nnodes, n1, scol, src_node,
-                             dest, src1 + csrc-1, src2 + rsrc-1,
-                             /* bc_ij, bc_jk, bc_ik, */
-                             buffer, min_width_blas);
+   /* } */
 
-      dague_private_memory_push( p_work, buffer );
+   int src_node = get_blk_node(bcs, id_jk);
+   int dest_node = get_blk_node(bcs, id);
 
-   }
+   int m = get_blk_m(bcs, id);
+   int n = get_blk_n(bcs, id);
+
+   int n1 = get_blk_n(bcs, id_jk);
+
+   int dcol = bcol-bcol_sa+1;
+
+   int sbcol = get_bcol(bcs, id_jk);
+   int sblk_sa = get_blk_sa(snodes, src_node);
+   int sbcol_sa = get_bcol(bcs, sblk_sa);
+   int scol = sbcol - sbcol_sa + 1;
+   
+   void *snode = get_node(snodes, src_node);
+   void *dnode = get_node(snodes, dest_node);
+
+   void *blk_ij = get_blk(bcs, id);
+   void *blk_jk = get_blk(bcs, id_jk);
+   void *blk_ik = get_blk(bcs, id_ik);
+
+   /*    double *src1 = (double *)bc_jk; */
+   /*    double *src2 = (double *)bc_ik; */
+   /*    double *dest = (double *)bc_ij; */
+
+   int csrc = get_dep_in_csrc(bcs, id, i);
+   int rsrc = get_dep_in_rsrc(bcs, id, i);
+ 
+   /* printf("csrc: %d, rsrc: %d\n", csrc, rsrc);  */
+
+   void *buffer = dague_private_memory_pop( p_work );
+      
+   /* if (!sync) { */
+   spllt_update_between_block_c(m, n, bc_ij, n1, bc_jk, bc_ik, dcol, scol,
+                                blk_ij, dnode, blk_jk, blk_ik, snode,
+                                min_width_blas, buffer);
+   /* } */
+
+   dague_private_memory_push( p_work, buffer );
+
 }
 END
 

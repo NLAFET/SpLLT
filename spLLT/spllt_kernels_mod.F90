@@ -171,6 +171,7 @@ contains
        & blk_dest, dnode, blk_csrc, blk_rsrc, snode, &
        & min_width_blas, row_list, col_list, buffer)
     use spllt_mod
+    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: m  ! number of rows in destination block
@@ -194,7 +195,6 @@ contains
     real(wp), dimension(:), pointer :: buffer
 
     ! Local
-    integer :: i
     logical :: diag ! set to true if blk is the diagonal block
     integer :: size_dnode ! size(dnode%index)
     integer :: size_snode ! size(snode%index)
@@ -218,6 +218,12 @@ contains
     ! the block csrc within scol
     integer :: s2sa, s2en ! point to the first and last rows of
     ! the block rsrc within scol
+    integer :: drow, srow
+    integer :: dptr_sa
+    integer :: dptr
+    integer :: ndiag ! set to int(s1en-s1sa+1) if blk is a
+    ! block on diagonal and 0 ow. so is number of triangular rows of update
+    integer :: bcptr, brptr
 
     ! TODO error managment
     integer :: st
@@ -248,27 +254,29 @@ contains
     dcen = min(dnode%sa + dcol*dnode%nb-1, dnode%en)
 
     ! Find first and last rows of csrc block
-    i = scol + blk_csrc%id - blk_csrc%dblk ! block in snode
-    cptr = 1 + (i-1)*snode%nb
+    srow = scol + blk_csrc%id - blk_csrc%dblk ! block in snode
+    cptr = 1 + (srow-1)*snode%nb
 
     ! loop while row index within scol is less the index
     ! of the first column in blk
     
-    do while(snode%index(cptr).lt.dcsa)
+    do while( snode%index(cptr) .lt. dcsa )
        cptr = cptr + 1
-       if(cptr .gt. min(size_snode, i*snode%nb)) return ! No incident columns
+       if( cptr .gt. min(size_snode, srow*snode%nb) ) return ! No incident columns
     end do
 
     ! Set s1sa to point to first row in csrc
-    s1sa = cptr 
+    s1sa = cptr
+    ! first row within csrc block
+    bcptr = 1 + (cptr - (srow-1)*snode%nb - 1)*n1
 
     ! Now record the rows in csrc. Local row numbers
     ! are held in col_list(1:slen-slsa+1)
-    do while(snode%index(cptr).le.dcen)
+    do while( snode%index(cptr) .le. dcen )
        col_list_sz = col_list_sz + 1
        col_list(col_list_sz) = snode%index(cptr) - dcsa + 1
        cptr = cptr + 1
-       if(cptr .gt. min(size_snode, i*snode%nb)) exit ! No more rows
+       if(cptr .gt. min(size_snode, srow*snode%nb) ) exit ! No more rows
     end do
 
     ! Set slen to point to last row in csrc
@@ -278,21 +286,137 @@ contains
     ! outer product of it into buffer.
     
     ! Find first and last rows of destination block
-    i = dcol + blk_dest%id - blk_dest%dblk ! block in snode
-    drsa = dnode%index(1 + (i-1)*dnode%nb)
-    dren = dnode%index(min(1 + i*dnode%nb - 1, size_dnode))
+    drow = dcol + blk_dest%id - blk_dest%dblk ! block in snode
+    drsa = dnode%index(1 + (drow-1)*dnode%nb)
+    dren = dnode%index(min(1 + drow*dnode%nb - 1, size_dnode))
 
     ! Find first row in rsrc
-    i = scol + blk_rsrc%id - blk_rsrc%dblk ! block in snode
-    rptr = 1 + (i-1)*snode%nb
+    srow = scol + blk_rsrc%id - blk_rsrc%dblk ! block in snode
+    ! first row within rsrc block
+    rptr = 1 + (srow-1)*snode%nb
 
-    do while(snode%index(rptr).lt.drsa)
+    do while( snode%index(rptr) .lt. drsa)
        rptr = rptr + 1
-       if(rptr .gt. min(size_snode, i*snode%nb)) return ! No incident row! Shouldn't happen.
+       if( rptr .gt. min(size_snode, srow*snode%nb) ) return ! No incident row! Shouldn't happen.
     end do
     s2sa = rptr ! Points to first row in rsrc
 
+    brptr = 1 + (rptr - (srow-1)*snode%nb - 1)*n1
+
+    ! Find the first row of destination block
+    drow = dcol + blk_dest%id - blk_dest%dblk ! row block of blk column
+    dptr_sa = 1 + (drow-1)*dnode%nb
+
+    ! Now record the rows in rsrc. Local row numbers
+    ! are held in row_list(1:s2en-s2sa+1)
+    dptr = dptr_sa ! Pointer for destination block
+
+    do rptr = s2sa, min( size_snode, srow*snode%nb )
+       if( snode%index(rptr) .gt. dren ) exit
+       do while(dnode%index(dptr) .lt. snode%index(rptr))
+          dptr = dptr + 1
+       end do
+       row_list_sz = row_list_sz + 1
+       row_list(row_list_sz) = dptr - dptr_sa + 1
+    end do
+    s2en = rptr - 1 ! Points to last row in rsrc
+    
+    ! write(*,*)'s_nb:',snode%nb, 'd_nb:',dnode%nb
+    ! write(*,*)'m:', m, ', n:', n, ', n1:', n1, ', diag:', diag
+    ! write(*,*)'blk_jk:', blk_csrc%id, 'blk_ik:', blk_rsrc%id, 'blk_ij:', blk_dest%id
+    ! write(*,*)'col_list_sz:', col_list_sz
+    diag = diag .and. (blk_csrc%id .eq. blk_rsrc%id)
+ 
+    if(diag) then
+       ! blk is a block on diagonal
+       ndiag = int(s1en-s1sa+1)
+       ! write(*,*) 'cptr:', s1sa, 'cptr2:', s1en, 'rptr:', s2sa, 'rptr2:', s2en, 'ndiag:', ndiag
+       ! write(*,*) 'bcptr:', bcptr, 'brptr:', brptr, 'ndiag:',ndiag
+
+       call dsyrk('U', 'T', ndiag, n1, -one, csrc(bcptr), &
+            n1, zero, buffer, col_list_sz)
+
+       if( s2en-s2sa+1-ndiag .gt. 0 ) then
+          call dgemm('T', 'N', ndiag, int(s2en-s2sa+1-ndiag), &
+               n1, -one, csrc(bcptr), n1, rsrc(brptr+n1*ndiag), n1, zero, &
+               buffer(1+col_list_sz*ndiag), col_list_sz)
+       endif
+    else
+       ! Off diagonal block
+       ndiag = 0
+       call dgemm('T', 'N', int(s1en-s1sa+1), int(s2en-s2sa+1), n1, &
+            -one, csrc(bcptr), n1, rsrc(brptr), n1, zero, buffer, col_list_sz)
+    endif
+
+    !
+    ! Apply update
+    !    
+    
+    ! ndiag = min(ndiag, row_list_sz)
+    call expand_buffer(dest, n, row_list, row_list_sz, &
+         col_list, col_list_sz, ndiag, buffer)
+
+    return
   end subroutine spllt_update_between_block
+
+  ! C wrapper
+  
+  subroutine spllt_update_between_block_c(m, n, dest_c, n1, csrc_c, rsrc_c, &
+       & dcol, scol, &
+       & blk_dest_c, dnode_c, blk_csrc_c, blk_rsrc_c, snode_c, &
+       & min_width_blas, buffer_c) bind(C)
+    use iso_c_binding
+    use spllt_mod
+    use hsl_ma87_double
+    implicit none
+
+    integer(c_int), value  :: m ! number of rows in dest
+    integer(c_int), value  :: n ! number of columns in dest    
+    type(c_ptr), value     :: dest_c
+    integer(c_int), value  :: n1 ! number of columns in src    
+    type(c_ptr), value     :: csrc_c
+    type(c_ptr), value     :: rsrc_c
+    integer(c_int), value  :: dcol
+    integer(c_int), value  :: scol
+    type(c_ptr), value     :: blk_dest_c
+    type(c_ptr), value     :: dnode_c
+    type(c_ptr), value     :: blk_csrc_c
+    type(c_ptr), value     :: blk_rsrc_c
+    type(c_ptr), value     :: snode_c
+    integer(c_int), value  :: min_width_blas
+    type(c_ptr), value     :: buffer_c
+    
+    real(wp), pointer, dimension(:) :: dest, csrc, rsrc
+    integer, dimension(:), allocatable :: row_list ! reallocated to min size m
+    integer, dimension(:), allocatable :: col_list ! reallocated to min size n
+    type(node_type), pointer :: dnode, snode
+    type(block_type), pointer :: blk_dest, blk_csrc, blk_rsrc
+    real(wp), pointer, dimension(:) :: buffer
+    
+    call c_f_pointer(dest_c, dest, (/m*n/))
+    call c_f_pointer(csrc_c, csrc, (/n*n1/))
+    call c_f_pointer(rsrc_c, rsrc, (/m*n1/))    
+
+    call c_f_pointer(dnode_c, dnode)    
+    call c_f_pointer(snode_c, snode)    
+
+    call c_f_pointer(blk_dest_c, blk_dest)    
+    call c_f_pointer(blk_csrc_c, blk_csrc)    
+    call c_f_pointer(blk_rsrc_c, blk_rsrc)    
+    
+    call c_f_pointer(buffer_c, buffer, (/m*n/))    
+
+    allocate(row_list(1), col_list(1))
+
+    call spllt_update_between_block(m, n, dest, n1, csrc, rsrc, &
+         & dcol, scol, &
+         & blk_dest, dnode, blk_csrc, blk_rsrc, snode, &
+         & min_width_blas, row_list, col_list, buffer)
+
+    deallocate(row_list, col_list)
+
+    return
+  end subroutine spllt_update_between_block_c
   
   !*************************************************
   
