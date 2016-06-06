@@ -38,6 +38,7 @@ contains
 #endif
 #elif defined(SPLLT_USE_PARSEC)
     use dague_f08_interfaces
+    use spllt_parsec_mod
     use spllt_ptg_mod
 #endif
     implicit none
@@ -168,8 +169,8 @@ contains
 
 #elif defined(SPLLT_USE_PARSEC)
 
-
-    call dague_init(cntl%ncpu, ctx)
+    ctx = parsec_init(cntl%ncpu)
+    ! call dague_init(cntl%ncpu, ctx)
 #endif
 
     write(*,'("[>] factorize")')

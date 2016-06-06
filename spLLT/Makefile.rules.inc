@@ -29,6 +29,7 @@ parsecobjs := spllt_ptg_mod.o
 parsecobjs += factorize.o
 parsecobjs += spllt_parsec_factorization_mod.o
 parsecobjs += spllt_parsec_blk_data.o
+parsecobjs += spllt_parsec_wrap.o spllt_parsec_mod.o
 endif
 
 # Module build dependencies
