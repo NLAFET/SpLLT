@@ -169,7 +169,8 @@ contains
 
 #elif defined(SPLLT_USE_PARSEC)
 
-    ctx = parsec_init(cntl%ncpu)
+    ctx = parsec_init(cntl%ncpu, nds, rank)
+    write(*,'("[>] Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
     ! call dague_init(cntl%ncpu, ctx)
 #endif
 

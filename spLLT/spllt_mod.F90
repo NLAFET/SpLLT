@@ -42,6 +42,8 @@ module spllt_mod
 
 #if defined(SPLLT_USE_PARSEC)
   type(dague_context_t) :: ctx
+  integer(c_int)        :: nds
+  integer(c_int)        :: rank
 #endif
 
   type spllt_cntl

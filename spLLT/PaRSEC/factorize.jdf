@@ -506,15 +506,6 @@ extern "C" %{
 
       int nodes = 1;
       int rank  = 0;
-
-#if defined(DAGUE_HAVE_MPI)
-      {
-         int provided;
-         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
-      }
-      MPI_Comm_size(MPI_COMM_WORLD, &nodes);
-      MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
       
       printf("[factorize] nodes: %d, rank: %d\n", nodes, rank);
       printf("[factorize] number of blocks: %d\n", nbc);
