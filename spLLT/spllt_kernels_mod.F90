@@ -321,40 +321,56 @@ contains
     end do
     s2en = rptr - 1 ! Points to last row in rsrc
     
-    ! write(*,*)'s_nb:',snode%nb, 'd_nb:',dnode%nb
-    ! write(*,*)'m:', m, ', n:', n, ', n1:', n1, ', diag:', diag
-    ! write(*,*)'blk_jk:', blk_csrc%id, 'blk_ik:', blk_rsrc%id, 'blk_ij:', blk_dest%id
-    ! write(*,*)'col_list_sz:', col_list_sz
     diag = diag .and. (blk_csrc%id .eq. blk_rsrc%id)
- 
-    if(diag) then
-       ! blk is a block on diagonal
-       ndiag = int(s1en-s1sa+1)
-       ! write(*,*) 'cptr:', s1sa, 'cptr2:', s1en, 'rptr:', s2sa, 'rptr2:', s2en, 'ndiag:', ndiag
-       ! write(*,*) 'bcptr:', bcptr, 'brptr:', brptr, 'ndiag:',ndiag
 
-       call dsyrk('U', 'T', ndiag, n1, -one, csrc(bcptr), &
-            n1, zero, buffer, col_list_sz)
+    if(n1.ge.min_width_blas) then
 
-       if( s2en-s2sa+1-ndiag .gt. 0 ) then
-          call dgemm('T', 'N', ndiag, int(s2en-s2sa+1-ndiag), &
-               n1, -one, csrc(bcptr), n1, rsrc(brptr+n1*ndiag), n1, zero, &
-               buffer(1+col_list_sz*ndiag), col_list_sz)
+       ! write(*,*)'s_nb:',snode%nb, 'd_nb:',dnode%nb
+       ! write(*,*)'m:', m, ', n:', n, ', n1:', n1, ', diag:', diag
+       ! write(*,*)'blk_jk:', blk_csrc%id, 'blk_ik:', blk_rsrc%id, 'blk_ij:', blk_dest%id
+       ! write(*,*)'col_list_sz:', col_list_sz
+
+       if(diag) then
+          ! blk is a block on diagonal
+          ndiag = int(s1en-s1sa+1)
+          ! write(*,*) 'cptr:', s1sa, 'cptr2:', s1en, 'rptr:', s2sa, 'rptr2:', s2en, 'ndiag:', ndiag
+          ! write(*,*) 'bcptr:', bcptr, 'brptr:', brptr, 'ndiag:',ndiag
+
+          call dsyrk('U', 'T', ndiag, n1, -one, csrc(bcptr), &
+               n1, zero, buffer, col_list_sz)
+
+          if( s2en-s2sa+1-ndiag .gt. 0 ) then
+             call dgemm('T', 'N', ndiag, int(s2en-s2sa+1-ndiag), &
+                  n1, -one, csrc(bcptr), n1, rsrc(brptr+n1*ndiag), n1, zero, &
+                  buffer(1+col_list_sz*ndiag), col_list_sz)
+          endif
+       else
+          ! Off diagonal block
+          ndiag = 0
+          call dgemm('T', 'N', int(s1en-s1sa+1), int(s2en-s2sa+1), n1, &
+               -one, csrc(bcptr), n1, rsrc(brptr), n1, zero, buffer, col_list_sz)
        endif
+
+       !
+       ! Apply update
+       !    
+
+       ! ndiag = min(ndiag, row_list_sz)
+       call expand_buffer(dest, n, row_list, row_list_sz, &
+            col_list, col_list_sz, ndiag, buffer)
+
     else
-       ! Off diagonal block
+       ! Low flop/buffer ratio => perform update operation directly
+       ! set ndiag if blk is a diagonal block
        ndiag = 0
-       call dgemm('T', 'N', int(s1en-s1sa+1), int(s2en-s2sa+1), n1, &
-            -one, csrc(bcptr), n1, rsrc(brptr), n1, zero, buffer, col_list_sz)
+       if(diag) ndiag = int(s1en-s1sa+1)
+
+
+       call update_direct(n, dest, n1, csrc(bcptr), rsrc(brptr), row_list, row_list_sz, &
+            col_list, col_list_sz, ndiag)
+
     endif
 
-    !
-    ! Apply update
-    !    
-    
-    ! ndiag = min(ndiag, row_list_sz)
-    call expand_buffer(dest, n, row_list, row_list_sz, &
-         col_list, col_list_sz, ndiag, buffer)
 
     return
   end subroutine spllt_update_between_block
