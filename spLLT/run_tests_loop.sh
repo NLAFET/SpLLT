@@ -24,16 +24,20 @@ do
                 echo "[run_tests] nemin: $nemin"
 
                 # ./run_ma87
-                echo "[run_tests] run MA87"
-                export OMP_NUM_THREADS=${ncpu} 
-                ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
                 echo "[run_tests] run SPLLT_STARPU"
                 rm -rf $trace_dir/$prof_file
                 # just to make sure
                 export OMP_NUM_THREADS=1
                 case $build in
+                    ma87)
+                        echo "[run_tests] run MA87"
+                        export OMP_NUM_THREADS=${ncpu} 
+                        ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
+                        ;;
+                    parsec)
+                        ./spllt_parsec_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_parsec/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}
+                        ;;
                     starpu)
-                        # ./spllt_starpu_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_starpu/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
                         ./spllt_starpu_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_starpu/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}
                         ;;
                     gnu_omp)
