@@ -144,6 +144,8 @@ module spllt_mod
 #if defined(SPLLT_USE_PARSEC)
      ! ids of diag blocks. size keep%nbcol
      integer(long), allocatable :: diags(:)
+     ! data descriptor
+     type(c_ptr) :: ddesc
 #endif
   end type spllt_data_type
 

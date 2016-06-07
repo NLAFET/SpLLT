@@ -33,7 +33,6 @@ contains
     type(c_ptr)                     :: bc_c, nodes_c, diags_c, keep_c, val_c
     integer(c_int)                  :: nbc, nval
     integer                         :: start_setup_t, stop_setup_t, rate_setup_t
-    type(c_ptr)                     :: blk_desc ! Parsec block data descriptor 
 #endif
 
     integer(long) :: id
@@ -77,11 +76,11 @@ contains
 
     ! initialize block data descriptor
 
-    blk_desc = spllt_alloc_blk_desc()
+    fdata%ddesc = spllt_alloc_blk_desc()
 
-    call spllt_parsec_blk_data_init(blk_desc, bc_c, nbc, nds, rank) 
+    call spllt_parsec_blk_data_init(fdata%ddesc, bc_c, nbc, nds, rank) 
     
-    fac_hdl = spllt_parsec_factorize(blk_desc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
+    fac_hdl = spllt_parsec_factorize(fdata%ddesc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
     
     ! add factorization DAG to PaRSEC
