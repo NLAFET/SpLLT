@@ -21,3 +21,15 @@ dague_context_t* parsec_init( int nb_cores, int *nodes, int *rank) {
 
    return context;
 }
+
+void parsec_fini(dague_context_t **ctx) {
+
+   printf("[parsec fini]\n");
+   
+   dague_fini(ctx);
+
+#ifdef DAGUE_HAVE_MPI
+   MPI_Finalize();
+#endif
+
+}

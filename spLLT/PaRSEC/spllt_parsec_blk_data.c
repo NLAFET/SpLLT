@@ -83,6 +83,8 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
                                 int nodes, int myrank) {
    
     dague_ddesc_t *o = (dague_ddesc_t*)desc;
+
+    /* printf("[spllt_parsec_blk_data_init] myrank: %d\n", myrank); */
     
     /* Super setup */
     o->nodes     = nodes;
@@ -104,4 +106,11 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
     desc->bcs       = bcs;
     desc->nbc       = nbc;
     desc->data_map  = (dague_data_t**)calloc( nbc, sizeof(dague_data_t*) );
+}
+
+blk_desc_t *spllt_alloc_blk_desc() {
+
+   blk_desc_t *desc = malloc(sizeof(blk_desc_t));
+                             
+   return desc;
 }

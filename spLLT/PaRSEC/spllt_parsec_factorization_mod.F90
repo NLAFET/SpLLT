@@ -1,10 +1,12 @@
 module spllt_parsec_factorization_mod
 
   interface
-     function spllt_parsec_factorize(nodes, num_nodes, bcs, nbc, diags, ndiag, &
+     function spllt_parsec_factorize(blk_desc, nodes, num_nodes, &
+          & bcs, nbc, diags, ndiag, &
           & min_width_blas, maxmn, val, nval, keep) bind(C)
        use iso_c_binding
        use dague_f08_interfaces
+       type(c_ptr), value      :: blk_desc
        type(c_ptr), value      :: nodes, bcs, diags, val, keep
        integer(c_int), value   :: num_nodes, nbc, ndiag, nval
        integer(c_int), value   :: min_width_blas, maxmn

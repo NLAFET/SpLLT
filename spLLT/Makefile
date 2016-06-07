@@ -2,6 +2,9 @@ include Make.inc
 
 #Select compiler and options from below
 ############################
+# CC = mpicc
+# FC = mpif90
+
 CC = gcc
 FC = gfortran
 

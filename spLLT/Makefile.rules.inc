@@ -58,7 +58,7 @@ trace_mod.o: get_wtime_mod.o
 endif
 
 ifneq ($(useparsec),)
-spllt_ptg_mod.o: spllt_parsec_factorization_mod.o 
+spllt_ptg_mod.o: spllt_parsec_factorization_mod.o spllt_parsec_mod.o
 factorize.o: spllt_parsec_blk_data.o
 endif
 

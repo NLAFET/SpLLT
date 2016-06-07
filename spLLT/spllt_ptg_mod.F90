@@ -10,6 +10,7 @@ contains
 #if defined(SPLLT_USE_PARSEC)
     use iso_c_binding
     use dague_f08_interfaces
+    use spllt_parsec_mod
     use spllt_parsec_factorization_mod
 #endif
     implicit none
@@ -29,9 +30,10 @@ contains
 #if defined(SPLLT_USE_PARSEC)
     ! PaRSEC 
     type(dague_handle_t)            :: fac_hdl
-    type(c_ptr) :: bc_c, nodes_c, diags_c, keep_c, val_c
-    integer(c_int) :: nbc, nval
-    integer :: start_setup_t, stop_setup_t, rate_setup_t
+    type(c_ptr)                     :: bc_c, nodes_c, diags_c, keep_c, val_c
+    integer(c_int)                  :: nbc, nval
+    integer                         :: start_setup_t, stop_setup_t, rate_setup_t
+    type(c_ptr)                     :: blk_desc ! Parsec block data descriptor 
 #endif
 
     integer(long) :: id
@@ -72,7 +74,14 @@ contains
     nval = size(val, 1)
 
     call system_clock(start_setup_t, rate_setup_t)
-    fac_hdl = spllt_parsec_factorize(nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
+
+    ! initialize block data descriptor
+
+    blk_desc = spllt_alloc_blk_desc()
+
+    call spllt_parsec_blk_data_init(blk_desc, bc_c, nbc, nds, rank) 
+    
+    fac_hdl = spllt_parsec_factorize(blk_desc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
     
     ! add factorization DAG to PaRSEC

@@ -183,6 +183,7 @@ contains
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
 
 #if defined(SPLLT_STF_LL)
+    ! Unroll the DAG using a Left-Looking strategy
     call spllt_stf_ll_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
     
 #else
@@ -201,6 +202,7 @@ contains
 #elif defined(SPLLT_USE_OMP)
 !$omp taskwait
 #elif (SPLLT_USE_PARSEC)
+    ! write(*,'("[>] Parsec wait rank: ", i6)') rank
     call dague_context_wait(ctx)
 #endif
 
@@ -223,7 +225,8 @@ contains
 !$omp end master
 !$omp end parallel
 #elif defined(SPLLT_USE_PARSEC)
-    call dague_fini(ctx)
+    ! call dague_fini(ctx)
+    call parsec_fini(ctx)
 #endif
 
     write(*,'("[>] solve")')
