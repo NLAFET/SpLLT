@@ -92,13 +92,15 @@ stf_ll:
 	($(MAKE) spllt_stf_test DEFS+=-DSPLLT_USE_STF)
 starpu:
 	($(MAKE) spllt_starpu_test DEFS+=-DSPLLT_USE_STARPU)
+starpu_gpu:
+	($(MAKE) spllt_starpu_test DEFS+=-DSPLLT_USE_STARPU DEFS+=-DSPLLT_USE_GPU)
 omp:
 	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
 omp_trace:
 	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
 parsec:
 	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC)
-parsec-mpi:
+parsec_mpi:
 	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC DEFS+=-DSPLLT_USE_MPI)
 
 # PaRSEC

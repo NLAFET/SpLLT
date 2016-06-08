@@ -13,7 +13,15 @@ int starpu_f_init_c(int ncpus) {
   if(ncpus > 0)
     conf->ncpus = ncpus;  
 
+#if defined(SPLLT_USE_GPU)
+  conf->ncuda = 1;
+#endif
+
+#if defined(SPLLT_USE_GPU)
+  conf->sched_policy_name = "eager";
+#else
   conf->sched_policy_name = "lws";
+#endif
 
   info = starpu_init(conf);
 

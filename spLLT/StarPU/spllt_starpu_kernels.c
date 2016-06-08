@@ -1,5 +1,10 @@
 #include <starpu.h>
 
+#if defined(SPLLT_USE_GPU)
+#include <starpu_cuda.h>
+#include <magma.h>
+#include <cublas.h>
+#endif
 /* void spllt_starpu_unpack_args_factorize_block(void *cl_arg, */
 /*                                               int *m, int *n) { */
    
@@ -13,10 +18,40 @@
 
 void spllt_starpu_factorize_block_cpu_func(void *buffers[], void *cl_arg);
 
+#if defined(SPLLT_USE_GPU)
+void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
+
+   int info;
+   /* starpu_codelet_unpack_args(cl_arg, ); */
+   printf("[spllt_starpu_factorize_block_cuda_func]\n");
+
+   unsigned m = STARPU_MATRIX_GET_NX(buffers[0]);
+   unsigned n = STARPU_MATRIX_GET_NY(buffers[0]);
+   unsigned ld = STARPU_MATRIX_GET_LD(buffers[0]);
+
+   double *dest = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
+
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+
+   magmablasSetKernelStream(local_stream);
+
+   magma_dpotrf_gpu(MagmaUpper, n, dest, n, &info);
+
+}
+#endif
+
+
 // factorize block task codelet
 struct starpu_codelet cl_factorize_block = {
+#if defined(SPLLT_USE_GPU)
+  .where = STARPU_CUDA,
+#else
   .where = STARPU_CPU,
+#endif
   .cpu_funcs = {spllt_starpu_factorize_block_cpu_func, NULL},
+#if defined(SPLLT_USE_GPU)
+  .cuda_funcs = {spllt_starpu_factorize_block_cuda_func, NULL},
+#endif
   .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "FACTO_BLK"
 };

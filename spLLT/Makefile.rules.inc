@@ -3,10 +3,16 @@ usestarpu=$(findstring USE_STARPU, $(DEFS))
 useomp=$(findstring USE_OMP, $(DEFS))
 useomptrace=$(findstring OMP_TRACE, $(DEFS))
 useparsec=$(findstring USE_PARSEC, $(DEFS))
+usegpu=$(findstring USE_GPU, $(DEFS))
 #usestarpu=
 
 # starpusrc := StarPU/starpu_f_mod.F90 StarPU/starpu_f_wrappers.c
 # starpuobjs += $(patsubst %.F90, %.o, $(patsubst %.F90, %.o, $(notdir $(starpusrc))))
+
+ifneq ($(usegpu),)
+CFLAGS += $(IMAGMA)
+LIBS += $(LMAGMA)
+endif
 
 ifneq ($(usestarpu),)
 VPATH += StarPU
