@@ -1,1024 +1,755 @@
 module spllt_factorization_mod
   use spllt_mod
   implicit none
-  
+
 contains
 
-  ! init node
-  ! subroutine spllt_factorize_block_task(node)
-  !   implicit none
-
-  !   type(node_type), intent(inout) :: node ! node in the atree
-
-  !   return
-  ! end subroutine spllt_factorize_block_task
-
-  ! factorize block 
-  ! _potrf
-  subroutine spllt_factorize_block_task(fdata, node, bc, lfact, prio)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
     use spllt_mod
     use hsl_ma87_double
-    use spllt_kernels_mod
-#if defined(SPLLT_USE_STARPU)
-    use spllt_starpu_factorization_mod
+    use spllt_factorization_task_mod
+#if defined(SPLLT_USE_STARPU) 
+    use iso_c_binding
+    use starpu_f_mod
 #elif defined(SPLLT_USE_OMP)
-    !$ use omp_lib
-#if defined(SPLLT_OMP_TRACE)
-    use trace_mod
+!$ use omp_lib
 #endif
-#endif
+    use spllt_kernels_mod
     implicit none
     
-    type(spllt_data_type), target, intent(in)  :: fdata
-    type(spllt_node_type), intent(in)          :: node
+    integer, intent(in) :: n ! order of A
+    integer, intent(in) :: row(:) ! row indices of lower triangular part
+    integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
+    real(wp), intent(in) :: val(:) ! matrix values
+    integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
+    ! since the analyse phase)
+
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(MA87_control), intent(in) :: control 
+    type(MA87_info), intent(out) :: info 
+
+    type(spllt_data_type), target :: fdata
+    type(spllt_cntl)      :: cntl
+
+    ! local arrays
+    ! integer, dimension(:), allocatable ::  map ! allocated to have size n.
+
+    ! used in copying entries of user's matrix a into factor storage 
+    ! (keep%fact).
+    integer, dimension(:), allocatable ::  tmpmap
+
+    ! shortcuts
+    type(node_type), pointer     :: node ! node in the atree    
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
+    type(block_type), dimension(:), pointer :: blocks ! block info. 
+    type(node_type), dimension(:), pointer :: nodes 
+ 
+    ! local scalars
+    integer(long) :: blk, blk1, blk2 ! block identity
+    integer(long) :: dblk ! diagonal block within block column
+    integer :: en ! holds keep%nodes(snode)%en
+    integer :: sa ! holds keep%nodes(snode)%sa
+    integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
+    integer :: nc, nr ! number of block column/row
+    integer :: snode, num_nodes
+    integer :: st ! stat parameter
+    integer :: numrow, numcol
+    integer :: ii, jj, kk
+    integer :: prio
+    
+    ! update between variables
+    ! integer :: csrc(2), rsrc(2) ! used for update_between tasks to
+    type(node_type), pointer :: anode ! ancestor node in the atree
+    type(spllt_node_type), pointer :: a_node ! ancestor node in the atree
+    ! locate source blocks
+    integer :: a_num ! ancestor id
+    integer :: cptr  ! Position in snode of the first row 
+    ! matching a column of the current block column of anode.
+    integer :: cptr2  ! Position in snode of the last row 
+    ! matching a column of the current block column of anode.
+    logical :: map_done
+    integer :: i, ilast
+    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
+    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
+    integer :: cb, jb
+    integer :: jlast ! Last column in the cb-th block column of anode
+    ! real(wp) :: soln(0)
+    integer :: k
+    integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
+    ! nodes(snode)%index(cptr).
+    ! integer(long) :: rb ! Index of block row in snode
+
 #if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc ! block to be factorized    
-    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
+    integer :: nt
+#endif
+    ! timing
+    integer :: start_t, stop_t, rate_t
+    integer :: stf_start_t, stf_stop_t, stf_rate_t
+    integer :: start_nosub_t, rate_nosub_t
+    integer :: start_setup_t, stop_setup_t, rate_setup_t
+    integer :: start_cpya2l_t, stop_cpya2l_t, rate_cpya2l_t
+    ! call system_clock(start_t, rate_t)
+    call system_clock(start_setup_t, rate_setup_t)
+
+    ! call factorize_posdef(n, val, order, keep, control, info, 0, 0, soln)
+
+    ! write(*,*) 'control%nb: ', control%nb
+
+    ! shortcut
+    blocks => keep%blocks
+    nodes  => keep%nodes
+
+    num_nodes = keep%info%num_nodes
+    ! write(*,*) 'num_nodes: ', num_nodes
+
+    allocate(col_list(1), row_list(1), stat=st)
+    if(st.ne.0) goto 10
+
+    ! Set up inverse permutation
+    ! deallocate (invp,stat=st)
+    ! allocate (invp(n),stat=st)
+    ! if(st.ne.0) go to 10
+
+    ! do j = 1, n
+    !    invp(order(j)) = j
+    ! end do
+    
+    ! TODO to be done at analyse?
+    ! init factorization
+    ! call spllt_factorization_init(keep, data)
+
+    deallocate (keep%lfact,stat=st)
+    allocate (keep%lfact(keep%nbcol),stat=st)
+    if(st.ne.0) go to 10
+
+    ! allocate blocks 
+    ! deallocate (fdata%bc,stat=st)
+    ! allocate(fdata%bc(keep%final_blk),stat=st)
+    ! if(st.ne.0) go to 10
+
+    ! call spllt_init_lfact(keep, fdata)
+
+    !
+    ! Copy matrix values across from a into keep%lfact
+    !
+    ! allocate(map(n),stat=st)
+    ! if(st.ne.0) go to 10
+
+    allocate(tmpmap(n),stat=st)
+    if(st.ne.0) go to 10
+    
+    ! init facto    
+
+#if defined(SPLLT_USE_STARPU)
+    
+    ! register workspace handle
+    call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+#elif defined(SPLLT_USE_OMP)
+
+    nt = 1
+!$  nt = omp_get_num_threads()
+    allocate(fdata%workspace(0:nt-1))
+
+    do i=0,nt-1
+       allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
+    end do
 #else
-    type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
-    type(lfactor), allocatable, intent(inout) :: lfact(:)
+    allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    if(st.ne.0) goto 10
 #endif
-    integer, optional :: prio
 
-    integer :: m, n, bcol, sa
-    integer(long) :: id
-    type(block_type), pointer :: blk ! block to be factorized
-    integer :: p
+    do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: node_hdl
-#elif defined(SPLLT_USE_OMP)
-    real(wp), dimension(:), pointer :: lcol
-    real(wp), dimension(:), pointer :: bc_c
-#if defined(SPLLT_OMP_TRACE)
-    integer :: th_id
+       ! TODO put in activate routine
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
 #endif
-#endif
-
-    if (present(prio)) then
-       p = prio
-    else
-       p = 0
-    end if
+       ! activate node: allocate factors, register handles
+       call spllt_activate_node(snode, keep, fdata)
+    end do
 
 #if defined(SPLLT_USE_STARPU)
-    node_hdl = c_null_ptr
-    if (node%node%blk_sa .eq. bc%blk%id) then
-       node_hdl = node%hdl
-       ! write(*,*)'Test'
-    end if
-    call spllt_starpu_insert_factorize_block_c(bc%hdl, node_hdl, p)
-
-    ! call spllt_starpu_insert_factorize_block(bc, p)
-#elif defined(SPLLT_USE_OMP)
-
-    blk => bc%blk
-    bcol = blk%bcol
-    lcol => lfact(bcol)%lcol
-
-    m    = blk%blkm
-    n    = blk%blkn
-    sa   = blk%sa
-    id   = blk%id
-    bc_c => fdata%bc(id)%c
-
-! !$omp taskwait
-
-!$omp task firstprivate(m, n, sa) &
-#if defined(SPLLT_OMP_TRACE)
-!$omp    & shared(fac_blk_id) &
-#endif
-!$omp    & firstprivate(blk, bc_c, bcol, lcol) &
-! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
-! !$omp    & depend(inout:fdata%bc(id)%c(:))
-!$omp    & depend(inout:bc_c(1))
-! !$omp    & priority(p)
-
-! !$omp    & depend(inout:bc%c(1))
-! !$omp    & depend(inout:bc_c)
-! !$omp    & depend(inout:bc_c(1))
-
-! !$omp critical
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(fac_blk_id, th_id)
-#endif
-
-    ! write(*,*)"bcol: ", bcol
-    call spllt_factor_diag_block(m, n, &
-         ! & lfact(bcol)%lcol(sa:sa+n*m-1) &
-         & lcol(sa:sa+n*m-1) &
-         &)
-
-#if defined(SPLLT_OMP_TRACE)
-    ! write(*,*)"fac_blk_id: ", fac_blk_id
-    call trace_event_stop(fac_blk_id, th_id)
-#endif
-
-! !$omp end critical
-
-!$omp end task
-
-! !$omp taskwait
-
-#else    
-
-    blk => bc%blk
-
-    m    = blk%blkm
-    n    = blk%blkn
-    id   = blk%id 
-    bcol = blk%bcol
-
-    sa   = blk%sa
-
-    ! factorize_block
-    ! call factor_diag_block(n, m, id, &
-    !      & lfact(bcol)%lcol(sa:sa+n*m-1),   &
-    !      & control, flag, detlog(0))
-
-    call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
-#endif
-    
-    return
-  end subroutine spllt_factorize_block_task
-
-  ! _trsm
-  subroutine spllt_solve_block_task(fdata, bc_kk, bc_ik, lfact, prio)
-    use spllt_mod
-    use hsl_ma87_double
-    use spllt_kernels_mod
-#if defined(SPLLT_USE_STARPU)
-    use spllt_starpu_factorization_mod
-#elif defined(SPLLT_USE_OMP)
-    !$ use omp_lib
-#if defined(SPLLT_OMP_TRACE)
-    use trace_mod
-#endif
-#endif
-    implicit none
-
-    type(spllt_data_type), target, intent(inout)  :: fdata
-#if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
-    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
-    type(block_type), pointer :: blk_kk, blk_ik ! block to be factorized
-#else
-    type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
-    type(lfactor), allocatable, intent(inout) :: lfact(:)
-#endif
-    integer, optional :: prio 
-    
-    integer :: m, n, bcol, sa
-    integer :: d_m, d_n, d_sa
-    integer(long) :: id, d_id
-    integer :: p
-#if defined(SPLLT_USE_OMP)
-    real(wp), dimension(:), pointer :: lcol
-    real(wp), dimension(:), pointer :: bc_kk_c, bc_ik_c
-    integer :: th_id
-    integer :: snode
-    integer(long) :: blk_sa
-#endif
-
-    if (present(prio)) then
-       p = prio
-    else
-       p = 0
-    end if
-
-#if defined(SPLLT_USE_STARPU)    
-    call spllt_starpu_insert_solve_block_c(bc_kk%hdl, bc_ik%hdl, p)
-    ! call spllt_starpu_insert_solve_block(bc_kk, bc_ik, 0)
-
-#elif defined(SPLLT_USE_OMP)
-    
-
-    blk_kk => bc_kk%blk
-    blk_ik => bc_ik%blk
-    ! bcol is block column that blk and dblk belong to
-    bcol = blk_kk%bcol    
-    ! write(*,*)"bcol: ", bcol
-    lcol => lfact(bcol)%lcol
-
-    ! bc_kk
-    d_m  = blk_kk%blkm
-    d_n  = blk_kk%blkn
-    d_sa = blk_kk%sa
-    d_id = blk_kk%id
-
-    ! bc_ik
-    n  = blk_ik%blkn
-    m  = blk_ik%blkm
-    sa = blk_ik%sa
-    id = blk_ik%id
-    ! write(*,*)"solve id: ", id
-
-    bc_kk_c => fdata%bc(d_id)%c
-    bc_ik_c => fdata%bc(id)%c
-
-    snode = blk_kk%node
-    blk_sa = fdata%nodes(snode)%node%blk_sa
-    ! write(*,*)"blk_sa: ", blk_sa
-! !$omp taskwait
-
-!$omp task private(th_id) &
-!$omp    & firstprivate(m, n, sa, d_m, d_n, d_sa) &
-!$omp    & firstprivate(lcol, bcol) &
-!$omp    & firstprivate(blk_kk, blk_ik) &
-!$omp    & firstprivate(bc_kk_c, bc_ik_c) &
-!$omp    & firstprivate(d_id, id) &
-#if defined(SPLLT_OMP_TRACE)
-!$omp    & shared(slv_blk_id) &
-#endif
-!$omp    & depend(in:bc_kk_c(1)) &
-!$omp    & depend(inout:bc_ik_c(1))
-
-! !$omp    & depend(in:fdata%bc(d_id)%c(1)) &
-! !$omp    & depend(inout:fdata%bc(id)%c)
-
-! !$omp    & depend(in:bc_kk%c(1)) &
-! !$omp    & depend(in:bc_kk_c) &
-! !$omp    & depend(in:bc_kk_c(1:1)) &
-! !$omp    & depend(inout:bc_ik_c(1:1))
-
-! !$omp    & depend(inout:bc_ik%c(1))
-! !$omp    & depend(in:lcol(d_sa:d_n*d_m)) &
-! !$omp    & depend(inout:lcol(sa:n*m-1))
-
-! !$omp critical
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(slv_blk_id, th_id)
-#endif
-
-    ! call dtrsm('Left', 'Upper', 'Transpose', 'Non-Unit', n, m, &
-    !      & one, lcol(d_sa:d_sa+d_n*d_m), n, &
-    !      & lcol(sa:sa+n*m-1), n)
-
-    ! call dtrsm('Left', 'Upper', 'Transpose', 'Non-Unit', n, m, &
-    !      & one, bc_kk_c(1:d_n*d_m), n, &
-    !      & bc_ik_c(1:n*m), n)
-
-    call spllt_solve_block(m, n, &
-         & lcol(sa:sa+n*m-1), & 
-         & lcol(d_sa:d_sa+d_n*d_m))
-
-#if defined(SPLLT_OMP_TRACE)
-    ! write(*,*)"fac_blk_id: ", fac_blk_id
-    call trace_event_stop(slv_blk_id, th_id)
-#endif
-
-! !$omp end critical
-
-!$omp end task
-
-! !$omp taskwait
-
-#else    
-
-    ! bc_kk
-    d_m  = bc_kk%blk%blkm
-    d_n  = bc_kk%blk%blkn
-    d_sa = bc_kk%blk%sa
-    d_id = bc_kk%blk%id
-
-    ! bc_ik
-    n  = bc_ik%blk%blkn
-    m  = bc_ik%blk%blkm
-    sa = bc_ik%blk%sa
-    id = bc_ik%blk%id
-    
-    ! bcol is block column that blk and dblk belong to
-    bcol = bc_kk%blk%bcol    
-
-    ! solve_block task
-    ! call solv_col_block(m, n, id, & 
-    !      & lfact(bcol)%lcol(sa:sa+n*m-1), &
-    !      & d_id, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m), &
-    !      & control)
-
-    call spllt_solve_block(m, n, &
-         & lfact(bcol)%lcol(sa:sa+n*m-1), & 
-         & lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m))
-
-#endif
-
-    return
-  end subroutine spllt_solve_block_task
-
-  ! syrk/gemm (same node)
-  ! A_ij <- A_ij - A_ik A_jk^T
-  subroutine spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, lfact, prio)
-    use spllt_mod
-    use hsl_ma87_double
-    use spllt_kernels_mod
-#if defined(SPLLT_USE_STARPU)
-    use spllt_starpu_factorization_mod
-#elif defined(SPLLT_USE_OMP)
-    !$ use omp_lib
-#if defined(SPLLT_OMP_TRACE)
-    use trace_mod
-#endif
-#endif
-    implicit none
-    
-    type(spllt_data_type), target, intent(in)  :: fdata
-    ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
-#if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
-    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
-#else
-    type(spllt_bc_type), intent(inout) :: bc_ik, bc_jk, bc_ij
-    type(lfactor), allocatable, intent(inout) :: lfact(:)
-#endif
-    integer, optional :: prio 
-
-    integer :: n1, m1, sa1, n2, m2, sa2, n, m, sa
-    integer :: bcol1, bcol, bcol2
-    integer :: p, d
-#if defined(SPLLT_USE_OMP)
-    logical :: is_diag
-    real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
-    real(wp), dimension(:), pointer :: bc_ik_c, bc_jk_c, bc_ij_c
-    type(block_type), pointer :: blk_ik, blk_jk, blk_ij ! block to be factorized
-    integer :: th_id
-    integer(long) :: id_ik, id_jk, id_ij
-    integer :: snode
-    integer(long) :: blk_sa
-#endif
-
-    if (present(prio)) then
-       p = prio
-    else
-       p = 0
-    end if
-
-#if defined(SPLLT_USE_STARPU)
-    if (bc_ij%blk%dblk .eq. bc_ij%blk%id) then
-       d = 1
-    else
-       d = 0
-    end if
-
-    call spllt_starpu_insert_update_block_c(bc_ik%hdl, bc_jk%hdl, bc_ij%hdl, d, p)
-#elif defined(SPLLT_USE_OMP)
-
-    blk_ik => bc_ik%blk
-    blk_jk => bc_jk%blk
-    blk_ij => bc_ij%blk
-
-    id_ik = blk_ik%id
-    id_jk = blk_jk%id
-    id_ij = blk_ij%id
-
-    bc_ik_c => fdata%bc(id_ik)%c
-    bc_jk_c => fdata%bc(id_jk)%c
-    bc_ij_c => fdata%bc(id_ij)%c
-
-    bcol1 = bc_ik%blk%bcol
-    lcol1 => lfact(bcol1)%lcol
-
-    bcol2 = bc_jk%blk%bcol
-    lcol2 => lfact(bcol2)%lcol
-
-    bcol = bc_ij%blk%bcol
-    lcol => lfact(bcol)%lcol
-
-    snode = blk_ij%node
-    blk_sa = fdata%nodes(snode)%node%blk_sa
-    
-! !$omp taskwait
-
-!$omp task private(n1, m1, sa1, n2, m2, sa2, &
-!$omp    & n, m, sa, is_diag, th_id) &
-!$omp    & firstprivate(bcol2, lcol2, bcol1, lcol1, bcol, lcol) &
-!$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
-!$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
-!$omp    & firstprivate(blk_ik, blk_jk, blk_ij) &
-#if defined(SPLLT_OMP_TRACE)
-!$omp    & shared(upd_blk_id) &
-#endif
-!$omp    & depend(in:bc_ik_c(1), bc_jk_c(1)) &
-!$omp    & depend(inout: bc_ij_c(1))
-
-! !$omp    & depend(in:fdata%bc(id_ik)%c, fdata%bc(id_jk)%c) &
-! !$omp    & depend(inout: fdata%bc(id_ij)%c)
-
-! !$omp    & depend(in:bc_ik%c(1), bc_jk%c(1)) &
-! !$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
-! !$omp    & depend(in:bc_ik%c(1), bc_jk%c(1)) &
-! !$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
-! !$omp    & depend(inout: bc_ij_c(1:1))
-
-! !$omp    & depend(in:lcol1(sa1:n1*m1-1)) &
-! !$omp    & depend(in:lcol2(sa2:n1*m2-1)) &
-! !$omp    & depend(inout: lcol(sa:n*m-1))
-
-! !$omp critical
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(upd_blk_id, th_id)
-#endif
-
-    ! bc_ik
-    n1  = blk_ik%blkn
-    m1  = blk_ik%blkm
-    sa1 = blk_ik%sa
-
-    ! bc_jk
-    n2  = blk_jk%blkn
-    m2  = blk_jk%blkm
-    sa2 = blk_jk%sa
-
-    ! bc_ij
-    n  = blk_ij%blkn
-    m  = blk_ij%blkm
-    sa = blk_ij%sa
-
-    is_diag = blk_ij%dblk.eq.blk_ij%id 
-
-    ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
-    ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
-    ! write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n
-
-    ! write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
-    ! write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1
-
-    call spllt_update_block(m, n, &
-         & lcol(sa:sa+n*m-1), &
-         & is_diag, n1, &
-         & lcol1(sa2:sa2+n1*m2-1), &
-         & lcol1(sa1:sa1+n1*m1-1))
-
-#if defined(SPLLT_OMP_TRACE)
-    ! write(*,*)"fac_blk_id: ", fac_blk_id
-    call trace_event_stop(upd_blk_id, th_id)
-#endif
-
-! !$omp end critical
-
-!$omp end task
-
-! !$omp taskwait
-
-#else
-
-    ! bc_ik
-    n1  = bc_ik%blk%blkn
-    m1  = bc_ik%blk%blkm
-    sa1 = bc_ik%blk%sa
-    bcol1 = bc_ik%blk%bcol
-    
-    ! bc_jk
-    n2  = bc_jk%blk%blkn
-    m2  = bc_jk%blk%blkm
-    sa2 = bc_jk%blk%sa
-    bcol2 = bc_jk%blk%bcol
-    
-    ! bc_ij
-    n  = bc_ij%blk%blkn
-    m  = bc_ij%blk%blkm
-    sa = bc_ij%blk%sa
-    
-    bcol = bc_ij%blk%bcol
-
-    ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
-    ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
-    ! write(*,*)"bc_ij id: ", bc_ij%id, ", m: ", m, ", n: ", n
-    
-    ! write(*,*) "size lfact(bcol1)%lcol: ", size(lfact(bcol1)%lcol)
-    ! write(*,*) "sa2+n1*m2-1: ", sa2+n1*m2-1
-
-    call spllt_update_block(m, n, &
-         & lfact(bcol)%lcol(sa:sa+n*m-1), &
-         & bc_ij%blk%dblk.eq.bc_ij%blk%id, n1, &
-         & lfact(bcol1)%lcol(sa2:sa2+n1*m2-1), &
-         & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1))
-
-#endif
-
-    return
-  end subroutine spllt_update_block_task
-
-! #if defined(SPLLT_USE_OMP)
-!   subroutine spllt_omp_update_between_cpu_func(m, n, blk, dcol, dnode, n1, scol, snode, dest, csrc, rsrc, min_width_blas)
-!     use spllt_mod
-!     use spllt_kernels_mod
-!     implicit none
-
-!     integer, intent(in) :: m  ! number of rows in destination block
-!     integer, intent(in) :: n  ! number of columns in destination block
-!     ! integer(long), intent(in) :: blk ! identifier of destination block
-!     type(block_type), intent(in) :: blk ! destination block
-!     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-!     type(node_type), intent(in) :: dnode ! Node to which blk belongs
-!     integer :: n1 ! number of columns in source block column
-!     ! integer(long), intent(in) :: src  ! identifier of block in source block col
-!     integer, intent(in) :: scol ! index of block column that src belongs to in snode
-!     type(node_type), intent(in) :: snode ! Node to which src belongs
-!     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
-!     ! that is to be updated.
-!     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
-!     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
-!     ! type(block_type), dimension(:), intent(inout) :: blocks
-!     ! real(wp), dimension(:), allocatable :: buffer
-!     integer, intent(in) :: min_width_blas      ! Minimum width of source block
-
-!     real(wp), dimension(:), pointer :: buffer
-!     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
-!     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
-
-!     allocate(buffer(m*n))
-!     allocate(row_list(1), col_list(1))
-
-!     call spllt_update_between(m, n, blk, dcol, dnode, &
-!          & n1, scol, snode, &
-!          & dest, &
-!          & csrc, &
-!          & rsrc, &
-!          & row_list, col_list, buffer, &
-!          & min_width_blas)
-
-!     deallocate(buffer)
-!     deallocate(row_list, col_list)
-
-!     return
-
-!   end subroutine spllt_omp_update_between_cpu_func
+    call starpu_f_task_wait_for_all()
+#endif    
+    ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
+    ! call copy_a_to_l(n,num_nodes,val,map,keep)
+    ! write(*,*)"num_nodes: ", num_nodes
+    do snode = 1, num_nodes ! loop over nodes
+       ! init node
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
+    end do
+    ! call system_clock(stop_cpya2l_t)
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
 ! #endif
 
-  ! syrk/gemm (inter-node)
-  subroutine spllt_update_between_task(fdata, &
-       & dbc, snode, a_bc, anode, &
-       ! & csrc, rsrc, &
-       & cptr, cptr2, rptr, rptr2, &
-       & row_list, col_list, workspace, &
-       & lfact, blocks, bcs, &
-       & control, prio)
+#if defined(SPLLT_USE_OMP)
+!$omp taskwait
+#endif
+
+#if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
+    call starpu_f_pause()
+#endif
+
+    call system_clock(stop_setup_t)
+    ! write(*,'("[>] [spllt_stf_factorize] cpy a2l time: ", es10.3, " s")') (stop_cpya2l_t - start_cpya2l_t)/real(rate_cpya2l_t)
+    write(*,'("[>] [spllt_stf_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
+    call system_clock(stf_start_t, stf_rate_t)
+
+    ! factorize nodes
+    do snode = 1, num_nodes
+
+       call spllt_factorize_node(fdata%nodes(snode), tmpmap, fdata, keep, control)          
+    end do
+
+#if defined(SPLLT_USE_STARPU)
+    ! unregister workspace handle
+    call starpu_f_data_unregister_submit(fdata%workspace%hdl)
+
+    ! unregister data handles
+    call spllt_deinit_task(keep, fdata)
+
+    ! do snode = 1, num_nodes
+    !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
+    ! end do
+#endif
+
+    call system_clock(stf_stop_t)
+    write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)
+
+#if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
+    call system_clock(start_nosub_t, rate_nosub_t)
+    call starpu_f_resume()
+    ! wait for task completion
+    call starpu_f_task_wait_for_all()
+#endif
+
+! #if defined(SPLLT_USE_OMP)
+! !$omp taskwait
+! #endif
+
+    call system_clock(stop_t)
+    ! write(*,'("[>] [spllt_stf_factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
+#if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
+    write(*,'("[>] [spllt_stf_factorize] nosub time: ", es10.3, " s")') (stop_t - start_nosub_t)/real(rate_nosub_t)
+#endif
+
+10 if(st.ne.0) then
+      info%flag = spllt_error_allocation
+      info%stat = st
+      call spllt_print_err(info%flag, context='spllt_stf_factorize',st=st)
+      return
+   endif
+
+    return
+  end subroutine spllt_stf_factorize
+
+  ! left looking variant of the STF algorithm
+  subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
     use spllt_mod
     use hsl_ma87_double
-    use spllt_kernels_mod
-#if defined(SPLLT_USE_STARPU)
-    use spllt_starpu_factorization_mod
+    use spllt_factorization_task_mod
+#if defined(SPLLT_USE_STARPU) 
+    use iso_c_binding
+    use starpu_f_mod
 #elif defined(SPLLT_USE_OMP)
-!$ use omp_lib
-#if defined(SPLLT_OMP_TRACE)
-    use trace_mod
+    !$ use omp_lib
 #endif
-#endif
+    use spllt_kernels_mod
     implicit none
 
-    type(spllt_data_type), target, intent(in)  :: fdata
-#if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout)     :: a_bc ! dest block
-    type(spllt_bc_type), pointer, intent(inout)     :: dbc ! diag block in source node
+    integer, intent(in) :: n ! order of A
+    integer, intent(in) :: row(:) ! row indices of lower triangular part
+    integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
+    real(wp), intent(in) :: val(:) ! matrix values
+    integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
+    ! since the analyse phase)
 
-    type(spllt_bc_type), allocatable, target :: workspace(:)
-    type(spllt_bc_type), target      :: bcs(:) ! block info.
-#else
-    type(spllt_bc_type), intent(inout)     :: a_bc ! dest block
-    type(spllt_bc_type), intent(in)        :: dbc ! diag block in source node
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(MA87_control), intent(in) :: control 
+    type(MA87_info), intent(out) :: info 
 
-    type(spllt_bc_type)              :: workspace
-    type(spllt_bc_type)              :: bcs(:) ! block info.
-#endif
+    type(spllt_data_type), target :: fdata
+    type(spllt_cntl)      :: cntl
 
-#if defined(SPLLT_USE_STARPU)
-    type(node_type), target                :: snode ! src node
-    type(spllt_node_type), target          :: anode ! dest node
-#elif defined(SPLLT_USE_OMP)
-    type(node_type), pointer, intent(in)        :: snode ! src node
-    type(spllt_node_type), pointer, intent(in)  :: anode ! dest node
-#else
-    type(node_type)                        :: snode ! src node
-    type(spllt_node_type)                  :: anode ! dest node
-#endif
-    integer :: cptr, cptr2, rptr, rptr2 
-!    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
-    integer, dimension(:), allocatable  :: row_list, col_list
-    ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-    type(block_type), dimension(:)      :: blocks ! block info. 
+    type(block_type), dimension(:), pointer :: blocks ! block info. 
+    type(node_type), dimension(:), pointer :: nodes 
+    integer :: snode, num_nodes
+    type(node_type), pointer     :: node, dnode ! node in the atree    
 
-#if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
-    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
-#else
-    type(lfactor), allocatable, intent(inout) :: lfact(:)
-#endif
-    type(MA87_control), intent(in) :: control     
-    ! integer, intent(out) :: st ! TODO error managment
-    integer, optional :: prio 
+    integer, dimension(:), allocatable ::  tmpmap
 
-    ! integer :: info ! TODO error managment
-    
-    integer :: p
-    integer :: m, n, n1, sa
-    integer :: bcol, bcol1
-    integer(long) :: id, id1
-    integer :: dcol, scol
-    integer :: csrc, csrc2, rsrc, rsrc2
+    integer :: st ! stat parameter
+    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
+    integer :: least_desc, d_num, d_sa, d_en, d_numcol, d_numrow, d_nb, d_nc
+    ! logical :: map_done
+    integer :: cptr
+    integer :: cptr2
+    integer :: cb, jb
+    integer(long) :: dblk, blk 
+    integer :: jlast
+    integer :: stf_start_t, stf_stop_t, stf_rate_t
+    integer :: ii, i, ilast, k
+    type(spllt_bc_type), pointer :: bc, d_bc_kk
+    integer(long) :: d_dblk 
+    integer :: kk
+
+    integer :: prio
+    integer :: sa, en
+    integer :: numcol, numrow
+    integer :: nc, nr
     integer :: s_nb
-
-#if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
-    integer(long) :: blk_sa, blk_en, nb_blk, dblk 
-#endif  
-
-#if defined(SPLLT_USE_STARPU)
-    integer :: blkn, ljk_sa
-    integer :: nhljk, nhlik
-    integer(c_int) :: ljk_m, ljk_n
-    integer(long) :: blk
-    type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
-    ! type(c_ptr) :: ljk_hdl
-    type(c_ptr) :: snode_c, anode_c, a_bc_c
-#endif
+    integer(long) :: blk1, blk2 
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
+    integer :: jj
 
 #if defined(SPLLT_USE_OMP)
-    real(wp), dimension(:), pointer :: lcol1, lcol
-    ! integer, dimension(:), pointer  :: rlst, clst
-    integer, dimension(:), allocatable  :: rlst, clst
-    integer :: th_id
-    integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
-    ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    real(wp), dimension(:), pointer :: a_bc_c, dbc_c
-    ! real(wp), dimension(:), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    ! type(spllt_bc_type), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    real(wp), dimension(:), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    type(block_type), pointer :: blk_kk, a_blk
-    type(spllt_bc_type), pointer :: p_workspace(:) => null()
-    ! real(wp), dimension(:), allocatable :: work
-    real(wp), dimension(:), pointer :: work
-    integer :: min_width_blas
-    type(node_type), pointer                :: p_snode ! src node
-    type(spllt_node_type), pointer          :: p_anode ! dest node
-    integer(long) :: id_ik_sa, id_ik_en, id_jk_sa, id_jk_en, id_ij
-    real(wp), dimension(:), pointer :: lcol_ik, lcol_jk
-    type(lfactor), pointer :: p_lfact(:)
+    integer :: nt
 #endif
 
-    if (present(prio)) then
-       p = prio
-    else
-       p = 0
-    end if
+    ! shortcut
+    blocks => keep%blocks
+    nodes  => keep%nodes
+    num_nodes = keep%info%num_nodes
 
-    s_nb = snode%nb    ! block size in source node
-    n1  = dbc%blk%blkn ! width of column
+    ! allocate col_lsit and row_list arrays
+    allocate(col_list(1), row_list(1), stat=st)
+    if(st.ne.0) goto 9999
 
-    bcol1 = dbc%blk%bcol
-    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
+    ! allocate L factors
+    deallocate (keep%lfact,stat=st)
+    allocate (keep%lfact(keep%nbcol),stat=st)
+    if(st.ne.0) go to 9999
 
-    bcol = a_bc%blk%bcol
-    dcol = bcol - blocks(anode%node%blk_sa)%bcol + 1
-    ! dcol = a_bc%blk%bcol ! blocks(anode%node%blk_sa)%bcol + 1
+    allocate(tmpmap(n),stat=st)
+    if(st.ne.0) go to 9999
+    
+    ! init facto    
 
 #if defined(SPLLT_USE_STARPU)
-! #if 0
-    ! write(*,*)"associated blk: ", associated(a_bc%blk)
-    dblk = dbc%blk%id
-
-    ! ljk
-    blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
-    blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
-    nb_blk = blk_en-blk_sa+1
-
-    allocate(ljk_handles(nb_blk))
-    ! ljk_m = 0 ! compute height of ljk factor
-    nhljk=0
-    do blk=blk_sa,blk_en
-       nhljk=nhljk+1
-       ljk_handles(nhljk) = bcs(blk)%hdl
-       ! ljk_m = ljk_m + bcs(blk)%blk%blkm
-    end do
-    ! ljk_n = bc%blk%blkn
-
-    ! lik
-    blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
-    blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
-    nb_blk = blk_en-blk_sa+1
-
-    allocate(lik_handles(nb_blk))
-    nhlik=0
-    do blk=blk_sa,blk_en
-       nhlik=nhlik+1
-       lik_handles(nhlik) = bcs(blk)%hdl
-    end do
     
-    csrc  = 1 + (mod(cptr-1, s_nb))*n1
-    csrc2 = (cptr2 - cptr + 1)*n1
-
-    rsrc  = 1 + (mod(rptr-1, s_nb))*n1
-    rsrc2 = (rptr2 - rptr + 1)*n1
-
-    snode_c = c_loc(snode)
-    anode_c = c_loc(anode%node)
-    a_bc_c  = c_loc(a_bc%blk)
-    
-    ! write(*,*)"dcol: ", dcol
-
-    call spllt_starpu_insert_update_between_c(&
-         & lik_handles, nhlik, &
-         & ljk_handles, nhljk, &
-         & a_bc%hdl, &
-         & snode_c, scol, &
-         & anode_c, a_bc_c, dcol, &
-         & csrc, csrc2, rsrc, rsrc2, &
-         & control%min_width_blas, &
-         & workspace%hdl, &
-         & anode%hdl, &
-         & p &
-         &)
-
-    ! call test_insert_c(lik_handles, nhlik, ljk_handles, nhljk)
-
-    ! call starpu_f_task_wait_for_all()
-
-    deallocate(ljk_handles)
-    deallocate(lik_handles)
-    
+    ! register workspace handle
+    call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
 #elif defined(SPLLT_USE_OMP)
 
-    p_lfact => lfact
-    a_blk => a_bc%blk
+    nt = 1
+!$  nt = omp_get_num_threads()
+    allocate(fdata%workspace(0:nt-1))
 
-    ! ! lik
-    ! blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
-    ! blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
-    ! nb_blk = blk_en-blk_sa+1
-    
-    ! write(*,*) "update_between_task"
-    ! call update_between(m, n, id, anode, &
-    !      & n1, id1, snode, &
-    !      & lfact(bcol)%lcol(sa:sa+m*n-1), &
-    !      & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
-    !      & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-    !      & blocks, row_list, col_list, buffer, &
-    !      & control, info, st)
-    blk_kk => dbc%blk
-    dblk = blk_kk%id
-
-    ! ljk
-    blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
-    blk_en = (cptr2-1)/s_nb - (scol-1) + dblk
-    nb_blk = blk_en-blk_sa+1
-    ! bc_jk_sa => bcs(blk_sa)%c
-    ! bc_jk_en => bcs(blk_en)%c
-    id_jk_sa = blk_sa 
-    id_jk_en = blk_en
-    ! write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
-    ! if (nb_blk.gt.2) write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
-    bc_jk_sa => fdata%bc(id_jk_sa)%c ! bcs(blk_sa)%c
-    bc_jk_en => fdata%bc(id_jk_en)%c ! bcs(blk_en)%c
-    ! write(*,*) "nb_blk: ", nb_blk
-    ! write(*,*) "nb_blk:", nb_blk, "blk_sa: ", blk_sa, ", blk_en: ", blk_en
-    csrc_sa = blocks(blk_sa)%sa
-    csrc_en = blocks(blk_en)%sa
-
-    ! csrc_sa = 1 + (cptr_sa-(scol-1)*s_nb-1)*n1
-    ! csrc_le = (cptr_en - cptr_sa + 1)*n1
-
-    ! lik
-    blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
-    blk_en = (rptr2-1)/s_nb - (scol-1) + dblk
-    nb_blk = blk_en-blk_sa+1
-    ! bc_ik_sa => bcs(blk_sa)%c
-    ! bc_ik_en => bcs(blk_en)%c
-    id_ik_sa = blk_sa 
-    id_ik_en = blk_en
-    ! if (nb_blk.gt.2)  write(*,*) "nb_blk:", nb_blk, "id_ik_sa: ", id_ik_sa, ", id_ik_en: ", id_ik_en
-
-    bc_ik_sa => fdata%bc(id_ik_sa)%c ! bcs(blk_sa)%c
-    bc_ik_en => fdata%bc(id_ik_en)%c ! bcs(blk_en)%c
-
-    rsrc_sa = blocks(blk_sa)%sa
-    rsrc_en = blocks(blk_en)%sa
-
-    id_ij = a_blk%id
-    a_bc_c => fdata%bc(id_ij)%c
-
-    dbc_c => dbc%c
-
-    bcol1 = blk_kk%bcol
-    bcol  = a_bc%blk%bcol
-
-    lcol1 => lfact(bcol1)%lcol
-    lcol  => lfact(bcol)%lcol
-
-    p_workspace => workspace
-
-    min_width_blas = control%min_width_blas
-
-    ! p_snode => snode
-    ! p_anode => anode
-
-    p_snode => fdata%nodes(blk_kk%node)%node
-    p_anode => fdata%nodes(a_blk%node)
-
-    s_nb = p_snode%nb    ! block size in source node
-    n1  = blk_kk%blkn ! width of column
-
-    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
-    csrc2 = (cptr2 - cptr + 1)*n1
-
-    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
-    rsrc2 = (rptr2 - rptr + 1)*n1
-
-    lcol_ik => lcol1(rsrc:rsrc+rsrc2-1)
-    lcol_jk => lcol1(csrc:csrc+csrc2-1)
-
-    m  = a_blk%blkm
-    n  = a_blk%blkn
-    sa = a_blk%sa
-
-    blk_sa = snode%blk_sa
-
-! !$omp taskwait    
-
-!$omp task firstprivate(m, n, a_blk, dcol, p_anode, n1, scol, p_snode, &
-!$omp    & lcol, lcol1, min_width_blas, sa, csrc, csrc2, rsrc, rsrc2) &
-!$omp    & private(rlst, clst, work) & 
-#if defined(SPLLT_OMP_TRACE)
-!$omp    & shared(upd_btw_id) &
-#endif
-!$omp    & firstprivate(bc_ik_sa, bc_ik_en, bc_jk_sa, bc_jk_en, a_bc_c) &
-!$omp    & depend(in:bc_ik_sa(1), bc_ik_en(1)) &
-!$omp    & depend(in:bc_jk_sa(1), bc_jk_en(1)) &
-!$omp    & depend(inout: a_bc_c(1))
-
-! !$omp    & depend(in:fdata%bc(id_ik_sa)%c, fdata%bc(id_ik_en)%c) &
-! !$omp    & depend(in:fdata%bc(id_jk_sa)%c, fdata%bc(id_jk_en)%c) &
-! !$omp    & depend(inout:fdata%bc(id_ij)%c)
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"upd_btw_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(upd_btw_id, th_id)
-#endif
-     ! write(*,*)"min_width_blas: ", min_width_blas
-    ! write(*,*)"thread id: ", th_id
-    ! write(*,*)"m: ", m, ", n: ", n, ", n1: ", n1
-
-    th_id = 0
-    !$  th_id = omp_get_thread_num()
-
-    ! call spllt_omp_update_between_cpu_func(m, n, a_blk, dcol, p_anode%node, &
-    !      & n1, scol, p_snode, &
-    !      & lcol(sa:sa+m*n-1), &
-    !      & lcol1(csrc:csrc+csrc2-1), &
-    !      & lcol1(rsrc:rsrc+rsrc2-1), &
-    !      & min_width_blas)
-
-
-    ! write(*,*)"th_id: ", th_id
-    work => p_workspace(th_id)%c
-    ! allocate(work(m*n))
-    ! work(:) = 0
-    allocate(rlst(1), clst(1))
-
-    call spllt_update_between(m, n, a_blk, dcol, p_anode%node, &
-         & n1, scol, p_snode, &
-         & lcol(sa:sa+m*n-1), &
-         & lcol1(csrc:csrc+csrc2-1), &
-         & lcol1(rsrc:rsrc+rsrc2-1), &
-         & rlst, clst, work, &
-         & min_width_blas)
-
-    ! write(*,*)"work(1): ", work(1) 
-    deallocate(rlst, clst)
-    ! deallocate(work)
-
-#if defined(SPLLT_OMP_TRACE)
-    ! write(*,*)"fac_blk_id: ", fac_blk_id
-    call trace_event_stop(upd_btw_id, th_id)
-#endif
-
-!$omp end task
-
-! !$omp taskwait    
-    
+    do i=0,nt-1
+       allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
+    end do
 #else
-    
-    m  = a_bc%blk%blkm
-    n  = a_bc%blk%blkn
-    id = a_bc%blk%id
-    sa = a_bc%blk%sa
-    
-    ! write(*,*) "update_between_task"
-    ! call update_between(m, n, id, anode, &
-    !      & n1, id1, snode, &
-    !      & lfact(bcol)%lcol(sa:sa+m*n-1), &
-    !      & lfact(bcol1)%lcol(csrc(1):csrc(1)+csrc(2)-1), &
-    !      & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
-    !      & blocks, row_list, col_list, buffer, &
-    !      & control, info, st)
-
-    csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
-    csrc2 = (cptr2 - cptr + 1)*n1
-
-    rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
-    rsrc2 = (rptr2 - rptr + 1)*n1
-
-    call spllt_update_between(m, n, a_bc%blk, dcol, anode%node, &
-         & n1, scol, snode, &
-         & lfact(bcol)%lcol(sa:sa+m*n-1), &
-         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
-         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
-         & row_list, col_list, workspace%c, &
-         & control%min_width_blas)
-
+    allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    if(st.ne.0) goto 9999
 #endif
 
-    return
-  end subroutine spllt_update_between_task
-
-  ! init node
-  subroutine spllt_init_node_task(fdata, node, val, keep, prio)
-    use spllt_mod
-    use hsl_ma87_double
-    use spllt_kernels_mod
+    do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
-    use spllt_starpu_factorization_mod
-#elif defined(SPLLT_USE_OMP)
-!$ use omp_lib
-#if defined(SPLLT_OMP_TRACE)
-    use trace_mod
+       ! TODO put in activate routine
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
 #endif
-#endif
-    implicit none
+       ! activate node: allocate factors, register handles
+       call spllt_activate_node(snode, keep, fdata)
+    end do
 
-    type(spllt_data_type), target, intent(in)  :: fdata    
-    type(spllt_node_type), intent(in) :: node
-    real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
+    call system_clock(stf_start_t, stf_rate_t)
 
-     ! so that, if variable (row) i is involved in node,
-     ! map(i) is set to its local row index
-    type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
-     ! into relevant part of keep%lfact
-    integer, optional :: prio 
-
-    integer :: p
-#if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, keep_c
-    integer(c_int) :: nval
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif    
+    ! write(*,*)"num_nodes: ", num_nodes
+    do snode = 1, num_nodes ! loop over nodes
+       ! init node
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
+    end do
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif
 
 #if defined(SPLLT_USE_OMP)
-    integer :: snum
-    integer :: th_id
-    ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    type(MA87_keep), pointer :: p_keep 
-    real(wp), pointer :: p_val(:)
+!$omp taskwait
 #endif
 
-    if (present(prio)) then
-       p = prio
-    else
-       p = 0
-    end if
+    do snode = 1, num_nodes
+
+       ! write(*,*)'snode: ', snode
+       
+       node => keep%nodes(snode)
+
+       ! task priority
+       prio = (num_nodes - snode + 1)*4
+
+       ! initialize node data
+       sa = node%sa
+       en = node%en
+       numcol = en - sa + 1
+       numrow = size(node%index)
+
+       ! s_nb is the size of the blocks
+       s_nb = node%nb
+
+       nc = (numcol-1) / s_nb + 1 
+       nr = (numrow-1) / s_nb + 1 
+       
+       !  Loop over descendent of snode
+       least_desc = node%least_desc  
+       
+       ! build a map between row and block index
+       call spllt_build_rowmap(node, tmpmap) 
+       
+       do d_num=least_desc, snode-1
+          
+          ! write(*,*)'d_num: ', d_num
+
+          dnode => keep%nodes(d_num)
+          
+          ! initialize node data
+          d_sa = dnode%sa
+          d_en = dnode%en
+          d_numcol = d_en - d_sa + 1
+          d_numrow = size(dnode%index)
+
+          ! s_nb is the size of the blocks
+          d_nb = dnode%nb
+          d_nc = (d_numcol-1) / d_nb + 1 
+          
+          cptr = 1 + d_numcol
+
+          do cptr = cptr, d_numrow
+             if(dnode%index(cptr) .ge. node%sa) exit
+          end do
+          if(cptr .gt. d_numrow) cycle ! finished with dnode
+          
+          ! map_done = .false. ! We will only build a map when we need it
+
+          ! Loop over affected block columns of anode
+          bcols: do
+             if(cptr .gt. d_numrow) exit
+             if(dnode%index(cptr) .gt. node%en) exit
+
+             ! compute local index of block column in anode and find the id of 
+             ! its diagonal block
+             cb = (dnode%index(cptr) - node%sa)/node%nb + 1
+             dblk = node%blk_sa
+             do jb = 2, cb
+                dblk = blocks(dblk)%last_blk + 1
+             end do
+
+             ! Find cptr2
+             jlast = min(node%sa + cb*node%nb - 1, node%en)
+             do cptr2 = cptr, d_numrow
+                if(dnode%index(cptr2) > jlast) exit
+             end do
+             cptr2 = cptr2 - 1
+             ! write(*,*)'cptr: ', cptr, ', cptr2: ', cptr2
+             ! if(.not.map_done) call spllt_build_rowmap(node, tmpmap) 
+             ! Loop over the blocks of snode
+             ii = tmpmap(dnode%index(cptr)) 
+             ! ii = -1
+             ilast = cptr ! Set start of current block
+
+             do i = cptr, d_numrow
+                k = tmpmap(dnode%index(i))
+
+                if(k.ne.ii) then
+
+                   blk = dblk + ii - cb
+                   bc => fdata%bc(blk)
+                   
+                   d_dblk = dnode%blk_sa
+                   ! Loop over the block columns in node. 
+                   do kk = 1, d_nc
+
+                      d_bc_kk => fdata%bc(d_dblk)
+
+                      call spllt_update_between_task( &
+                           & fdata, &
+                           & d_bc_kk, dnode, bc, fdata%nodes(snode), &
+                           & cptr, cptr2, ilast, i-1, &
+                           & row_list, col_list, fdata%workspace, &
+                           & keep%lfact, keep%blocks, fdata%bc, &
+                           & control, prio)
+
+                         d_dblk = blocks(d_dblk)%last_blk + 1
+                   end do
+             
+                   ii = k
+                   ilast = i ! Update start of current block      
+                end if
+             end do
+
+             blk = dblk + ii - cb
+             bc => fdata%bc(blk)
+
+             d_dblk = dnode%blk_sa
+             ! Loop over the block columns in node. 
+             do kk = 1, d_nc
+
+                d_bc_kk => fdata%bc(d_dblk)
+
+                call spllt_update_between_task( &
+                     & fdata, &
+                     & d_bc_kk, dnode, bc, fdata%nodes(snode), &
+                     & cptr, cptr2, ilast, i-1, &
+                     & row_list, col_list, fdata%workspace, &
+                     & keep%lfact, keep%blocks, fdata%bc, &
+                     & control, prio)
+
+                d_dblk = blocks(d_dblk)%last_blk + 1
+             end do
+
+             ! Move cptr down, ready for next block column of anode
+             cptr = cptr2 + 1
+          end do bcols
+
+       end do
+
+       ! first block in node
+       dblk = node%blk_sa
+
+       ! Loop over the block columns in node. 
+       do kk = 1, nc
+
+          ! #if defined(SPLLT_USE_OMP)
+          ! !$omp taskwait
+          ! #endif
+
+          ! A_kk          
+
+          bc_kk => fdata%bc(dblk)
+          call spllt_factorize_block_task(fdata, fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
+
+          ! #if defined(SPLLT_USE_OMP)
+          ! !$omp taskwait
+          ! #endif
+
+          ! #if defined(SPLLT_USE_STARPU)
+          ! call starpu_f_task_wait_for_all()
+          ! #endif
+          ! loop over the row blocks (that is, loop over blocks in block col)
+          do ii = kk+1,nr
+             ! do ii = nr,kk+1,-1             
+             ! A_mk
+             blk = dblk+ii-kk
+             ! bc_ik => keep%blocks(blk)
+             bc_ik => fdata%bc(blk)
+
+             call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
+          end do
+
+          ! #if defined(SPLLT_USE_OMP)
+          ! !$omp taskwait
+          ! #endif
+
+          ! #if defined(SPLLT_USE_STARPU)
+          !          call starpu_f_task_wait_for_all()
+          ! #endif
+
+          do jj = kk+1,nc
+
+             ! L_jk
+             blk2 = dblk+jj-kk
+             bc_jk => fdata%bc(blk2)
+
+             do ii = jj,nr
+
+                ! L_ik
+                blk1 = dblk+ii-kk                
+                bc_ik => fdata%bc(blk1)
+
+                ! A_ij
+                ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+                blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
+                bc_ij => fdata%bc(blk)
+                call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+
+             end do
+          end do
+
+          ! move to next block column in snode
+          dblk = blocks(dblk)%last_blk + 1
+          ! numrow = numrow - s_nb
+       end do
+
+       
+
+    end do
 
 #if defined(SPLLT_USE_STARPU)
-    nval = size(val,1)
-    val_c  = c_loc(val(1)) 
-    keep_c = c_loc(keep)
+    ! unregister workspace handle
+    call starpu_f_data_unregister_submit(fdata%workspace%hdl)
 
-    call spllt_insert_init_node_task_c(node%hdl, &
-         & node%num, val_c, nval, keep_c, p)
-#elif defined(SPLLT_USE_OMP)
+    ! unregister data handles
+    call spllt_deinit_task(keep, fdata)
 
-    snum = node%num
-    p_keep => keep
-    p_val => val
-
-!$omp task firstprivate(snum) firstprivate(p_keep, p_val) &
-#if defined(SPLLT_OMP_TRACE)
-!$omp    & shared(ini_nde_id) &
-#endif
-!$omp    & private(th_id)
-
-#if defined(SPLLT_OMP_TRACE)
-    th_id = omp_get_thread_num()
-    ! write(*,*)"fac_blk_id: ", fac_blk_id, ", th_id: ", th_id
-    call trace_event_start(ini_nde_id, th_id)
+    ! do snode = 1, num_nodes
+    !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
+    ! end do
 #endif
 
-    call spllt_init_node(snum, p_val, p_keep)
+    call system_clock(stf_stop_t)
+    write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)
 
-#if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(ini_nde_id, th_id)
-#endif
-
-!$omp end task
-
-#else
-    call spllt_init_node(node%num, val, keep)
-#endif
-    
     return
-  end subroutine spllt_init_node_task
+
+9999 if(st.ne.0) then
+     info%flag = spllt_error_allocation
+     info%stat = st
+     call spllt_print_err(info%flag, context='spllt_stf_factorize',st=st)
+     return
+  endif
+
+  end subroutine spllt_stf_ll_factorize
+
+  ! TODO comments!
+
+  ! subroutine spllt_build_colmap(node, anode, cptr, colmap, ncolmap)
+  !   use hsl_ma87_double
+  !   implicit none
+
+  !   type(node_type), intent(in) :: node  ! current node in the atree
+  !   type(node_type), intent(in) :: anode  ! ancestor node in the atree
+  !   integer, dimension(:), intent(out) :: colmap ! Workarray to hold map from row 
+  !   integer, intent(inout) :: cptr  ! Position in snode of the first row
+  !   ! matching a column of the current block column of anode.    
+  !   integer, intent(inout) :: ncolmap ! number of entries in colmap
+
+  !   integer :: sa, en
+  !   integer :: numrow, numcol ! number of row/col in node
+  !   integer :: cptr2  ! Position in snode of the last row 
+  !   ! matching a column of the current block column of anode.
+  !   integer :: jlast ! Last column in the cb-th block column of anode
+  !   integer :: cb
+  !   integer :: a_nb
+    
+  !   sa = node%sa
+  !   en = node%en
+  !   numcol = en - sa + 1
+  !   numrow = size(node%index)
+    
+  !   a_nb = anode%nb
+
+  !   ncolmap = 0
+
+  !   ! Skip columns that come from other children
+  !   do cptr = cptr, numrow
+  !      if(node%index(cptr).ge.anode%sa) exit
+  !   end do
+  !   if(cptr.gt.numrow) return ! finished with node
+
+  !   ! Loop over affected block columns of anode
+  !   acols: do
+  !      if(cptr.gt.numrow) exit
+  !      if(node%index(cptr).gt.anode%en) exit
+
+  !      cb = (node%index(cptr) - anode%sa)/anode%nb + 1
+  !      ! Find cptr2
+  !      jlast = min(anode%sa + cb*a_nb - 1, anode%en)
+  !      do cptr2 = cptr, numrow
+  !         if(node%index(cptr2) > jlast) exit
+  !      end do
+  !      cptr2 = cptr2 - 1 
+       
+  !      ncolmap = ncolmap + 1 
+  !      colmap(ncolmap) = cptr2
+
+  !      ! Move cptr down, ready for next block column of anode
+  !      cptr = cptr2 + 1
+  !   end do acols
+    
+  !   return
+  ! end subroutine spllt_build_colmap
+
+  ! subroutine spllt_factorization_init(keep, data)
+  !   use hsl_ma87_double
+  !   implicit none
+
+  !   type(MA87_keep), target, intent(inout) :: keep 
+  !   type(spllt_data_type), intent(inout) :: data
+
+  !   ! Allocate factor storage (in keep%lfact)
+  !   ! TODO put block in data structure directly?    
+  !   ! init lfactor
+  !   call spllt_init_lfact(keep)
+        
+  !   return
+  ! end subroutine spllt_factorization_init
+
+  ! initialize (allocate) L factors
+  ! StarPU: register data handles (block handles) in StarPU
+!   subroutine spllt_init_lfact(keep, pbl)
+!     use hsl_ma87_double
+! #if defined(SPLLT_USE_STARPU)
+!     use  starpu_f_mod
+! #endif
+!     implicit none
+
+!     type(MA87_keep), target, intent(inout) :: keep 
+!     type(spllt_data_type), intent(inout) :: pbl
+
+!     type(node_type), pointer :: node ! node in the atree    
+!     integer(long) :: blk, dblk
+!     integer :: nbcol, l_nb, sz, sa, en
+!     integer :: blkm, blkn, size_bcol
+!     integer :: snode, num_nodes
+!     integer :: i
+!     integer :: st ! stat parameter
+!     integer :: ptr
+
+!     num_nodes = keep%info%num_nodes
+
+!     blk = 1
+!     nbcol = 0
+!     ! loop over the nodes
+    
+!     do snode = 1, num_nodes
+!        ! Loop over the block columns in snode, allocating space 
+!        ! l_nb is the size of the blocks and sz is number of
+!        ! blocks in the current block column
+       
+!        node => keep%nodes(snode)
+
+!        l_nb = node%nb
+!        sz = (size(node%index) - 1) / l_nb + 1
+!        sa = node%sa
+!        en = node%en
+
+!        size_bcol = 0
+!        do i = sa, en, l_nb
+!           nbcol = nbcol + 1
+!           size_bcol = 0
+!           dblk = blk
+!           ! loop over the row blocks
+!           do blk = dblk, dblk+sz-1
+!              blkm = keep%blocks(blk)%blkm
+!              blkn = keep%blocks(blk)%blkn
+!              size_bcol = size_bcol + blkm*blkn
+!           end do
+!           allocate (keep%lfact(nbcol)%lcol(size_bcol),stat=st)
+!           ! TODO trace error
+!           ! TODO merge with previous loop?
+!           ! register blocks hanldes in StarPU
+
+!           ptr = 1
+!           do blk = dblk, dblk+sz-1
+!              blkm = keep%blocks(blk)%blkm
+!              blkn = keep%blocks(blk)%blkn
+
+!              pbl%bc(blk)%blk => keep%blocks(blk) 
+! #if defined(SPLLT_USE_STARPU)
+!              call starpu_matrix_data_register(pbl%bc(blk)%hdl, pbl%bc(blk)%mem_node, &
+!                   & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
+!                   & int(wp,kind=c_size_t))
+! #endif
+!              pbl%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
+!              ptr = ptr + blkm*blkn
+!           end do
+!           sz = sz - 1
+!        end do       
+!     end do
+
+!   end subroutine spllt_init_lfact
 
 end module spllt_factorization_mod

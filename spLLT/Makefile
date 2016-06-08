@@ -71,7 +71,7 @@ DTDEPS90 += $(HSLPACKDIR)/hsl_mc69/hsl_mc69d.f90
 # object files
 objs := hsl_ma87d.o
 objs +=	spllt_kernels_mod.o
-objs +=	spllt_stf_mod.o spllt_factorization_mod.o spllt_mod.o
+objs +=	spllt_factorization_mod.o spllt_factorization_task_mod.o spllt_mod.o
 objs += spllt_analyse_mod.o spllt_utils_mod.o
 
 # spllt_starpu_test:
@@ -89,11 +89,11 @@ include Makefile.rules.inc
 stf:
 	($(MAKE) spllt_stf_test DEFS=-DSPLLT_USE_STF)
 stf_ll:
-	($(MAKE) spllt_stf_test DEFS+=-DSPLLT_USE_STF DEFS+=-DSPLLT_STF_LL)
+	($(MAKE) spllt_stf_test DEFS+=-DSPLLT_USE_STF)
 starpu:
-	($(MAKE) spllt_starpu_test DEFS+=-DSPLLT_USE_STARPU DEFS+=-DSPLLT_STF_LL)
+	($(MAKE) spllt_starpu_test DEFS+=-DSPLLT_USE_STARPU)
 omp:
-	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP DEFS+=-DSPLLT_STF_LL)
+	($(MAKE) spllt_omp_test DEFS=-DSPLLT_USE_OMP)
 omp_trace:
 	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
 parsec:

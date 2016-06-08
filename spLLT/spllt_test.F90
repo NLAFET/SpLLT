@@ -24,7 +24,7 @@ contains
 
   subroutine spllt_test_mat(mf, cntl)
     use spllt_mod
-    use spllt_stf_mod
+    use spllt_factorization_mod
     use spral_rutherford_boeing
     use hsl_mc68_integer
     use spllt_analyse_mod
@@ -261,7 +261,7 @@ contains
 #endif
 
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU)
-    use spllt_stf_mod
+    use spllt_factorization_mod
 #elif defined(SPLLT_USE_PARSEC)
     use dague_f08_interfaces
     use spllt_ptg_mod
