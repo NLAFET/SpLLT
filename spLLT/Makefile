@@ -98,6 +98,8 @@ omp_trace:
 	($(MAKE) spllt_omp_test DEFS+=-DSPLLT_USE_OMP DEFS+=-DSPLLT_OMP_TRACE)
 parsec:
 	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC)
+parsec-mpi:
+	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC DEFS+=-DSPLLT_USE_MPI)
 
 # PaRSEC
 spllt_parsec_test: spllt_test.F90 $(objs) $(parsecobjs) common90.o dtdeps.o dtdeps90.o

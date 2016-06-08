@@ -396,58 +396,7 @@ update_between(id, i)
 BODY
 {
 
-   int sync = get_dep_in_sync(bcs, id, i);
-
-   /* printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);    */
-   /* printf("[update_between] bcol: %d, bcol_sa: %d\n", bcol, bcol_sa);    */
-
-   
-   /* printf("[update_between] bc_ij: %p, bc_jk: %p, bc_ik: %p\n", bc_ij, bc_jk, bc_ik);    */
-   /* printf("[update_between] diag_idx: %d\n", diag_idx);    */
-
-   /* printf("[update_between] id: %d, i: %d, upd_count: %d\n", id, i, upd_count);    */
-   /* printf("[update_between] id_jk: %d, p1: %d\n", id_jk, p1);    */
-   /* printf("[update_between] id_ik: %d, p2: %d\n", id_ik, p2);    */
-
-   /* if (!sync) { */
-      
-   /*    int m = get_blk_m(bcs, id); */
-   /*    int n = get_blk_n(bcs, id); */
-
-   /*    int dcol = bcol-bcol_sa+1; */
-
-   /*    int src_node = get_blk_node(bcs, id_jk); */
-
-   /*    int sbcol = get_bcol(bcs, id_jk); */
-   /*    int sblk_sa = get_blk_sa(snodes, src_node); */
-   /*    int sbcol_sa = get_bcol(bcs, sblk_sa); */
-   /*    int scol = sbcol - sbcol_sa + 1; */
-
-   /*    void *blk_ij = get_blk(bcs, id); */
-
-   /*    int n1 = get_blk_n(bcs, id_jk); */
-
-   /*    double *src1 = (double *)bc_jk; */
-   /*    double *src2 = (double *)bc_ik; */
-   /*    double *dest = (double *)bc_ij; */
-   
-   /*    int csrc = get_dep_in_csrc(bcs, id, i); */
-   /*    int rsrc = get_dep_in_rsrc(bcs, id, i); */
-
-   /*    void *buffer = dague_private_memory_pop( p_work ); */
-
-   /*    void *blk_jk = get_blk(bcs, id_jk); */
-   /*    void *blk_ik = get_blk(bcs, id_ik); */
-
-   /*    spllt_update_between_c(m, n, blk_ij, */
-   /*                           dcol, snodes, nnodes, n1, scol, src_node, */
-   /*                           dest, src1 + csrc-1, src2 + rsrc-1, */
-   /*                           /\* bc_ij, bc_jk, bc_ik, *\/ */
-   /*                           buffer, min_width_blas); */
-
-   /*    dague_private_memory_push( p_work, buffer ); */
-
-   /* } */
+#if defined(SPLLT_USE_MPI)
 
    int src_node = get_blk_node(bcs, id_jk);
    int dest_node = get_blk_node(bcs, id);
@@ -489,6 +438,65 @@ BODY
    /* } */
 
    dague_private_memory_push( p_work, buffer );
+
+#else
+   // in a shared memory environement it is possible to exploit the
+   // fact that block columns are contiguous in memory
+
+   int sync = get_dep_in_sync(bcs, id, i);
+
+   /* printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);    */
+   /* printf("[update_between] bcol: %d, bcol_sa: %d\n", bcol, bcol_sa);    */
+
+   
+   /* printf("[update_between] bc_ij: %p, bc_jk: %p, bc_ik: %p\n", bc_ij, bc_jk, bc_ik);    */
+   /* printf("[update_between] diag_idx: %d\n", diag_idx);    */
+
+   /* printf("[update_between] id: %d, i: %d, upd_count: %d\n", id, i, upd_count);    */
+   /* printf("[update_between] id_jk: %d, p1: %d\n", id_jk, p1);    */
+   /* printf("[update_between] id_ik: %d, p2: %d\n", id_ik, p2);    */
+
+   if (!sync) {
+      
+      int m = get_blk_m(bcs, id);
+      int n = get_blk_n(bcs, id);
+
+      int dcol = bcol-bcol_sa+1;
+
+      int src_node = get_blk_node(bcs, id_jk);
+
+      int sbcol = get_bcol(bcs, id_jk);
+      int sblk_sa = get_blk_sa(snodes, src_node);
+      int sbcol_sa = get_bcol(bcs, sblk_sa);
+      int scol = sbcol - sbcol_sa + 1;
+
+      void *blk_ij = get_blk(bcs, id);
+
+      int n1 = get_blk_n(bcs, id_jk);
+
+      double *src1 = (double *)bc_jk;
+      double *src2 = (double *)bc_ik;
+      double *dest = (double *)bc_ij;
+   
+      int csrc = get_dep_in_csrc(bcs, id, i);
+      int rsrc = get_dep_in_rsrc(bcs, id, i);
+
+      void *buffer = dague_private_memory_pop( p_work );
+
+      void *blk_jk = get_blk(bcs, id_jk);
+      void *blk_ik = get_blk(bcs, id_ik);
+
+      spllt_update_between_c(m, n, blk_ij,
+                             dcol, snodes, nnodes, n1, scol, src_node,
+                             dest, src1 + csrc-1, src2 + rsrc-1,
+                             /* bc_ij, bc_jk, bc_ik, */
+                             buffer, min_width_blas);
+
+      dague_private_memory_push( p_work, buffer );
+
+   }
+#endif
+
 
 }
 END
