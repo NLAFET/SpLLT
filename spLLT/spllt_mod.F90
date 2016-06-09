@@ -166,6 +166,104 @@ module spllt_mod
 
 contains
 
+  ! initialize solver
+  subroutine spllt_init(cntl)
+#if defined(SPLLT_USE_STARPU)
+    use iso_c_binding
+    use starpu_f_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE) 
+    use trace_mod
+#endif
+#elif defined(SPLLT_USE_PARSEC)
+    use dague_f08_interfaces
+    use spllt_parsec_mod
+#endif
+    implicit none
+
+    type(spllt_cntl) :: cntl
+
+#if defined(SPLLT_USE_STARPU)
+
+    integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
+    integer(c_int) :: ret
+
+#endif
+
+#if defined(SPLLT_USE_STARPU)
+
+    call system_clock(start_starpuinit_t, rate_starpuinit_t)
+    ! initialize starpu
+    ret = starpu_f_init(cntl%ncpu)
+    call system_clock(stop_starpuinit_t)
+    write(*,'("[>] [spllt_test_mat] StarPU init time: ", es10.3, " s")') &
+         &(stop_starpuinit_t - start_starpuinit_t)/real(rate_starpuinit_t)
+    call starpu_f_fxt_start_profiling()
+
+#elif defined(SPLLT_USE_OMP)
+
+#if defined(SPLLT_OMP_TRACE) 
+
+    call trace_init(omp_get_num_threads())
+    call trace_create_event('INIT_NODE', ini_nde_id)
+    call trace_create_event('FACTO_BLK', fac_blk_id)
+    call trace_create_event('SOLVE_BLK', slv_blk_id)
+    call trace_create_event('UPDATE_BLK', upd_blk_id)
+    call trace_create_event('UPDATE_BTW', upd_btw_id)
+
+#endif
+
+#elif defined(SPLLT_USE_PARSEC)
+
+    ctx = parsec_init(cntl%ncpu, nds, rank)
+    write(*,'("[>] Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
+    ! call dague_init(cntl%ncpu, ctx)
+#endif
+
+    return
+  end subroutine spllt_init
+
+  subroutine spllt_finalize()
+#if defined(SPLLT_USE_STARPU)
+    use iso_c_binding
+    use starpu_f_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
+#if defined(SPLLT_OMP_TRACE) 
+    use trace_mod
+#endif
+#elif defined(SPLLT_USE_PARSEC)
+    use dague_f08_interfaces
+    use spllt_parsec_mod
+#endif
+    implicit none
+
+    integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
+
+#if defined(SPLLT_USE_STARPU)
+
+    call system_clock(start_starpushutdown_t, rate_starpushutdown_t)
+    call starpu_f_shutdown()
+    call system_clock(stop_starpushutdown_t)
+    write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
+         &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
+
+#elif defined(SPLLT_USE_OMP)
+
+#if defined(SPLLT_OMP_TRACE) 
+    call trace_log_dump_paje('trace')
+#endif
+
+#elif defined(SPLLT_USE_PARSEC)
+
+    ! call dague_fini(ctx)
+    call parsec_fini(ctx)
+
+#endif
+    return
+  end subroutine spllt_finalize
+
   ! subroutine spllt_dep_array_init(dep_arr, dep)
   !   implicit none
 

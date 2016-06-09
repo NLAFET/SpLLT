@@ -75,10 +75,10 @@ contains
     ! StarPU
 #if defined(SPLLT_USE_STARPU) 
     ! when using StarPU
-    integer(c_int) :: ret
+    ! integer(c_int) :: ret
     ! timing
-    integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
-    integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
+    ! integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
+    ! integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t
 #endif
 
     call splllt_parse_args(options)
@@ -147,32 +147,19 @@ contains
     allocate(b(m), x(n))
     call random_number(b)
 
-#if defined(SPLLT_USE_STARPU)
-    call system_clock(start_starpuinit_t, rate_starpuinit_t)
-    ! initialize starpu
-    ret = starpu_f_init(cntl%ncpu)
-    call system_clock(stop_starpuinit_t)
-    write(*,'("[>] [spllt_test_mat] StarPU init time: ", es10.3, " s")') &
-         &(stop_starpuinit_t - start_starpuinit_t)/real(rate_starpuinit_t)
-    call starpu_f_fxt_start_profiling()
-#elif defined(SPLLT_USE_OMP)
+#if defined(SPLLT_USE_OMP)
 !$omp parallel num_threads(cntl%ncpu)
 !$omp master
-#if defined(SPLLT_OMP_TRACE) 
-    call trace_init(omp_get_num_threads())
-    call trace_create_event('INIT_NODE', ini_nde_id)
-    call trace_create_event('FACTO_BLK', fac_blk_id)
-    call trace_create_event('SOLVE_BLK', slv_blk_id)
-    call trace_create_event('UPDATE_BLK', upd_blk_id)
-    call trace_create_event('UPDATE_BTW', upd_btw_id)
 #endif
+    ! initialize solver
+    call spllt_init(cntl)
 
-#elif defined(SPLLT_USE_PARSEC)
+! #elif defined(SPLLT_USE_PARSEC)
 
-    ctx = parsec_init(cntl%ncpu, nds, rank)
-    write(*,'("[>] Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
-    ! call dague_init(cntl%ncpu, ctx)
-#endif
+!     ctx = parsec_init(cntl%ncpu, nds, rank)
+!     write(*,'("[>] Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
+!     ! call dague_init(cntl%ncpu, ctx)
+! #endif
 
     write(*,'("[>] factorize")')
     write(*,'("[>] [factorize]    nb: ", i6)') cntl%nb
@@ -212,21 +199,19 @@ contains
     call system_clock(stop_t)
     write(*,'("[>] [factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
 
-#if defined(SPLLT_USE_STARPU)
-    call system_clock(start_starpushutdown_t, rate_starpushutdown_t)
-    call starpu_f_shutdown()
-    call system_clock(stop_starpushutdown_t)
-    write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
-         &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
-#elif defined(SPLLT_USE_OMP)
-#if defined(SPLLT_OMP_TRACE) 
-    call trace_log_dump_paje('trace')
-#endif
+    call spllt_finalize()
+! #if defined(SPLLT_USE_STARPU)
+!     call system_clock(start_starpushutdown_t, rate_starpushutdown_t)
+!     call starpu_f_shutdown()
+!     call system_clock(stop_starpushutdown_t)
+!     write(*,'("[>] [spllt_test_mat] StarPU shutdown time: ", es10.3, " s")') &
+!          &(stop_starpushutdown_t - start_starpushutdown_t)/real(rate_starpushutdown_t)
+#if defined(SPLLT_USE_OMP)
 !$omp end master
 !$omp end parallel
-#elif defined(SPLLT_USE_PARSEC)
-    ! call dague_fini(ctx)
-    call parsec_fini(ctx)
+! #elif defined(SPLLT_USE_PARSEC)
+!     ! call dague_fini(ctx)
+!     call parsec_fini(ctx)
 #endif
 
     write(*,'("[>] solve")')
