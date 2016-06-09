@@ -31,12 +31,13 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 
    double *dest = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
-   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+   /* cudaStream_t local_stream = starpu_cuda_get_local_stream(); */
 
-   magmablasSetKernelStream(local_stream);
+   /* magmablasSetKernelStream(local_stream); */
 
    magma_dpotrf_gpu(MagmaUpper, n, dest, n, &info);
 
+  /* cudaStreamSynchronize(local_stream); */
 }
 #endif
 
@@ -45,13 +46,12 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 struct starpu_codelet cl_factorize_block = {
 #if defined(SPLLT_USE_GPU)
   .where = STARPU_CUDA,
+  /* .cuda_flags = {STARPU_CUDA_ASYNC}, */
+  .cuda_funcs = {spllt_starpu_factorize_block_cuda_func, NULL},
 #else
   .where = STARPU_CPU,
 #endif
   .cpu_funcs = {spllt_starpu_factorize_block_cpu_func, NULL},
-#if defined(SPLLT_USE_GPU)
-  .cuda_funcs = {spllt_starpu_factorize_block_cuda_func, NULL},
-#endif
   .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "FACTO_BLK"
 };

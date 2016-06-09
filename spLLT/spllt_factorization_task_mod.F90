@@ -1,12 +1,12 @@
 module spllt_factorization_task_mod
-  use spllt_mod
+  use spllt_data_mod
   implicit none
   
 contains
 
   ! node factorization task
   subroutine spllt_factorize_node(snode, map, fdata, keep, control)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
     implicit none
@@ -288,6 +288,7 @@ contains
        do i = sa, en, l_nb
           dblk = blk
           do blk = dblk, dblk+sz-1
+             ! write(*,*) 'unregister blk: ', blk
              call starpu_f_data_unregister_submit(pbl%bc(blk)%hdl)
           end do
           sz = sz - 1
@@ -295,12 +296,50 @@ contains
     end do
 
   end subroutine spllt_deinit_task
+
+  subroutine spllt_data_unregister(keep, pbl)
+    use hsl_ma87_double
+    use  starpu_f_mod
+    implicit none
+
+    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_data_type), intent(inout) :: pbl
+
+    integer :: i
+    integer :: snode, num_nodes
+    type(node_type), pointer :: node ! node in the atree    
+    integer(long) :: blk, dblk
+    integer :: l_nb, sz, sa, en
+
+    num_nodes = keep%info%num_nodes
+    blk = 1
+
+    do snode = 1, num_nodes
+
+       node => keep%nodes(snode)
+
+       l_nb = node%nb
+       sz = (size(node%index) - 1) / l_nb + 1
+       sa = node%sa
+       en = node%en
+
+       do i = sa, en, l_nb
+          dblk = blk
+          do blk = dblk, dblk+sz-1
+             ! write(*,*) 'unregister blk: ', blk
+             call starpu_f_data_unregister(pbl%bc(blk)%hdl)
+          end do
+          sz = sz - 1
+       end do
+    end do
+
+  end subroutine spllt_data_unregister
 #endif
 
   ! factorize block 
   ! _potrf
   subroutine spllt_factorize_block_task(fdata, node, bc, lfact, prio)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -430,7 +469,7 @@ contains
 
   ! _trsm
   subroutine spllt_solve_block_task(fdata, bc_kk, bc_ik, lfact, prio)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -597,7 +636,7 @@ contains
   ! syrk/gemm (same node)
   ! A_ij <- A_ij - A_ik A_jk^T
   subroutine spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, lfact, prio)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -792,7 +831,7 @@ contains
 
 ! #if defined(SPLLT_USE_OMP)
 !   subroutine spllt_omp_update_between_cpu_func(m, n, blk, dcol, dnode, n1, scol, snode, dest, csrc, rsrc, min_width_blas)
-!     use spllt_mod
+!     use spllt_data_mod
 !     use spllt_kernels_mod
 !     implicit none
 
@@ -845,7 +884,7 @@ contains
        & row_list, col_list, workspace, &
        & lfact, blocks, bcs, &
        & control, prio)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -1222,7 +1261,7 @@ contains
 
   ! init node
   subroutine spllt_init_node_task(fdata, node, val, keep, prio)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)

@@ -31,6 +31,9 @@ contains
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
     use starpu_f_mod
+#if defined(SPLLT_USE_STARPU)
+    use spllt_factorization_task_mod, only: spllt_data_unregister
+#endif
 #elif defined(SPLLT_USE_OMP)
 !$ use omp_lib
 #if defined(SPLLT_OMP_TRACE) 
@@ -185,6 +188,10 @@ contains
 #if defined(SPLLT_USE_STARPU)
     ! wait for task completion
     call starpu_f_task_wait_for_all()
+#if defined(SPLLT_USE_GPU)
+    ! put data back on home node e.g. from GPU to CPU
+    call spllt_data_unregister(keep, pbl)
+#endif
     call starpu_f_fxt_stop_profiling()
 #elif defined(SPLLT_USE_OMP)
 !$omp taskwait

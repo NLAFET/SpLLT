@@ -9,7 +9,7 @@ contains
   ! A_ii <- L_ii
   !
   subroutine spllt_factor_diag_block(m, n, dest)
-    use spllt_mod
+    use spllt_data_mod
     implicit none
     
     integer, intent(in) :: m ! number of rows in dest
@@ -36,7 +36,7 @@ contains
 
   subroutine spllt_factor_diag_block_c(m, n, bc_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     integer(c_int), value :: m, n
@@ -59,7 +59,7 @@ contains
   ! dest <- dest diag^-1
   !
   subroutine spllt_solve_block(m, n, dest, diag)
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     integer, intent(in) :: m ! number of rows in dest
@@ -76,7 +76,7 @@ contains
 
   subroutine spllt_solve_block_c(m, n, bc_kk_c, bc_ik_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     integer(c_int), value :: m ! number of rows in dest
@@ -103,7 +103,7 @@ contains
   ! dest, src1 and src2 all belong to the same node.
   !
   subroutine spllt_update_block(m, n, dest, diag, n1, src1, src2)
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     integer, intent(in) :: m ! number of rows in dest
@@ -139,7 +139,7 @@ contains
 
   subroutine spllt_update_block_c(m, n, dest_c, isDiag, n1, src1_c, src2_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     integer(c_int), value :: m ! number of rows in dest
@@ -170,7 +170,7 @@ contains
        & dcol, scol, &
        & blk_dest, dnode, blk_csrc, blk_rsrc, snode, &
        & min_width_blas, row_list, col_list, buffer)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -382,7 +382,7 @@ contains
        & blk_dest_c, dnode_c, blk_csrc_c, blk_rsrc_c, snode_c, &
        & min_width_blas, buffer_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -458,7 +458,7 @@ contains
 
   subroutine spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
        & csrc, rsrc, row_list, col_list, buffer, min_width_blas)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -690,7 +690,7 @@ contains
        & dcol, nodes_c, nnodes, n1, scol, snode, dest_c, & 
        & src1_c, src2_c, buffer_c, min_width_blas) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -744,7 +744,7 @@ contains
   ! init node
   ! copy matrix coefficients into lfact array within snode
   subroutine spllt_init_node(snode, val, keep)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -812,7 +812,7 @@ contains
   ! C wrapper
   subroutine spllt_init_node_c(snode, val_c, nval, keep_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -835,7 +835,7 @@ contains
   ! init blk
   ! copy matrix coefficicents into blk
   subroutine spllt_init_blk(id, val, keep)
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -870,7 +870,7 @@ contains
 
   subroutine spllt_init_blk_c(id, val_c, nval, keep_c) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
@@ -892,7 +892,7 @@ contains
 
   subroutine spllt_activate_node(snode, keep, fdata)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
 #if defined(SPLLT_USE_STARPU)
     use  starpu_f_mod

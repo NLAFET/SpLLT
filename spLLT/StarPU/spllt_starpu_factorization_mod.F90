@@ -145,7 +145,7 @@ contains
 
   ! factorize block StarPU task insert
   ! subroutine spllt_starpu_insert_factorize_block(bc, prio)
-  !   use spllt_mod
+  !   use spllt_data_mod
   !   implicit none
 
   !   type(spllt_bc_type), intent(in) :: bc ! block to be factorized    
@@ -159,7 +159,7 @@ contains
   ! factorize block StarPU task 
   ! _potrf
   subroutine spllt_starpu_factorize_block_cpu_func(buffers, cl_arg) bind(C)
-    use spllt_mod
+    use spllt_data_mod
     use iso_c_binding
     use starpu_f_mod
     use spllt_kernels_mod
@@ -188,7 +188,7 @@ contains
 
   ! solve block StarPU task insert
   subroutine spllt_starpu_insert_solve_block(bc_kk, bc_ik, prio)
-    use spllt_mod
+    use spllt_data_mod
     implicit none
     
     ! block to be solved (bc_ik) wrt diag block (bc_kk)
@@ -203,7 +203,7 @@ contains
   ! solve block StarPU task 
   ! _potrf
   subroutine spllt_starpu_solve_block_cpu_func(buffers, cl_arg) bind(C)
-    use spllt_mod
+    use spllt_data_mod
     use iso_c_binding
     use starpu_f_mod
     use spllt_kernels_mod
@@ -230,7 +230,7 @@ contains
   ! update block StarPU task 
   ! _syrk/_gemm
   subroutine spllt_starpu_update_block_cpu_func(buffers, cl_arg) bind(C)
-    use spllt_mod
+    use spllt_data_mod
     use iso_c_binding
     use starpu_f_mod
     use spllt_kernels_mod
@@ -273,7 +273,7 @@ contains
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
     use hsl_ma87_double
-    use spllt_mod
+    use spllt_data_mod
     use spllt_kernels_mod
     implicit none
     
@@ -372,7 +372,7 @@ contains
   ! init node StarPU task 
   subroutine spllt_starpu_init_node_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
-    use spllt_mod
+    use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
     implicit none

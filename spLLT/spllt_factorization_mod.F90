@@ -1,11 +1,12 @@
 module spllt_factorization_mod
-  use spllt_mod
+  use spllt_data_mod
   implicit none
 
 contains
 
   subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
-    use spllt_mod
+    use spllt_data_mod
+    use spllt_error_mod
     use hsl_ma87_double
     use spllt_factorization_task_mod
 #if defined(SPLLT_USE_STARPU) 
@@ -202,12 +203,16 @@ contains
        call spllt_factorize_node(fdata%nodes(snode), tmpmap, fdata, keep, control)          
     end do
 
-#if defined(SPLLT_USE_STARPU)
     ! unregister workspace handle
     call starpu_f_data_unregister_submit(fdata%workspace%hdl)
 
-    ! unregister data handles
+    ! unregister data handle
+#if defined(SPLLT_USE_STARPU)
+
+#ifndef SPLLT_USE_GPU
+
     call spllt_deinit_task(keep, fdata)
+#endif
 
     ! do snode = 1, num_nodes
     !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
@@ -246,7 +251,8 @@ contains
 
   ! left looking variant of the STF algorithm
   subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
-    use spllt_mod
+    use spllt_data_mod
+    use spllt_error_mod
     use hsl_ma87_double
     use spllt_factorization_task_mod
 #if defined(SPLLT_USE_STARPU) 

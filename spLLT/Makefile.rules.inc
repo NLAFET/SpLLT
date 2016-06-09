@@ -11,6 +11,7 @@ usegpu=$(findstring USE_GPU, $(DEFS))
 
 ifneq ($(usegpu),)
 CFLAGS += $(IMAGMA)
+FFLAGS += $(IMAGMA)
 LIBS += $(LMAGMA)
 endif
 
@@ -39,22 +40,24 @@ parsecobjs += spllt_parsec_wrap.o spllt_parsec_mod.o
 endif
 
 # Module build dependencies
-spllt_test.o: hsl_ma87d.o spllt_analyse_mod.o spllt_factorization_mod.o spllt_mod.o dtdeps.o dtdeps90.o
-spllt_factorization_mod.o: hsl_ma87d.o spllt_factorization_task_mod.o spllt_mod.o
-spllt_ptg_mod.o: spllt_mod.o
-spllt_factorization_task_mod.o: spllt_mod.o spllt_kernels_mod.o 
-spllt_kernels_mod.o: spllt_mod.o hsl_ma87d.o 
-spllt_analyse_mod.o: spllt_utils_mod.o spllt_mod.o hsl_ma87d.o
-spllt_utils_mod.o: spllt_mod.o
-spllt_mod.o: hsl_ma87d.o dtdeps90.o  
+spllt_test.o: hsl_ma87d.o spllt_data_mod.o spllt_analyse_mod.o spllt_factorization_mod.o spllt_mod.o dtdeps.o dtdeps90.o
+spllt_factorization_mod.o: hsl_ma87d.o spllt_factorization_task_mod.o spllt_data_mod.o spllt_error_mod.o
+spllt_ptg_mod.o: spllt_data_mod.o
+spllt_factorization_task_mod.o: spllt_data_mod.o spllt_kernels_mod.o 
+spllt_kernels_mod.o: spllt_data_mod.o hsl_ma87d.o 
+spllt_analyse_mod.o: spllt_utils_mod.o spllt_data_mod.o hsl_ma87d.o
+spllt_utils_mod.o: spllt_data_mod.o
+spllt_mod.o: hsl_ma87d.o dtdeps90.o
+spllt_data_mod.o: hsl_ma87d.o dtdeps90.o
 # spllt_starpu_kernels.o: spllt_starpu_factorization_mod.o
 
 ifneq ($(usestarpu),)
 spllt_test.o: starpu_f_mod.o
 spllt_factorization_mod.o: starpu_f_mod.o
 spllt_mod.o: starpu_f_mod.o
+spllt_data_mod.o: starpu_f_mod.o
 spllt_factorization_task_mod.o: spllt_starpu_factorization_mod.o 
-spllt_starpu_factorization_mod.o: spllt_mod.o spllt_starpu_kernels.o
+spllt_starpu_factorization_mod.o: spllt_data_mod.o spllt_starpu_kernels.o
 starpu_f_mod.o: starpu_f_wrappers.o
 endif
 
@@ -71,3 +74,7 @@ endif
 hsl_ma87dt.o: hsl_ma87d.o dtdeps90.o
 hsl_ma87d.o: ddeps90.o common90.o 
 ddeps90.o: common90.o
+
+ifneq ($(useparsec),)
+spllt_mod.o: spllt_factorization_task_mod.o 
+endif
