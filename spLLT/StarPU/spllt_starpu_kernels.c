@@ -45,6 +45,7 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
    magma_dpotf2_gpu(MagmaUpper, n, dest, n, &info);
 
    if (m > n) {
+      /* printf("TET\n"); */
       magma_dtrsm(MagmaLeft, MagmaUpper, MagmaTrans, MagmaNonUnit,
                   n, m-n, 1.0, dest, n, dest + n*n, n);
    }
@@ -57,7 +58,8 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 // factorize block task codelet
 struct starpu_codelet cl_factorize_block = {
 #if defined(SPLLT_USE_GPU)
-  .where = STARPU_CUDA,
+  .where = STARPU_CUDA /* | STARPU_CPU */,
+  /* .where = STARPU_CPU, */
   .cuda_flags = {STARPU_CUDA_ASYNC},
   .cuda_funcs = {spllt_starpu_factorize_block_cuda_func, NULL},
 #else
@@ -122,15 +124,16 @@ void spllt_starpu_solve_block_cuda_func(void *buffers[], void *cl_arg) {
 // solve block task codelet
 struct starpu_codelet cl_solve_block = {
 #if defined(SPLLT_USE_GPU)
-  .where = STARPU_CUDA,
-  .cuda_flags = {STARPU_CUDA_ASYNC},
-  .cuda_funcs = {spllt_starpu_solve_block_cuda_func, NULL},
+   /* .where = STARPU_CPU, */
+   .where = STARPU_CUDA,
+   .cuda_flags = {STARPU_CUDA_ASYNC},
+   .cuda_funcs = {spllt_starpu_solve_block_cuda_func, NULL},
 #else
-  .where = STARPU_CPU,
+   .where = STARPU_CPU,
 #endif
-  .cpu_funcs = {spllt_starpu_solve_block_cpu_func, NULL},
-  .nbuffers = STARPU_VARIABLE_NBUFFERS,
-  .name = "SOLVE_BLK"
+   .cpu_funcs = {spllt_starpu_solve_block_cpu_func, NULL},
+   .nbuffers = STARPU_VARIABLE_NBUFFERS,
+   .name = "SOLVE_BLK"
 };
 
 void spllt_starpu_insert_solve_block_c(starpu_data_handle_t lkk_handle,
@@ -210,15 +213,16 @@ void spllt_starpu_codelet_unpack_args_update_block(void *cl_arg,
 // update block task codelet
 struct starpu_codelet cl_update_block = {
 #if defined(SPLLT_USE_GPU)
-  .where = STARPU_CUDA,
-  .cuda_flags = {STARPU_CUDA_ASYNC},
-  .cuda_funcs = {spllt_starpu_update_block_cuda_func, NULL},
+   .where = STARPU_CUDA,
+   /* .where = STARPU_CPU, */
+   .cuda_flags = {STARPU_CUDA_ASYNC},
+   .cuda_funcs = {spllt_starpu_update_block_cuda_func, NULL},
 #else
-  .where = STARPU_CPU,
+   .where = STARPU_CPU,
 #endif
-  .cpu_funcs = {spllt_starpu_update_block_cpu_func, NULL},
-  .nbuffers = STARPU_VARIABLE_NBUFFERS,
-  .name = "UPDATE_BLK"
+   .cpu_funcs = {spllt_starpu_update_block_cpu_func, NULL},
+   .nbuffers = STARPU_VARIABLE_NBUFFERS,
+   .name = "UPDATE_BLK"
 };
 
 void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
@@ -245,6 +249,26 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
 
 void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg);
 
+#if defined(SPLLT_USE_GPU)
+void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg) {
+
+   void *snode;
+   int scol;
+   void *anode;
+   void *blk_dest;
+   int dcol;
+   int csrc, csrc2;
+   int rsrc, rsrc2;
+   int min_with_blas;
+
+   starpu_codelet_unpack_args(cl_arg,
+                              snode, scol, anode, a_blk, dcol,
+                              csrc, csrc2, 
+                              rsrc, rsrc2,
+                              min_with_blas);   
+}
+#endif
+
 void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
                                                      void *snode, int *scol, 
                                                      void *anode, void *a_blk, int *dcol,
@@ -265,10 +289,16 @@ void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
 
 // update block task codelet
 struct starpu_codelet cl_update_between = {
-  .where = STARPU_CPU,
-  .cpu_funcs = {spllt_starpu_update_between_cpu_func, NULL},
-  .nbuffers = STARPU_VARIABLE_NBUFFERS,
-  .name = "UPDATE_BETWEEN"
+#if defined(SPLLT_USE_GPU)
+   .where = /* STARPU_CUDA */ STARPU_CPU,
+   .cuda_flags = {STARPU_CUDA_ASYNC},
+   .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
+#else
+   .where = STARPU_CPU,
+#endif
+   .cpu_funcs = {spllt_starpu_update_between_cpu_func, NULL},
+   .nbuffers = STARPU_VARIABLE_NBUFFERS,
+   .name = "UPDATE_BETWEEN"
 };
 
 void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int nhlik,
