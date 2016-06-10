@@ -13,6 +13,7 @@ ifneq ($(usegpu),)
 CFLAGS += $(IMAGMA)
 FFLAGS += $(IMAGMA)
 LIBS += $(LMAGMA)
+LIBS += -L$(CUDADIR)/lib64 -lcusolver
 endif
 
 ifneq ($(usestarpu),)

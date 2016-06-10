@@ -3,7 +3,9 @@
 #if defined(SPLLT_USE_GPU)
 #include <starpu_cuda.h>
 #include <magma.h>
+/* #include <magmablas.h> */
 #include <cublas.h>
+/* #include <cusolverDn.h> */
 #endif
 /* void spllt_starpu_unpack_args_factorize_block(void *cl_arg, */
 /*                                               int *m, int *n) { */
@@ -31,11 +33,21 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 
    double *dest = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
-   /* cudaStream_t local_stream = starpu_cuda_get_local_stream(); */
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
 
-   /* magmablasSetKernelStream(local_stream); */
+   /* cusolverDnHandle_t cu_hdl; */
+   /* cusolverDnCreate(&cu_hdl); */
+   /* cusolverDnDestroy(cu_hdl); */
 
-   magma_dpotrf_gpu(MagmaUpper, n, dest, n, &info);
+   magmablasSetKernelStream(local_stream);
+
+   /* magma_dpotrf_gpu(MagmaUpper, n, dest, n, &info); */
+   magma_dpotf2_gpu(MagmaUpper, n, dest, n, &info);
+
+   if (m > n) {
+      magma_dtrsm(MagmaLeft, MagmaUpper, MagmaTrans, MagmaNonUnit,
+                  n, m-n, 1.0, dest, n, dest + n*n, n);
+   }
 
   /* cudaStreamSynchronize(local_stream); */
 }
@@ -46,7 +58,7 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 struct starpu_codelet cl_factorize_block = {
 #if defined(SPLLT_USE_GPU)
   .where = STARPU_CUDA,
-  /* .cuda_flags = {STARPU_CUDA_ASYNC}, */
+  .cuda_flags = {STARPU_CUDA_ASYNC},
   .cuda_funcs = {spllt_starpu_factorize_block_cuda_func, NULL},
 #else
   .where = STARPU_CPU,
@@ -85,9 +97,37 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
 
 void spllt_starpu_solve_block_cpu_func(void *buffers[], void *cl_arg);
 
+#if defined(SPLLT_USE_GPU)
+void spllt_starpu_solve_block_cuda_func(void *buffers[], void *cl_arg) {
+
+   printf("[spllt_starpu_solve_block_cuda_func]\n");
+
+   double *bc_kk = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
+ 
+   unsigned m = STARPU_MATRIX_GET_NX(buffers[1]);
+   unsigned n = STARPU_MATRIX_GET_NY(buffers[1]);
+   unsigned ld = STARPU_MATRIX_GET_LD(buffers[1]);
+   double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
+
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+
+   magmablasSetKernelStream(local_stream);
+
+   magma_dtrsm(MagmaLeft, MagmaUpper, MagmaTrans, MagmaNonUnit,
+               n, m, 1.0, bc_kk, n, bc_ik, n);
+  
+}
+#endif
+
 // solve block task codelet
 struct starpu_codelet cl_solve_block = {
+#if defined(SPLLT_USE_GPU)
+  .where = STARPU_CUDA,
+  .cuda_flags = {STARPU_CUDA_ASYNC},
+  .cuda_funcs = {spllt_starpu_solve_block_cuda_func, NULL},
+#else
   .where = STARPU_CPU,
+#endif
   .cpu_funcs = {spllt_starpu_solve_block_cpu_func, NULL},
   .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "SOLVE_BLK"
@@ -114,6 +154,50 @@ void spllt_starpu_insert_solve_block_c(starpu_data_handle_t lkk_handle,
 
 void spllt_starpu_update_block_cpu_func(void *buffers[], void *cl_arg);
 
+#if defined(SPLLT_USE_GPU)
+void spllt_starpu_update_block_cuda_func(void *buffers[], void *cl_arg) {
+
+   printf("[spllt_starpu_update_block_cuda_func]\n");
+   
+   int diag;
+
+   starpu_codelet_unpack_args(cl_arg,
+                              &diag);
+
+   double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
+   unsigned n1 = STARPU_MATRIX_GET_NY(buffers[1]);
+   double *bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
+
+   unsigned m = STARPU_MATRIX_GET_NX(buffers[2]);
+   unsigned n = STARPU_MATRIX_GET_NY(buffers[2]);
+   unsigned ld = STARPU_MATRIX_GET_LD(buffers[2]);
+   double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);
+
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+
+   magmablasSetKernelStream(local_stream);
+
+   if (diag) {
+
+      magma_dsyrk(MagmaUpper, MagmaTrans, 
+                  n, n1, -1.0, bc_jk, n1, 1.0, bc_ij, n);
+
+      if (m > n) {
+         
+         magma_dgemm(MagmaTrans, MagmaNoTrans, 
+                     n, m-n, n1, -1.0, 
+                     bc_jk, n1, bc_ik + n*n1, n1, 1.0, bc_ij + n*n, n);
+      }
+   }
+   else {
+      
+         magma_dgemm(MagmaTrans, MagmaNoTrans, 
+                     n, m, n1, -1.0, 
+                     bc_jk, n1, bc_ik, n1, 1.0, bc_ij, n);      
+   }   
+}
+#endif
+
 void spllt_starpu_codelet_unpack_args_update_block(void *cl_arg,
                                                    int *diag) {
    
@@ -125,7 +209,13 @@ void spllt_starpu_codelet_unpack_args_update_block(void *cl_arg,
 
 // update block task codelet
 struct starpu_codelet cl_update_block = {
+#if defined(SPLLT_USE_GPU)
+  .where = STARPU_CUDA,
+  .cuda_flags = {STARPU_CUDA_ASYNC},
+  .cuda_funcs = {spllt_starpu_update_block_cuda_func, NULL},
+#else
   .where = STARPU_CPU,
+#endif
   .cpu_funcs = {spllt_starpu_update_block_cpu_func, NULL},
   .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "UPDATE_BLK"

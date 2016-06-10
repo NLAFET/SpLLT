@@ -18,7 +18,7 @@ int starpu_f_init_c(int ncpus) {
 #endif
 
 #if defined(SPLLT_USE_GPU)
-  conf->sched_policy_name = "eager";
+  conf->sched_policy_name = "lws";
 #else
   conf->sched_policy_name = "lws";
 #endif
