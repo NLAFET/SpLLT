@@ -954,10 +954,10 @@ contains
 #if defined(SPLLT_USE_STARPU)
     integer :: blkn, ljk_sa
     integer :: nhljk, nhlik
-    integer(c_int) :: ljk_m, ljk_n
+    integer(c_int) :: ljk_m, ljk_n, lik_m
     integer(long) :: blk
     type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
-    ! type(c_ptr) :: ljk_hdl
+    type(c_ptr) :: ljk_hdl, lik_hdl
     type(c_ptr) :: snode_c, anode_c, a_bc_c
 #endif
 
@@ -1011,14 +1011,21 @@ contains
     nb_blk = blk_en-blk_sa+1
 
     allocate(ljk_handles(nb_blk))
-    ! ljk_m = 0 ! compute height of ljk factor
+    ljk_m = 0 ! compute height of ljk factor
     nhljk=0
     do blk=blk_sa,blk_en
        nhljk=nhljk+1
        ljk_handles(nhljk) = bcs(blk)%hdl
-       ! ljk_m = ljk_m + bcs(blk)%blk%blkm
+       ljk_m = ljk_m + bcs(blk)%blk%blkm
     end do
-    ! ljk_n = bc%blk%blkn
+    ljk_n = dbc%blk%blkn
+
+#if defined(SPLLT_USE_GPU)
+    ! create temporary handle for gathering blocks in Ljk factor
+    call starpu_matrix_data_register(ljk_hdl, fdata%bc(blk_sa)%mem_node, &
+         & c_loc(fdata%bc(blk_sa)%c(1)), ljk_m, ljk_m, ljk_n, &
+         & int(wp,kind=c_size_t))
+#endif
 
     ! lik
     blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
@@ -1026,11 +1033,20 @@ contains
     nb_blk = blk_en-blk_sa+1
 
     allocate(lik_handles(nb_blk))
+    lik_m = 0 ! compute height of lik factor
     nhlik=0
     do blk=blk_sa,blk_en
        nhlik=nhlik+1
        lik_handles(nhlik) = bcs(blk)%hdl
+       lik_m = lik_m + bcs(blk)%blk%blkm
     end do
+
+#if defined(SPLLT_USE_GPU)
+    ! create temporary handle for gathering blocks in Ljk factor
+    call starpu_matrix_data_register(lik_hdl, fdata%bc(blk_sa)%mem_node, &
+         & c_loc(fdata%bc(blk_sa)%c(1)), lik_m, lik_m, ljk_n, &
+         & int(wp,kind=c_size_t))
+#endif
     
     csrc  = 1 + (mod(cptr-1, s_nb))*n1
     csrc2 = (cptr2 - cptr + 1)*n1
@@ -1043,7 +1059,24 @@ contains
     a_bc_c  = c_loc(a_bc%blk)
     
     ! write(*,*)"dcol: ", dcol
+#if defined(SPLLT_USE_GPU)
 
+    call spllt_insert_unpartition_task_c(lik_hdl, lik_handles, nhlik, p)
+    call spllt_insert_unpartition_task_c(ljk_hdl, ljk_handles, nhljk, p)
+
+    call spllt_starpu_insert_update_between_c(&
+         & lik_hdl, &
+         & ljk_hdl, &
+         & a_bc%hdl, &
+         & snode_c, scol, &
+         & anode_c, a_bc_c, dcol, &
+         & csrc, csrc2, rsrc, rsrc2, &
+         & control%min_width_blas, &
+         & workspace%hdl, &
+         & anode%hdl, &
+         & p &
+         &)
+#else
     call spllt_starpu_insert_update_between_c(&
          & lik_handles, nhlik, &
          & ljk_handles, nhljk, &
@@ -1056,6 +1089,14 @@ contains
          & anode%hdl, &
          & p &
          &)
+#endif
+
+
+#if defined(SPLLT_USE_GPU)
+    ! unregister temporary handles when it is no longer needed
+    call starpu_f_data_unregister_submit(ljk_hdl)
+    call starpu_f_data_unregister_submit(lik_hdl)
+#endif
 
     ! call test_insert_c(lik_handles, nhlik, ljk_handles, nhljk)
 

@@ -25,7 +25,7 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 
    int info;
    /* starpu_codelet_unpack_args(cl_arg, ); */
-   printf("[spllt_starpu_factorize_block_cuda_func]\n");
+   /* printf("[spllt_starpu_factorize_block_cuda_func]\n"); */
 
    unsigned m = STARPU_MATRIX_GET_NX(buffers[0]);
    unsigned n = STARPU_MATRIX_GET_NY(buffers[0]);
@@ -91,8 +91,6 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
                                0);
    }
   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
-
-  return;
 }
 
 // solve block StarPU task insert
@@ -102,7 +100,7 @@ void spllt_starpu_solve_block_cpu_func(void *buffers[], void *cl_arg);
 #if defined(SPLLT_USE_GPU)
 void spllt_starpu_solve_block_cuda_func(void *buffers[], void *cl_arg) {
 
-   printf("[spllt_starpu_solve_block_cuda_func]\n");
+   /* printf("[spllt_starpu_solve_block_cuda_func]\n"); */
 
    double *bc_kk = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
  
@@ -149,8 +147,6 @@ void spllt_starpu_insert_solve_block_c(starpu_data_handle_t lkk_handle,
                             0);
 
   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
-
-  return;
 }
 
 // update block StarPU task insert
@@ -160,7 +156,7 @@ void spllt_starpu_update_block_cpu_func(void *buffers[], void *cl_arg);
 #if defined(SPLLT_USE_GPU)
 void spllt_starpu_update_block_cuda_func(void *buffers[], void *cl_arg) {
 
-   printf("[spllt_starpu_update_block_cuda_func]\n");
+   /* printf("[spllt_starpu_update_block_cuda_func]\n"); */
    
    int diag;
 
@@ -206,8 +202,6 @@ void spllt_starpu_codelet_unpack_args_update_block(void *cl_arg,
    
    starpu_codelet_unpack_args(cl_arg,
                               diag);
-
-   return;
 }
 
 // update block task codelet
@@ -242,7 +236,6 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
 
   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 
-  return;
 }
 
 // update between StarPU task insert
@@ -250,24 +243,56 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
 void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg);
 
 #if defined(SPLLT_USE_GPU)
-void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg) {
+void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg);
 
-   void *snode;
-   int scol;
-   void *anode;
-   void *blk_dest;
-   int dcol;
-   int csrc, csrc2;
-   int rsrc, rsrc2;
-   int min_with_blas;
+/* void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) { */
 
+/*    void *snode; */
+/*    int scol; */
+/*    void *anode; */
+/*    void *a_blk; */
+/*    int dcol; */
+/*    int csrc, csrc2; */
+/*    int rsrc, rsrc2; */
+/*    int min_with_blas; */
+
+/*    printf("[spllt_starpu_update_between_cuda_func]\n"); */
+
+/*    starpu_codelet_unpack_args(cl_arg, */
+/*                               snode, scol, anode, a_blk, dcol, */
+/*                               csrc, csrc2,  */
+/*                               rsrc, rsrc2, */
+/*                               min_with_blas);    */
+   
+/*    double *work = (double *)STARPU_MATRIX_GET_PTR(buffers[0]); */
+
+/*    double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]); */
+
+/*    double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]); */
+   
+/*    double *bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);    */
+/* } */
+#endif
+
+#if defined(SPLLT_USE_GPU)
+
+void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
+                                                     void *snode, int *scol, 
+                                                     void *anode, void *a_blk, int *dcol,
+                                                     int *csrc, int *csrc2,
+                                                     int *rsrc, int *rsrc2,
+                                                     int *min_with_blas) {
+   
    starpu_codelet_unpack_args(cl_arg,
                               snode, scol, anode, a_blk, dcol,
-                              csrc, csrc2, 
+                              csrc, csrc2,
                               rsrc, rsrc2,
-                              min_with_blas);   
+                              min_with_blas);
+
+   return;
 }
-#endif
+
+#else
 
 void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
                                                      void *snode, int *scol, 
@@ -286,11 +311,12 @@ void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
 
    return;
 }
+#endif
 
 // update block task codelet
 struct starpu_codelet cl_update_between = {
 #if defined(SPLLT_USE_GPU)
-   .where = /* STARPU_CUDA */ STARPU_CPU,
+   .where = STARPU_CUDA /* STARPU_CPU */,
    .cuda_flags = {STARPU_CUDA_ASYNC},
    .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
 #else
@@ -300,6 +326,44 @@ struct starpu_codelet cl_update_between = {
    .nbuffers = STARPU_VARIABLE_NBUFFERS,
    .name = "UPDATE_BETWEEN"
 };
+
+#if defined(SPLLT_USE_GPU)
+
+void spllt_starpu_insert_update_between_c(starpu_data_handle_t lik_handle,
+                                          starpu_data_handle_t ljk_handle,
+                                          starpu_data_handle_t lij_handle,
+                                          void *snode, int scol,
+                                          void *anode, void *a_blk, int dcol,
+                                          int csrc, int csrc2, int rsrc, int rsrc2,
+                                          int min_width_blas,
+                                          starpu_data_handle_t workspace_handle,
+                                          starpu_data_handle_t node_handle,
+                                          int prio) {
+
+   
+   int ret;
+
+   ret = starpu_task_insert(&cl_update_between,
+                            STARPU_VALUE, &snode, sizeof(void *),
+                            STARPU_VALUE, &scol, sizeof(int),
+                            STARPU_VALUE, &anode, sizeof(void *),
+                            STARPU_VALUE, &a_blk, sizeof(void *),
+                            STARPU_VALUE, &dcol, sizeof(int),
+                            STARPU_VALUE, &csrc, sizeof(int),
+                            STARPU_VALUE, &csrc2, sizeof(int),
+                            STARPU_VALUE, &rsrc, sizeof(int),
+                            STARPU_VALUE, &rsrc2, sizeof(int),
+                            STARPU_VALUE, &min_width_blas, sizeof(int),
+                            STARPU_SCRATCH, workspace_handle,
+                            STARPU_RW | STARPU_COMMUTE, lij_handle,
+                            STARPU_R, lik_handle,
+                            STARPU_R, ljk_handle,
+                            STARPU_PRIORITY, prio,
+                            0);
+
+}
+
+#else
 
 void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int nhlik,
                                           starpu_data_handle_t *ljk_handles, int nhljk,
@@ -358,6 +422,8 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
 
    return;
 }
+
+#endif
 
 // tests
 
@@ -440,13 +506,11 @@ void spllt_insert_partition_task_c(starpu_data_handle_t bc_handle,
                             STARPU_PRIORITY,        prio,
                             0);
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
-
-   return;
 } 
 
-void spllt_insert_unpartition_hierarchical_task_c(starpu_data_handle_t bc_handle, 
-                                                  starpu_data_handle_t *in_bc_handles, int nh,
-                                                  int prio) {
+void spllt_insert_unpartition_task_c(starpu_data_handle_t bc_handle, 
+                                     starpu_data_handle_t *in_bc_handles, int nh,
+                                     int prio) {
 
    int ret, i;
    struct starpu_data_descr *descrs;
@@ -478,8 +542,6 @@ void spllt_starpu_codelet_unpack_args_init_node(void *cl_arg,
    starpu_codelet_unpack_args(cl_arg,
                               snode,
                               val, nval, keep);
-
-   return;
 }
 
 struct starpu_codelet cl_init_node = {
@@ -511,7 +573,5 @@ void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle,
                             0);
 
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
-
-   return;
 }
 
