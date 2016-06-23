@@ -154,6 +154,7 @@ contains
 
     do i=0,nt-1
        allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
+       if(st.ne.0) goto 10
     end do
 #else
     allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
