@@ -203,8 +203,10 @@ contains
        call spllt_factorize_node(fdata%nodes(snode), tmpmap, fdata, keep, control)          
     end do
 
+#if defined(SPLLT_USE_STARPU)
     ! unregister workspace handle
     call starpu_f_data_unregister_submit(fdata%workspace%hdl)
+#endif
 
     ! unregister data handle
 #if defined(SPLLT_USE_STARPU)
