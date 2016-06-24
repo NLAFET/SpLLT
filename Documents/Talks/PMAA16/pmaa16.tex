@@ -85,7 +85,8 @@
   stringstyle=\color{amblu},        % string literal style
   tabsize=2,                        % sets default tabsize to 2 spaces
   title=\xspace,                    % show the filename of files included with \lstinputlisting; also try caption instead of title
-  procnamekeys={call}
+  procnamekeys={call},
+  keywords=[2]{R, W, RW},
 }
 
 % additional commands
@@ -134,7 +135,7 @@
   \begin{itemize}
   \item \db{Multicore} processors and deep \db{memory hierarchy}.
   \item \db{Heterogeneous} e.g. CPU \& GPU or Xeon Phi.
-  \item Distributed memory systems. 
+  \item \db{Distributed-memory} systems. 
   \end{itemize}
 
   \vspace{0.5cm}
@@ -149,17 +150,35 @@
 
 \begin{frame}{Sparse Cholesky factorization}
   
-  The numerical factorization of \alert{$A$} rely on an
-  \db{\textit{elimination tree}} expressing data dependencies in the
-  factor \alert{$L$}. Each node, referred to as
-  \db{\textit{supernode}}, is a \alert{dense} (lower trapezoidal)
-  \alert{submatrix} of the factor \alert{$L$}.
+  \begin{columns}  
 
-  The tree is traversed in a \db{topological order}, and each node is
-  factorised using \alert{dense algorithm}.
-  
-  Updates between node is handle using a \alert{supernodal scheme}
-  i.e. updates are applied directly to the target supernode.
+    \begin{column}{0.6\textwidth}  
+
+      The numerical factorization of \alert{$A$} rely on an
+      \db{\textit{elimination tree}} expressing data dependencies in
+      the factor \alert{$L$}. Each node, referred to as
+      \db{\textit{supernode}}, is a \alert{dense} lower trapezoidal
+      \alert{submatrix} of \alert{$L$}.
+
+      \vspace{0.5cm}
+
+      The tree is traversed in a \db{topological order}, and each node is
+      factorised using \alert{dense Cholesky algorithm}.
+
+      \vspace{0.5cm}
+      
+      Updates between node are handled using a \alert{supernodal scheme}
+      i.e. updates are applied directly to the target supernode.
+
+    \end{column}
+
+    \begin{column}{0.4\textwidth}  
+      \only<1>{\includegraphics[width=0.9\textwidth]{figures/etree}}%
+      \only<2>{\includegraphics[width=0.9\textwidth]{figures/etree2}}%
+      \only<3>{\includegraphics[width=0.9\textwidth]{figures/etree3}}%
+    \end{column}
+
+    \end{columns}
 
 \end{frame}
 
@@ -183,6 +202,39 @@
   
 \end{frame}
 
+\begin{frame}{Experiments}
+  \texttt{\scriptsize
+    \begin{tabular}{rlrl}
+        \hline
+        \# & Matrix                         & Flops ($10^{9}$) & Application/description  \\
+        \hline
+        1  & Schmid/thermal2                & 18.6             & Unstructured thermal FEM \\
+        2  & Rothberg/gearbox               & 22.8             & Aircraft flap actuator   \\
+        3  & DNVS/m\_t1                     & 23.4             & Tubular joint            \\
+        4  & DNVS/thread                    & 35.7             & Threaded connector       \\
+        5  & DNVS/shipsec1                  & 40.5             & Ship section             \\
+        6  & GHS\_psdef/crankseg\_2         & 48.8             & Linear static analysis   \\
+        7  & AMD/G3\_circuit                & 67.3             & Circuit simulation       \\
+        8  & Koutsovasilis/F1               & 228              & AUDI engine crankshaft   \\
+        9  & Oberwolfach/boneS10            & 297              & Bone micro-FEM           \\
+        10 & ND/nd12k                       & 514              & 3D mesh problem          \\
+        11 & JGD Trefethen/Trefethen\_20000 & 669              & Integer matrix           \\
+        12 & ND/nd24k                       & 2080             & 3D mesh problem          \\
+        13 & Oberwolfach/bone010            & 3910             & Bone micro-FEM           \\
+        14 & GHS\_psdef/audikw\_1           & 5840             & Automotive crankshaft    \\
+        \hline
+      \end{tabular}}
+
+  \vspace{0.5cm}
+  
+  \begin{itemize}
+  \item \db{Symmetric positive-definite} matrices
+  \item \db{Metis} nested disection ordering
+  \item \alert{Machine}: 2 $x$ 14 cores E5-2695 v3 (Haswell) @ 2.30GHz
+  \end{itemize}
+
+\end{frame}
+
 \begin{frame}[fragile,t]{The STF Sparse Cholesky Factorization}
   \lstinputlisting{listings/spllt-stf.F90}
 \end{frame}
@@ -196,7 +248,8 @@
     size independent.
   \item The dataflow between tasks is \db{explicitly} encoded
     (i.e. task dependencies are explicitly given).
-  \item The runtime handles the communications implicitly using the dataflow representation. 
+  \item The runtime handles the communications implicitly using the
+    dataflow representation.
   \item Under some hypothesis, the dataflow information can be
     \db{automatically} extracted from the sequential code using a dedicated
     compiler: \alert{not in our case} unfortunately.
