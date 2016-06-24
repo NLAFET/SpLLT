@@ -182,8 +182,7 @@
 
 \end{frame}
 
-\begin{frame}{The Sequential Task Flow Model}
-  
+\begin{frame}{The Sequential Task Flow Model}  
   \alert{Sequential Task Flow} (STF) programming model:
 
   \begin{itemize}
@@ -198,8 +197,34 @@
     transfer across the architecture.
   \item \db{Superscalar analysis} in processors: dependency detection
     between instructions in order to issue them in parallel.
+  \end{itemize} 
+\end{frame}
+
+\begin{frame}{STF on top of Runtime System}
+
+  \alert{OpenMP 4.0}
+  \begin{itemize}
+  \item \texttt{task} construct and \texttt{depend} clause (\texttt{in}, \texttt{out},
+    \texttt{inout}).
+  \item No control on the scheduling policy.
+  \item Shared-memory system only.
+  \end{itemize}
+
+  \vspace{0.5cm}
+
+  \alert{StarPU}
+  \begin{itemize}
+  \item \texttt{starpu\_insert\_task}, data \textit{handle} with
+    access mode (\texttt{R}, \texttt{W}, \texttt{RW}).
+  \item Full control on schduling policy with possibility to implement
+    new one.
+  \item API for distributed-memory systems.
   \end{itemize}
   
+\end{frame}
+
+\begin{frame}[fragile,t]{The STF Sparse Cholesky Factorization}
+  \lstinputlisting{listings/spllt-stf.F90}
 \end{frame}
 
 \begin{frame}{Experiments}
@@ -233,10 +258,6 @@
   \item \alert{Machine}: 2 $x$ 14 cores E5-2695 v3 (Haswell) @ 2.30GHz
   \end{itemize}
 
-\end{frame}
-
-\begin{frame}[fragile,t]{The STF Sparse Cholesky Factorization}
-  \lstinputlisting{listings/spllt-stf.F90}
 \end{frame}
 
 \begin{frame}{The Parametrized Task Graph Model}
