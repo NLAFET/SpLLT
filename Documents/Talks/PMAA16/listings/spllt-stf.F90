@@ -19,6 +19,7 @@ forall nodes snode in post-order
        end do
     end do
 
+    ! update ancestor nodes
     forall ancestors(snode) anode 
       do j=k+1..p(anode) in snode
          do i=k+1..m in snode
