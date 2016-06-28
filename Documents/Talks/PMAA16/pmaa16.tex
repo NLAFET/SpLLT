@@ -254,9 +254,10 @@
   
   \vspace{0.2cm}
   
-  \uncover<2->{Supernodes are partitioned into square \alert{blocks}
-    (\texttt{nb x nb}).}\uncover<3->{ The \alert{DAG} replaces the
-    elimination tree for representing the dependencies.}
+  \uncover<2->{Supernodes are \alert{partitioned} into square \db{blocks}
+    (\texttt{nb x nb}) on which operations are applied.}\uncover<3->{
+    The \alert{DAG} replaces the elimination tree for representing the
+    dependencies.}
 
   \uncover<4->{Implemented in the HSL package \db{MA87}.}
 
@@ -496,37 +497,43 @@
   \alert{Parametrized Task Graph} (PTG) programming model:
 
   \begin{itemize}
-  \item Uses a \db{compact representation} of the DAG which is problem
-    size independent.
+  \item Uses a \db{compact representation} of the DAG (problem
+    size independent).
   \item The dataflow between tasks is \db{explicitly} encoded
-    (i.e. task dependencies are explicitly given).
+    (i.e. task dependencies are explicitly given to the runtime
+    system).
   \item The runtime handles the communications implicitly using the
     dataflow representation.
-  \item Under some hypothesis, the dataflow information can be
-    \db{automatically} extracted from the sequential code using a dedicated
-    compiler: \alert{not in our case} unfortunately.
+  %% \item Under some hypothesis, the dataflow information can be
+  %%   \db{automatically} extracted from the sequential code.
   \end{itemize}
 
 \end{frame}
 
 \begin{frame}{PTG: example}
-
-  \begin{columns}  
-
-    \begin{column}{0.5\textwidth}
-      \lstinputlisting{listings/seq-example.c}%
-      %% \centering
+  \begin{center}
+    \lstinputlisting[width=0.1\textwidth]{listings/seq-example.c}%
+    Simple squential code
+  \end{center}
+  \begin{columns}
+    \begin{column}{0.4\textwidth}
+      \centering
+      \uncover<2->{
+        \includegraphics[width=0.8\textwidth]{figures/example_dag} \\%
+        DAG}
       %% \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
       %% \only<2->{\includegraphics[width=0.6\textwidth]{figures/etree_simple_part}}%
     \end{column}
-
-    \begin{column}{0.5\textwidth}
+    \begin{column}{0.6\textwidth}
+      \centering
+      \uncover<3->{
+      \includegraphics[width=0.8\textwidth]{figures/task_f} \\%
+      %\vspace{0.2cm}
+      \includegraphics[width=0.8\textwidth]{figures/task_g} \\%
+      PTG representation}
       %% \uncover<3->{\includegraphics[width=0.8\textwidth]{figures/dag}}%
-      \includegraphics[width=0.8\textwidth]{figures/example_dag}%
     \end{column}
-
-  \end{columns}
-  
+  \end{columns}  
 \end{frame}
 
 \begin{frame}{Experiments}
@@ -557,6 +564,12 @@
         \hline
     \end{tabular}}
   \end{center}
+  \begin{itemize}
+  \item Competitive performance compared to MA87 and OpenMP/StarPU
+    codes.
+  \item Better performance on matrices \# 1 and \# 7 compared to
+    STF-based implementations but still not as good as MA87.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Conclusion}
