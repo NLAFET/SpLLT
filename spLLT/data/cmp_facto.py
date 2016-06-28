@@ -138,6 +138,6 @@ for mat in flistmat:
     
     # print("%40s & %10s \\\\" % (lp.escape(mat), lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)))
         
-    print("%2s %10s %10s %10s" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
+    print("%2s %10s %10s %10s %10s" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto, best_spllt_parsec_t_facto))
 
     matcount = matcount+1 
