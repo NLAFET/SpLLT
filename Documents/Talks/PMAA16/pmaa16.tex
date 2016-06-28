@@ -198,7 +198,7 @@
       \vspace{0.4cm}
       
       Updates between node are handled using a \alert{supernodal scheme}
-      i.e. updates are applied directly to the target supernode.
+      i.e. updates are applied directly to the target supernodes.
     \end{column}
 
     \begin{column}{0.4\textwidth}  
@@ -531,7 +531,9 @@
     \begin{column}{0.4\textwidth}
       \centering
       \uncover<2->{
+        \vspace{1cm}
         \includegraphics[width=0.8\textwidth]{figures/example_dag} \\%
+        \vspace{0.8cm}
         DAG}
       %% \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
       %% \only<2->{\includegraphics[width=0.6\textwidth]{figures/etree_simple_part}}%
@@ -540,12 +542,32 @@
       \centering
       \uncover<3->{
       \includegraphics[width=0.8\textwidth]{figures/task_f} \\%
-      %\vspace{0.2cm}
+      \vspace{0.1cm}
       \includegraphics[width=0.8\textwidth]{figures/task_g} \\%
       PTG representation}
       %% \uncover<3->{\includegraphics[width=0.8\textwidth]{figures/dag}}%
     \end{column}
   \end{columns}  
+\end{frame}
+
+\begin{frame}{PTG: example}
+  
+  We implemented a \alert{PTG}-based version of SpLLT using
+  \alert{PaRSEC} which is one of the few runtime system supporting
+  this model:
+
+  \vspace{0.5cm}
+
+  \begin{itemize}
+    \item In PaRSEC, The PTG code is written using a dedicated
+      language: \alert{Job Data Flow} (JDF).
+
+      \vspace{0.5cm}
+      
+    \item In a \alert{distributed-memory context}, The runtime system
+      is capable of handling iter-node communications implicitly.
+  \end{itemize}
+    
 \end{frame}
 
 \begin{frame}{Experiments}
@@ -627,9 +649,10 @@
 
     \vspace{0.4cm}
 
-  \item The \alert{PTG} version also offer good performance and
-    doesn't suffer from the same limitations as the \alert{STF} code
-    but still not as efficient as MA87 in some cases.
+  \item The \alert{PTG} version also offer good performance, it
+    doesn't suffer from the same limitations as the \alert{STF}-based
+    codes but the code seems less efficient than the other version
+    (runtime overhead ?).
   \end{itemize}
 \end{frame}
 
