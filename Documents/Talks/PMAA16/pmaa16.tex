@@ -148,6 +148,36 @@
 
 \end{frame}
 
+\begin{frame}{Runtime systems}
+  \begin{columns}
+    \begin{column}{0.45\textwidth}
+      \center
+      \only<1>{\includegraphics[width=\textwidth]{figures/rt_layers1}}%
+      \only<2->{\includegraphics[width=\textwidth]{figures/rt_layers2}}%
+    \end{column}
+    \begin{column}{0.55\textwidth}
+      \begin{itemize}
+      \item<1->The classical approach is based on a mixture of
+        technologies (e.g., MPI+OpenMP+CUDA) which.
+        \begin{itemize}
+        \item requires a big programming effort.
+        \item is difficult to maintain and update.
+        \item is prone to (performance) portability issues.
+        \end{itemize}
+      \item<2-> runtimes provide an abstraction layer that hides the
+        architecture details.
+      \item<3-> the workload is expressed as a DAG of tasks.
+        % where the dependencies are
+        % \begin{itemize}
+        % \item<3-> defined explicitly
+        % \item<3-> defined through rules
+        % \item<3-> automatically inferred
+        % \end{itemize}
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}{Sparse Cholesky factorization}
   
   \begin{columns}  
@@ -203,6 +233,32 @@
     \end{column}
 
   \end{columns}
+
+\end{frame}
+
+\begin{frame}{Task-based Sparse Cholesky factorization}
+
+  \begin{columns}  
+
+    \begin{column}{0.5\textwidth}
+      \centering
+      \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
+      \only<2->{\includegraphics[width=0.6\textwidth]{figures/etree_simple_part}}%
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      \uncover<3->{\includegraphics[width=0.8\textwidth]{figures/dag}}%
+    \end{column}
+
+  \end{columns}
+  
+  \vspace{0.2cm}
+  
+  \uncover<2->{Supernodes are partitioned into square \alert{blocks}
+    (\texttt{nb x nb}).}\uncover<3->{ The \alert{DAG} replaces the
+    elimination tree for representing the dependencies.}
+
+  \uncover<4->{Implemented in the HSL package \db{MA87}.}
 
 \end{frame}
 
@@ -453,6 +509,26 @@
 
 \end{frame}
 
+\begin{frame}{PTG: example}
+
+  \begin{columns}  
+
+    \begin{column}{0.5\textwidth}
+      \lstinputlisting{listings/seq-example.c}%
+      %% \centering
+      %% \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
+      %% \only<2->{\includegraphics[width=0.6\textwidth]{figures/etree_simple_part}}%
+    \end{column}
+
+    \begin{column}{0.5\textwidth}
+      %% \uncover<3->{\includegraphics[width=0.8\textwidth]{figures/dag}}%
+      \includegraphics[width=0.8\textwidth]{figures/example_dag}%
+    \end{column}
+
+  \end{columns}
+  
+\end{frame}
+
 \begin{frame}{Experiments}
   \begin{center}
     \texttt{\scriptsize
@@ -498,7 +574,7 @@
 
   \item The \alert{PTG} version also offer good performance and
     doesn't suffer from the same limitations as the \alert{STF} code
-    but there is still room for improvement.
+    but still not as efficient as MA87 in some cases.
   \end{itemize}
 \end{frame}
 

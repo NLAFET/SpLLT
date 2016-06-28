@@ -30,3 +30,4 @@ forall nodes snode in post-order
 
   end do
 end do
+call wait_for_all()
