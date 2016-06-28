@@ -346,92 +346,94 @@
 \end{frame}
 
 \begin{frame}{Experiments}
-
+  
+  
   \begin{center}
-  \texttt{\scriptsize
-    \only<1>{
-      \begin{tabular}{r|rr|rr|rr}
-        \hline
-        \# & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
-        \hline
-           & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
-        \cline{2-7}
-           & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
-        \hline
-        1  & 512                              & 1.801                      & 1024 & 2.123          & 256 & \bf 0.376       \\
-        2  & 256                              & \bf 0.220                  & 384  & 0.318          & 256 & 0.252           \\
-        3  & 256                              & 0.205                      & 384  & 0.262          & 256 & \bf 0.194       \\
-        4  & 256                              & \bf 0.203                  & 384  & 0.240          & 256 & 0.213           \\
-        5  & 256                              & \bf 0.247                  & 384  & 0.363          & 256 & 0.259           \\
-        6  & 256                              & 0.267                      & 384  & 0.310          & 256 & \bf 0.257       \\
-        7  & 512                              & 2.631                      & 512  & 3.345          & 256 & \bf 0.586       \\
-        8  & 384                              & 0.812                      & 512  & 0.920          & 256 & \bf 0.786       \\
-        9  & 384                              & 1.186                      & 384  & 1.599          & 256 & \bf 1.111       \\
-        10 & 384                              & 1.478                      & 384  & \bf 1.405      & 384 & 1.498           \\
-        11 & 512                              & 3.692                      & 384  & \bf 2.406      & 512 & 3.829           \\
-        12 & 384                              & 5.379                      & 384  & \bf 5.076      & 384 & 5.498           \\
-        13 & 384                              & 7.416                      & 768  & 7.392          & 384 & \bf 7.195       \\
-        14 & 768                              & 10.650                     & 768  & 10.680         & 384 & \bf 10.642      \\
-        \hline
-      \end{tabular}}%
-    \only<2>{
-    \begin{tabular}{r|rr|rr|rr}
-      \hline
-      \#   & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
-      \hline
-           & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
-      \cline{2-7}
-           & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
-      \hline
-       1   & 512                              & \dd{1.801}                 & 1024 & \dd{2.123}     & 256 & \bf \dr{0.376}  \\
-       2   & 256                              & \bf \dr{0.220}             & 384  & \dd{0.318}     & 256 & \dd{0.252}      \\
-       3   & 256                              & \dd{0.205}                 & 384  & \dd{0.262}     & 256 & \bf \dr{0.194}  \\
-       4   & 256                              & \bf \dr{0.203}             & 384  & \dd{0.240}     & 256 & \dd{0.213}      \\
-       5   & 256                              & \bf \dr{0.247}             & 384  & \dd{0.363}     & 256 & \dd{0.259}      \\
-       6   & 256                              & \dd{0.267}                 & 384  & \dd{0.310}     & 256 & \bf \dr{0.257}  \\
-       7   & 512                              & \dd{2.631}                 & 512  & \dd{3.345}     & 256 & \bf \dr{0.586}  \\
-       8   & 384                              & \dd{0.812}                 & 512  & \dd{0.920}     & 256 & \bf \dr{0.786}  \\
-       9   & 384                              & \dd{1.186}                 & 384  & \dd{1.599}     & 256 & \bf \dr{1.111}  \\
-       10  & 384                              & \dd{1.478}                 & 384  & \bf \dr{1.405} & 384 & \dd{1.498}      \\
-       11  & 512                              & \dd{3.692}                 & 384  & \bf \dr{2.406} & 512 & \dd{3.829}      \\
-       12  & 384                              & \dd{5.379}                 & 384  & \bf \dr{5.076} & 384 & \dd{5.498}      \\
-       13  & 384                              & \dd{7.416}                 & 768  & \dd{7.392}     & 384 & \bf \dr{7.195}  \\
-       14  & 768                              & \dd{10.650}                & 768  & \dd{10.680}    & 384 & \bf \dr{10.642} \\
-      \hline
-  \end{tabular}}%
-    \only<3>{
-    \begin{tabular}{r|rr|rr|rr}
-      \hline
-      \#   & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
-      \hline
-           & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
-      \cline{2-7}
-           & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
-      \hline
-       1   & 512                              & 1.801                      & 1024 & 2.123          & 256 & \bf \dr{0.376}  \\
-       2   & 256                              & \bf \dd{0.220}             & 384  & \dd{0.318}     & 256 & \dd{0.252}      \\
-       3   & 256                              & \dd{0.205}                 & 384  & \dd{0.262}     & 256 & \bf \dd{0.194}  \\
-       4   & 256                              & \bf \dd{0.203}             & 384  & \dd{0.240}     & 256 & \dd{0.213}      \\
-       5   & 256                              & \bf \dd{0.247}             & 384  & \dd{0.363}     & 256 & \dd{0.259}      \\
-       6   & 256                              & \dd{0.267}                 & 384  & \dd{0.310}     & 256 & \bf \dd{0.257}  \\
-       7   & 512                              & 2.631                      & 512  & 3.345          & 256 & \bf \dr{0.586}  \\
-       8   & 384                              & \dd{0.812}                 & 512  & \dd{0.920}     & 256 & \bf \dd{0.786}  \\
-       9   & 384                              & \dd{1.186}                 & 384  & \dd{1.599}     & 256 & \bf \dd{1.111}  \\
-       10  & 384                              & \dd{1.478}                 & 384  & \bf \dd{1.405} & 384 & \dd{1.498}      \\
-       11  & 512                              & \dd{3.692}                 & 384  & \bf \dd{2.406} & 512 & \dd{3.829}      \\
-       12  & 384                              & \dd{5.379}                 & 384  & \bf \dd{5.076} & 384 & \dd{5.498}      \\
-       13  & 384                              & \dd{7.416}                 & 768  & \dd{7.392}     & 384 & \bf \dd{7.195}  \\
-       14  & 768                              & \dd{10.650}                & 768  & \dd{10.680}    & 384 & \bf \dd{10.642} \\
-      \hline
-  \end{tabular}}
-  }
+    \includegraphics[width=0.9\textwidth]{data/cmp_facto_stf}
+
+  %% \texttt{\scriptsize
+  %%   \only<1>{
+  %%     \begin{tabular}{r|rr|rr|rr}
+  %%       \hline
+  %%       \# & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
+  %%       \hline
+  %%          & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
+  %%       \cline{2-7}
+  %%          & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
+  %%       \hline
+  %%       1  & 512                              & 1.801                      & 1024 & 2.123          & 256 & \bf 0.376       \\
+  %%       2  & 256                              & \bf 0.220                  & 384  & 0.318          & 256 & 0.252           \\
+  %%       3  & 256                              & 0.205                      & 384  & 0.262          & 256 & \bf 0.194       \\
+  %%       4  & 256                              & \bf 0.203                  & 384  & 0.240          & 256 & 0.213           \\
+  %%       5  & 256                              & \bf 0.247                  & 384  & 0.363          & 256 & 0.259           \\
+  %%       6  & 256                              & 0.267                      & 384  & 0.310          & 256 & \bf 0.257       \\
+  %%       7  & 512                              & 2.631                      & 512  & 3.345          & 256 & \bf 0.586       \\
+  %%       8  & 384                              & 0.812                      & 512  & 0.920          & 256 & \bf 0.786       \\
+  %%       9  & 384                              & 1.186                      & 384  & 1.599          & 256 & \bf 1.111       \\
+  %%       10 & 384                              & 1.478                      & 384  & \bf 1.405      & 384 & 1.498           \\
+  %%       11 & 512                              & 3.692                      & 384  & \bf 2.406      & 512 & 3.829           \\
+  %%       12 & 384                              & 5.379                      & 384  & \bf 5.076      & 384 & 5.498           \\
+  %%       13 & 384                              & 7.416                      & 768  & 7.392          & 384 & \bf 7.195       \\
+  %%       14 & 768                              & 10.650                     & 768  & 10.680         & 384 & \bf 10.642      \\
+  %%       \hline
+  %%     \end{tabular}}%
+  %%   \only<2>{
+  %%   \begin{tabular}{r|rr|rr|rr}
+  %%     \hline
+  %%     \#   & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
+  %%     \hline
+  %%          & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
+  %%     \cline{2-7}
+  %%          & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
+  %%     \hline
+  %%      1   & 512                              & \dd{1.801}                 & 1024 & \dd{2.123}     & 256 & \bf \dr{0.376}  \\
+  %%      2   & 256                              & \bf \dr{0.220}             & 384  & \dd{0.318}     & 256 & \dd{0.252}      \\
+  %%      3   & 256                              & \dd{0.205}                 & 384  & \dd{0.262}     & 256 & \bf \dr{0.194}  \\
+  %%      4   & 256                              & \bf \dr{0.203}             & 384  & \dd{0.240}     & 256 & \dd{0.213}      \\
+  %%      5   & 256                              & \bf \dr{0.247}             & 384  & \dd{0.363}     & 256 & \dd{0.259}      \\
+  %%      6   & 256                              & \dd{0.267}                 & 384  & \dd{0.310}     & 256 & \bf \dr{0.257}  \\
+  %%      7   & 512                              & \dd{2.631}                 & 512  & \dd{3.345}     & 256 & \bf \dr{0.586}  \\
+  %%      8   & 384                              & \dd{0.812}                 & 512  & \dd{0.920}     & 256 & \bf \dr{0.786}  \\
+  %%      9   & 384                              & \dd{1.186}                 & 384  & \dd{1.599}     & 256 & \bf \dr{1.111}  \\
+  %%      10  & 384                              & \dd{1.478}                 & 384  & \bf \dr{1.405} & 384 & \dd{1.498}      \\
+  %%      11  & 512                              & \dd{3.692}                 & 384  & \bf \dr{2.406} & 512 & \dd{3.829}      \\
+  %%      12  & 384                              & \dd{5.379}                 & 384  & \bf \dr{5.076} & 384 & \dd{5.498}      \\
+  %%      13  & 384                              & \dd{7.416}                 & 768  & \dd{7.392}     & 384 & \bf \dr{7.195}  \\
+  %%      14  & 768                              & \dd{10.650}                & 768  & \dd{10.680}    & 384 & \bf \dr{10.642} \\
+  %%     \hline
+  %% \end{tabular}}%
+  %%   \only<3>{
+  %%   \begin{tabular}{r|rr|rr|rr}
+  %%     \hline
+  %%     \#   & \multicolumn{4}{c}{spLLT}        & \multicolumn{2}{c}{MA87}                                                   \\
+  %%     \hline
+  %%          & \multicolumn{2}{c}{OpenMP (gnu)} & \multicolumn{2}{c}{StarPU} & \multicolumn{2}{c}{MA87}                      \\ 
+  %%     \cline{2-7}
+  %%          & nb                               & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
+  %%     \hline
+  %%      1   & 512                              & 1.801                      & 1024 & 2.123          & 256 & \bf \dr{0.376}  \\
+  %%      2   & 256                              & \bf \dd{0.220}             & 384  & \dd{0.318}     & 256 & \dd{0.252}      \\
+  %%      3   & 256                              & \dd{0.205}                 & 384  & \dd{0.262}     & 256 & \bf \dd{0.194}  \\
+  %%      4   & 256                              & \bf \dd{0.203}             & 384  & \dd{0.240}     & 256 & \dd{0.213}      \\
+  %%      5   & 256                              & \bf \dd{0.247}             & 384  & \dd{0.363}     & 256 & \dd{0.259}      \\
+  %%      6   & 256                              & \dd{0.267}                 & 384  & \dd{0.310}     & 256 & \bf \dd{0.257}  \\
+  %%      7   & 512                              & 2.631                      & 512  & 3.345          & 256 & \bf \dr{0.586}  \\
+  %%      8   & 384                              & \dd{0.812}                 & 512  & \dd{0.920}     & 256 & \bf \dd{0.786}  \\
+  %%      9   & 384                              & \dd{1.186}                 & 384  & \dd{1.599}     & 256 & \bf \dd{1.111}  \\
+  %%      10  & 384                              & \dd{1.478}                 & 384  & \bf \dd{1.405} & 384 & \dd{1.498}      \\
+  %%      11  & 512                              & \dd{3.692}                 & 384  & \bf \dd{2.406} & 512 & \dd{3.829}      \\
+  %%      12  & 384                              & \dd{5.379}                 & 384  & \bf \dd{5.076} & 384 & \dd{5.498}      \\
+  %%      13  & 384                              & \dd{7.416}                 & 768  & \dd{7.392}     & 384 & \bf \dd{7.195}  \\
+  %%      14  & 768                              & \dd{10.650}                & 768  & \dd{10.680}    & 384 & \bf \dd{10.642} \\
+  %%     \hline
+  %% \end{tabular}}
+  %% }
   \end{center}
   
   \begin{itemize}
-  \item \db{OpenMP} seems more efficient on smaller problems whereas
-    \db{StarPU} gives better results on bigger problems.
-  \item SpLLT and MA87 obtain similar performance except for two
-    problems (Matrices \#1 and \#7) where the difference is relatively big.
+  \item SpLLT and MA87 obtain similar performance most problems.
+  \item In two cases (Matrices \#1 and \#7) the difference with MA87
+    is relatively big.
   \end{itemize}
 \end{frame}
 
