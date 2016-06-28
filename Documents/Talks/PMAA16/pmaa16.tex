@@ -508,6 +508,16 @@
   %%   \db{automatically} extracted from the sequential code.
   \end{itemize}
 
+  \alert{PTG} vs. \alert{STF}
+
+  \begin{itemize}
+  \item[\dg{$\blacktriangle$}] In the PTG model, the DAG is
+    \alert{progressively} unrolled during the execution following the
+    execution of tasks in a distributed way.
+  \item[\dr{$\blacktriangledown$}] Data-flow programming is much less
+    intuitive than STF programming.
+  \end{itemize}
+
 \end{frame}
 
 \begin{frame}{PTG: example}
@@ -539,30 +549,56 @@
 \begin{frame}{Experiments}
   \begin{center}
     \texttt{\scriptsize
+    \only<1>{
       \begin{tabular}{r|rr|rr|rr}
         \hline
-        \# & \multicolumn{4}{c}{spLLT}         & \multicolumn{2}{c}{MA87}                                         \\
+        \# & \multicolumn{4}{c}{spLLT}         & \multicolumn{2}{c}{MA87}                                                   \\
         \hline
-           & \multicolumn{2}{c}{OpenMP/StarPU} & \multicolumn{2}{c}{PaRSEC} & \multicolumn{2}{c}{MA87}            \\ 
+           & \multicolumn{2}{c}{OpenMP/StarPU} & \multicolumn{2}{c}{PaRSEC} & \multicolumn{2}{c}{MA87}                      \\ 
         \cline{2-7}
-           & nb                                & facto (s)                  & nb   & facto (s) & nb  & facto (s)  \\
+           & nb                                & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
         \hline
-        1  & 512                               & 1.801                      & 384  & 0.610     & 256 & \bf 0.376  \\
-        2  & 256                               & \bf 0.220                  & 384  & 0.300     & 256 & 0.252      \\
-        3  & 256                               & 0.205                      & 256  & 0.286     & 256 & \bf 0.194  \\
-        4  & 256                               & \bf 0.203                  & 384  & 0.284     & 256 & 0.213      \\
-        5  & 256                               & \bf 0.247                  & 256  & 0.327     & 256 & 0.259      \\
-        6  & 256                               & 0.267                      & 256  & 0.368     & 256 & \bf 0.257  \\
-        7  & 512                               & 2.631                      & 384  & 1.072     & 256 & \bf 0.586  \\
-        8  & 384                               & 0.812                      & 512  & 1.058     & 256 & \bf 0.786  \\
-        9  & 384                               & 1.186                      & 384  & 1.345     & 256 & \bf 1.111  \\
-        10 & 384                               & \bf 1.405                  & 512  & 1.879     & 384 & \bf 1.498  \\
-        11 & 384                               & \bf 2.406                  & 384  & \bf 3.673 & 512 & 3.829      \\
-        12 & 384                               & \bf 5.076                  & 768  & 6.333     & 384 & 5.498      \\
-        13 & 768                               & 7.392                      & 384  & \bf 7.061 & 384 & \bf 7.195  \\
-        14 & 768                               & 10.650                     & 1024 & 11.690    & 384 & \bf 10.642 \\
+        1  & 512                               & 1.801                      & 384  & 0.610          & 256 & \bf 0.376       \\
+        2  & 256                               & \bf 0.220                  & 384  & 0.300          & 256 & 0.252           \\
+        3  & 256                               & 0.205                      & 256  & 0.286          & 256 & \bf 0.194       \\
+        4  & 256                               & \bf 0.203                  & 384  & 0.284          & 256 & 0.213           \\
+        5  & 256                               & \bf 0.247                  & 256  & 0.327          & 256 & 0.259           \\
+        6  & 256                               & 0.267                      & 256  & 0.368          & 256 & \bf 0.257       \\
+        7  & 512                               & 2.631                      & 384  & 1.072          & 256 & \bf 0.586       \\
+        8  & 384                               & 0.812                      & 512  & 1.058          & 256 & \bf 0.786       \\
+        9  & 384                               & 1.186                      & 384  & 1.345          & 256 & \bf 1.111       \\
+        10 & 384                               & \bf 1.405                  & 512  & 1.879          & 384 & \bf 1.498       \\
+        11 & 384                               & \bf 2.406                  & 384  & \bf 3.673      & 512 & 3.829           \\
+        12 & 384                               & \bf 5.076                  & 768  & 6.333          & 384 & 5.498           \\
+        13 & 768                               & 7.392                      & 384  & \bf 7.061      & 384 & \bf 7.195       \\
+        14 & 768                               & 10.650                     & 1024 & 11.690         & 384 & \bf 10.642      \\
         \hline
-    \end{tabular}}
+    \end{tabular}}%
+    \only<2>{
+          \begin{tabular}{r|rr|rr|rr}
+        \hline
+        \# & \multicolumn{4}{c}{spLLT}         & \multicolumn{2}{c}{MA87}                                                   \\
+        \hline
+           & \multicolumn{2}{c}{OpenMP/StarPU} & \multicolumn{2}{c}{PaRSEC} & \multicolumn{2}{c}{MA87}                      \\ 
+        \cline{2-7}
+           & nb                                & facto (s)                  & nb   & facto (s)      & nb  & facto (s)       \\
+        \hline
+        1  & 512                               & 1.801                      & 384  & 0.610          & 256 & \bf 0.376       \\
+        2  & 256                               & \bf \dd{0.220}             & 384  & \dd{0.300}     & 256 & \dd{0.252}      \\
+        3  & 256                               & \dd{0.205}                 & 256  & \dd{0.286}     & 256 & \bf \dd{0.194}  \\
+        4  & 256                               & \bf \dd{0.203}             & 384  & \dd{0.284}     & 256 & \dd{0.213}      \\
+        5  & 256                               & \bf \dd{0.247}             & 256  & \dd{0.327}     & 256 & \dd{0.259}      \\
+        6  & 256                               & \dd{0.267}                 & 256  & \dd{0.368}     & 256 & \bf \dd{0.257}  \\
+        7  & 512                               & 2.631                      & 384  & 1.072          & 256 & \bf 0.586  \\
+        8  & 384                               & \dd{0.812}                 & 512  & \dd{1.058}     & 256 & \bf \dd{0.786}  \\
+        9  & 384                               & \dd{1.186}                 & 384  & \dd{1.345}     & 256 & \bf \dd{1.111}  \\
+        10 & 384                               & \bf \dd{1.405}             & 512  & \dd{1.879}     & 384 & \bf \dd{1.498}  \\
+        11 & 384                               & \bf \dd{2.406}             & 384  & \bf \dd{3.673} & 512 & \dd{3.829}      \\
+        12 & 384                               & \bf \dd{5.076}             & 768  & \dd{6.333}     & 384 & \dd{5.498}      \\
+        13 & 768                               & \dd{7.392}                 & 384  & \bf \dd{7.061} & 384 & \bf \dd{7.195}  \\
+        14 & 768                               & \dd{10.650}                & 1024 & \dd{11.690}     & 384 & \bf \dd{10.642} \\
+        \hline
+    \end{tabular}}}
   \end{center}
   \begin{itemize}
   \item Competitive performance compared to MA87 and OpenMP/StarPU
@@ -589,6 +625,23 @@
     doesn't suffer from the same limitations as the \alert{STF} code
     but still not as efficient as MA87 in some cases.
   \end{itemize}
+\end{frame}
+
+\begin{frame}{Ongoing and Future work}
+
+  \begin{itemize}
+  \item Run on \alert{distributed-memory} systems: require to provide
+    a data distribution to the runtime system.
+
+    \vspace{0.4cm}
+
+  \item Run on \db{GPU} and \db{Xeon Phi} devices.
+
+    \vspace{0.4cm}
+
+  \item Handle \alert{indefinite} systems using pivoting techniques.
+  \end{itemize}
+
 \end{frame}
 
 \end{document}
