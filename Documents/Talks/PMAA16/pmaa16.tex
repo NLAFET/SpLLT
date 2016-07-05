@@ -160,7 +160,7 @@
       \item<1->The classical approach is based on a mixture of
         technologies (e.g., MPI+OpenMP+CUDA) which.
         \begin{itemize}
-        \item requires a big programming effort.
+        \item programming costs.
         \item is difficult to maintain and update.
         \item is prone to (performance) portability issues.
         \end{itemize}
@@ -193,7 +193,7 @@
       \vspace{0.4cm}
 
       The tree is traversed in a \db{topological order}, and each node is
-      factorised using \alert{dense Cholesky algorithm}.
+      factorized using \alert{dense Cholesky algorithm}.
 
       \vspace{0.4cm}
       
@@ -220,7 +220,7 @@
       Sources of \alert{parallelism} in the elimination tree:
       \begin{itemize}
         \item<2-> \db{Tree parallelism}: Supernode in independent branches
-          can be processed concurrently.
+          can be processed \alert{concurrently}.
         \item<3-> \db{Node parallelism}: When a supernode is large enough,
           it may be processed in parallel.
       \end{itemize}
@@ -238,8 +238,7 @@
 
 \begin{frame}{Task-based Sparse Cholesky factorization}
 
-  \begin{columns}  
-
+  \begin{columns}
     \begin{column}{0.5\textwidth}
       \centering
       \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
@@ -254,41 +253,63 @@
   
   \vspace{0.2cm}
   
-  \uncover<2->{Supernodes are \alert{partitioned} into square \db{blocks}
-    (\texttt{nb x nb}) on which operations are applied.}\uncover<3->{
-    The \alert{DAG} replaces the elimination tree for representing the
-    dependencies.}
+  \uncover<2->{Supernodes are \alert{partitioned} into square
+    \db{blocks} (\texttt{nb x nb}) on which operations are applied
+    (\texttt{factorize}, \texttt{solve}, \texttt{update},
+    \texttt{update\_between}).}\uncover<3->{ The \alert{DAG} replaces the
+    elimination tree for representing the dependencies.}
 
   \uncover<4->{Implemented in the HSL package \db{MA87}.}
 
 \end{frame}
 
+%% \begin{frame}{Task-based Sparse Cholesky factorization}
+%%   \only<1>{\lstinputlisting{listings/spllt-seq.F90}}
+%%   \only<2>{\lstinputlisting{listings/spllt-task-seq.F90}}
+%% \end{frame}
+
 \begin{frame}{Task-based Sparse Cholesky factorization}
-  \only<1>{\lstinputlisting{listings/spllt-seq.F90}}
-  \only<2>{\lstinputlisting{listings/spllt-task-seq.F90}}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      \only<1>{
+        \lstinputlisting{listings/spllt-seq.F90}}
+      \only<2>{\lstinputlisting{listings/spllt-task-seq.F90}}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \centering
+      \only<1>{\includegraphics[width=0.6\textwidth]{figures/etree_simple}}%
+      \only<2->{\includegraphics[width=0.6\textwidth]{figures/etree_simple_part}}%
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{The Sequential Task Flow Model}  
   \alert{Sequential Task Flow} (STF) programming model:
 
   \begin{itemize}
-  \item Tasks are submitted to the runtime system following the
-    \db{sequential algorithm}.
-  \item The runtime analyses manipulated data and infers task
+  \item In the parallel code, tasks are submitted to the runtime
+    system following the \db{sequential algorithm}.
+    \vspace{0.2cm}
+  \item The runtime analyses the manipulated data and infers task
     dependencies in order to ensure the \db{sequential consistency} of
     the parallel code.
-  \item The DAG is executed via a \db{dynamic scheduling} of the
-    (ready) tasks on the architectures.
-  \item The runtime may be capable of automatically handling the data
-    transfer across the architecture.
+    \vspace{0.2cm}
   \item \db{Superscalar analysis} in processors: dependency detection
     between instructions in order to issue them in parallel.
+    \vspace{0.2cm}
+  \item The DAG is executed via a \db{dynamic scheduling} of the
+    (ready) tasks on the architecture.
+    \vspace{0.2cm}
+  \item The runtime may be capable of automatically handling the
+    \db{data transfers} on the architecture (e.g. CPU/GPU memory
+    nodes).
+    \vspace{0.2cm}
   \end{itemize} 
 \end{frame}
 
 \begin{frame}[fragile,t]{STF Sparse Cholesky Factorization}
-  \only<1>{\lstinputlisting{listings/spllt-task-seq.F90}}
-  \only<2>{\lstinputlisting{listings/spllt-stf.F90}}
+      \only<1>{\lstinputlisting{listings/spllt-task-seq2.F90}}
+      \only<2>{\lstinputlisting{listings/spllt-stf.F90}}
 \end{frame}
 
 \begin{frame}{STF on top of Runtime System}
@@ -349,7 +370,11 @@
   
   
   \begin{center}
-    \includegraphics[width=0.9\textwidth]{data/cmp_facto_stf}
+    %% \includegraphics[width=0.9\textwidth]{data/cmp_facto_stf}
+    
+    \only<1>{\includegraphics[width=0.9\textwidth]{data/cmp_facto_stf3}}%
+    \only<2>{\includegraphics[width=0.9\textwidth]{data/cmp_facto_stf2}}%
+    \only<3>{\includegraphics[width=0.9\textwidth]{data/cmp_facto_stf1}}%
 
   %% \texttt{\scriptsize
   %%   \only<1>{
@@ -431,9 +456,9 @@
   \end{center}
   
   \begin{itemize}
-  \item SpLLT and MA87 obtain similar performance most problems.
-  \item In two cases (Matrices \#1 and \#7) the difference with MA87
-    is relatively big.
+  \item SpLLT and MA87 obtain similar performance for most problems.
+  \item Except in two cases (Matrices \#1 and \#7) where the
+    difference with MA87 is relatively big.
   \end{itemize}
 \end{frame}
 
@@ -659,12 +684,13 @@
 \begin{frame}{Ongoing and Future work}
 
   \begin{itemize}
-  \item Run on \alert{distributed-memory} systems: require to provide
+  \item Run on \alert{distributed-memory} systems: requires to provide
     a data distribution to the runtime system.
 
     \vspace{0.4cm}
 
-  \item Run on \db{GPU} and \db{Xeon Phi} devices.
+  \item Run on \alert{GPU} and \alert{Xeon Phi} devices: requires to provide
+    the computational kernels.
 
     \vspace{0.4cm}
 

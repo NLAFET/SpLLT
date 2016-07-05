@@ -6,7 +6,7 @@ end do
 
 forall nodes snode in post-order
   ! factorize node
-   call factorize(snode) ! factorize block
+   call factorize(snode)
 
    ! update ancestor nodes
    forall ancestors(snode) anode 
