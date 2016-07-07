@@ -116,7 +116,7 @@
 
 \title{Task-based Sparse Cholesky Solver on Top of Runtime System}
 
-\date{Sparse Days, 2016}
+\date{PMAA'16, 2016}
 
 \begin{document}
 
@@ -515,18 +515,18 @@
   \begin{itemize}
   \item In the STF model, depending on \alert{DAG size} and
     \alert{granularity} of tasks, the time spent for building the DAG
-    might be important compared to the factorization time.
+    might be important compared to the task execution time.
   \end{itemize}
 \end{frame}
 
 \begin{frame}{The Parametrized Task Graph Model}
   
-  \alert{Parametrized Task Graph} (PTG) programming model:
+  \db{Parametrized Task Graph} (PTG) programming model:
 
   \begin{itemize}
-  \item Uses a \db{compact representation} of the DAG (problem
+  \item Uses a \alert{compact representation} of the DAG (problem
     size independent).
-  \item The dataflow between tasks is \db{explicitly} encoded
+  \item The dataflow between tasks is \alert{explicitly} encoded
     (i.e. task dependencies are explicitly given to the runtime
     system).
   \item The runtime handles the communications implicitly using the
@@ -535,7 +535,7 @@
   %%   \db{automatically} extracted from the sequential code.
   \end{itemize}
 
-  \alert{PTG} vs. \alert{STF}
+  \db{PTG} vs. \db{STF}
 
   \begin{itemize}
   \item[\dg{$\blacktriangle$}] In the PTG model, the DAG is
@@ -577,15 +577,14 @@
 
 \begin{frame}{PTG Sparse Cholesky Factorization}
   
-  We implemented a \alert{PTG}-based version of SpLLT using
-  \alert{PaRSEC} which is one of the few runtime system supporting
-  this model:
+  \db{PTG-based} version of SpLLT implemented with \db{PaRSEC} which
+  is one of the few runtime system supporting this model:
 
   \vspace{0.5cm}
 
   \begin{itemize}
     \item In PaRSEC, The PTG code is written using a dedicated
-      language: \alert{Job Data Flow} (JDF).
+      language: \db{Job Data Flow} (JDF).
 
       \vspace{0.5cm}
       

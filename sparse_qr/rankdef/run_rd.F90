@@ -75,6 +75,10 @@ program run_rd
   end if
 
   ! analyse
+  call qrm_analyse(qrm_mat, transp, info)
+  if(ounit.gt.0) write(ounit,'("  Estimated total flops at facto               : ",i20)') &
+       & qrm_mat%gstats(qrm_e_facto_flops_)
+
   call qrm_analyse(qrm_mat_tilde, transp, info)
 
   if(ounit.gt.0) write(ounit,'("  Estimated total flops at facto (regularized) : ",i20)') &
