@@ -1,7 +1,8 @@
 for matrix in `cat list.matrix`
 do
 
-    echo "[test] matrix: $matrix"
+    matname=${matrix%.*}
+    echo "[test] matrix: $matname"
 
     for sigma in ${sigma_list[@]}
     do
