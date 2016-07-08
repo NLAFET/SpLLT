@@ -135,6 +135,9 @@ program run_rd
      write(ounit,'("---------------------------------------------------------------------")')
      do i=1, nrhs
         write(ounit,'("RHS ",i3,"  : ",4(e10.2,4x))')i,bnrm(i),xnrm(i),rnrm(i),onrm(i)
+        write(ounit,'(" ")')
+        write(ounit,'("xnorm :",e10.3)')xnrm(i)
+        write(ounit,'("resid :",e10.3)')rnrm(i)
      end do
   end if
 
