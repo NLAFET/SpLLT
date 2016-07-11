@@ -836,6 +836,47 @@ contains
 
   end subroutine spllt_cuda_update_between
 #endif
+
+  ! fastest version of expand_buffer kernel 
+  ! subroutine spllt_expand_buffer(a, blkn, row_list, rls, col_list, cls, ndiag,
+  !   buffer)
+  !   real(wp), dimension(*), intent(inout) :: a ! holds L
+  !   integer, intent(in) :: blkn ! number of cols in destination block
+  !   integer, intent(in) :: rls ! size of row_list
+  !   integer, intent(in) :: row_list(rls)
+  !   integer, intent(in) :: cls ! size of col_list
+  !   integer, intent(in) :: col_list(cls)
+  !   integer, intent(in) :: ndiag ! Number of triangular rows of update
+  !   real(wp), intent(in) :: buffer(rls*cls)
+
+  !   integer :: i, j, rptr, cptr, imax, cmax
+  !   integer :: k0, k1, k2, k3
+
+  !   do j = 1, rls
+  !      rptr = (j-1)*cls + 1
+  !      cptr = (row_list(j)-1) * blkn
+  !      imax = cls
+  !      if(j.le.ndiag) imax = j
+  !      cmax = 4*(imax/4)
+  !      do i = 1, cmax, 4
+  !         k0 = cptr + col_list(i+0)
+  !         k1 = cptr + col_list(i+1)
+  !         k2 = cptr + col_list(i+2)
+  !         k3 = cptr + col_list(i+3)
+  !         a(k0) = a(k0) + buffer(rptr+0)
+  !         a(k1) = a(k1) + buffer(rptr+1)
+  !         a(k2) = a(k2) + buffer(rptr+2)
+  !         a(k3) = a(k3) + buffer(rptr+3)
+  !         rptr = rptr + 4
+  !      end do
+  !      do i = cmax+1, imax
+  !         k0 = cptr + col_list(i)
+  !         a(k0) = a(k0) + buffer(rptr)
+  !         rptr = rptr + 1
+  !      end do
+  !   end do
+
+  ! end subroutine spllt_expand_buffer
   
   !*************************************************
   
