@@ -295,74 +295,74 @@ contains
 
 #if defined(SPLLT_USE_GPU)
 
-  subroutine spllt_starpu_update_between_cuda_func(buffers, cl_arg) bind(C)
-    use iso_c_binding
-    use hsl_ma87_double
-    use spllt_data_mod
-    use spllt_kernels_mod
-    implicit none
+  ! subroutine spllt_starpu_update_between_cuda_func(buffers, cl_arg) bind(C)
+  !   use iso_c_binding
+  !   use hsl_ma87_double
+  !   use spllt_data_mod
+  !   use spllt_kernels_mod
+  !   implicit none
 
-    type(c_ptr), value        :: cl_arg
-    type(c_ptr), value        :: buffers
+  !   type(c_ptr), value        :: cl_arg
+  !   type(c_ptr), value        :: buffers
 
-    type(c_ptr), target :: snode_c, anode_c, a_bc_c
-    integer, target     :: csrc, csrc2, rsrc, rsrc2 
-    integer, target     :: scol, dcol
-    integer, target     :: min_width_blas
+  !   type(c_ptr), target :: snode_c, anode_c, a_bc_c
+  !   integer, target     :: csrc, csrc2, rsrc, rsrc2 
+  !   integer, target     :: scol, dcol
+  !   integer, target     :: min_width_blas
 
-    type(node_type), pointer  :: snode, anode
-    type(block_type), pointer :: a_bc
-    integer, dimension(:), allocatable  :: row_list, col_list
-    integer :: i, nh, cld2, cld1
+  !   type(node_type), pointer  :: snode, anode
+  !   type(block_type), pointer :: a_bc
+  !   integer, dimension(:), allocatable  :: row_list, col_list
+  !   integer :: i, nh, cld2, cld1
 
-    type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
-    integer, target :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
-    integer, target :: m1, n1, ld1
-    real(wp), pointer        :: work(:)
-    real(wp), pointer        :: lij(:), lik(:), ljk(:)
+  !   type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
+  !   integer, target :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
+  !   integer, target :: m1, n1, ld1
+  !   real(wp), pointer        :: work(:)
+  !   real(wp), pointer        :: lij(:), lik(:), ljk(:)
 
-    call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &
-         & c_loc(snode_c), c_loc(scol), &
-         & c_loc(anode_c), c_loc(a_bc_c), c_loc(dcol), &
-         & c_loc(csrc), c_loc(csrc2), &
-         & c_loc(rsrc), c_loc(rsrc2), &
-         & c_loc(min_width_blas))
+  !   call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &
+  !        & c_loc(snode_c), c_loc(scol), &
+  !        & c_loc(anode_c), c_loc(a_bc_c), c_loc(dcol), &
+  !        & c_loc(csrc), c_loc(csrc2), &
+  !        & c_loc(rsrc), c_loc(rsrc2), &
+  !        & c_loc(min_width_blas))
 
-    call c_f_pointer(snode_c, snode)
-    call c_f_pointer(anode_c, anode)
-    call c_f_pointer(a_bc_c, a_bc)
+  !   call c_f_pointer(snode_c, snode)
+  !   call c_f_pointer(anode_c, anode)
+  !   call c_f_pointer(a_bc_c, a_bc)
       
-    ! get workspace pointer
-    call starpu_f_get_buffer(buffers, 0, c_loc(work_c), c_loc(mw))
-    call c_f_pointer(work_c, work,(/mw/))
+  !   ! get workspace pointer
+  !   call starpu_f_get_buffer(buffers, 0, c_loc(work_c), c_loc(mw))
+  !   call c_f_pointer(work_c, work,(/mw/))
 
-    ! Lij buffer
-    call starpu_f_get_buffer(buffers, 1, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
-    call c_f_pointer(dest, lij,(/ld*n/))
+  !   ! Lij buffer
+  !   call starpu_f_get_buffer(buffers, 1, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
+  !   call c_f_pointer(dest, lij,(/ld*n/))
     
-    ! Lik buffer
-    call starpu_f_get_buffer(buffers, 2, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
-    call c_f_pointer(src2, lik,(/ld2*n2/))    
+  !   ! Lik buffer
+  !   call starpu_f_get_buffer(buffers, 2, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
+  !   call c_f_pointer(src2, lik,(/ld2*n2/))    
     
-    ! Ljk buffer
-    call starpu_f_get_buffer(buffers, 3, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
-    call c_f_pointer(src1, ljk,(/ld1*n1/))    
+  !   ! Ljk buffer
+  !   call starpu_f_get_buffer(buffers, 3, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
+  !   call c_f_pointer(src1, ljk,(/ld1*n1/))    
 
-    ! TODO use scratch memory
-    allocate(col_list(1), row_list(1))
+  !   ! TODO use scratch memory
+  !   allocate(col_list(1), row_list(1))
 
-    call spllt_cuda_update_between(m, n, a_bc, dcol, anode, &
-         & n1, scol, snode, &
-         & lij, &
-         & ljk(csrc:csrc+csrc2-1), &
-         & lik(rsrc:rsrc+rsrc2-1), &
-         & row_list, col_list, work, &
-         & min_width_blas)
+  !   call spllt_cuda_update_between(m, n, a_bc, dcol, anode, &
+  !        & n1, scol, snode, &
+  !        & lij, &
+  !        & ljk(csrc:csrc+csrc2-1), &
+  !        & lik(rsrc:rsrc+rsrc2-1), &
+  !        & row_list, col_list, work, &
+  !        & min_width_blas)
 
-    ! TODO use scratch memory
-    deallocate(col_list, row_list)
+  !   ! TODO use scratch memory
+  !   deallocate(col_list, row_list)
 
-  end subroutine spllt_starpu_update_between_cuda_func
+  ! end subroutine spllt_starpu_update_between_cuda_func
 
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
@@ -381,7 +381,7 @@ contains
 
     type(node_type), pointer  :: snode, anode
     type(block_type), pointer :: a_bc
-    integer, dimension(:), allocatable  :: row_list, col_list
+    integer, dimension(:), pointer  :: row_list, col_list
     integer :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2

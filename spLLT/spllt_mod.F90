@@ -96,7 +96,7 @@ contains
     use dague_f08_interfaces
     use spllt_parsec_mod
 #endif
-    use spllt_factorization_task_mod 
+    ! use spllt_factorization_task_mod 
     implicit none
 
     integer :: start_starpushutdown_t, stop_starpushutdown_t, rate_starpushutdown_t

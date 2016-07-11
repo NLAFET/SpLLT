@@ -503,25 +503,6 @@ contains
 
   end function get_num_subdiag
 
-  function is_diag(bcs_c, id) bind(C)
-    use iso_c_binding
-    use spllt_mod
-    implicit none
-
-    type(c_ptr), value, target :: bcs_c
-    integer(long), value             :: id
-    integer(c_int)             :: is_diag
-
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
-
-    call c_f_pointer(bcs_c, bc,(/id/))    
-    
-    is_diag = 0
-
-    if (bc(id)%blk%dblk .eq. id) is_diag = 1
-
-  end function is_diag
-
   function get_blk_m(bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod

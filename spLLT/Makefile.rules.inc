@@ -50,6 +50,7 @@ spllt_analyse_mod.o: spllt_utils_mod.o spllt_data_mod.o hsl_ma87d.o
 spllt_utils_mod.o: spllt_data_mod.o
 spllt_mod.o: hsl_ma87d.o dtdeps90.o
 spllt_data_mod.o: hsl_ma87d.o dtdeps90.o
+spllt_c_interface.o: spllt_data_mod.o
 # spllt_starpu_kernels.o: spllt_starpu_factorization_mod.o
 
 ifneq ($(usestarpu),)

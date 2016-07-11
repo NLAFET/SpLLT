@@ -50,7 +50,7 @@ contains
     integer(long) :: dblk ! diagonal block within block column
     integer :: en ! holds keep%nodes(snode)%en
     integer :: sa ! holds keep%nodes(snode)%sa
-    integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
+    ! integer :: s_nb ! set to block size of snode (keep%nodes(snode)%nb)
     integer :: nc, nr ! number of block column/row
     integer :: snode, num_nodes
     integer :: st ! stat parameter
@@ -88,7 +88,7 @@ contains
     integer :: stf_start_t, stf_stop_t, stf_rate_t
     integer :: start_nosub_t, rate_nosub_t
     integer :: start_setup_t, stop_setup_t, rate_setup_t
-    integer :: start_cpya2l_t, stop_cpya2l_t, rate_cpya2l_t
+    ! integer :: start_cpya2l_t, stop_cpya2l_t, rate_cpya2l_t
     ! call system_clock(start_t, rate_t)
     call system_clock(start_setup_t, rate_setup_t)
 

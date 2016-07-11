@@ -32,7 +32,7 @@ INCLUDES = -I.
 # SPLLT_USE_OMP: spLLT OpenMP version
 #DEFS = -DSPLLT_USE_WHATEVER
 # DEFS = -DSPLLT_USE_OMP
-DEFS = -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
+DEFS = # -DSPLLT_USE_STARPU # -DSPLLT_STARPU_NOSUB
 
 CFLAGS += $(DEFS)
 FFLAGS += $(DEFS)
@@ -73,6 +73,7 @@ objs := hsl_ma87d.o
 objs +=	spllt_data_mod.o spllt_error_mod.o spllt_kernels_mod.o
 objs +=	spllt_factorization_mod.o spllt_factorization_task_mod.o spllt_mod.o
 objs += spllt_analyse_mod.o spllt_utils_mod.o
+objs += spllt_c_interface.o
 
 # spllt_starpu_test:
 # 	$(eval DEFS += -DSPLLT_USE_STARPU) #DEFS += -DSPLLT_USE_STARPU
@@ -102,6 +103,8 @@ parsec:
 	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC)
 parsec_mpi:
 	($(MAKE) spllt_parsec_test DEFS+=-DSPLLT_USE_PARSEC DEFS+=-DSPLLT_USE_MPI)
+ma87:
+	($(MAKE) run_ma87)
 
 # PaRSEC
 spllt_parsec_test: spllt_test.F90 $(objs) $(parsecobjs) common90.o dtdeps.o dtdeps90.o
@@ -122,7 +125,7 @@ spllt_stf_test: spllt_test.F90 $(objs) common90.o dtdeps.o dtdeps90.o
 spllt_testings: hsl_ma87dt.o dtdeps.o dtdeps90.o hsl_ma87d.o ddeps90.o common90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
-run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o common90.o spllt_data_mod.o # ddeps90.o
+run_ma87: run_ma87.f90 dtdeps.o dtdeps90.o hsl_ma87d.o common90.o spllt_data_mod.o spllt_mod.o # ddeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 ## Generic compilation rules

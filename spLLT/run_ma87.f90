@@ -5,6 +5,7 @@ program run_prob
    use hsl_zd11_double
    use hsl_ma87_double
    use spllt_mod
+   use spllt_data_mod
    implicit none
 
    integer, parameter :: dp = kind(0d0)

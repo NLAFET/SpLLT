@@ -243,35 +243,83 @@ void spllt_starpu_insert_update_block_c(starpu_data_handle_t lik_handle,
 void spllt_starpu_update_between_cpu_func(void *buffers[], void *cl_arg);
 
 #if defined(SPLLT_USE_GPU)
-void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg);
+/* void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg); */
 
-/* void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) { */
+void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
 
-/*    void *snode; */
-/*    int scol; */
-/*    void *anode; */
-/*    void *a_blk; */
-/*    int dcol; */
-/*    int csrc, csrc2; */
-/*    int rsrc, rsrc2; */
-/*    int min_with_blas; */
+   void *snode;
+   int scol;
+   void *anode;
+   void *a_blk;
+   int dcol;
+   int csrc, csrc2;
+   int rsrc, rsrc2;
+   int min_with_blas;
 
-/*    printf("[spllt_starpu_update_between_cuda_func]\n"); */
+   printf("[spllt_starpu_update_between_cuda_func]\n");
 
-/*    starpu_codelet_unpack_args(cl_arg, */
-/*                               snode, scol, anode, a_blk, dcol, */
-/*                               csrc, csrc2,  */
-/*                               rsrc, rsrc2, */
-/*                               min_with_blas);    */
+   starpu_codelet_unpack_args(cl_arg,
+                              &snode, &scol, &anode, &a_blk, &dcol,
+                              &csrc, &csrc2,
+                              &rsrc, &rsrc2,
+                              &min_with_blas);
    
-/*    double *work = (double *)STARPU_MATRIX_GET_PTR(buffers[0]); */
+   double *buffer = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
-/*    double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]); */
+   double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
+   unsigned m    = STARPU_MATRIX_GET_NX(buffers[1]);
+   unsigned n    = STARPU_MATRIX_GET_NY(buffers[1]);
+   unsigned ld   = STARPU_MATRIX_GET_LD(buffers[1]);
 
-/*    double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]); */
+   double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);
+   unsigned n1    = STARPU_MATRIX_GET_NY(buffers[2]);
    
-/*    double *bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);    */
-/* } */
+   double *bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);
+
+   int s1sa, s1en, s2sa, s2en;
+   int *col_list, *row_list;
+   int col_list_sz, row_list_sz;
+
+   row_list = (int *) malloc(m*sizeof(int));
+   col_list = (int *) malloc(n*sizeof(int));
+
+   /* printf("[spllt_starpu_update_between_cuda_func] s1sa: %d, s1en: %d, s2sa: %d, s2en: %d\n", s1sa, s1en, s2sa, s2en); */
+   
+   spllt_update_between_compute_map_c(a_blk, dcol, anode, scol, snode,
+                                      row_list, col_list, &row_list_sz, &col_list_sz, 
+                                      &s1sa, &s1en, &s2sa, &s2en);
+   
+   
+   int diag = is_blk_diag(a_blk);
+   int ndiag = 0;
+   /* printf("diag: %d\n", diag); */
+
+   if (diag) {
+      ndiag = s1en-s1sa+1;
+      magma_dsyrk(MagmaUpper, MagmaTrans, 
+                  ndiag, n1, -1.0, bc_jk + csrc-1, n1, 0.0, buffer, col_list_sz);
+
+      if (s2en-s2sa+1-ndiag > 0) {
+         
+         magma_dgemm(MagmaTrans, MagmaNoTrans,
+                     ndiag, s2en-s2sa+1-ndiag, n1, -1.0,
+                     bc_jk + csrc-1, n1,
+                     bc_ik + rsrc-1 + n1*ndiag, n1, 0.0,
+                     buffer + col_list_sz*ndiag, col_list_sz);
+      }
+   }
+   else {
+      
+      magma_dgemm(MagmaTrans, MagmaNoTrans,
+                  s1en-s1sa+1, s2en-s2sa+1, n1,
+                  -1.0, 
+                  bc_jk + csrc-1, n1,
+                  bc_ik + rsrc-1, n1,
+                  0.0,
+                  buffer, col_list_sz);
+   }
+
+}
 #endif
 
 #if defined(SPLLT_USE_GPU)
@@ -316,7 +364,8 @@ void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
 // update block task codelet
 struct starpu_codelet cl_update_between = {
 #if defined(SPLLT_USE_GPU)
-   .where = STARPU_CUDA /* STARPU_CPU */,
+   .where =  STARPU_CUDA,
+   /* .where =  /\* STARPU_CUDA | *\/ STARPU_CPU, */
    .cuda_flags = {STARPU_CUDA_ASYNC},
    .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
 #else

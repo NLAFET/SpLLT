@@ -32,7 +32,7 @@ do
                     ma87)
                         echo "[run_tests] run MA87"
                         export OMP_NUM_THREADS=${ncpu} 
-                        ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}
+                        ./run_ma87 --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}
                         ;;
                     stf)
                         ./spllt_stf_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_stf/${matname}_NB-${nb}_NEMIN-${nemin}${outsuffix}
