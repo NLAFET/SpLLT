@@ -9,3 +9,5 @@
 	$(FC) $(FFLAGS) $(INCLUDES) -c -o $@ $<
 %.o: %.F90
 	$(FC) $(FFLAGS) $(INCLUDES) -c -o $@ $<
+%.o: %.cu
+	$(NVCC) $(NVCC_FLAGS) -dw $<

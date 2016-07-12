@@ -41,6 +41,9 @@ CFLAGS += $(ICUDA) $(IHWLOC) $(ISTARPU) $(IPARSEC) $(IMPI)
 FFLAGS += $(ISPRAL) $(IPARSEC) $(IMPI)
 
 #CFLAGS += -m64 -mcx16
+NVCC = nvcc
+NVCCFLAGS = "-arch=compute_20"
+# NVCCFLAGS = "-arch=compute_20 -code=compute_20,sm_20,sm_35"
 
 LIBS = $(LBLAS) $(LLAPACK) $(LSPRAL) $(LMETIS) $(LSTARPU)  $(LHWLOC)
 
@@ -111,7 +114,7 @@ spllt_parsec_test: spllt_test.F90 $(objs) $(parsecobjs) common90.o dtdeps.o dtde
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 # StarPU
-spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) common90.o dtdeps.o dtdeps90.o
+spllt_starpu_test: spllt_test.F90 $(objs) $(starpuobjs) $(gpuobjs) common90.o dtdeps.o dtdeps90.o
 	$(FC) $(FFLAGS) -o $@ $^ $(LIBS)
 
 # OpenMP

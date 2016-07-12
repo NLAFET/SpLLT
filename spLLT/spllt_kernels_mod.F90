@@ -838,46 +838,82 @@ contains
 #endif
 
   ! fastest version of expand_buffer kernel 
-  ! subroutine spllt_expand_buffer(a, blkn, row_list, rls, col_list, cls, ndiag,
-  !   buffer)
-  !   real(wp), dimension(*), intent(inout) :: a ! holds L
-  !   integer, intent(in) :: blkn ! number of cols in destination block
-  !   integer, intent(in) :: rls ! size of row_list
-  !   integer, intent(in) :: row_list(rls)
-  !   integer, intent(in) :: cls ! size of col_list
-  !   integer, intent(in) :: col_list(cls)
-  !   integer, intent(in) :: ndiag ! Number of triangular rows of update
-  !   real(wp), intent(in) :: buffer(rls*cls)
+  subroutine spllt_expand_buffer(a, blkn, row_list, rls, col_list, cls, ndiag, &
+       & buffer)
+    use spllt_data_mod
+    implicit none    
 
-  !   integer :: i, j, rptr, cptr, imax, cmax
-  !   integer :: k0, k1, k2, k3
+    real(wp), dimension(*), intent(inout) :: a ! holds L
+    integer, intent(in) :: blkn ! number of cols in destination block
+    integer, intent(in) :: rls ! size of row_list
+    integer, intent(in) :: row_list(rls)
+    integer, intent(in) :: cls ! size of col_list
+    integer, intent(in) :: col_list(cls)
+    integer, intent(in) :: ndiag ! Number of triangular rows of update
+    real(wp), intent(in) :: buffer(rls*cls)
 
-  !   do j = 1, rls
-  !      rptr = (j-1)*cls + 1
-  !      cptr = (row_list(j)-1) * blkn
-  !      imax = cls
-  !      if(j.le.ndiag) imax = j
-  !      cmax = 4*(imax/4)
-  !      do i = 1, cmax, 4
-  !         k0 = cptr + col_list(i+0)
-  !         k1 = cptr + col_list(i+1)
-  !         k2 = cptr + col_list(i+2)
-  !         k3 = cptr + col_list(i+3)
-  !         a(k0) = a(k0) + buffer(rptr+0)
-  !         a(k1) = a(k1) + buffer(rptr+1)
-  !         a(k2) = a(k2) + buffer(rptr+2)
-  !         a(k3) = a(k3) + buffer(rptr+3)
-  !         rptr = rptr + 4
-  !      end do
-  !      do i = cmax+1, imax
-  !         k0 = cptr + col_list(i)
-  !         a(k0) = a(k0) + buffer(rptr)
-  !         rptr = rptr + 1
-  !      end do
-  !   end do
+    integer :: i, j, rptr, cptr, imax, cmax
+    integer :: k0, k1, k2, k3
 
-  ! end subroutine spllt_expand_buffer
-  
+    ! write(*,*) 'TESTS'
+
+    do j = 1, rls
+       rptr = (j-1)*cls + 1
+       cptr = (row_list(j)-1) * blkn
+       imax = cls
+       if(j.le.ndiag) imax = j
+       cmax = 4*(imax/4)
+       do i = 1, cmax, 4
+          k0 = cptr + col_list(i+0)
+          k1 = cptr + col_list(i+1)
+          k2 = cptr + col_list(i+2)
+          k3 = cptr + col_list(i+3)
+          a(k0) = a(k0) + buffer(rptr+0)
+          a(k1) = a(k1) + buffer(rptr+1)
+          a(k2) = a(k2) + buffer(rptr+2)
+          a(k3) = a(k3) + buffer(rptr+3)
+          rptr = rptr + 4
+       end do
+       do i = cmax+1, imax
+          k0 = cptr + col_list(i)
+          a(k0) = a(k0) + buffer(rptr)
+          rptr = rptr + 1
+       end do
+    end do
+
+  end subroutine spllt_expand_buffer
+
+  subroutine spllt_expand_buffer_c(a_c, blkm, blkn, row_list_c, rls, col_list_c, cls, ndiag, &
+       & buffer_c) bind(C)
+    use iso_c_binding
+    use spllt_data_mod
+    implicit none    
+    
+    type(c_ptr), value    :: a_c ! holds L
+    integer(c_int), value :: blkm ! number of rows in destination block
+    integer(c_int), value :: blkn ! number of cols in destination block
+    integer(c_int), value :: rls ! size of row_list
+    type(c_ptr), value    :: row_list_c
+    integer(c_int), value :: cls ! size of col_list
+    type(c_ptr), value    :: col_list_c
+    integer(c_int), value :: ndiag ! Number of triangular rows of update
+    type(c_ptr), value    :: buffer_c
+
+    real(wp), dimension(:), pointer :: a ! holds L    
+    integer(c_int), dimension(:), pointer :: row_list ! holds L    
+    integer(c_int), dimension(:), pointer :: col_list ! holds L    
+    real(wp), dimension(:), pointer :: buffer ! holds L    
+
+    call c_f_pointer(a_c, a, (/blkm*blkn/))
+    call c_f_pointer(row_list_c, row_list, (/rls/))
+    call c_f_pointer(col_list_c, col_list, (/cls/))
+    call c_f_pointer(buffer_c, buffer, (/rls*cls/))
+
+    call spllt_expand_buffer(a, blkn, row_list, rls, col_list, cls, ndiag, &
+       & buffer)
+
+  end subroutine spllt_expand_buffer_c
+
   !*************************************************
   
   !   Given a destination block dest, update_between performs the update
@@ -1115,7 +1151,10 @@ contains
        ! Apply update
        !
 
-       call expand_buffer(dest, n, row_list, row_list_sz, &
+       ! call expand_buffer(dest, n, row_list, row_list_sz, &
+       !      col_list, col_list_sz, ndiag, buffer)
+
+       call spllt_expand_buffer(dest, n, row_list, row_list_sz, &
             col_list, col_list_sz, ndiag, buffer)
 
     else
@@ -1135,7 +1174,7 @@ contains
   ! C wrapper
   
   subroutine spllt_update_between_c(m, n, blk_c, &
-       & dcol, nodes_c, nnodes, n1, scol, snode, dest_c, & 
+       & dcol, dnode_c, n1, scol, snode_c, dest_c, & 
        & src1_c, src2_c, buffer_c, min_width_blas) bind(C)
     use iso_c_binding
     use spllt_data_mod
@@ -1146,11 +1185,10 @@ contains
     integer(c_int), value :: n ! number of columns in dest
     type(c_ptr), value :: blk_c ! blocks array pointer
     integer(c_int), value :: dcol
-    type(c_ptr), value :: nodes_c ! blocks array pointer
-    integer(c_int), value :: nnodes
+    type(c_ptr), value :: dnode_c ! blocks array pointer
     integer(c_int), value :: n1 ! number of columns in source block column
     integer(c_int), value :: scol
-    integer(c_int), value :: snode
+    type(c_ptr), value :: snode_c
     type(c_ptr), value :: dest_c ! holds block in L
     type(c_ptr), value :: src1_c, src2_c ! holds block in L
     type(c_ptr), value :: buffer_c
@@ -1161,10 +1199,12 @@ contains
     integer, dimension(:), pointer :: col_list ! reallocated to min size n
     real(wp), pointer :: buffer(:)
     type(spllt_bc_type), pointer :: bc(:) ! blocks
-    type(node_type), pointer :: nodes(:) ! blocks
+    type(node_type), pointer :: dnode ! destination node
+    type(node_type), pointer :: snode ! source node
     type(block_type), pointer :: blk
 
-    call c_f_pointer(nodes_c, nodes,(/nnodes/))
+    call c_f_pointer(dnode_c, dnode)
+    call c_f_pointer(snode_c, snode)
     call c_f_pointer(blk_c, blk)
 
     call c_f_pointer(dest_c, dest, (/m*n/))
@@ -1180,7 +1220,7 @@ contains
     ! write(*,*)'m: ', m, ', n: ', n
     ! write(*,*)'min_width_blas: ', min_width_blas
 
-    call spllt_update_between(m, n, blk, dcol, nodes(blk%node), n1, scol, nodes(snode), dest, & 
+    call spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
          & src1, src2, row_list, col_list, buffer, min_width_blas)
 
     ! deallocate(work)

@@ -263,61 +263,123 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                               &csrc, &csrc2,
                               &rsrc, &rsrc2,
                               &min_with_blas);
-   
-   double *buffer = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
-   double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
+   /* printf("[spllt_starpu_update_between_cuda_func] csrc: %d, rsrc: %d\n", csrc, rsrc); */
+   
+   double *d_buffer = (double *)STARPU_VECTOR_GET_PTR(buffers[0]);
+   unsigned b_sz    = STARPU_VECTOR_GET_NX(buffers[0]);
+
+   double *d_bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
    unsigned m    = STARPU_MATRIX_GET_NX(buffers[1]);
    unsigned n    = STARPU_MATRIX_GET_NY(buffers[1]);
    unsigned ld   = STARPU_MATRIX_GET_LD(buffers[1]);
 
-   double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);
-   unsigned n1    = STARPU_MATRIX_GET_NY(buffers[2]);
-   
-   double *bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);
+   double *d_bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);   
+   /* unsigned n1    = STARPU_MATRIX_GET_NY(buffers[2]); */
+   unsigned m2    = STARPU_MATRIX_GET_NX(buffers[2]);
+      
+   double *d_bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);
+   unsigned n1    = STARPU_MATRIX_GET_NY(buffers[3]);
+   unsigned m1    = STARPU_MATRIX_GET_NX(buffers[3]);
 
    int s1sa, s1en, s2sa, s2en;
    int *col_list, *row_list;
-   int col_list_sz, row_list_sz;
+   int cls, rls;
+
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+   int worker_id = starpu_worker_get_id();
+   unsigned worker_node = starpu_worker_get_memory_node(worker_id);
+
+   
+   double *src1, *src2, *a, *buff;
 
    row_list = (int *) malloc(m*sizeof(int));
    col_list = (int *) malloc(n*sizeof(int));
 
-   /* printf("[spllt_starpu_update_between_cuda_func] s1sa: %d, s1en: %d, s2sa: %d, s2en: %d\n", s1sa, s1en, s2sa, s2en); */
-   
    spllt_update_between_compute_map_c(a_blk, dcol, anode, scol, snode,
-                                      row_list, col_list, &row_list_sz, &col_list_sz, 
+                                      row_list, col_list, &rls, &cls,
                                       &s1sa, &s1en, &s2sa, &s2en);
    
-   
+   a    = (double *)malloc(m*n*sizeof(double));   // A_ij
+   /* src1 = (double *)malloc(m1*n1*sizeof(double)); // L_ik */
+   /* src2 = (double *)malloc(m2*n1*sizeof(double)); // L_jk */
+   buff  = (double *)malloc(b_sz*sizeof(double)); // buffer
+
+   magmablasSetKernelStream(local_stream);
+
    int diag = is_blk_diag(a_blk);
    int ndiag = 0;
-   /* printf("diag: %d\n", diag); */
 
    if (diag) {
       ndiag = s1en-s1sa+1;
-      magma_dsyrk(MagmaUpper, MagmaTrans, 
-                  ndiag, n1, -1.0, bc_jk + csrc-1, n1, 0.0, buffer, col_list_sz);
+      magma_dsyrk(MagmaUpper, MagmaTrans,
+                  ndiag, n1, -1.0, &d_bc_jk[csrc-1], n1,
+                  0.0,
+                  d_buffer, cls);
 
       if (s2en-s2sa+1-ndiag > 0) {
-         
          magma_dgemm(MagmaTrans, MagmaNoTrans,
                      ndiag, s2en-s2sa+1-ndiag, n1, -1.0,
-                     bc_jk + csrc-1, n1,
-                     bc_ik + rsrc-1 + n1*ndiag, n1, 0.0,
-                     buffer + col_list_sz*ndiag, col_list_sz);
+                     &d_bc_jk[csrc-1], n1,
+                     &d_bc_ik[rsrc-1 + n1*ndiag], n1, 0.0,
+                     &d_buffer[cls*ndiag], cls);
       }
    }
    else {
       
       magma_dgemm(MagmaTrans, MagmaNoTrans,
                   s1en-s1sa+1, s2en-s2sa+1, n1,
-                  -1.0, 
-                  bc_jk + csrc-1, n1,
-                  bc_ik + rsrc-1, n1,
+                  -1.0,
+                  &d_bc_jk[csrc-1], n1,
+                  &d_bc_ik[rsrc-1], n1,
                   0.0,
-                  buffer, col_list_sz);
+                  d_buffer, cls);
    }
+   /* printf("diag: %d, ndiag: %d\n", diag, ndiag); */
+   cudaStreamSynchronize(local_stream);
+
+   /* starpu_cuda_copy_async_sync(d_bc_ij, worker_node, a, 0, m*n*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
+   /* starpu_cuda_copy_async_sync(d_bc_jk, worker_node, src1, 0, m1*n1*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
+   /* starpu_cuda_copy_async_sync(d_bc_ik, worker_node, src2, 0, m2*n1*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
+   
+   /* spllt_update_between_c(m, n, a_blk, dcol, anode, n1, scol, snode, a, src1 + csrc-1, src2 + rsrc-1, buf, 0); */
+   
+   /* starpu_cuda_copy_async_sync(a, 0, d_bc_ij, worker_node, m*n*sizeof(double), local_stream, cudaMemcpyHostToDevice); */
+   /* starpu_cuda_copy_async_sync(buf, 0, d_buffer, worker_node, b_sz*sizeof(double), local_stream, cudaMemcpyHostToDevice); */
+
+
+   /* starpu_cuda_copy_async_sync(d_bc_ij, worker_node, a, 0, m*n*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
+   /* starpu_cuda_copy_async_sync(d_buffer, worker_node, buff, 0, b_sz*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
+
+   /* spllt_expand_buffer_c(a, m, n, row_list, rls, col_list, cls, ndiag, buff); */
+   /* int i, j, imax; */
+   
+   /* for (i = 0; i < rls; i++) { */
+   /*    int row = row_list[i]-1; */
+   /*    imax = cls-1; */
+   /*    if (i < ndiag) imax = i; */
+   /*    for (j = 0; j <= imax; j++) { */
+   /*       int col = col_list[j]-1; */
+   /*       a[row*n + col] += buff[i*cls + j];          */
+   /*    } */
+   /* } */
+
+   /* starpu_cuda_copy_async_sync(a, 0, d_bc_ij, worker_node, m*n*sizeof(double), local_stream, cudaMemcpyHostToDevice); */
+
+   int *d_row_list = starpu_malloc_on_node(worker_node, rls*sizeof(int));
+   int *d_col_list = starpu_malloc_on_node(worker_node, cls*sizeof(int));
+
+   starpu_cuda_copy_async_sync(row_list, 0, d_row_list, worker_node, rls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
+   starpu_cuda_copy_async_sync(col_list, 0, d_col_list, worker_node, cls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
+
+   /* cudaStreamSynchronize(local_stream); */
+
+   spllt_cu_expand_buffer(n, d_bc_ij, d_buffer,
+                          d_row_list, rls, d_col_list, cls,
+                          ndiag,
+                          local_stream);
+
+   cudaStreamSynchronize(local_stream);
 
 }
 #endif
@@ -366,7 +428,7 @@ struct starpu_codelet cl_update_between = {
 #if defined(SPLLT_USE_GPU)
    .where =  STARPU_CUDA,
    /* .where =  /\* STARPU_CUDA | *\/ STARPU_CPU, */
-   .cuda_flags = {STARPU_CUDA_ASYNC},
+   /* .cuda_flags = {STARPU_CUDA_ASYNC}, */
    .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
 #else
    .where = STARPU_CPU,

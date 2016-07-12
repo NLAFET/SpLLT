@@ -14,6 +14,8 @@ CFLAGS += $(IMAGMA)
 FFLAGS += $(IMAGMA)
 LIBS += $(LMAGMA)
 LIBS += -L$(CUDADIR)/lib64 -lcusolver
+
+gpuobjs := expand_buffer_kernels.o
 endif
 
 ifneq ($(usestarpu),)
