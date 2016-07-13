@@ -126,6 +126,12 @@ module spllt_data_mod
      ! data descriptor
      type(c_ptr) :: ddesc
 #endif
+
+#if defined(SPLLT_USE_OMP)
+     type(spllt_bc_type), allocatable :: row_list(:), col_list(:) ! workspaces
+#else
+     type(spllt_bc_type) :: row_list, col_list ! workspaces
+#endif
   end type spllt_data_type
 
   type spllt_options

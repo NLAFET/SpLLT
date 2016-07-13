@@ -265,22 +265,34 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                               &min_with_blas);
 
    /* printf("[spllt_starpu_update_between_cuda_func] csrc: %d, rsrc: %d\n", csrc, rsrc); */
-   
+
+   // workspace pointer
    double *d_buffer = (double *)STARPU_VECTOR_GET_PTR(buffers[0]);
    unsigned b_sz    = STARPU_VECTOR_GET_NX(buffers[0]);
 
-   double *d_bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
-   unsigned m    = STARPU_MATRIX_GET_NX(buffers[1]);
-   unsigned n    = STARPU_MATRIX_GET_NY(buffers[1]);
-   unsigned ld   = STARPU_MATRIX_GET_LD(buffers[1]);
+   // row_list pointer
+   int *d_row_list = (int *)STARPU_VECTOR_GET_PTR(buffers[1]);
+   unsigned d_row_list_sz    = STARPU_VECTOR_GET_NX(buffers[1]);
 
-   double *d_bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);   
+   // col_list pointer
+   int *d_col_list = (int *)STARPU_VECTOR_GET_PTR(buffers[2]);
+   unsigned d_col_list_sz = STARPU_VECTOR_GET_NX(buffers[2]);
+
+   // A_ij pointer
+   double *d_bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);
+   unsigned m    = STARPU_MATRIX_GET_NX(buffers[3]);
+   unsigned n    = STARPU_MATRIX_GET_NY(buffers[3]);
+   unsigned ld   = STARPU_MATRIX_GET_LD(buffers[3]);
+
+   // L_ik pointer
+   double *d_bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[4]);   
    /* unsigned n1    = STARPU_MATRIX_GET_NY(buffers[2]); */
-   unsigned m2    = STARPU_MATRIX_GET_NX(buffers[2]);
+   unsigned m2    = STARPU_MATRIX_GET_NX(buffers[4]);
       
-   double *d_bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[3]);
-   unsigned n1    = STARPU_MATRIX_GET_NY(buffers[3]);
-   unsigned m1    = STARPU_MATRIX_GET_NX(buffers[3]);
+   // L_jk pointer
+   double *d_bc_jk = (double *)STARPU_MATRIX_GET_PTR(buffers[5]);
+   unsigned n1    = STARPU_MATRIX_GET_NY(buffers[5]);
+   unsigned m1    = STARPU_MATRIX_GET_NX(buffers[5]);
 
    int s1sa, s1en, s2sa, s2en;
    int *col_list, *row_list;
@@ -336,7 +348,7 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                   d_buffer, cls);
    }
    /* printf("diag: %d, ndiag: %d\n", diag, ndiag); */
-   cudaStreamSynchronize(local_stream);
+   /* cudaStreamSynchronize(local_stream); */
 
    /* starpu_cuda_copy_async_sync(d_bc_ij, worker_node, a, 0, m*n*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
    /* starpu_cuda_copy_async_sync(d_bc_jk, worker_node, src1, 0, m1*n1*sizeof(double), local_stream, cudaMemcpyDeviceToHost); */
@@ -366,8 +378,8 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
 
    /* starpu_cuda_copy_async_sync(a, 0, d_bc_ij, worker_node, m*n*sizeof(double), local_stream, cudaMemcpyHostToDevice); */
 
-   int *d_row_list = starpu_malloc_on_node(worker_node, rls*sizeof(int));
-   int *d_col_list = starpu_malloc_on_node(worker_node, cls*sizeof(int));
+   /* int *d_row_list = starpu_malloc_on_node(worker_node, rls*sizeof(int)); */
+   /* int *d_col_list = starpu_malloc_on_node(worker_node, cls*sizeof(int)); */
 
    starpu_cuda_copy_async_sync(row_list, 0, d_row_list, worker_node, rls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
    starpu_cuda_copy_async_sync(col_list, 0, d_col_list, worker_node, cls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
@@ -379,7 +391,7 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                           ndiag,
                           local_stream);
 
-   cudaStreamSynchronize(local_stream);
+   /* cudaStreamSynchronize(local_stream); */
 
 }
 #endif
@@ -426,9 +438,9 @@ void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
 // update block task codelet
 struct starpu_codelet cl_update_between = {
 #if defined(SPLLT_USE_GPU)
-   .where =  STARPU_CUDA,
-   /* .where =  /\* STARPU_CUDA | *\/ STARPU_CPU, */
-   /* .cuda_flags = {STARPU_CUDA_ASYNC}, */
+   /* .where =  STARPU_CUDA, */
+   .where =  /* STARPU_CUDA | */ STARPU_CPU,
+   .cuda_flags = {STARPU_CUDA_ASYNC},
    .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
 #else
    .where = STARPU_CPU,
@@ -448,6 +460,8 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t lik_handle,
                                           int csrc, int csrc2, int rsrc, int rsrc2,
                                           int min_width_blas,
                                           starpu_data_handle_t workspace_handle,
+                                          starpu_data_handle_t row_list_hdl,
+                                          starpu_data_handle_t col_list_hdl,
                                           starpu_data_handle_t node_handle,
                                           int prio) {
 
@@ -466,6 +480,8 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t lik_handle,
                             STARPU_VALUE, &rsrc2, sizeof(int),
                             STARPU_VALUE, &min_width_blas, sizeof(int),
                             STARPU_SCRATCH, workspace_handle,
+                            STARPU_SCRATCH, row_list_hdl,
+                            STARPU_SCRATCH, col_list_hdl,
                             STARPU_RW | STARPU_COMMUTE, lij_handle,
                             STARPU_R, lik_handle,
                             STARPU_R, ljk_handle,

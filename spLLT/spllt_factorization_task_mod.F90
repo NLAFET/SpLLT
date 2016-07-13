@@ -46,7 +46,6 @@ contains
     logical :: map_done
     integer :: i, ilast
     type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
-    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
     integer :: cb, jb
     integer :: jlast ! Last column in the cb-th block column of anode
     integer :: k
@@ -204,7 +203,7 @@ contains
                         & node, a_bc, a_node, &
                                 ! & csrc, rsrc, &
                         & cptr, cptr2, ilast, i-1, &
-                        & row_list, col_list, fdata%workspace, &
+                        & fdata%row_list, fdata%col_list, fdata%workspace, &
                         & keep%lfact, keep%blocks, fdata%bc, &
                         & control, prio)
 
@@ -239,7 +238,7 @@ contains
                   & node, a_bc, a_node, &
                                 ! & csrc, rsrc, &
                   & cptr, cptr2, ilast, i-1, &
-                  & row_list, col_list, fdata%workspace, &
+                  & fdata%row_list, fdata%col_list, fdata%workspace, &
                   & keep%lfact, keep%blocks, fdata%bc, &
                   & control, prio)
 
@@ -897,41 +896,43 @@ contains
 #endif
     implicit none
 
-    type(spllt_data_type), target, intent(in)  :: fdata
+    type(spllt_data_type), target, intent(in)       :: fdata
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout)     :: a_bc ! dest block
     type(spllt_bc_type), pointer, intent(inout)     :: dbc ! diag block in source node
 
-    type(spllt_bc_type), allocatable, target :: workspace(:)
-    type(spllt_bc_type), target      :: bcs(:) ! block info.
+    type(spllt_bc_type), allocatable, target        :: workspace(:)
+    type(spllt_bc_type), target                     :: bcs(:) ! block info.
 #else
-    type(spllt_bc_type), intent(inout)     :: a_bc ! dest block
-    type(spllt_bc_type), intent(in)        :: dbc ! diag block in source node
+    type(spllt_bc_type), intent(inout)              :: a_bc ! dest block
+    type(spllt_bc_type), intent(in)                 :: dbc ! diag block in source node
 
-    type(spllt_bc_type)              :: workspace
-    type(spllt_bc_type)              :: bcs(:) ! block info.
+    type(spllt_bc_type)                             :: workspace
+    type(spllt_bc_type)                             :: bcs(:) ! block info.
 #endif
 
 #if defined(SPLLT_USE_STARPU)
-    type(node_type), target                :: snode ! src node
-    type(spllt_node_type), target          :: anode ! dest node
+    type(node_type), target                         :: snode ! src node
+    type(spllt_node_type), target                   :: anode ! dest node
 #elif defined(SPLLT_USE_OMP)
-    type(node_type), pointer, intent(in)        :: snode ! src node
-    type(spllt_node_type), pointer, intent(in)  :: anode ! dest node
+    type(node_type), pointer, intent(in)            :: snode ! src node
+    type(spllt_node_type), pointer, intent(in)      :: anode ! dest node
 #else
-    type(node_type)                        :: snode ! src node
-    type(spllt_node_type)                  :: anode ! dest node
+    type(node_type)                                 :: snode ! src node
+    type(spllt_node_type)                           :: anode ! dest node
 #endif
-    integer :: cptr, cptr2, rptr, rptr2 
+    integer                                         :: cptr, cptr2, rptr, rptr2 
 !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
-    integer, dimension(:), allocatable  :: row_list, col_list
+
+    type(spllt_bc_type)                             :: row_list, col_list
+
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-    type(block_type), dimension(:)      :: blocks ! block info. 
+    type(block_type), dimension(:)                  :: blocks ! block info. 
 
 #if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
-    type(lfactor), allocatable, target, intent(inout) :: lfact(:)
+    type(lfactor), allocatable, target, intent(inout)  :: lfact(:)
 #else
-    type(lfactor), allocatable, intent(inout) :: lfact(:)
+    type(lfactor), allocatable, intent(inout)          :: lfact(:)
 #endif
     type(MA87_control), intent(in) :: control     
     ! integer, intent(out) :: st ! TODO error managment
@@ -1072,7 +1073,7 @@ contains
          & anode_c, a_bc_c, dcol, &
          & csrc, csrc2, rsrc, rsrc2, &
          & control%min_width_blas, &
-         & workspace%hdl, &
+         & workspace%hdl, row_list%hdl, col_list%hdl, &
          & anode%hdl, &
          & p &
          &)
@@ -1292,7 +1293,7 @@ contains
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
          & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
-         & row_list, col_list, workspace%c, &
+         & row_list%c, col_list%c, workspace%c, &
          & control%min_width_blas)
 
 #endif

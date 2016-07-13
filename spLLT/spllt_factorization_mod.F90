@@ -71,7 +71,6 @@ contains
     logical :: map_done
     integer :: i, ilast
     type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
-    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
     integer :: cb, jb
     integer :: jlast ! Last column in the cb-th block column of anode
     ! real(wp) :: soln(0)
@@ -102,9 +101,6 @@ contains
 
     num_nodes = keep%info%num_nodes
     ! write(*,*) 'num_nodes: ', num_nodes
-
-    allocate(col_list(1), row_list(1), stat=st)
-    if(st.ne.0) goto 10
 
     ! Set up inverse permutation
     ! deallocate (invp,stat=st)
@@ -146,18 +142,38 @@ contains
     ! register workspace handle
     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+
+    ! register col_list and row_list workspaces
+    ! register row_list handle
+    call starpu_f_vector_data_register(fdata%row_list%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
+
+    ! register col_list handle
+    call starpu_f_vector_data_register(fdata%col_list%hdl, -1, c_null_ptr, &
+         & int(keep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
+
 #elif defined(SPLLT_USE_OMP)
 
     nt = 1
 !$  nt = omp_get_num_threads()
     allocate(fdata%workspace(0:nt-1))
+    allocate(fdata%row_list(0:nt-1))
+    allocate(fdata%col_list(0:nt-1))
 
     do i=0,nt-1
        allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
        if(st.ne.0) goto 10
+       allocate(fdata%row_list(i)%c(keep%maxmn), stat=st)
+       if(st.ne.0) goto 10
+       allocate(fdata%col_list(i)%c(keep%maxmn), stat=st)
+       if(st.ne.0) goto 10
     end do
 #else
     allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+    if(st.ne.0) goto 10
+    allocate(fdata%row_list%c(keep%maxmn), stat=st)
+    if(st.ne.0) goto 10
+    allocate(fdata%col_list%c(keep%maxmn), stat=st)
     if(st.ne.0) goto 10
 #endif
 
@@ -207,6 +223,10 @@ contains
 #if defined(SPLLT_USE_STARPU)
     ! unregister workspace handle
     call starpu_f_data_unregister_submit(fdata%workspace%hdl)
+
+    call starpu_f_data_unregister_submit(fdata%row_list%hdl)
+    call starpu_f_data_unregister_submit(fdata%col_list%hdl)
+
 #endif
 
     ! unregister data handle
@@ -289,7 +309,6 @@ contains
     integer, dimension(:), allocatable ::  tmpmap
 
     integer :: st ! stat parameter
-    integer, dimension(:), allocatable :: row_list, col_list ! update_buffer workspace
     integer :: least_desc, d_num, d_sa, d_en, d_numcol, d_numrow, d_nb, d_nc
     ! logical :: map_done
     integer :: cptr
@@ -320,10 +339,6 @@ contains
     blocks => keep%blocks
     nodes  => keep%nodes
     num_nodes = keep%info%num_nodes
-
-    ! allocate col_lsit and row_list arrays
-    allocate(col_list(1), row_list(1), stat=st)
-    if(st.ne.0) goto 9999
 
     ! allocate L factors
     deallocate (keep%lfact,stat=st)
@@ -477,7 +492,7 @@ contains
                            & fdata, &
                            & d_bc_kk, dnode, bc, fdata%nodes(snode), &
                            & cptr, cptr2, ilast, i-1, &
-                           & row_list, col_list, fdata%workspace, &
+                           & fdata%row_list, fdata%col_list, fdata%workspace, &
                            & keep%lfact, keep%blocks, fdata%bc, &
                            & control, prio)
 
@@ -502,7 +517,7 @@ contains
                      & fdata, &
                      & d_bc_kk, dnode, bc, fdata%nodes(snode), &
                      & cptr, cptr2, ilast, i-1, &
-                     & row_list, col_list, fdata%workspace, &
+                     & fdata%row_list, fdata%col_list, fdata%workspace, &
                      & keep%lfact, keep%blocks, fdata%bc, &
                      & control, prio)
 

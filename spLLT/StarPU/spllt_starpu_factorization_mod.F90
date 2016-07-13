@@ -54,13 +54,14 @@ module spllt_starpu_factorization_mod
           & anode, a_bc, dcol, &
           & csrc, csrc2, rsrc, rsrc2, &
           & min_width_blas, &
-          & workspace_hdl, &
+          & workspace_hdl, row_list_hdl, col_list_hdl, &
           & node_hdl, &
           & prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: lik_hdl, ljk_hdl
        type(c_ptr), value     :: snode, anode, a_bc
        type(c_ptr), value     :: lij_hdl, workspace_hdl, node_hdl
+       type(c_ptr), value     :: row_list_hdl, col_list_hdl 
        integer(c_int), value  :: csrc, csrc2, rsrc, rsrc2
        integer(c_int), value  :: scol, dcol
        integer(c_int), value  :: min_width_blas
@@ -381,12 +382,13 @@ contains
 
     type(node_type), pointer  :: snode, anode
     type(block_type), pointer :: a_bc
-    integer, dimension(:), pointer  :: row_list, col_list
     integer :: i, nh, cld2, cld1
 
-    type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
+    type(c_ptr), target      :: rlst_c, clst_c, work_c, dest, src1, src2, ptr1, ptr2
     integer, target :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
     integer, target :: m1, n1, ld1
+    integer, target :: rls, cls
+    integer, pointer  :: row_list(:), col_list(:)
     real(wp), pointer        :: work(:)
     real(wp), pointer        :: lij(:), lik(:), ljk(:)
 
@@ -407,20 +409,25 @@ contains
     call starpu_f_get_buffer(buffers, 0, c_loc(work_c), c_loc(mw))
     call c_f_pointer(work_c, work,(/mw/))
 
+    ! get row_list pointer
+    call starpu_f_get_buffer(buffers, 1, c_loc(rlst_c), c_loc(rls))
+    call c_f_pointer(rlst_c, row_list,(/rls/))
+
+    ! get col_list pointer
+    call starpu_f_get_buffer(buffers, 2, c_loc(clst_c), c_loc(cls))
+    call c_f_pointer(clst_c, col_list,(/cls/))
+
     ! Lij buffer
-    call starpu_f_get_buffer(buffers, 1, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
+    call starpu_f_get_buffer(buffers, 3, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
     call c_f_pointer(dest, lij,(/ld*n/))
     
     ! Lik buffer
-    call starpu_f_get_buffer(buffers, 2, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
+    call starpu_f_get_buffer(buffers, 4, c_loc(src2), c_loc(m2), c_loc(n2), c_loc(ld2))
     call c_f_pointer(src2, lik,(/ld2*n2/))    
     
     ! Ljk buffer
-    call starpu_f_get_buffer(buffers, 3, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
+    call starpu_f_get_buffer(buffers, 5, c_loc(src1), c_loc(m1), c_loc(n1), c_loc(ld1))
     call c_f_pointer(src1, ljk,(/ld1*n1/))    
-
-    ! TODO use scratch memory
-    allocate(col_list(1), row_list(1))
 
     call spllt_update_between(m, n, a_bc, dcol, anode, &
          & n1, scol, snode, &
@@ -429,9 +436,6 @@ contains
          & lik(rsrc:rsrc+rsrc2-1), &
          & row_list, col_list, work, &
          & min_width_blas)
-
-    ! TODO use scratch memory
-    deallocate(col_list, row_list)
 
   end subroutine spllt_starpu_update_between_cpu_func
 
