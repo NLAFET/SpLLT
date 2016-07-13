@@ -134,14 +134,14 @@ contains
     ! analysis
     call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
-    num_flops = info%num_flops
+    num_flops = a_pbl%num_flops
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        goto 9999
     endif
 
     write(*,'("[>] [analysis] num flops: ", es10.3)') num_flops    
-    write(*,'("[>] [analysis] num nodes: ", i10)') info%num_nodes    
+    write(*,'("[>] [analysis] num nodes: ", i10)') a_pbl%nnodes    
 
     call spllt_print_atree(keep)
 
