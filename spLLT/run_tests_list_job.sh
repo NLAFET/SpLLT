@@ -35,7 +35,7 @@ case $HOSTNAME in
         ;;
 esac
 
-build="ma87"
+build="starpu"
 build_dir=`pwd`
 id=`whoami`
 outdir=data
@@ -48,8 +48,8 @@ echo "[run_tests] build dir: $build_dir"
 prof_file=prof_file_scarf462_0
 # for matrix in ${matrices[@]}
 
-declare -a matrices=("matrix:Schmid/thermal2 ncpu:27 nb:1024 ne:32"
-    "matrix:AMD/G3_circuit ncpu:27 nb:512 ne:32")
+declare -a matrices=("matrix:Schmid/thermal2 ncpu:27 nb:1024 nemin:32"
+    "matrix:AMD/G3_circuit ncpu:27 nb:512 nemin:32")
 
 mkdir -p $outdir
 mkdir -p $outdir/ma87
@@ -83,5 +83,4 @@ case $build in
         ;;
 esac
 
-#./run_tests.sh
-. ./run_test_list.sh
+. ./run_tests_list.sh
