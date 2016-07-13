@@ -99,6 +99,13 @@ module spllt_data_mod
 #endif
   end type spllt_bc_type
 
+  type spllt_workspace_i
+     integer, pointer :: c(:)
+#if defined(SPLLT_USE_STARPU)
+     type(c_ptr)    :: hdl  ! StarPU handle
+#endif
+  end type spllt_workspace_i
+
   ! problem data (analyis)
   type spllt_adata_type
      integer :: nnodes
@@ -128,9 +135,9 @@ module spllt_data_mod
 #endif
 
 #if defined(SPLLT_USE_OMP)
-     type(spllt_bc_type), allocatable :: row_list(:), col_list(:) ! workspaces
+     type(spllt_workspace_i), allocatable :: row_list(:), col_list(:) ! workspaces
 #else
-     type(spllt_bc_type) :: row_list, col_list ! workspaces
+     type(spllt_workspace_i) :: row_list, col_list ! workspaces
 #endif
   end type spllt_data_type
 

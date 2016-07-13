@@ -924,7 +924,7 @@ contains
     integer                                         :: cptr, cptr2, rptr, rptr2 
 !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
 
-    type(spllt_bc_type)                             :: row_list, col_list
+    type(spllt_workspace_i)                             :: row_list, col_list
 
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)                  :: blocks ! block info. 
