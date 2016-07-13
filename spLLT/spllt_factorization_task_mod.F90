@@ -1086,7 +1086,7 @@ contains
          & anode_c, a_bc_c, dcol, &
          & csrc, csrc2, rsrc, rsrc2, &
          & control%min_width_blas, &
-         & workspace%hdl, &
+         & workspace%hdl, row_list%hdl, col_list%hdl, &
          & anode%hdl, &
          & p &
          &)

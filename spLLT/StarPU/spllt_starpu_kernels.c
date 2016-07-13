@@ -500,6 +500,8 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
                                           int csrc, int csrc2, int rsrc, int rsrc2,
                                           int min_width_blas,
                                           starpu_data_handle_t workspace_handle,
+                                          starpu_data_handle_t row_list_hdl,
+                                          starpu_data_handle_t col_list_hdl,
                                           starpu_data_handle_t node_handle,
                                           int prio) {
 
@@ -507,11 +509,21 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    struct starpu_data_descr *descrs;
 
    nh = 0;
-   descrs = malloc((nhlik+nhljk+3) * sizeof(struct starpu_data_descr));
+   descrs = malloc((nhlik+nhljk+5) * sizeof(struct starpu_data_descr));
 
+   // worksapce 
    descrs[nh].handle =  workspace_handle; descrs[nh].mode = STARPU_SCRATCH;
    nh = nh + 1;
 
+   // row_list
+   descrs[nh].handle =  row_list_hdl; descrs[nh].mode = STARPU_SCRATCH;
+   nh = nh + 1;
+
+   // col_list
+   descrs[nh].handle =  col_list_hdl; descrs[nh].mode = STARPU_SCRATCH;
+   nh = nh + 1;
+
+   // A_ij 
    descrs[nh].handle =  lij_handle; descrs[nh].mode = STARPU_RW | STARPU_COMMUTE;
    nh = nh + 1;
 

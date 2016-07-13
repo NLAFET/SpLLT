@@ -76,13 +76,14 @@ module spllt_starpu_factorization_mod
           & anode, a_bc, dcol, &
           & csrc, csrc2, rsrc, rsrc2, &
           & min_width_blas, &
-          & workspace_hdl, &
+          & workspace_hdl, row_list_hdl, col_list_hdl, &
           & node_hdl, &
           & prio) bind(C)
        use iso_c_binding
        type(c_ptr)            :: lik_hdl(*), ljk_hdl(*)
        type(c_ptr), value     :: snode, anode, a_bc
        type(c_ptr), value     :: lij_hdl, workspace_hdl, node_hdl
+       type(c_ptr), value     :: row_list_hdl, col_list_hdl
        integer(c_int), value  :: csrc, csrc2, rsrc, rsrc2
        integer(c_int), value  :: scol, dcol 
        integer(c_int), value  :: nhlik, nhljk
@@ -440,6 +441,7 @@ contains
   end subroutine spllt_starpu_update_between_cpu_func
 
 #else
+
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
     use hsl_ma87_double
@@ -451,21 +453,23 @@ contains
     type(c_ptr), value        :: buffers
 
     type(c_ptr), target       :: snode_c, anode_c, a_bc_c
-    integer, target      :: csrc, csrc2, rsrc, rsrc2 
-    integer, target      :: scol, dcol
-    integer, target      :: min_width_blas, nhlik, nhljk
+    integer, target           :: csrc, csrc2, rsrc, rsrc2 
+    integer, target           :: scol, dcol
+    integer, target           :: min_width_blas, nhlik, nhljk
 
-    type(node_type), pointer :: snode, anode
+    type(node_type), pointer  :: snode, anode
     type(block_type), pointer :: a_bc
-    integer, dimension(:), allocatable  :: row_list, col_list
-    integer :: i, nh, cld2, cld1
+    integer                   :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
-    integer, target :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
-    integer, target :: m1, n1, ld1
+    type(c_ptr), target      :: rlst_c, clst_c
+    integer, target          :: mw, nw, ldw, m, n, ld, m2, n2, ld2 
+    integer, target          :: m1, n1, ld1
+    integer, target          :: rls, cls
     real(wp), pointer        :: work(:)
     ! real(wp), allocatable    :: work(:) ! TODO use StarPU scratch buffer
     real(wp), pointer        :: lij(:), lik(:), ljk(:)
+    integer, pointer         :: row_list(:), col_list(:)
     
     ! write(*,*)"update_between_cpu_func"
     call spllt_starpu_codelet_unpack_args_update_between(cl_arg, &
@@ -484,6 +488,16 @@ contains
     nh = 0
     call starpu_f_get_buffer(buffers, nh, c_loc(work_c), c_loc(mw))
     call c_f_pointer(work_c, work,(/mw/))
+    nh = nh + 1
+
+    ! get row_list pointer
+    call starpu_f_get_buffer(buffers, nh, c_loc(rlst_c), c_loc(rls))
+    call c_f_pointer(rlst_c, row_list,(/rls/))
+    nh = nh + 1
+
+    ! get col_list pointer
+    call starpu_f_get_buffer(buffers, nh, c_loc(clst_c), c_loc(cls))
+    call c_f_pointer(clst_c, col_list,(/cls/))
     nh = nh + 1
 
     call starpu_f_get_buffer(buffers, nh, c_loc(dest), c_loc(m), c_loc(n), c_loc(ld))
@@ -519,7 +533,7 @@ contains
     call c_f_pointer(src1, ljk,(/cld1*n1/))    
     
     ! TODO use scratch memory
-    allocate(col_list(1), row_list(1))
+    ! allocate(col_list(1), row_list(1))
     ! allocate(work(m*n))
     
     ! write(*,*)"csrc: ", csrc
@@ -533,7 +547,7 @@ contains
          & row_list, col_list, work, &
          & min_width_blas)
 
-    deallocate(col_list, row_list)
+    ! deallocate(col_list, row_list)
     ! deallocate(work)
 
   end subroutine spllt_starpu_update_between_cpu_func
