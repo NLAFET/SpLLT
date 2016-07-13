@@ -48,7 +48,7 @@ echo "[run_tests] build dir: $build_dir"
 prof_file=prof_file_scarf462_0
 # for matrix in ${matrices[@]}
 
-declare -a problems=("matrix:Schmid/thermal2 ncpu:27 nb:1024 ne:32"
+declare -a matrices=("matrix:Schmid/thermal2 ncpu:27 nb:1024 ne:32"
     "matrix:AMD/G3_circuit ncpu:27 nb:512 ne:32")
 
 mkdir -p $outdir
