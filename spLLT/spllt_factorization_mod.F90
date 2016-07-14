@@ -177,6 +177,8 @@ contains
     if(st.ne.0) goto 10
 #endif
 
+    call system_clock(stf_start_t, stf_rate_t)
+
     do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
        ! TODO put in activate routine
@@ -185,6 +187,9 @@ contains
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
     end do
+
+    call system_clock(stop_setup_t)
+    write(*,'("[>] [spllt_stf_factorize]   setup and activate nodes time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_task_wait_for_all()
@@ -208,11 +213,6 @@ contains
 #if defined(SPLLT_USE_STARPU) && defined(SPLLT_STARPU_NOSUB)
     call starpu_f_pause()
 #endif
-
-    call system_clock(stop_setup_t)
-    ! write(*,'("[>] [spllt_stf_factorize] cpy a2l time: ", es10.3, " s")') (stop_cpya2l_t - start_cpya2l_t)/real(rate_cpya2l_t)
-    write(*,'("[>] [spllt_stf_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
-    call system_clock(stf_start_t, stf_rate_t)
 
     ! factorize nodes
     do snode = 1, num_nodes
@@ -369,6 +369,8 @@ contains
     if(st.ne.0) goto 9999
 #endif
 
+    call system_clock(stf_start_t, stf_rate_t)
+
     do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
        ! TODO put in activate routine
@@ -377,8 +379,6 @@ contains
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
     end do
-
-    call system_clock(stf_start_t, stf_rate_t)
 
 ! #if defined(SPLLT_USE_STARPU)
 !     call starpu_f_task_wait_for_all()
