@@ -903,12 +903,14 @@ contains
 
     type(spllt_bc_type), allocatable, target        :: workspace(:)
     type(spllt_bc_type), target                     :: bcs(:) ! block info.
+    type(spllt_workspace_i), allocatable, target    :: row_list(:), col_list(:)
 #else
     type(spllt_bc_type), intent(inout)              :: a_bc ! dest block
     type(spllt_bc_type), intent(in)                 :: dbc ! diag block in source node
 
     type(spllt_bc_type)                             :: workspace
     type(spllt_bc_type)                             :: bcs(:) ! block info.
+    type(spllt_workspace_i)                         :: row_list, col_list
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -924,7 +926,6 @@ contains
     integer                                         :: cptr, cptr2, rptr, rptr2 
 !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
 
-    type(spllt_workspace_i)                             :: row_list, col_list
 
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
     type(block_type), dimension(:)                  :: blocks ! block info. 
@@ -964,8 +965,6 @@ contains
 
 #if defined(SPLLT_USE_OMP)
     real(wp), dimension(:), pointer :: lcol1, lcol
-    ! integer, dimension(:), pointer  :: rlst, clst
-    integer, dimension(:), allocatable  :: rlst, clst
     integer :: th_id
     integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
     ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
@@ -975,8 +974,10 @@ contains
     real(wp), dimension(:), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     type(block_type), pointer :: blk_kk, a_blk
     type(spllt_bc_type), pointer :: p_workspace(:) => null()
+    type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
     ! real(wp), dimension(:), allocatable :: work
     real(wp), dimension(:), pointer :: work
+    integer, dimension(:), pointer :: rlst, clst
     integer :: min_width_blas
     type(node_type), pointer                :: p_snode ! src node
     type(spllt_node_type), pointer          :: p_anode ! dest node
@@ -1176,6 +1177,9 @@ contains
 
     p_workspace => workspace
 
+    p_rlst => row_list
+    p_clst => col_list
+
     min_width_blas = control%min_width_blas
 
     ! p_snode => snode
@@ -1241,9 +1245,12 @@ contains
 
     ! write(*,*)"th_id: ", th_id
     work => p_workspace(th_id)%c
+
+    rlst => p_rlst(th_id)%c
+    clst => p_clst(th_id)%c
     ! allocate(work(m*n))
     ! work(:) = 0
-    allocate(rlst(1), clst(1))
+    ! allocate(rlst(1), clst(1))
 
     call spllt_update_between(m, n, a_blk, dcol, p_anode%node, &
          & n1, scol, p_snode, &
@@ -1254,7 +1261,7 @@ contains
          & min_width_blas)
 
     ! write(*,*)"work(1): ", work(1) 
-    deallocate(rlst, clst)
+    ! deallocate(rlst, clst)
     ! deallocate(work)
 
 #if defined(SPLLT_OMP_TRACE)

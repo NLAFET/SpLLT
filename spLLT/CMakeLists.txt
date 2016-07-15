@@ -51,6 +51,14 @@ elseif(${RUNTIME} MATCHES "StarPU")
   include_directories(${HWLOC_DIR}/include)  
   find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
 
+elseif(${RUNTIME} MATCHES "OMP")
+
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+
+  # Use OMP code
+  add_definitions(-DSPLLT_USE_OMP)
+
 endif()
 
 if(${USE_GPU} MATCHES ON)
