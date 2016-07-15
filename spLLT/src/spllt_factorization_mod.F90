@@ -189,7 +189,8 @@ contains
     end do
 
     call system_clock(stop_setup_t)
-    write(*,'("[>] [spllt_stf_factorize]   setup and activate nodes time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
+    write(*,'("[>] [spllt_stf_factorize]   setup and activate nodes time: ", es10.3, " s")') &
+         & (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
 #if defined(SPLLT_USE_STARPU)
     call starpu_f_task_wait_for_all()
