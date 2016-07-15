@@ -24,8 +24,10 @@ if(${USE_GPU} MATCHES ON)
     cuda_sources 
     StarPU/*.cu)
 
-  set(sources ${sources} ${cuda_sources})
+  # set(sources ${sources} ${cuda_sources})
+  # set(sources ${cuda_sources})
   
+  # MESSAGE( STATUS "CUDA source files:         " ${sources} )
 endif()
 
 # add_library(hsl_ma87 hsl_ma87d.F90 
@@ -50,5 +52,11 @@ set(HSL_SRC hsl_ma87d.F90
   )
 
 # MESSAGE( STATUS "source files:         " ${HSLSRC} )
+
+# add_library(spllt ${sources} ${HSL_SRC})
+# MESSAGE( STATUS "CUDA found:         " ${CUDA_FOUND} )
+if(${USE_GPU} MATCHES ON)
+  cuda_add_library(spllt_cuda ${cuda_sources})
+endif()
 
 add_library(spllt ${sources} ${HSL_SRC})

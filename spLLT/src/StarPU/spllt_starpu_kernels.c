@@ -264,7 +264,7 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                               &rsrc, &rsrc2,
                               &min_with_blas);
 
-   /* printf("[spllt_starpu_update_between_cuda_func] csrc: %d, rsrc: %d\n", csrc, rsrc); */
+   /* /\* printf("[spllt_starpu_update_between_cuda_func] csrc: %d, rsrc: %d\n", csrc, rsrc); *\/ */
 
    // workspace pointer
    double *d_buffer = (double *)STARPU_VECTOR_GET_PTR(buffers[0]);
@@ -438,8 +438,8 @@ void spllt_starpu_codelet_unpack_args_update_between(void *cl_arg,
 // update block task codelet
 struct starpu_codelet cl_update_between = {
 #if defined(SPLLT_USE_GPU)
-   /* .where =  STARPU_CUDA, */
-   .where =  /* STARPU_CUDA | */ STARPU_CPU,
+   .where =  STARPU_CUDA,
+   /* .where =  /\* STARPU_CUDA | *\/ STARPU_CPU, */
    .cuda_flags = {STARPU_CUDA_ASYNC},
    .cuda_funcs = {spllt_starpu_update_between_cuda_func, NULL},
 #else
