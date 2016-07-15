@@ -29,21 +29,22 @@ target_link_libraries(spllt_test spllt)
 
 # Metis
 set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
-find_library(METIS_LIBRARY metis PATHS ${SPRAL_DIR})
+find_library(METIS_LIBRARY metis PATHS ${METIS_DIR})
 target_link_libraries(spllt_test ${METIS_LIBRARY})
 
 # spral
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
-find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR}/lib)
+find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR} ${SPRAL_DIR}/lib)
 target_link_libraries(spllt_test ${SPRAL_LIBRARY})
 
 # BLAS and LAPACK
+set(MKL_LIBS $ENV{MKL_LIBS})
 set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
-find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_ROOT}/lib/intel64)
+find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64)
 # find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
-find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_ROOT}/lib/intel64)
-find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_ROOT}/lib/intel64)
+find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64)
+find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64)
 # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
 set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
 
