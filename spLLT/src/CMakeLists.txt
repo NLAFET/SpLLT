@@ -1,5 +1,32 @@
 # get source files
-file(GLOB sources      *.F90)
+file(
+  GLOB 
+  sources 
+  *.F90
+  *.c)
+
+if(${RUNTIME} MATCHES "StarPU")
+
+  file(
+    GLOB 
+    starpu_sources 
+    StarPU/*.F90
+    StarPU/*.c)
+
+  set(sources ${sources} ${starpu_sources})
+
+endif()
+
+if(${USE_GPU} MATCHES ON)
+
+  file(
+    GLOB 
+    cuda_sources 
+    StarPU/*.cu)
+
+  set(sources ${sources} ${cuda_sources})
+  
+endif()
 
 # add_library(hsl_ma87 hsl_ma87d.F90 
 #   $ENV{HSLPACKDIR}/hsl_mc78/hsl_mc78i.f90

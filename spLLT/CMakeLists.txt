@@ -8,24 +8,59 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2")
 
 # Set Fortran flags 
-set(CMAKE_FORTRAN_FLAGS "${CMAKE_FORTRAN_FLAGS} -g -O2")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2")
 
 # add_library(hsl_ma87 hsl_ma87d.F90 
 #   $ENV{HSLPACKDIR}/hsl_mc78/hsl_mc78i.f90
 #   $ENV{HSLPACKDIR}/hsl_mc34/hsl_mc34d.f90)
 
-# Use STF code
-add_definitions(-DSPLLT_USE_STF)
+SET(RUNTIME "STF" CACHE STRING "Runtime system")
+set_property(CACHE RUNTIME PROPERTY STRINGS STF StarPU OMP Parsec)
+MESSAGE( STATUS "Runtime:         " ${RUNTIME} )
 
-add_subdirectory(src)
+# Use GPU
+option(USE_GPU "Use GPU" OFF)
+MESSAGE( STATUS "Use GPU:         " ${USE_GPU} )   
 
-# find libraries
-
+# Use MPI
+option(USE_MPI "Use MPI" OFF)
+MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )   
 
 # add spLLT test driver
 add_executable(spllt_test spllt_test.F90)
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
 target_link_libraries(spllt_test spllt)
+
+if (${RUNTIME} MATCHES "STF")
+
+  # Use STF code
+  add_definitions(-DSPLLT_USE_STF)
+
+elseif(${RUNTIME} MATCHES "StarPU")
+
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+
+  # Use StarPU code
+  add_definitions(-DSPLLT_USE_STARPU)
+
+  # StarPU lib
+  set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU Library")
+  include_directories(${STARPU_DIR}/include/starpu/1.3)
+  find_library(STARPU_LIBRARY starpu-1.3 PATHS ${STARPU_DIR}/lib)
+  target_link_libraries(spllt_test ${STARPU_LIBRARY})
+  
+  # HWLOC
+  set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
+  include_directories(${HWLOC_DIR}/include)  
+  find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
+  target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+
+endif()
+
+add_subdirectory(src)
+
+# find libraries
 
 # Metis
 set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
