@@ -177,73 +177,160 @@ This work was supported by the FET-HPC H2020 NLAFET grant number xxxx.\\
 \setcounter{page}{1}
 \pagenumbering{arabic}
 
-\section{Introduction} \label{sec:introduction}
+\section{Introduction} \label{sec:introduction} 
+
+
 
 In this work we investigate the use of a runtime system for the
-implementation of a sparse Cholesky solver with the aim of efficiently
-exploiting multicore architectures. Since their introduction multicore
-processors have become increasingly popular and can be found nowadays
-in the vast majority of high performance computing platforms. Despite
-their popularity, exploiting the capabilities of multicore processors
-remain a challenge. To cope with multicore hardware, DAG-based
-algorithms have been shown to be extremely efficient in terms of
-performance and scalability. Initially they have been employed in the
-context of dense linear algebra such as in the
-PLASMA~\cite{a.d.d.h.ea:09} software package. Motivated by the high
+implementation of a sparse Cholesky solver in order to find the
+solution of the linear system:
+
+\begin{equation}\label{eq:ch}
+  Ax = b
+\end{equation}
+
+where $A$ is a large sparse symmetric positive-definite matrix. We
+particularly focus on exploiting multicore architectures that have
+become increasingly popular since their introduction and can be found
+nowadays in the vast majority of high performance computing
+platforms. Despite their popularity, exploiting the capabilities of
+multicore processors remain a challenge and to cope with multicore
+hardware, DAG-based algorithms have been shown to be extremely
+efficient in terms of performance and scalability. Initially they have
+been employed in the context of dense linear algebra such as in the
+PLASMA~\cite{a.d.d.h.ea:09} software package and motivated by the high
 efficiency provided by these algorithms, they have been adapted to
 sparse algorithms with the example of the \texttt{HSL\_MA87}
 solver~\cite{h.r.s:10} that implements a DAG-based sparse Cholesky
 factorization and the \texttt{qr\_mumps} solver~\cite{b:13} implements
 a DAG-based multifrontal QR method.
 
-Classically, the development of task-based algorithms includes the
-development of an adhoc scheduler which relies on the knowledge of the
-algorithm and is implemented using a low-level multithreading library
-such as pthread (POSIX threads) to manage synchronisations and enforce
-dependencies between processes. In this work, instead, we explore an
-alternative approach based on the use of a runtime system which can be
-seen as a software layer between the architecture and the
-application. In this context the application is then implemented using
-a high-level API provided by the runtime system and low level details
-such as data consistency across the architecture and task scheduling
-are delegated to the runtime system. In this work, we focus on the
-exploitation of a Sequential Task Flow (STF) programming model which
-allows us to simply express the parallel code from the sequential
-one. We show that this STF model, implemented with a task-based
-runtime system, can lead to the implementation of a complex algorithm
-such as a sparse matrix factorization which is as efficient as a
-state-of-the-art solver on a multicore system.
+The traditional approach for implementing a task-based solver includes
+the development of an adhoc scheduler which relies on the knowledge of
+the algorithm and is implemented using a low-level multithreading
+library such as pthread (POSIX threads) to manage synchronisations and
+enforce dependencies between processes. This approach however induces
+a lack of portability of the implemented software as it is bound to a
+given target architecture. It is then costly in terms of programming
+effort to port the code to different architectures and adapt to the
+emerging ones. This problem occurs for example when targeting
+heterogeneous architectures such as GPU-accelerated system that have a
+more complex memory hierarchy than multicore systems and different
+types of processing units with different capabilities. In this work,
+instead, we explore an alternative approach based on the use of a
+runtime system which consists in a software layer between the
+architecture and the application. In this context the application is
+then implemented using a high-level API provided by the runtime system
+and low level details such as data consistency across the architecture
+and task scheduling are delegated to the runtime system. In this work,
+we focus on the exploitation of a Sequential Task Flow (STF)
+programming model for expressing the DAG corresponding to our
+application. In this work, we show that our code, implemented with a
+task-based runtime system, can lead to the implementation a sparse
+matrix factorization which is as efficient as a state-of-the-art
+solver on a multicore system.
 
-\section{Sparse Cholesky factorization}\label{sec:chol}
+\section{Task-based sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-In this section we describe the supernodal Cholesky method that we use
-for solving sparse SPD systems. In particular we will focus on a
-DAG-based variant of this algorithm that has been proven to be
-extremely efficient on multicore architectures such as
-in~\cite{h.r.s:10} the \ma solver that will constitutes the basis of
-this work.
+In this section we describe the supernodal Cholesky factorization
+method that we use in this work for solving sparse symmetric
+positive-definite systems. In particular we will focus on a DAG-based
+variant of this algorithm that has been proven to be extremely
+efficient on multicore architectures such as in~\cite{h.r.s:10} with
+the \ma solver.
 
-The supernodal method is a factorization algorithm for sparse matrices
-that relies on an \textit{elimination tree} that expresses the
-dependencies during the elimination. The elimination tree is computed
-during an analysis phase preceding the factorization and in our case
-we obtain it by using the software package HSL\_MC78. At each node of
-the tree there is a dense matrix referred to as \textit{nodal} matrix
-or \textit{supernode} associated with a set of unknowns. A supernode
-corresponds to a set of columns of the matrix that have a similar
-nonzero pattern. The factorization is effected by traversing the
-elimination tree in a topological order and performing a dense
-Cholesky factorization on supernodes and then update the ancestor
-nodes with respect to the nodal factorization. Note that they are
-several strategies for performing updates such as
+The supernodal Cholesky method is a factorization algorithm for sparse
+matrices where the input matrix $A$ is decomposed as following:
+
+\begin{equation}\label{eq:ch}
+  A = LL^{T}
+\end{equation}
+
+where the factor $L$ is a lower triangular matrix. The dependencies
+between the coefficients in the factor $L$ during the factorization
+can be expressed in a tree structure called \textit{elimination tree}
+where each node in this tree represent a column in the factor. In
+order to increase the efficiency of operations by exploiting Level-3
+BLAS routines, the elimination tree is transformed into an
+\textit{assembly tree} where columns having a similar nonzero pattern
+are amalgamated into a dense matrix that is referred to as
+\textit{nodal} matrix or \textit{supernode}. The factorization is
+effected by traversing the assembly tree in a topological order and
+performing two main operations at each supernode: a dense Cholesky
+factorization of the current supernode and update the ancestor
+supernodes with respect to the nodal factorization. The update
+operations may be performed according to several strategies such:
 \textit{right-looking} updates where ancestors nodes are updated as
 soon as the nodal factorization is done, or, \textit{left-looking}
 updates where the current supernode is updated just before being
-factorized.
+factorized. The assembly tree is computed during an analysis phase
+preceding the factorization and in our case we obtain it by using the
+software package HSL\_MC78.
 
+There are two main sources of parallelism that can be exploited in the
+assembly tree which are the \textit{tree-level} and
+\textit{node-level}. The tree-level parallelism is due to the fact
+that supernode located in separate branches in the tree can be
+processed independently and the node-level parallelism is exploited
+when nodes are large enough and can be processed by multiple resources
+in parallel. One approach for the parallelization of the supernodal
+consists in exploiting separately these two levels of parallelism. In
+our work, instead, we follows the approach proposed in~\cite{h.r.s:10}
+where supernodes are partitioned into square blocks of order
+\texttt{nb} and operations are applied on these
+blocks. Figure~\ref{fig:etree-simple-part} shows a simple assembly
+tree that consists of three supernodes where the dashed lines
+represent the block partitioning of
+supernodes. Figures~\ref{fig:dag-simple} represent the DAG associated
+with the factorization of the tree presented in
+Figure~\ref{fig:etree-simple-part}.
+
+\begin{figure}[!h]
+  \begin{minipage}{0.5\textwidth}
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/etree_simple_part}
+    \caption{\label{fig:etree-simple-part}Simple assembly tree with
+      three supernodes partitioned into square blocks of order
+      \texttt{nb}.}
+  \end{minipage}
+  \hspace{0.5cm}
+  \begin{minipage}{0.5\textwidth}
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/dag}
+    \caption{\label{fig:dag-simple} DAG corresponding to the
+      factorization of the tree in Figure~\ref{fig:etree-simple-part}.}
+  \end{minipage}
+\end{figure}
+
+As shown in the DAG represented in Figure~\ref{fig:dag-simple} they
+are several kernels involved in the factorization of the supernodes:
+the tasks denoted \texttt{f} correspond to the computation of the
+Cholesky factor of a diagonal block. Tasks denoted \texttt{s} perform
+a triangular solve of a subdiagonal block using a factor computed with
+a task \texttt{f}. Tasks denoted \texttt{u} perform an update of a
+block within a supernode with respect to the previous factorization of
+blocks. Finally, tasks denoted \texttt{a} represent the update between
+supernodes with respect to the factorization blocks computed in a
+given node. 
+  % For more details on the kernels, we refer
+% to~\cite{h.r.s:10}.
+
+In our code, the DAG, such as the one presented in
+Figure~\ref{fig:dag-simple}, replaces the elimination tree for
+expressing the dependencies during the computation of factors. Note
+that when exploiting separately the node and tree parallelism, it is
+not possible to start factorizing a supernode before all of it
+descendent have been processed. However, when relying on the DAG, it
+is possible that some tasks in a given node become ready for execution
+while its descendent are being processed. Using this DAG-based
+parallelism it is therefore possible to pipeline the processing of a
+given node with the processing of it ancestors. This additional level
+of parallelism allowed by the use of a DAG-based algorithm is referred
+to as inter-node parallelism.
+ 
 \section{Sequential Task Flow parallel programming model}\label{sec:runtime}
 
 In this work we propose exploiting a \textit{Sequential Task Flow
@@ -479,9 +566,10 @@ associated with the nodal matrix.
 \begin{table}[htbp]
 
   \begin{center}
-    \begin{tabular}{rr}
+    \begin{tabular}{rl|rrrrl}
       \hline
-      \# & Name & Flops & Application/Description \\
+      \# & Name & n        & nz(A)    & nz(L)    & Flops    & Application/Description \\
+         &      & ($10^3$) & ($10^6$) & ($10^6$) & ($10^9$) &                         \\
       \hline
     \end{tabular}
 \end{center}

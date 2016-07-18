@@ -103,7 +103,10 @@ endif()
 add_subdirectory(src)
 
 if(MA87_TEST_DRIVER MATCHES ON)
-  add_executable(run_ma87 run_ma87.f90)
+
+  MESSAGE( STATUS "MA87 test driver:         " ${MA87_TEST_DRIVER} )
+
+  add_executable(spllt_test run_ma87.f90)
 else()
   add_executable(spllt_test spllt_test.F90)
 endif()

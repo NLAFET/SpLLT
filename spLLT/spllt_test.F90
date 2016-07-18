@@ -58,7 +58,7 @@ contains
     type(zd11_type) :: a
     integer :: nrhs
     integer, dimension(:), allocatable :: order
-    real(wp) :: num_flops, resid
+    real(wp) :: num_flops, num_factor, resid
     real(wp), dimension(:), allocatable :: b, x
     type(spllt_adata_type) :: a_pbl
     type(spllt_data_type)  :: pbl
@@ -134,14 +134,18 @@ contains
     ! analysis
     call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
-    num_flops = a_pbl%num_flops
+    num_flops   = a_pbl%num_flops
+    num_factor  = real(a_pbl%num_factor)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        goto 9999
     endif
 
-    write(*,'("[>] [analysis] num flops: ", es10.3)') num_flops    
-    write(*,'("[>] [analysis] num nodes: ", i10)') a_pbl%nnodes    
+    write(*,'("[>] [analysis] matrix n  : ", es20.5)') real(a%n)    
+    write(*,'("[>] [analysis] matrix nz : ", i40)') size(a%val)
+    write(*,'("[>] [analysis] num factor: ", es20.5)') num_factor    
+    write(*,'("[>] [analysis] num flops : ", es20.5)') num_flops    
+    write(*,'("[>] [analysis] num nodes : ", i10)') a_pbl%nnodes    
 
     call spllt_print_atree(keep)
 
