@@ -477,8 +477,22 @@ associated with the nodal matrix.
 \section{Experimental results}\label{sec:experiments}
 
 \begin{table}[htbp]
+
+  \begin{center}
+    \begin{tabular}{rr}
+      \hline
+      \# & Name & Flops & Application/Description \\
+      \hline
+    \end{tabular}
+\end{center}
+
+  \caption{Test matrices.}
+\end{table}
+
+
+\begin{table}[htbp]
     \begin{center}
-      \input{data/table_cmp_facto.tex}
+      \input{data/cn255/table_cmp_facto.tex}
     \end{center}
     \caption{Factorization times (seconds) obtained with MA87 and
       SpLLT (i.e. MA87\_starpu). The factorizations were run with the
