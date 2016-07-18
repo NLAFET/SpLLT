@@ -26,6 +26,9 @@ MESSAGE( STATUS "Use GPU:         " ${USE_GPU} )
 option(USE_MPI "Use MPI" OFF)
 MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )   
 
+# MA87 test driver
+option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
+
 # add spLLT test driver
 
 if (${RUNTIME} MATCHES "STF")
@@ -99,10 +102,14 @@ endif()
 
 add_subdirectory(src)
 
-add_executable(spllt_test spllt_test.F90)
+if(MA87_TEST_DRIVER MATCHES ON)
+  add_executable(run_ma87 run_ma87.f90)
+else()
+  add_executable(spllt_test spllt_test.F90)
+endif()
+
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
 target_link_libraries(spllt_test spllt)
-
 # find libraries
 
 if(${RUNTIME} MATCHES "StarPU")
