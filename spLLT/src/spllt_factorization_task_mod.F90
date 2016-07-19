@@ -59,8 +59,9 @@ contains
 
     node => snode%node
     
-    ! task priority
-    prio = (num_nodes - snum + 1)*4
+    ! node priority
+    ! prio = (num_nodes - snum + 1)*4
+    prio = 0
 
     ! initialize node data
     sa = node%sa

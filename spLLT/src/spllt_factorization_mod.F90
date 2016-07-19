@@ -199,8 +199,10 @@ contains
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     ! write(*,*)"num_nodes: ", num_nodes
     do snode = 1, num_nodes ! loop over nodes
+       prio = 5 ! max priority 
+       ! prio = huge(1)
        ! init node
-       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
     end do
     ! call system_clock(stop_cpya2l_t)
 ! #if defined(SPLLT_USE_STARPU)
