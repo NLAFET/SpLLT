@@ -24,7 +24,8 @@ forall nodes snode in post-order
     forall ancestors(snode) anode 
       do j=k+1..p(anode) in snode
          do i=k+1..q(anode) in snode
-            call submit(update_between, blk(j,k):R, blk(i,k):R, a_blk(rmap(i), cmap(j)):RW)
+            call submit(update_btw, anode:R, blk(j,k):R, blk(i,k):R, 
+                 a_blk(rmap(i), cmap(j)):RW)
          end do
       end do
     end do
