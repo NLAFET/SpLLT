@@ -13,6 +13,7 @@
 %\usepackage{fontspec}
 \usepackage{pgfplots}
 
+
 \usepackage[procnames]{listings}
 \lstset{ %
   backgroundcolor=\color{gray98},    % choose the background color; you must add \usepackage{color} or \usepackage{xcolor}
@@ -333,6 +334,8 @@ processed. Using this DAG-based parallelism it is therefore possible
 to pipeline the processing of a given node with the processing of it
 ancestors. This additional level of parallelism allowed by the use of
 a DAG-based algorithm is referred to as inter-node parallelism.
+
+\alert{put the task-based sequential algo here}
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -462,6 +465,14 @@ Figure~\ref{fig:stf-openmp-example}.
     model with \openmp.}
 \end{figure}
 
+\begin{figure}[!h]
+  \lstset{language=C, procnamekeys={},escapechar=>}
+  \centering \lstinputlisting{listings/stf-starpu-example.c}
+  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
+    of the sequential code in Figure~\ref{fig:seq-example} using a STF
+    model with \starpu.}
+\end{figure}
+
 In order to introduce the features provided by the StarPU API, we show
 in Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
 implementation for the simple example presented in
@@ -488,14 +499,6 @@ to the device memory node. As a results StarPU is capable of ensuring
 data consistency over multiple nodes. When all the tasks have been
 submitted to the runtime system, we wait for their completion by
 calling the routine \texttt{starpu\_task\_wait\_for\_all}.
-
-\begin{figure}[!h]
-  \lstset{language=C, procnamekeys={},escapechar=>}
-  \centering \lstinputlisting{listings/stf-starpu-example.c}
-  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
-    of the sequential code in Figure~\ref{fig:seq-example} using a STF
-    model with \starpu.}
-\end{figure}
 
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:experiments}
@@ -551,6 +554,13 @@ partitioned before the submission of the numerical tasks. In addition,
 the \texttt{alloc} task is executed sequentially because we need to
 partition the supernodes and allocate the data structures in order to
 be able to tasks manipulating these blocks.
+
+\begin{figure}[!h]
+  \centering \lstinputlisting{listings/spllt_facto_stf.f90}
+\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the sparse
+  Cholesky factorization using a STF model presented in
+  Section~\ref{sec:stf-model}.}
+\end{figure}
 
 As explained in Section~\ref{sec:stf-model}, when using the STF model
 we need to provide the access mode along with the data when submitting
@@ -616,36 +626,85 @@ advantages associated with the use of this handle. For example \starpu
 is capable of detecting when data are written for the first time and
 allocate it using the information contained in the handle.
 
-The \texttt{init} task is responsible for setting up the blocks in a
-given supernode. In our code a supernode is represented by a symbolic
-data structure denoted \texttt{snode} and we indicate that we modify
-this structure by using the \textit{write} data-access in the
-\texttt{init} task. This \texttt{snode} symbolic structure represent
-the information associated with a supernode as well as the blocks
-associated with the nodal matrix.
-
-\begin{figure}[!h]
-  \centering \lstinputlisting{listings/spllt_facto_stf.f90}
-\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the sparse
-  Cholesky factorization using a STF model presented in
-  Section~\ref{sec:stf-model}.}
-\end{figure}
+%% The \texttt{init} task is responsible for setting up the blocks in a
+%% given supernode. In our code a supernode is represented by a symbolic
+%% data structure denoted \texttt{snode} and we indicate that we modify
+%% this structure by using the \textit{write} data-access in the
+%% \texttt{init} task. This \texttt{snode} symbolic structure represent
+%% the information associated with a supernode as well as the blocks
+%% associated with the nodal matrix.
 
 \section{Experimental results}\label{sec:experiments}
 
+In this section we present the experimental results obtained on our
+set of test matrices taken from the University of Florida Matrix
+Collection~\cite{d.h:11}. In this collection we selected symmetric
+positive-definite matrices from a wide range of application and
+sparsity structure. They are listed in Table~\ref{sec:mat} along with
+their sizes and number of entries. In addition, we indicate the number
+of entries in the factor $L$ and the operation count for the
+factorization when using the nested dissection ordering \metis
+limiting the entries in the factor $L$ as explained in
+Section~\ref{sec:chol}. Note that in this table, matrix
+characteristics are obtained without node amalgamation. This means
+that the number of entries in $L$ as well as the flop count is
+minimized but in order to have a better efficiency of operation we use
+node amalgamation in our tests \alert{necessary? should probably
+  rephrase last sentence}.
+
 \begin{table}[htbp]
+  \label{sec:mat}
   \begin{center}
-    \begin{tabular}{rl|rrrrl}
+    \texttt{\begin{tabular}{rl|rrrrl}
       \hline
-      \# & Name & n        & nz(A)    & nz(L)    & Flops    & Application/Description \\
-         &      & ($10^3$) & ($10^6$) & ($10^6$) & ($10^9$) &                         \\
+      \# & Name                            & n        & nz(A)    & nz(L)    & Flops    & Application/Description  \\
+         &                                 & ($10^3$) & ($10^6$) & ($10^6$) & ($10^9$) &                          \\
       \hline
-    \end{tabular}
-\end{center}
+      1  & Schmid/thermal2                 & 1228     & 4.9      & 51.6     & 14.6     & Unstructured thermal FEM \\
+      2  & Rothberg/gearbox                & 154      & 4.6      & 37.1     & 20.6     & Aircraft flap actuator   \\
+      3  & DNVS/m\_t1                      & 97.6     & 4.9      & 34.2     & 21.9     & Tubular joint            \\
+      4  & Boeing/pwtk                     & 218      & 5.9      & 48.6     & 22.4     & Pressurised wind tunnel  \\
+      5  & Chen/pkustk13                   & 94.9     & 3.4      & 30.4     & 25.9     & Machine element          \\
+      6  & GHS\_psdef/crankseg\_1          & 52.8     & 5.3      & 33.4     & 32.3     & Linear static analysis   \\
+      7  & Rothberg/cfd2                   & 123      & 1.6      & 38.3     & 32.7     & CFD pressure matrix      \\
+      8  & DNVS/thread                     & 29.7     & 2.2      & 24.1     & 34.9     & Threaded connector       \\
+      9  & DNVS/shipsec8                   & 115      & 3.4      & 35.9     & 38.1     & Ship section             \\
+      10 & DNVS/shipsec1                   & 141      & 4.0      & 39.4     & 38.1     & Ship section             \\
+      11 & GHS\_psdef/crankseg\_2          & 63.8     & 7.1      & 43.8     & 46.7     & Linear static analysis   \\
+      12 & DNVS/fcondp2                    & 202      & 5.7      & 52.0     & 48.2     & Oil production platform  \\
+      13 & Schenk\_AFE/af\_shell3          & 505      & 9.0      & 93.6     & 52.2     & Sheet metal forming      \\
+      14 & DNVS/troll                      & 214      & 6.1      & 64.2     & 55.9     & Structural analysis      \\
+      15 & AMD/G3\_circuit                 & 1586     & 4.6      & 97.8     & 57.0     & Circuit simulation       \\
+      16 & GHS\_psdef/bmwcra\_1            & 149      & 5.4      & 69.8     & 60.8     & Automotive crankshaft    \\
+      17 & DNVS/halfb                      & 225      & 6.3      & 65.9     & 70.4     & Half-breadth barge       \\
+      18 & Um/2cubes\_sphere               & 102      & 0.9      & 45.0     & 74.9     & Electromagnetics         \\
+      19 & GHS\_psdef/ldoor                & 952      & 23.7     & 145      & 78.3     & Large door               \\
+      20 & DNVS/ship\_003                  & 122      & 4.1      & 60.2     & 81.0     & Ship structure           \\
+      21 & DNVS/fullb                      & 199      & 6.0      & 74.5     & 100      & Full-breadth barge       \\
+      22 & GHS\_psdef/inline\_1            & 504      & 18.7     & 173      & 144      & Inline skater            \\
+      23 & Chen/pkustk14                   & 152      & 7.5      & 107      & 146      & Tall building            \\
+      24 & GHS\_psdef/apache2              & 715      & 2.8      & 135      & 174      & 3D structural problem    \\
+      25 & Koutsovasilis/F1                & 344      & 13.6     & 174      & 219      & AUDI engine crankshaft   \\
+      26 & Oberwolfach/boneS10             & 915      & 28.2     & 278      & 282      & Bone micro-FEM           \\
+      27 & ND/nd12k                        & 36.0     & 7.1      & 117      & 505      & 3D mesh problem          \\
+      28 & JGD\_Trefethen/Trefethen\_20000 & 20.0     & 0.3      & 90.7     & 652      & Integer matrix           \\
+      29 & ND/nd24k                        & 72.0     & 14.4     & 321      & 2054     & 3D mesh problem          \\
+      30 & Oberwolfach/bone010             & 987      & 36.3     & 1076     & 3876     & Bone micro-FEM           \\
+      31 & GHS\_psdef/audikw\_1            & 944      & 39.3     & 1242     & 5804     & Automotive crankshaft    \\
+         & Janna/Flan\_1565                & 1565     & 59.5     &          &          & 3D mechanical problem    \\
+         & Janna/StocF-1465                & 1465     & 11.2     &          &          & Underground aquifer      \\
+         & Janna/Fault\_639                & 639      & 14.6     &          &          & Gas reservoir            \\
+         & Janna/Hook\_1498                & 1498     & 31.2     &          &          & Steel hook               \\
+         & Janna/Emilia\_923               & 923      & 21.0     &          &          & Gas reservoir            \\
+         & Janna/Geo\_1438                 & 1438     & 32.3     &          &          & Underground deformation  \\
+         & Janna/Serena                    & 1391     & 33.0     &          &          & Gas reservoir            \\
+      \hline
+    \end{tabular}}
+  \end{center}
   \caption{Test matrices and their characteristics without node
     amalgamation. $n$ is the matrix order, $nz(A)$ represent the
     number entries in the matrix $A$, $nz(L)$ represent the number of
-    entries the factor $L$. \textit{Flops} correspond to the operation
+    entries the factor $L$ and \textit{Flops} correspond to the operation
     count for the matrix factorization.}
 \end{table}
 
@@ -665,36 +724,36 @@ associated with the nodal matrix.
 This report has described in detail the development of a new
 
  
-\section*{Code Availability}
-A development version of the Cholesky factorization software used in this 
-paper may be checked out of
-our source code repository using the following command:
+%% \section*{Code Availability}
+%% A development version of the Cholesky factorization software used in this 
+%% paper may be checked out of
+%% our source code repository using the following command:
 
-\begin{verbatim}
-   svn co -r612 http://ccpforge.cse.rl.ac.uk/svn/spral/branches/xxxxxxx
-\end{verbatim}
+%% \begin{verbatim}
+%%    svn co -r612 http://ccpforge.cse.rl.ac.uk/svn/spral/branches/xxxxxxx
+%% \end{verbatim}
 
-This code has not yet been optimised and so is not yet
-part of the HSL or SPRAL libraries that are we develop
-and maintain at the Rutherford Appleton Laboratory (see
-\url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
+%% This code has not yet been optimised and so is not yet
+%% part of the HSL or SPRAL libraries that are we develop
+%% and maintain at the Rutherford Appleton Laboratory (see
+%% \url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
 
 \clearpage
 \bibliography{flipflapflopBib}
 
-\appendix
+%% \appendix
 
-\section{Test problems}\label{appendix}
-\setcounter{equation}{0}
-\setcounter{table}{0}
-\setcounter{figure}{0}
-\setcounter{table}{0}
-\renewcommand{\thetable}{A.\arabic{table}}
+%% \section{Test problems}\label{appendix}
+%% \setcounter{equation}{0}
+%% \setcounter{table}{0}
+%% \setcounter{figure}{0}
+%% \setcounter{table}{0}
+%% \renewcommand{\thetable}{A.\arabic{table}}
 
 
-In Table~\ref{Tbl:Problems} we list  our test problems along with 
-their characteristics. The problems are from the 
-University of Florida Sparse Matrix Collection  and are chosen 
-to represent a wide range of sparsity structures.
+%% In Table~\ref{Tbl:Problems} we list  our test problems along with 
+%% their characteristics. The problems are from the 
+%% University of Florida Sparse Matrix Collection  and are chosen 
+%% to represent a wide range of sparsity structures.
 
 \end{document}

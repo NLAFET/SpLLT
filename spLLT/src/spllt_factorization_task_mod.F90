@@ -4,6 +4,20 @@ module spllt_factorization_task_mod
   
 contains
 
+  subroutine spllt_factorize_node_task(snode, map, fdata, keep, control)
+    use hsl_ma87_double
+    implicit none
+
+    type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
+    integer, dimension(:), allocatable, intent(inout)   ::  map
+    type(spllt_data_type), target, intent(inout)        :: fdata
+    type(MA87_keep), target, intent(inout)              :: keep 
+    type(MA87_control), intent(in)                      :: control 
+
+    
+
+  end subroutine spllt_factorize_node_task
+  
   ! node factorization task
   subroutine spllt_factorize_node(snode, map, fdata, keep, control)
     use spllt_data_mod
@@ -15,7 +29,7 @@ contains
     integer, dimension(:), allocatable, intent(inout)   ::  map
     type(spllt_data_type), target, intent(inout)        :: fdata
     type(MA87_keep), target, intent(inout)              :: keep 
-    type(MA87_control), intent(in) :: control 
+    type(MA87_control), intent(in)                      :: control 
 
     type(node_type), pointer :: node ! node to factorize (hsl_ma87)
     integer :: num_nodes ! number of nodes in etree

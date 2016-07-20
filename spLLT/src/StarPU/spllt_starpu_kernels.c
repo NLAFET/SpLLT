@@ -714,3 +714,29 @@ void spllt_insert_init_node_task_c(starpu_data_handle_t node_handle,
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 }
 
+void spllt_starpu_factorize_node_cpu_func(void *buffers[], void *cl_arg);
+
+struct starpu_codelet cl_factorize_node = {
+  .where = STARPU_CPU,
+  .cpu_funcs = {spllt_starpu_factorize_node_cpu_func, NULL},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS, 
+  .name = "FACTO_NODE",
+/* #if defined(usebound) || defined(calibratecpus) || defined(calibrategpus) */
+/*   .model = &partition_history_based_model */
+/* #elif defined(useperfmodels) */
+/*   .model = &partition_history_based_model */
+/* #endif */
+};
+
+void spllt_starpu_codelet_unpack_args_factorize_node(void *cl_arg,
+                                                     void *fdata, void *keep, void *control) {
+   
+   starpu_codelet_unpack_args(cl_arg,
+                              fdata, keep, control);
+}
+
+void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
+                                        starpu_data_handle_t map_hdl,
+                                        void *fdata, void *keep, void *control) {
+
+}

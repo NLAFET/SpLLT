@@ -165,6 +165,24 @@ module spllt_starpu_factorization_mod
      end subroutine spllt_starpu_codelet_unpack_args_init_node
   end interface
 
+  ! factorize node StarPU task insert
+  interface
+     subroutine spllt_insert_factorize_node_task_c(node_hdl, map_hdl, fdata, keep, control)
+       use iso_c_binding
+       type(c_ptr), value     :: node_hdl, map_hdl
+       type(c_ptr), value :: fdata, keep, control
+     end subroutine spllt_insert_factorize_node_task_c
+  end interface
+
+  interface
+     subroutine spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
+          & fdata, keep, control) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: cl_arg 
+       type(c_ptr), value :: fdata, keep, control
+     end subroutine spllt_starpu_codelet_unpack_args_factorize_node
+  end interface
+
 contains
 
   ! factorize block StarPU task insert
@@ -579,5 +597,15 @@ contains
     call spllt_init_node(snode, val, keep)
     
   end subroutine spllt_starpu_init_node_cpu_func
+
+  ! factorize node StarPU task
+  subroutine spllt_starpu_factorize_node_cpu_func(buffers, cl_arg) bind(C)
+    use iso_c_binding
+    implicit none
+
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+    
+  end subroutine spllt_starpu_factorize_node_cpu_func
 
 end module spllt_starpu_factorization_mod
