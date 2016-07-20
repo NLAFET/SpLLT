@@ -22,8 +22,8 @@ int starpu_f_init_c(int ncpus) {
   /* conf->sched_policy_name = "eager"; */
   /* conf->sched_policy_name = "lws"; */
 #else
-  /* conf->sched_policy_name = "lws"; */
-  conf->sched_policy_name = "prio";
+  conf->sched_policy_name = "lws";
+  /* conf->sched_policy_name = "prio"; */
 #endif
 
   info = starpu_init(conf);
