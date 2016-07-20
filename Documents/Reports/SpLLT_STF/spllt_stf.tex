@@ -334,7 +334,7 @@ to pipeline the processing of a given node with the processing of it
 ancestors. This additional level of parallelism allowed by the use of
 a DAG-based algorithm is referred to as inter-node parallelism.
  
-\section{Sequential Task Flow parallel programming model}\label{sec:runtime}
+\section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
 In this work we propose exploiting a \textit{Sequential Task Flow
   (STF)} programming model for the implementation of a parallel
@@ -500,22 +500,37 @@ calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:experiments}
 
-In this section we present the two parallel implementations of our
-task-based Cholesky solver with both OpenMP and the StarPU runtime
-system. These implementations are based on the same STF-based code
-corresponding to the pseudo-code shown in
-Figure~\ref{fig:spllt-facto-pseudocode}. In this code the sparse
-Cholesky factorization is decomposed into six different type of task
-associated with the following kernels:
+%% In this section we describe the STF-based parallel code of our
+%% DAG-based Cholesky solver. We developed two different versions using
+%% first the OpenMP standard and second the StarPU runtime system whose
+%% features are presented in Section~\ref{sec:runtime}.  
+
+%% Using the STF programming model introduced in
+%% Section~\ref{sec:stf-model}, we show the implementation of the
+%% supernodal Cholesky factorization in
+%% Figure~\ref{fig:spllt-facto-pseudocode}.
+
+In this section we describe the implementation of our DAG-based
+Cholesky solver using the STF programming parallel model presented in
+Section~\ref{sec:stf-model}. We developed two different version of our
+solver using first, the OpenMP standard and second, the StarPU runtime
+system whose features are presented in Section~\ref{sec:runtime}. A
+pseudocode of the STF-based supernodal algorithm on which our two
+implementations are based is presented in
+Figure~\ref{fig:spllt-facto-pseudocode}. This algorithm follows the
+sequential one corresponding to a bottom-up traversal of the assembly
+tree where at each node the tasks for the factorization and update
+operations are submitted to the runtime system. The kernels used in
+this algorithm are the following:
 
 \begin{itemize}
-\item \texttt{alloc(snode)}: allocates the data structures
-  such as the blocks containing the factors.
-\item \texttt{init(snode)}: initializes the supernode \texttt{snode}
-  such as copying the coefficient from the original matrix into the
-  blocks.
-\item \texttt{factorize(bc\_kk)}: factorizes the diagonal block \texttt{bc\_kk}. %% This
-  %% is done with the \texttt{potrf} routine from LAPACK.
+\item \texttt{alloc(snode)}: partition the supernode \texttt{snode}
+  into blocks and allocates the data structures.
+\item \texttt{init(snode)}: initializes the blocks by copying the
+  coefficients from the original matrix into them.
+\item \texttt{factorize(bc\_kk)}: compute the Cholesky factor of the
+  diagonal block \texttt{bc\_kk}.
+%% This is done with the \texttt{potrf} routine from LAPACK.
 \item \texttt{solve(bc\_kk, bc\_ik)}: performs the triangular solve of
   an off-diagonal block \texttt{bc\_ik} with the block resulting from
   the factorization of the diagonal block \texttt{bc\_kk} in its
@@ -530,25 +545,76 @@ associated with the following kernels:
   \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
 \end{itemize}
 
-Following the sequential algorithm, the supernodes are processed
-according to a topological order (e.g. a post-order) and similarly the
-numerical tasks are submitted in the same order as in sequential
-mode. In order to guarantee the correctness of the algorithm, the
-runtime system ensures the sequential consistency by using the
-data-access information that we provided with the task
-submission. Note that the \texttt{alloc} task is done sequentially
-because we need to allocate the data structure of blocks to be able to
-submit tasks working on these blocks. In the case of \openmp, blocks
-are identified using data pointers and these pointer are associated
-with a data access when generating a task. Therefore we must allocate
-blocks before being able to submit tasks manipulating them and this is
-done in this \texttt{alloc} routine. In the case of \starpu, blocks
-are associated with a handle that is set up in the \texttt{alloc}
-routine. Tasks are then associated with this handle instead of using a
-pointer as we do with \openmp. They are several advantages associated
-with the use of this handle. For example \starpu is capable of
-detecting when data are written for the first time and allocate it
-using the information contained in the handle.
+Note that the task submission is done using a right looking scheme
+which means that every nodes in the tree must be allocated and
+partitioned before the submission of the numerical tasks. In addition,
+the \texttt{alloc} task is executed sequentially because we need to
+partition the supernodes and allocate the data structures in order to
+be able to tasks manipulating these blocks.
+
+As explained in Section~\ref{sec:stf-model}, when using the STF model
+we need to provide the access mode along with the data when submitting
+a task so that the runtime can ensures the sequential consistency of
+the parallel algorithm. For this reason, in the submission of
+\texttt{factorize} tasks, the diagonal block \texttt{blk(k,k)} is
+associated with a read-write access mode indicating that the kernel is
+going to read and modify this block as it computes the Cholesky factor
+of this blocks. Similarly as the \texttt{solve} operations requires
+the diagonal block for computing the factors in the subdiagonal ones,
+we indicate that this diagonal block is read when submitting the
+\texttt{solve} by associating it with a read-only access mode. Using
+these information the runtime detects a dependency between the
+\texttt{factorize} and \texttt{solve} tasks but allows the parallel
+execution of the solve tasks within a block-column. 
+
+In order to make sure the supernode is initialized before the
+factorization starts, we pass the symbolic handle \texttt{snode} to
+\texttt{init} tasks using a write access mode. Then the
+\texttt{factorize} task is associated with this handle in a read
+access mode and because all the subsequent factorization tasks in a
+supernode depend on the first \texttt{factorize} task it is guaranteed
+that the numerical task cannot start before the supernode is
+initialized. For the same reason, the \texttt{update\_btw} task takes
+the \texttt{anode} handle in input with a read access mode because it
+modifies a block in an ancestor node and the task cannot be executed
+before the node is initialized. The particularity of this symbolic
+handle is that it represents a set of blocks instead of one block.
+
+One issue arise with the dependency detection of the \texttt{update}
+tasks that are applied on a given block. This task takes in input two
+block $L_{ik}$ and $L_{jk}$ and applies on a third block $L_{ij}$ the
+following operation:
+\begin{equation*}
+  L_{ij} = L_{ij} - L_{ik}L_{jk}^{T}
+\end{equation*}
+and these update operations are clearly commutative. However, when two
+\texttt{update} tasks applied to a same block are submitted, the
+runtime system detects that these task modify the same data it will
+enforce the same order of execution for these tasks than the order of
+submission. With StarPU it is possible to avoid these unnecessary
+dependency that potentially limit the parallelism using the
+\texttt{STARPU\_COMMUTE} flag indicating that operations performed by
+a kernel are commutative. The OpenMP standard still does not provide
+such a functionality.
+
+Interestingly, the STF code that is presented in
+Figure~\ref{fig:spllt-facto-pseudocode} is independent from the
+runtime system used for the implementation. In practice only the
+implementation of the \texttt{submit} routines are specific to the
+runtime system. This illustrate the fact that the expression of the
+algorithm is strictly separated from the task scheduling and data
+coherency management.
+
+In the \openmp version, blocks are identified using data pointers and
+these pointer are associated with a data access when submitting a
+task. It is thus necessary to allocate the blocks before being able to
+submit the tasks manipulating the blocks. In the case of \starpu,
+blocks are associated with a handle that is set up in the
+\texttt{alloc} routine. Tasks are then associated with this handle
+instead of using a pointer as we do with \openmp. They are several
+advantages associated with the use of this handle. For example \starpu
+is capable of detecting when data are written for the first time and
+allocate it using the information contained in the handle.
 
 The \texttt{init} task is responsible for setting up the blocks in a
 given supernode. In our code a supernode is represented by a symbolic
@@ -560,14 +626,14 @@ associated with the nodal matrix.
 
 \begin{figure}[!h]
   \centering \lstinputlisting{listings/spllt_facto_stf.f90}
-\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the
-  sparse Cholesky factorization using a STF model.}
+\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the sparse
+  Cholesky factorization using a STF model presented in
+  Section~\ref{sec:stf-model}.}
 \end{figure}
 
 \section{Experimental results}\label{sec:experiments}
 
 \begin{table}[htbp]
-
   \begin{center}
     \begin{tabular}{rl|rrrrl}
       \hline
@@ -576,8 +642,11 @@ associated with the nodal matrix.
       \hline
     \end{tabular}
 \end{center}
-
-  \caption{Test matrices.}
+  \caption{Test matrices and their characteristics without node
+    amalgamation. $n$ is the matrix order, $nz(A)$ represent the
+    number entries in the matrix $A$, $nz(L)$ represent the number of
+    entries the factor $L$. \textit{Flops} correspond to the operation
+    count for the matrix factorization.}
 \end{table}
 
 
