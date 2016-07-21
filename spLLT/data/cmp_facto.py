@@ -11,6 +11,7 @@ import latexprint as lp
 spllt_facto_time = '\[>\] \[factorize\] time:'
 ma87_facto_time  = 'Factor took'
 spllt_task_insert_time = '\[>\] \[spllt_stf_factorize\] task insert time:'
+spllt_flops_str = '\[>\] \[analysis\] num flops :'
 
 blocksizes = [256, 384, 512, 768, 1024]
 # ncpu = 24
@@ -73,6 +74,7 @@ for mat in flistmat:
     # spLLT
     spllt_t_facto = []
     spllt_t_insert = []
+    spllt_flops = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
         datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
@@ -80,13 +82,19 @@ for mat in flistmat:
             # print datafile
             f = open(datafile)
             v = vextractor.get_value(f, spllt_facto_time)
+            spllt_t_facto.append(float(v))
+            # get tasks insert time
             f.seek(0)
             vi = vextractor.get_value(f, spllt_task_insert_time)
-            # print vi
+            spllt_t_insert.append(float(vi))
+            # get flops
+            f.seek(0)
+            vf = vextractor.get_value(f, spllt_flops_str)
+            # print vf
+            spllt_flops.append(float(vf))
+            
             f.close()
 
-            spllt_t_facto.append(float(v))
-            spllt_t_insert.append(float(vi))
 
     # MA87
     ma87_t_facto = []
@@ -123,6 +131,9 @@ for mat in flistmat:
     best_spllt_nb       = blocksizes[best_spllt_t_facto_idx]
     best_spllt_t_facto  = spllt_t_facto[best_spllt_t_facto_idx]
     best_spllt_t_insert = spllt_t_insert[best_spllt_t_facto_idx]
+    best_spllt_flops    = spllt_flops[best_spllt_t_facto_idx]
+    # GFlops 
+    best_spllt_flops    = best_spllt_flops/(1024*1024*1024)
 
     # MA87
     best_ma87_nb       = blocksizes[best_ma87_t_facto_idx]
@@ -153,7 +164,13 @@ for mat in flistmat:
     # print("%2s %10s %10s %10s %10s" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto, best_spllt_parsec_t_facto))
 
     # data print (factorization times)
-    print("%4s %10.3f %10.3f %10.3f" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
+    # print("%4s %10.3f %10.3f %10.3f" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
+
+    # data print (GFlop/s)
+    print("%4s %10.3f %10.3f %10.3f" % (matcount, 
+                                        (best_spllt_flops/best_ma87_t_facto), 
+                                        (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
+                                        (best_spllt_flops/best_spllt_t_facto)))
 
     # data print (factorization times and block sizes)
     # print("%4s %40s %6d %10.3f %6d %10.3f %6d %10.3f" % (matcount, lp.escape(mat), 
