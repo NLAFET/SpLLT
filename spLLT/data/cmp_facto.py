@@ -17,10 +17,20 @@ blocksizes = [256, 384, 512, 768, 1024]
 
 # print '% data directory: ', sys.argv[1]
 outputdir = sys.argv[1]
-listmat  = outputdir + '/list.matrix'  
+# listmat  = outputdir + '/list.matrix'  
+listmat = sys.argv[2]
 flistmat = open(listmat)
 
 matcount = 1
+
+starpu_sched = 'lws'
+
+# data print (factorization times)
+# print("%4s %40s %10s %10s %10s" % ('#', 'Name', 'MA87', 'OMP', 'StarPU'))
+
+# data print (factorization times and block sizes)
+# print("%4s %40s %17s %17s %17s" % ('#', 'Name', 'MA87', 'OMP', 'StarPU'))
+# print("%4s %40s %6s %10s %6s %10s %6s %10s" % ( ' ', ' ', 'nb', 'time', 'nb', 'time', 'nb', 'time'))
 
 for mat in flistmat:
 
@@ -33,20 +43,20 @@ for mat in flistmat:
     v = 0.0
 
     # spLLT PaRSEC
-    spllt_parsec_t_facto = []
-    spllt_parsec_t_insert = []
-    for blocksize in blocksizes:
-        # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_parsec' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
-        if os.path.exists(datafile):
-            # print datafile
-            f = open(datafile)
-            v = vextractor.get_value(f, spllt_facto_time)
-            f.seek(0)
-            # print vi
-            f.close()
+    # spllt_parsec_t_facto = []
+    # spllt_parsec_t_insert = []
+    # for blocksize in blocksizes:
+    #     # print "blocksize: ",blocksize
+    #     datafile = outputdir + '/' + 'spllt_parsec' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
+    #     if os.path.exists(datafile):
+    #         # print datafile
+    #         f = open(datafile)
+    #         v = vextractor.get_value(f, spllt_facto_time)
+    #         f.seek(0)
+    #         # print vi
+    #         f.close()
 
-            spllt_parsec_t_facto.append(float(v))
+    #         spllt_parsec_t_facto.append(float(v))
 
     # OpenMP (gnu)
     spllt_gnu_omp_t_facto = []
@@ -65,7 +75,7 @@ for mat in flistmat:
     spllt_t_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)
@@ -96,14 +106,14 @@ for mat in flistmat:
     # print spllt_t_insert
     # print ma87_t_facto
         
-    best_spllt_parsec_t_facto_idx = spllt_parsec_t_facto.index(min(spllt_parsec_t_facto))
+    # best_spllt_parsec_t_facto_idx = spllt_parsec_t_facto.index(min(spllt_parsec_t_facto))
     best_spllt_gnu_omp_t_facto_idx = spllt_gnu_omp_t_facto.index(min(spllt_gnu_omp_t_facto))
     best_spllt_t_facto_idx = spllt_t_facto.index(min(spllt_t_facto))
     best_ma87_t_facto_idx  = ma87_t_facto.index(min(ma87_t_facto))
 
     # Parsec
-    best_spllt_parsec_nb       = blocksizes[best_spllt_parsec_t_facto_idx]
-    best_spllt_parsec_t_facto  = spllt_parsec_t_facto[best_spllt_parsec_t_facto_idx]
+    # best_spllt_parsec_nb       = blocksizes[best_spllt_parsec_t_facto_idx]
+    # best_spllt_parsec_t_facto  = spllt_parsec_t_facto[best_spllt_parsec_t_facto_idx]
 
     # omp
     best_spllt_gnu_omp_nb       = blocksizes[best_spllt_gnu_omp_t_facto_idx]
@@ -135,9 +145,26 @@ for mat in flistmat:
     #                                                                best_ma87_nb,
     #                                                                lp.print_float(best_ma87_t_facto,
     #                                                                               ((best_ma87_t_facto<best_spllt_t_facto) and (best_ma87_t_facto<best_spllt_gnu_omp_t_facto)))))
-    
+
+    # Latex print
     # print("%40s & %10s \\\\" % (lp.escape(mat), lp.print_float(best_spllt_t_facto, (best_spllt_t_facto<best_ma87_t_facto)))
-        
-    print("%2s %10s %10s %10s %10s" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto, best_spllt_parsec_t_facto))
+    
+    # data print
+    # print("%2s %10s %10s %10s %10s" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto, best_spllt_parsec_t_facto))
+
+    # data print (factorization times)
+    print("%4s %10.3f %10.3f %10.3f" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
+
+    # data print (factorization times and block sizes)
+    # print("%4s %40s %6d %10.3f %6d %10.3f %6d %10.3f" % (matcount, lp.escape(mat), 
+    #                                                      best_ma87_nb, best_ma87_t_facto, 
+    #                                                      best_spllt_gnu_omp_nb, best_spllt_gnu_omp_t_facto, 
+    #                                                      best_spllt_nb, best_spllt_t_facto))
+
+    # Latex print (factorization times and block siezes)    
+    # print("%4s & %40s & %6d & %10.3f & %6d & %10.3f & %6d & %10.3f \\\\" % (matcount, lp.escape(mat), 
+    #                                                                         best_ma87_nb, best_ma87_t_facto, 
+    #                                                                         best_spllt_gnu_omp_nb, best_spllt_gnu_omp_t_facto, 
+    #                                                                         best_spllt_nb, best_spllt_t_facto))
 
     matcount = matcount+1 
