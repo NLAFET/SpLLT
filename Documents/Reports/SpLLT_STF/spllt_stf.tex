@@ -637,20 +637,22 @@ allocate it using the information contained in the handle.
 \section{Experimental results}\label{sec:experiments}
 
 In this section we present the experimental results obtained on our
-set of test matrices taken from the University of Florida Matrix
-Collection~\cite{d.h:11}. In this collection we selected symmetric
-positive-definite matrices from a wide range of application and
-sparsity structure. They are listed in Table~\ref{sec:mat} along with
-their sizes and number of entries. In addition, we indicate the number
-of entries in the factor $L$ and the operation count for the
-factorization when using the nested dissection ordering \metis
-limiting the entries in the factor $L$ as explained in
-Section~\ref{sec:chol}. Note that in this table, matrix
-characteristics are obtained without node amalgamation. This means
-that the number of entries in $L$ as well as the flop count is
-minimized but in order to have a better efficiency of operation we use
-node amalgamation in our tests \alert{necessary? should probably
-  rephrase last sentence}.
+test matrices taken from the University of Florida Matrix
+Collection~\cite{d.h:11}. In this collection we selected a large set
+of symmetric positive-definite matrices from a wide range of
+application and sparsity structure. They are listed in
+Table~\ref{sec:mat} along with their sizes and number of entries. In
+addition, we indicated the number of entries in the factor $L$ and the
+operation count for the factorization when using the nested dissection
+ordering \metis. As explained in Section~\ref{sec:chol} this allows us
+to reduce the number of entries in the factor $L$ by limiting the
+fill-in. Note that in this table, matrix characteristics are obtained
+without node amalgamation. This means that the number of entries in
+$L$ as well as the flop count is minimized but in our experiment we
+exploit node amalgamation to have a better efficiency of operations at
+the cost of a larger number of entries in $L$ as well as an increase
+in the floating point operation count.\alert{is the last sentence
+  necessary?}.
 
 \begin{table}[htbp]
   \label{sec:mat}
