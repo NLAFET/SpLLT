@@ -24,6 +24,8 @@ flistmat = open(listmat)
 
 matcount = 1
 
+starpu_sched = 'lws'
+
 print("%40s %10s %10s %10s" % ('Matrix', 'STF', 'MA87', 'StarPU'))
 
 for mat in flistmat:
@@ -67,7 +69,7 @@ for mat in flistmat:
     # STF
     spllt_stf_t_facto = []
     for blocksize in blocksizes:
-        datafile = outputdir + '/' + 'spllt_stf' + '/' + pbl + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'spllt_stf' + '/' + starpu_sched + '/' + pbl + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)

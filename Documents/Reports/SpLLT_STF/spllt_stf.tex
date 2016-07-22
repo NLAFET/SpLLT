@@ -69,7 +69,7 @@
 \newcommand{\alert}[1]{\textcolor{red}{#1}\xspace}
 \newcommand{\starpu}{{StarPU}\xspace}
 \newcommand{\parsec}{{PaRSEC}\xspace}
-\newcommand{\TODO}{\alert{TODO}\xspace}
+\newcommand{\TODO}[1]{\alert{TODO: #1}\xspace}
 \newcommand{\openmp}{OpenMP\xspace}
 \newcommand{\ma}{HSL\_MA87\xspace}
 \newcommand{\spllt}{SpLLT\xspace}
@@ -215,18 +215,23 @@ adapt to the emerging ones. This problem occurs, for example, when
 targeting heterogeneous architectures such as GPU-accelerated
 multicore systems that have a more complex memory hierarchy than
 traditional multicore systems and equipped different types of
-processing units with different capabilities. Instead, in this work,
-we explore an alternative approach based on the use of a runtime
-system which consists of a software layer between the architecture and
-the application. In this context the application is implemented using
-a high-level API provided by the runtime system and low level details
-such as data consistency across the architecture and task scheduling
-are delegated to the runtime system. We focus on the exploitation of a
+processing units with different capabilities \TODO{advantage of
+  GPU-accelerated arch? computation rate, energy efficiency, etc}
+\TODO{computational intensity and device utilisation of kernels on the
+  GPU}. Instead, in this work, we explore an alternative approach
+based on the use of a runtime system which consists of a software
+layer between the architecture and the application. In this context
+the application is implemented using a high-level API provided by the
+runtime system and low level details such as data consistency across
+the architecture and task scheduling are delegated to the runtime
+system. \TODO{Introduce DPLASMA, Chamelon for the dense LA kernels}
+\TODO{present qr\_mumps and PaSTIX} We focus on the exploitation of a
 Sequential Task Flow (STF) programming model for expressing the DAG
 corresponding to our application. We show that our code, implemented
 with a task-based runtime system, can lead to an implementation of a
 sparse matrix factorization which is as efficient as a
-state-of-the-art solver on a multicore system.
+state-of-the-art solver on a multicore system.  \TODO{same approach as
+  qr\_mumps (programming model) but different from PaSTIX approach}
 
 \section{Task-based sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
@@ -335,7 +340,8 @@ to pipeline the processing of a given node with the processing of it
 ancestors. This additional level of parallelism allowed by the use of
 a DAG-based algorithm is referred to as inter-node parallelism.
 
-\alert{put the task-based sequential algo here}
+\alert{put the task-based sequential algo here, and therefore
+  introduce kernels in this section}
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -634,6 +640,13 @@ allocate it using the information contained in the handle.
 %% the information associated with a supernode as well as the blocks
 %% associated with the nodal matrix.
 
+\TODO{explain the impact of the latency for the task submission.}
+
+\TODO{explain how tasks are dynamically scheduled.}
+
+\TODO{In a new section, present MA87 and especially PTG-like
+  programming model.}
+
 \section{Experimental results}\label{sec:experiments}
 
 In this section we present the experimental results obtained on our
@@ -644,15 +657,28 @@ application and sparsity structure. They are listed in
 Table~\ref{sec:mat} along with their sizes and number of entries. In
 addition, we indicated the number of entries in the factor $L$ and the
 operation count for the factorization when using the nested dissection
-ordering \metis. As explained in Section~\ref{sec:chol} this allows us
-to reduce the number of entries in the factor $L$ by limiting the
-fill-in. Note that in this table, matrix characteristics are obtained
-without node amalgamation. This means that the number of entries in
-$L$ as well as the flop count is minimized but in our experiment we
-exploit node amalgamation to have a better efficiency of operations at
-the cost of a larger number of entries in $L$ as well as an increase
-in the floating point operation count.\alert{is the last sentence
-  necessary?}.
+ordering \metis~\cite{k.k:98}. As explained in Section~\ref{sec:chol}
+this allows us to reduce the number of entries in the factor $L$ by
+limiting the fill-in. Note that in this table, matrix characteristics
+are obtained without node amalgamation. This means that the number of
+entries in $L$ as well as the flop count is minimal but in our
+experiment we use node amalgamation to have a better efficiency of
+operations at the cost of an increase in the number of entries in $L$
+as well as the operation count. The node amalgamation is controlled by
+a parameter \texttt{nemin} used during the analysis phase. The
+strategy for amalgamating the nodes in analysis routine of the MA78 is
+as follow: the elimination tree is traversed using a post order and
+when a node is visited, it is merge with its parents if the column
+count in both nodes is lower than \texttt{nemin} or if the merging
+generate no additional fill-in in $L$. In our experiment we set the
+\texttt{nemin} value to $32$ which correspond to a good trade-off
+between sparsity and efficiency of operations in our experiments.
+
+In this study the tests were made on a multicore machine equipped with
+two Intel(R) Xeon(R) E5-2695 v3 CPUs with fourteen cores each (twenty
+eight cores in total). Each core, clocked at 2.3 Ghz and is equipped
+with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
+1.03 TFlop/s in real, double precision arithmetic.
 
 \begin{table}[htbp]
   \label{sec:mat}
@@ -680,26 +706,26 @@ in the floating point operation count.\alert{is the last sentence
       16 & GHS\_psdef/bmwcra\_1            & 149      & 5.4      & 69.8     & 60.8     & Automotive crankshaft    \\
       17 & DNVS/halfb                      & 225      & 6.3      & 65.9     & 70.4     & Half-breadth barge       \\
       18 & Um/2cubes\_sphere               & 102      & 0.9      & 45.0     & 74.9     & Electromagnetics         \\
-      19 & GHS\_psdef/ldoor                & 952      & 23.7     & 145      & 78.3     & Large door               \\
+      19 & GHS\_psdef/ldoor                & 952      & 23.7     & 144.6    & 78.3     & Large door               \\
       20 & DNVS/ship\_003                  & 122      & 4.1      & 60.2     & 81.0     & Ship structure           \\
-      21 & DNVS/fullb                      & 199      & 6.0      & 74.5     & 100      & Full-breadth barge       \\
-      22 & GHS\_psdef/inline\_1            & 504      & 18.7     & 173      & 144      & Inline skater            \\
-      23 & Chen/pkustk14                   & 152      & 7.5      & 107      & 146      & Tall building            \\
-      24 & GHS\_psdef/apache2              & 715      & 2.8      & 135      & 174      & 3D structural problem    \\
-      25 & Koutsovasilis/F1                & 344      & 13.6     & 174      & 219      & AUDI engine crankshaft   \\
-      26 & Oberwolfach/boneS10             & 915      & 28.2     & 278      & 282      & Bone micro-FEM           \\
-      27 & ND/nd12k                        & 36.0     & 7.1      & 117      & 505      & 3D mesh problem          \\
-      28 & JGD\_Trefethen/Trefethen\_20000 & 20.0     & 0.3      & 90.7     & 652      & Integer matrix           \\
-      29 & ND/nd24k                        & 72.0     & 14.4     & 321      & 2054     & 3D mesh problem          \\
-      30 & Oberwolfach/bone010             & 987      & 36.3     & 1076     & 3876     & Bone micro-FEM           \\
-      31 & GHS\_psdef/audikw\_1            & 944      & 39.3     & 1242     & 5804     & Automotive crankshaft    \\
-         & Janna/Flan\_1565                & 1565     & 59.5     &          &          & 3D mechanical problem    \\
-         & Janna/StocF-1465                & 1465     & 11.2     &          &          & Underground aquifer      \\
-         & Janna/Fault\_639                & 639      & 14.6     &          &          & Gas reservoir            \\
-         & Janna/Hook\_1498                & 1498     & 31.2     &          &          & Steel hook               \\
-         & Janna/Emilia\_923               & 923      & 21.0     &          &          & Gas reservoir            \\
-         & Janna/Geo\_1438                 & 1438     & 32.3     &          &          & Underground deformation  \\
-         & Janna/Serena                    & 1391     & 33.0     &          &          & Gas reservoir            \\
+      21 & DNVS/fullb                      & 199      & 6.0      & 74.5     & 100.2    & Full-breadth barge       \\
+      22 & GHS\_psdef/inline\_1            & 504      & 18.7     & 172.9    & 144.4    & Inline skater            \\
+      23 & Chen/pkustk14                   & 152      & 7.5      & 106.8    & 146.4    & Tall building            \\
+      24 & GHS\_psdef/apache2              & 715      & 2.8      & 134.7    & 174.3    & 3D structural problem    \\
+      25 & Koutsovasilis/F1                & 344      & 13.6     & 173.7    & 218.8    & AUDI engine crankshaft   \\
+      26 & Oberwolfach/boneS10             & 915      & 28.2     & 278.0    & 281.6    & Bone micro-FEM           \\
+      27 & ND/nd12k                        & 36.0     & 7.1      & 116.5    & 505.0    & 3D mesh problem          \\
+      28 & JGD\_Trefethen/Trefethen\_20000 & 20.0     & 0.3      & 90.7     & 652.6    & Integer matrix           \\
+      29 & ND/nd24k                        & 72.0     & 14.4     & 321.6    & 2054.4   & 3D mesh problem          \\
+      30 & Janna/Flan\_1565                & 1565     & 59.5     & 1477.9   & 3859.8   & 3D mechanical problem    \\
+      31 & Oberwolfach/bone010             & 987      & 36.3     & 1076.4   & 3876.2   & Bone micro-FEM           \\
+      32 & Janna/StocF-1465                & 1465     & 11.2     & 1126.1   & 4386.6   & Underground aquifer      \\
+      33 & GHS\_psdef/audikw\_1            & 944      & 39.3     & 1242.3   & 5804.1   & Automotive crankshaft    \\
+      34 & Janna/Fault\_639                & 639      & 14.6     & 1144.7   & 8283.9   & Gas reservoir            \\
+      35 & Janna/Hook\_1498                & 1498     & 31.2     & 1532.9   & 8891.3   & Steel hook               \\
+      36 & Janna/Emilia\_923               & 923      & 21.0     & 1729.9   & 13661.1  & Gas reservoir            \\
+      37 & Janna/Geo\_1438                 & 1438     & 32.3     & 2467.4   & 18058.1  & Underground deformation  \\
+      38 & Janna/Serena                    & 1391     & 33.0     & 2761.7   & 30048.9  & Gas reservoir            \\
       \hline
     \end{tabular}}
   \end{center}
@@ -710,10 +736,14 @@ in the floating point operation count.\alert{is the last sentence
     count for the matrix factorization.}
 \end{table}
 
+\TODO{put side-by-side factorization time and relative perf compared
+  to MA87. Probably nicer than a table. Maybe GFlops rate or even a
+  performance profile.}
 
 \begin{table}[htbp]
     \begin{center}
-      \input{data/cn255/table_cmp_facto.tex}
+      \texttt{
+        \input{data/cn255/table_cmp_facto.tex}}
     \end{center}
     \caption{Factorization times (seconds) obtained with MA87 and
       SpLLT (i.e. MA87\_starpu). The factorizations were run with the
