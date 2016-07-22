@@ -320,10 +320,10 @@ the tasks denoted \texttt{f} correspond to the computation of the
 Cholesky factor of a diagonal block. Tasks denoted \texttt{s} perform
 a triangular solve of a subdiagonal block using a factor computed with
 a task \texttt{f}. Tasks denoted \texttt{u} perform an update of a
-block within a supernode with respect to the previous factorization of
-blocks. Finally, tasks denoted \texttt{a} represent the update between
-supernodes with respect to the factorization blocks computed in a
-given node. 
+block within a supernode corresponding to the previous factorization
+of blocks. Finally, tasks denoted \texttt{a} represent the update
+between supernodes with respect to the factorization blocks computed
+in a given node.
   % For more details on the kernels, we refer
 % to~\cite{h.r.s:10}.
 
@@ -340,8 +340,42 @@ to pipeline the processing of a given node with the processing of it
 ancestors. This additional level of parallelism allowed by the use of
 a DAG-based algorithm is referred to as inter-node parallelism.
 
-\alert{put the task-based sequential algo here, and therefore
-  introduce kernels in this section}
+\begin{figure}[!h]
+  \centering \lstinputlisting{listings/spllt_facto_seq.f90}
+\caption{\label{fig:spllt-facto-seq-pseudocode}Pseudo-code for the
+  sequential version of the task-based sparse Cholesky factorization.}
+\end{figure}
+
+The pseudo code corresponding to the task-based Cholesky factorization
+is presented in Figure~\ref{fig:spllt-facto-seq-pseudocode}. Note that
+this is the sequential algorithm that is used as a basis for the
+implementation of parallel code. In this code we have the following
+kernels:
+
+\begin{itemize}
+\item \texttt{alloc(snode)}: partition the supernode \texttt{snode}
+  into blocks and allocates the data structures.
+\item \texttt{init(snode)}: initializes the blocks by copying the
+  coefficients from the original matrix into them.
+\item \texttt{factorize(bc\_kk)}: compute the Cholesky factor of the
+  diagonal block \texttt{bc\_kk}.
+%% This is done with the \texttt{potrf} routine from LAPACK.
+\item \texttt{solve(bc\_kk, bc\_ik)}: performs the triangular solve of
+  an off-diagonal block \texttt{bc\_ik} with the block resulting from
+  the factorization of the diagonal block \texttt{bc\_kk} in its
+  column.
+\item \texttt{update(bc\_ik, bc\_jk, bc\_ij)}: performs the update
+  operation of a block \texttt{bc\_ij} within a supernode using the
+  blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
+  processed.
+\item \texttt{update\_between(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
+  performs the update operation of the block \texttt{bc\_ij} from the
+  supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
+  \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
+\end{itemize}
+
+Note that in this algorithm, we perform the update using a
+right-looking scheme.
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -532,27 +566,6 @@ tree where at each node the tasks for the factorization and update
 operations are submitted to the runtime system. The kernels used in
 this algorithm are the following:
 
-\begin{itemize}
-\item \texttt{alloc(snode)}: partition the supernode \texttt{snode}
-  into blocks and allocates the data structures.
-\item \texttt{init(snode)}: initializes the blocks by copying the
-  coefficients from the original matrix into them.
-\item \texttt{factorize(bc\_kk)}: compute the Cholesky factor of the
-  diagonal block \texttt{bc\_kk}.
-%% This is done with the \texttt{potrf} routine from LAPACK.
-\item \texttt{solve(bc\_kk, bc\_ik)}: performs the triangular solve of
-  an off-diagonal block \texttt{bc\_ik} with the block resulting from
-  the factorization of the diagonal block \texttt{bc\_kk} in its
-  column.
-\item \texttt{update(bc\_ik, bc\_jk, bc\_ij)}: performs the update
-  operation of a block \texttt{bc\_ij} within a supernode using the
-  blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
-  processed.
-\item \texttt{update\_between(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
-  performs the update operation of the block \texttt{bc\_ij} from the
-  supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
-  \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
-\end{itemize}
 
 Note that the task submission is done using a right looking scheme
 which means that every nodes in the tree must be allocated and
@@ -679,6 +692,34 @@ two Intel(R) Xeon(R) E5-2695 v3 CPUs with fourteen cores each (twenty
 eight cores in total). Each core, clocked at 2.3 Ghz and is equipped
 with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
 1.03 TFlop/s in real, double precision arithmetic.
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.8\textwidth]{data/cmp_perf_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=0.8\textwidth]{data/cmp_facto_rel_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
+
+
+%% \begin{figure}[!h]
+%%   \begin{minipage}{0.5\textwidth}
+%%     \centering
+%%     \includegraphics[width=\textwidth]{data/cmp_perf_stf}
+%%     \caption{\label{fig:exp-perf}\TODO{put caption}}
+%%   \end{minipage}
+%%   \hspace{0.5cm}
+%%   \begin{minipage}{0.5\textwidth}
+%%     \centering
+%%     \includegraphics[width=\textwidth]{data/cmp_facto_rel_stf}
+%%     \caption{\label{fig:exp-perf}\TODO{put caption}}
+%%   \end{minipage}
+%% \end{figure}
+
 
 \begin{table}[htbp]
   \label{sec:mat}
