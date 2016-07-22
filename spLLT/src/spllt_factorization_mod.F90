@@ -2,6 +2,7 @@ module spllt_factorization_mod
   use spllt_data_mod
   implicit none
 
+  ! TODO put in a proper module file
   interface
      subroutine spllt_factorize_node(snode, map, fdata, keep, control)
        use spllt_data_mod
@@ -229,6 +230,7 @@ contains
        call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
     end do
     ! call system_clock(stop_cpya2l_t)
+
 ! #if defined(SPLLT_USE_STARPU)
 !     call starpu_f_task_wait_for_all()
 ! #endif

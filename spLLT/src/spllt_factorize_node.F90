@@ -78,10 +78,10 @@ subroutine spllt_factorize_node(snode, map, fdata, keep, control)
   dblk = node%blk_sa
 
   do kk = 1, nc
-
+     ! write(*,*)"kk: ", kk
      ! A_kk
      bc_kk => fdata%bc(dblk)
-     call spllt_factorize_block_task(fdata, fdata%nodes(snum), bc_kk, keep%lfact, prio+3)
+     call spllt_factorize_block_task(fdata, snode, bc_kk, keep%lfact, prio+3)
 
      ! loop over the row blocks (that is, loop over blocks in block col)
      do ii = kk+1,nr

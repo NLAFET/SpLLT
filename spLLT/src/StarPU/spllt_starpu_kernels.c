@@ -75,7 +75,7 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
                                            int prio) {
    
    int ret;
-   printf("[spllt_starpu_insert_factorize_block_c]\n");
+   /* printf("[spllt_starpu_insert_factorize_block_c]\n"); */
    if (node_handle) {
       /* printf("Test\n"); */
       ret = starpu_task_insert(&cl_factorize_block,                           

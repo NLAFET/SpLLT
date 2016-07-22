@@ -162,11 +162,13 @@ contains
     end if
 
 #if defined(SPLLT_USE_STARPU)
+
+    ! pass snode handle to tasks only in first block in snode
     node_hdl = c_null_ptr
     if (node%node%blk_sa .eq. bc%blk%id) then
-       node_hdl = node%hdl
-       ! write(*,*)'Test'
+    node_hdl = node%hdl
     end if
+
     call spllt_starpu_insert_factorize_block_c(bc%hdl, node_hdl, p)
 
     ! call spllt_starpu_insert_factorize_block(bc, p)

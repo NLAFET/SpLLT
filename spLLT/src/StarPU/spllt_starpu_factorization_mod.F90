@@ -620,6 +620,19 @@ contains
     integer, pointer               :: map(:)
     integer, target :: n
 
+    interface
+       subroutine spllt_factorize_node(snode, map, fdata, keep, control)
+         use spllt_data_mod
+         use hsl_ma87_double
+         implicit none
+         type(spllt_node_type), target        :: snode
+         integer, dimension(:), pointer       :: map
+         type(spllt_data_type), target        :: fdata
+         type(MA87_keep), target              :: keep 
+         type(MA87_control)                   :: control 
+       end subroutine spllt_factorize_node
+    end interface
+
     call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
          & c_loc(snode_c), c_loc(fdata_c), &
          & c_loc(keep_c), c_loc(control_c)) 
@@ -634,7 +647,7 @@ contains
 
     ! allocate(map(n))
 
-    write(*,*)"num", snode%num
+    ! write(*,*)"num", snode%num
 
     call spllt_factorize_node(snode, map, fdata, keep, control)
 
