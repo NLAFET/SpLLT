@@ -2,6 +2,19 @@ module spllt_factorization_mod
   use spllt_data_mod
   implicit none
 
+  interface
+     subroutine spllt_factorize_node(snode, map, fdata, keep, control)
+       use spllt_data_mod
+       use hsl_ma87_double
+       implicit none
+       type(spllt_node_type), target        :: snode ! node to factorize (spllt)    
+       integer, dimension(:), pointer       :: map
+       type(spllt_data_type), target        :: fdata
+       type(MA87_keep), target              :: keep 
+       type(MA87_control)                   :: control 
+     end subroutine spllt_factorize_node
+  end interface
+
 contains
 
   subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
@@ -37,7 +50,7 @@ contains
 
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
-    integer, dimension(:), allocatable ::  tmpmap
+    integer, dimension(:), pointer ::  tmpmap
 
     ! shortcuts
     type(node_type), pointer     :: node ! node in the atree    
@@ -132,8 +145,11 @@ contains
     ! allocate(map(n),stat=st)
     ! if(st.ne.0) go to 10
 
+#ifndef SPLLT_USE_NESTED_STF
+    ! write(*,*)"TETETET"
     allocate(tmpmap(n),stat=st)
     if(st.ne.0) go to 10
+#endif
     
     ! init facto    
 
@@ -151,6 +167,11 @@ contains
     ! register col_list handle
     call starpu_f_vector_data_register(fdata%col_list%hdl, -1, c_null_ptr, &
          & int(keep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
+
+#if defined(SPLLT_USE_NESTED_STF)
+    call starpu_f_vector_data_register(fdata%map%hdl, -1, c_null_ptr, &
+         & int(n, kind=c_int), int(c_int, kind=c_size_t))
+#endif
 
 #elif defined(SPLLT_USE_OMP)
 
@@ -183,6 +204,9 @@ contains
 #if defined(SPLLT_USE_STARPU)
        ! TODO put in activate routine
        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+#if defined(SPLLT_USE_NESTED_STF)
+       call starpu_f_void_data_register(fdata%nodes(snode)%hdl2)
+#endif
 #endif
        ! activate node: allocate factors, register handles
        call spllt_activate_node(snode, keep, fdata)
@@ -192,9 +216,9 @@ contains
     write(*,'("[>] [spllt_stf_factorize]   setup and activate nodes time: ", es10.3, " s")') &
          & (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_task_wait_for_all()
-#endif    
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all()
+! #endif    
     ! call system_clock(start_cpya2l_t, rate_cpya2l_t)
     ! call copy_a_to_l(n,num_nodes,val,map,keep)
     ! write(*,*)"num_nodes: ", num_nodes
@@ -219,8 +243,14 @@ contains
 
     ! factorize nodes
     do snode = 1, num_nodes
+#if defined(SPLLT_USE_NESTED_STF)
+       prio = 5 ! max priority 
+       ! prio = huge(1)
 
+       call spllt_factorize_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
+#else
        call spllt_factorize_node(fdata%nodes(snode), tmpmap, fdata, keep, control)          
+#endif
     end do
 
 #if defined(SPLLT_USE_STARPU)
@@ -229,6 +259,10 @@ contains
 
     call starpu_f_data_unregister_submit(fdata%row_list%hdl)
     call starpu_f_data_unregister_submit(fdata%col_list%hdl)
+
+#if defined(SPLLT_USE_NESTED_STF)
+    call starpu_f_data_unregister_submit(fdata%map%hdl)
+#endif
 
 #endif
 

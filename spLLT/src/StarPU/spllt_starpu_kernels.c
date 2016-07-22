@@ -75,7 +75,7 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
                                            int prio) {
    
    int ret;
-
+   printf("[spllt_starpu_insert_factorize_block_c]\n");
    if (node_handle) {
       /* printf("Test\n"); */
       ret = starpu_task_insert(&cl_factorize_block,                           
@@ -256,7 +256,7 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    int rsrc, rsrc2;
    int min_with_blas;
 
-   printf("[spllt_starpu_update_between_cuda_func]\n");
+   /* printf("[spllt_starpu_update_between_cuda_func]\n"); */
 
    starpu_codelet_unpack_args(cl_arg,
                               &snode, &scol, &anode, &a_blk, &dcol,
@@ -312,10 +312,10 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
                                       row_list, col_list, &rls, &cls,
                                       &s1sa, &s1en, &s2sa, &s2en);
    
-   a    = (double *)malloc(m*n*sizeof(double));   // A_ij
+   /* a    = (double *)malloc(m*n*sizeof(double));   // A_ij */
    /* src1 = (double *)malloc(m1*n1*sizeof(double)); // L_ik */
    /* src2 = (double *)malloc(m2*n1*sizeof(double)); // L_jk */
-   buff  = (double *)malloc(b_sz*sizeof(double)); // buffer
+   /* buff  = (double *)malloc(b_sz*sizeof(double)); // buffer */
 
    magmablasSetKernelStream(local_stream);
 
@@ -729,14 +729,33 @@ struct starpu_codelet cl_factorize_node = {
 };
 
 void spllt_starpu_codelet_unpack_args_factorize_node(void *cl_arg,
-                                                     void *fdata, void *keep, void *control) {
+                                                     void *snode, void *fdata, 
+                                                     void *keep, void *control) {
    
    starpu_codelet_unpack_args(cl_arg,
-                              fdata, keep, control);
+                              snode, fdata, 
+                              keep, control);
 }
 
 void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
                                         starpu_data_handle_t map_hdl,
-                                        void *fdata, void *keep, void *control) {
+                                        void *snode, void *fdata, 
+                                        void *keep, void *control,
+                                        int prio) {
 
+   /* printf("[spllt_insert_factorize_node_task_c]\n"); */
+
+   int ret;
+
+   ret = starpu_task_insert(&cl_factorize_node,
+                            STARPU_VALUE, &snode, sizeof(void*),
+                            STARPU_VALUE, &fdata, sizeof(void*),
+                            STARPU_VALUE, &keep, sizeof(void*),
+                            STARPU_VALUE, &control, sizeof(void*),
+                            STARPU_R, node_hdl,
+                            STARPU_SCRATCH, map_hdl,
+                            STARPU_PRIORITY, prio,
+                            0);
+
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 }

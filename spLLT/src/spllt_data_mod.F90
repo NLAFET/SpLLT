@@ -56,6 +56,10 @@ module spllt_data_mod
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
+#if defined(SPLLT_USE_NESTED_STF)
+
+     type(c_ptr)    :: hdl2  ! StarPU handle
+#endif
 #endif     
   end type spllt_node_type
 
@@ -139,6 +143,8 @@ module spllt_data_mod
 #else
      type(spllt_workspace_i) :: row_list, col_list ! workspaces
 #endif
+
+     type(spllt_workspace_i) :: map ! workspaces
   end type spllt_data_type
 
   type spllt_options

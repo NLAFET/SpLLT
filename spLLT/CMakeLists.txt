@@ -2,13 +2,13 @@ cmake_minimum_required (VERSION 2.6)
 project (SpLib C CXX Fortran)
 
 # Include our own cmake modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
 
 # Set C flags 
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2")
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2" )
 
 # Set Fortran flags 
-set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2")
+set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2" )
 
 # add_library(hsl_ma87 hsl_ma87d.F90 
 #   $ENV{HSLPACKDIR}/hsl_mc78/hsl_mc78i.f90
@@ -38,6 +38,16 @@ if (${RUNTIME} MATCHES "STF")
 
 elseif(${RUNTIME} MATCHES "StarPU")
 
+  # Use nested STF
+  option(SPLLT_USE_NESTED_STF "Use nested STF" OFF)
+
+  if (SPLLT_USE_NESTED_STF MATCHES ON)
+    # nested STF
+    add_definitions(-DSPLLT_USE_NESTED_STF)
+  endif()
+
+  MESSAGE( STATUS "Nested STF:      " ${SPLLT_USE_NESTED_STF} )
+
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 
@@ -56,6 +66,7 @@ elseif(${RUNTIME} MATCHES "StarPU")
 
 elseif(${RUNTIME} MATCHES "OMP")
 
+  # TODO find_package omp
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 
@@ -98,6 +109,12 @@ if(${USE_GPU} MATCHES ON)
   include_directories(${MAGMA_SRCDIR}/control)     
   find_library(MAGMA_LIBRARY magma PATHS ${MAGMA_DIR}/lib)
 
+endif()
+
+if(MA87_TEST_DRIVER MATCHES ON)
+  # TODO find_package omp
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 endif()
 
 add_subdirectory(src)

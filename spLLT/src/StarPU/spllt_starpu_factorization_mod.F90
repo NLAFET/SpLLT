@@ -167,19 +167,21 @@ module spllt_starpu_factorization_mod
 
   ! factorize node StarPU task insert
   interface
-     subroutine spllt_insert_factorize_node_task_c(node_hdl, map_hdl, fdata, keep, control)
+     subroutine spllt_insert_factorize_node_task_c(node_hdl, map_hdl, &
+          & snode, fdata, keep, control, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: node_hdl, map_hdl
-       type(c_ptr), value :: fdata, keep, control
+       type(c_ptr), value     :: snode, fdata, keep, control
+       integer(c_int), value  :: prio
      end subroutine spllt_insert_factorize_node_task_c
   end interface
 
   interface
      subroutine spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
-          & fdata, keep, control) bind(C)
+          & snode, fdata, keep, control) bind(C)
        use iso_c_binding
        type(c_ptr), value :: cl_arg 
-       type(c_ptr), value :: fdata, keep, control
+       type(c_ptr), value :: snode, fdata, keep, control
      end subroutine spllt_starpu_codelet_unpack_args_factorize_node
   end interface
 
@@ -601,10 +603,48 @@ contains
   ! factorize node StarPU task
   subroutine spllt_starpu_factorize_node_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
+    use spllt_data_mod
+    use hsl_ma87_double
+    use spllt_kernels_mod
     implicit none
 
     type(c_ptr), value        :: cl_arg
     type(c_ptr), value        :: buffers
+
+    type(c_ptr), target            :: snode_c, fdata_c, keep_c, control_c
+    type(c_ptr), target            :: map_c
+    type(spllt_node_type),pointer  :: snode
+    type(spllt_data_type), pointer :: fdata
+    type(ma87_keep), pointer       :: keep    
+    type(MA87_control), pointer    :: control 
+    integer, pointer               :: map(:)
+    integer, target :: n
+
+    call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
+         & c_loc(snode_c), c_loc(fdata_c), &
+         & c_loc(keep_c), c_loc(control_c)) 
+
+    call c_f_pointer(snode_c, snode)    
+    call c_f_pointer(fdata_c, fdata)    
+    call c_f_pointer(keep_c, keep)    
+    call c_f_pointer(control_c, control)    
+
+    call starpu_f_get_buffer(buffers, 1, c_loc(map_c), c_loc(n))
+    call c_f_pointer(map_c, map, (/n/))
+
+    ! allocate(map(n))
+
+    write(*,*)"num", snode%num
+
+    call spllt_factorize_node(snode, map, fdata, keep, control)
+
+    ! deallocate(map)
+
+    ! write(*,*)"map() :", map(n)
+    ! write(*,*)"n :", n
+    ! write(*,*)"n :", keep%n
+    ! write(*,*)"final_blk :", keep%final_blk
+    ! write(*,*)"min_width_blas", control%min_width_blas
     
   end subroutine spllt_starpu_factorize_node_cpu_func
 
