@@ -167,12 +167,13 @@ module spllt_starpu_factorization_mod
 
   ! factorize node StarPU task insert
   interface
-     subroutine spllt_insert_factorize_node_task_c(node_hdl, map_hdl, &
-          & snode, fdata, keep, control, prio) bind(C)
+     subroutine spllt_insert_factorize_node_task_c(node_hdl, cnode_hdls, nchild, &
+          & map_hdl, snode, fdata, keep, control, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: node_hdl, map_hdl
+       type(c_ptr)            :: cnode_hdls(*)
        type(c_ptr), value     :: snode, fdata, keep, control
-       integer(c_int), value  :: prio
+       integer(c_int), value  :: prio, nchild
      end subroutine spllt_insert_factorize_node_task_c
   end interface
 
@@ -642,12 +643,12 @@ contains
     call c_f_pointer(keep_c, keep)    
     call c_f_pointer(control_c, control)    
 
-    call starpu_f_get_buffer(buffers, 1, c_loc(map_c), c_loc(n))
+    call starpu_f_get_buffer(buffers, 0, c_loc(map_c), c_loc(n))
     call c_f_pointer(map_c, map, (/n/))
 
     ! allocate(map(n))
 
-    ! write(*,*)"num", snode%num
+    write(*,*)"num", snode%num
 
     call spllt_factorize_node(snode, map, fdata, keep, control)
 

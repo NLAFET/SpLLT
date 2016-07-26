@@ -738,6 +738,7 @@ void spllt_starpu_codelet_unpack_args_factorize_node(void *cl_arg,
 }
 
 void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
+                                        starpu_data_handle_t *cnode_hdls, int nc,
                                         starpu_data_handle_t map_hdl,
                                         void *snode, void *fdata, 
                                         void *keep, void *control,
@@ -746,14 +747,31 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
    /* printf("[spllt_insert_factorize_node_task_c]\n"); */
 
    int ret;
+   int i, nh;
+
+   struct starpu_data_descr *descrs;
+
+   descrs = malloc((nc+2) * sizeof(struct starpu_data_descr));
+
+   nh = 0;
+   
+   descrs[nh].handle = map_hdl;  descrs[nh].mode = STARPU_SCRATCH;
+   nh = nh + 1;
+   
+   descrs[nh].handle = node_hdl;  descrs[nh].mode = STARPU_RW;
+   nh = nh + 1;
+   printf("[spllt_insert_factorize_node_task_c] nc: %d\n", nc);
+   for(i=0; i<nc; i++){
+      descrs[nh].handle = cnode_hdls[i];  descrs[nh].mode = STARPU_R;
+      nh = nh + 1;
+   }
 
    ret = starpu_task_insert(&cl_factorize_node,
                             STARPU_VALUE, &snode, sizeof(void*),
                             STARPU_VALUE, &fdata, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
                             STARPU_VALUE, &control, sizeof(void*),
-                            STARPU_R, node_hdl,
-                            STARPU_SCRATCH, map_hdl,
+                            STARPU_DATA_MODE_ARRAY, descrs, nh,
                             STARPU_PRIORITY, prio,
                             0);
 
