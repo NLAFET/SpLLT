@@ -5,54 +5,6 @@ module spllt_factorization_task_mod
 contains
 
 #if defined(SPLLT_USE_STARPU)
-  subroutine spllt_factorize_node_task(snode, fdata, keep, control, prio)
-    use iso_c_binding
-    use hsl_ma87_double
-    use starpu_f_mod
-    use spllt_starpu_factorization_mod
-    implicit none
-
-    type(spllt_node_type), target, intent(inout)      :: snode ! node to factorize (spllt)    
-    type(spllt_data_type), target, intent(inout)      :: fdata
-    type(MA87_keep), target, intent(inout)            :: keep 
-    type(MA87_control), target, intent(in)            :: control 
-    integer, intent(in)                               :: prio
-
-    type(c_ptr) :: snode_c
-    type(c_ptr) :: fdata_c
-    type(c_ptr) :: keep_c
-    type(c_ptr) :: control_c
-
-    type(node_type), pointer        :: node
-    type(spllt_node_type), pointer  :: cnode 
-    integer :: nchild, i, c
-    type(c_ptr), allocatable, target :: cnode_handles(:)
-
-    snode_c = c_loc(snode)
-    fdata_c = c_loc(fdata)
-    keep_c = c_loc(keep)
-    control_c = c_loc(control)
-    
-    node => snode%node
-    nchild = node%nchild
-
-    allocate(cnode_handles(nchild))
-    do i = 1, nchild
-       c = node%child(i)
-       cnode => fdata%nodes(c)
-       cnode_handles(i) = cnode%hdl2 
-    end do
-
-    call spllt_insert_factorize_node_task_c(snode%hdl2, cnode_handles, &
-         & int(nchild, kind=c_int), fdata%map%hdl, snode_c, fdata_c, keep_c, control_c, &
-         & prio)
-
-    deallocate(cnode_handles)
-    
-  end subroutine spllt_factorize_node_task
-#endif  
-
-#if defined(SPLLT_USE_STARPU)
   ! deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
   subroutine spllt_data_unregister_task(keep, pbl)

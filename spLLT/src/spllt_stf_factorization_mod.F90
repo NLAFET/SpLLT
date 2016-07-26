@@ -157,13 +157,16 @@ contains
 #endif
     end do
 
-#if defined(SPLLT_USE_STARPU) && defined(SPLLT_USE_NESTED_STF)
-    call starpu_f_task_wait_for_all()
-#endif
+! #if defined(SPLLT_USE_STARPU) && defined(SPLLT_USE_NESTED_STF)
+!     call starpu_f_task_wait_for_all()
+! #endif
 
+! TODO unregister handles when using nested stf 
+#ifndef SPLLT_USE_NESTED_STF
     ! deinit factorization
     ! clean up data structure, unregister data handles
     call spllt_factorization_fini(fdata, map, keep)
+#endif
 
     call system_clock(stf_stop_t)
     write(*,'("[>] [spllt_stf_factorize] task insert time: ", es10.3, " s")') (stf_stop_t - stf_start_t)/real(stf_rate_t)

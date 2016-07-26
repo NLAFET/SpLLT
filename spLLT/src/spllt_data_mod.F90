@@ -56,10 +56,7 @@ module spllt_data_mod
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
-#if defined(SPLLT_USE_NESTED_STF)
-
-     type(c_ptr)    :: hdl2  ! StarPU handle
-#endif
+     type(c_ptr)    :: hdl2  ! StarPU second handle
 #endif     
   end type spllt_node_type
 

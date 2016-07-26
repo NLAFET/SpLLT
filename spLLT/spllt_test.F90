@@ -24,7 +24,7 @@ contains
 
   subroutine spllt_test_mat(mf, cntl)
     use spllt_mod
-    use spllt_factorization_mod
+    use spllt_stf_factorization_mod
     use spral_rutherford_boeing
     use hsl_mc68_integer
     use spllt_analyse_mod
