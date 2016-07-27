@@ -372,7 +372,7 @@ kernels:
   operation of a block \texttt{bc\_ij} within a supernode using the
   blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
   processed.
-\item \texttt{update\_between(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
+\item \texttt{update\_btw(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
   performs the update operation of the block \texttt{bc\_ij} from the
   supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
   \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
@@ -489,18 +489,21 @@ to express dependencies between tasks in a similar way to the STF
 model. In this work we propose an OpenMP implementation of our
 Cholesky solver and show advantages of using this in terms of
 performance, scalability and productivity. However, because many
-features are still unavailable in the OpenMP standard we also
-developed another version based on the StarPU runtime system. Both
-implementations of our solver rely on a STF model, but the
-StarPU-based implementation can benefit from a wider range of features
-available with StarPU. For example, although we focus on shared-memory
-architectures in this work, the StarPU version might be extended to a
-distributed-memory version whereas OpenMP doesn't provide any
-possibility for execution on distributed memory architectures.
+features are still unavailable in the OpenMP standard, we also
+developed another version based on the StarPU runtime system. As shown
+in the next section, both implementations of our solver rely on a STF
+model, but the StarPU-based implementation can benefit from a wider
+range of features available with StarPU. For example, although we
+focus on shared-memory architectures in this work, the StarPU version
+can be extended to a distributed-memory version whereas OpenMP doesn't
+provide any possibility for execution on distributed memory
+architectures.
 
 We present an example of a parallel implementation for the sequential
 code in Figure~\ref{fig:seq-example} using OpenMP in
 Figure~\ref{fig:stf-openmp-example}.
+
+\TODO{detail example code for OpenMP.}
 
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
@@ -544,6 +547,8 @@ to the device memory node. As a results StarPU is capable of ensuring
 data consistency over multiple nodes. When all the tasks have been
 submitted to the runtime system, we wait for their completion by
 calling the routine \texttt{starpu\_task\_wait\_for\_all}.
+
+\TODO{explain dynamic scheduling of ready tasks.}
 
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:experiments}
@@ -637,34 +642,51 @@ runtime system used for the implementation. In practice only the
 implementation of the \texttt{submit} routines are specific to the
 runtime system. This illustrate the fact that the expression of the
 algorithm is strictly separated from the task scheduling and data
-coherency management.
+coherency management. An example of the implementation of this
+\texttt{submit} routine in the \starpu version is given in
+Figure~\ref{fig:spllt-starpu-slv-task}, and its equivalent in the
+\openmp version is given in Figure~\ref{fig:spllt-omp-slv-task}. In
+this example we show the submission of the solve tasks. In the \openmp
+version, blocks are identified using data pointers and these pointer
+are associated with a data access when submitting a task. It is thus
+necessary to allocate the blocks before being able to submit the tasks
+manipulating the blocks. In the case of \starpu, blocks are associated
+with a handle that is set up in the \texttt{alloc} routine. Tasks are
+then associated with this handle instead of using a pointer as we do
+with \openmp. They are several advantages associated with the use of
+this handle. For example \starpu is capable of detecting when data are
+written for the first time and allocate it using the information
+contained in the handle. We don't use this features for the allocation
+of block, but we use it for the management of scratch memory that is
+needed is the \texttt{update\_btw} task and not represented in the
+pseudocode for the sake of clarity.
 
 \begin{figure}[!h]
   \begin{minipage}{0.5\textwidth}
     \centering
     \lstset{basicstyle=\tt\scriptsize, language=C}
     \lstinputlisting{listings/spllt_starpu_solve_task.c}
-    \caption{\label{fig:spllt-starpu-slv-task}\TODO{put caption}}
+    \caption{\label{fig:spllt-starpu-slv-task} Submission routine used
+      for the solve tasks in the \starpu code}
   \end{minipage}
   \hspace{0.5cm}
   \begin{minipage}{0.5\textwidth}
     \centering
     \lstset{basicstyle=\tt\scriptsize}
     \lstinputlisting{listings/spllt_omp_solve_task.f90}
-    \caption{\label{fig:fig:spllt-omp-slv-task}\TODO{put caption}}
+    \caption{\label{fig:spllt-omp-slv-task}Submission routine used
+      for the solve tasks in the \openmp code}
   \end{minipage}
 \end{figure}
 
-In the \openmp version, blocks are identified using data pointers and
-these pointer are associated with a data access when submitting a
-task. It is thus necessary to allocate the blocks before being able to
-submit the tasks manipulating the blocks. In the case of \starpu,
-blocks are associated with a handle that is set up in the
-\texttt{alloc} routine. Tasks are then associated with this handle
-instead of using a pointer as we do with \openmp. They are several
-advantages associated with the use of this handle. For example \starpu
-is capable of detecting when data are written for the first time and
-allocate it using the information contained in the handle.
+Note that the efficiency of these submission routines may be critical
+in the performance of the execution and as shown in our tests, in some
+cases, the submission of tasks in the DAG may be a limiting factor for
+the performance. This happens when the number of tasks is important
+and the task granularity is small. In such cases, especially when the
+number of resources increases, the unrolling of the DAG may be too
+slow to feed all the resources therefore bounding the execution time.
+
 
 %% The \texttt{init} task is responsible for setting up the blocks in a
 %% given supernode. In our code a supernode is represented by a symbolic
@@ -673,10 +695,6 @@ allocate it using the information contained in the handle.
 %% \texttt{init} task. This \texttt{snode} symbolic structure represent
 %% the information associated with a supernode as well as the blocks
 %% associated with the nodal matrix.
-
-\TODO{explain the impact of the latency for the task submission.}
-
-\TODO{explain how tasks are dynamically scheduled.}
 
 \TODO{In a new section, present MA87 and especially PTG-like
   programming model.}
@@ -729,6 +747,64 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
 %%   \end{minipage}
 %% \end{figure}
 
+
+\TODO{keep table with factorization times? performance profile?}
+
+\begin{table}[htbp]
+    \begin{center}
+      \texttt{
+        \input{data/cn255/table_cmp_facto.tex}}
+    \end{center}
+    \caption{Factorization times (seconds) obtained with MA87 and
+      SpLLT (i.e. MA87\_starpu). The factorizations were run with the
+      block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
+      and \texttt{nemin=32}. The lowest factorization times are shown
+      in bold.}
+\end{table}
+
+%\newpage
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\textwidth]{data/cmp_perf_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\textwidth]{data/cmp_facto_rel_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
+
+\section{Concluding remarks}\label{sec:conclusions}
+This report has described in detail the development of a new
+
+ 
+%% \section*{Code Availability}
+%% A development version of the Cholesky factorization software used in this 
+%% paper may be checked out of
+%% our source code repository using the following command:
+
+%% \begin{verbatim}
+%%    svn co -r612 http://ccpforge.cse.rl.ac.uk/svn/spral/branches/xxxxxxx
+%% \end{verbatim}
+
+%% This code has not yet been optimised and so is not yet
+%% part of the HSL or SPRAL libraries that are we develop
+%% and maintain at the Rutherford Appleton Laboratory (see
+%% \url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
+
+\clearpage
+\bibliography{flipflapflopBib}
+
+\appendix
+
+\section{Test problems}\label{appendix}
+\setcounter{equation}{0}
+\setcounter{table}{0}
+\setcounter{figure}{0}
+\setcounter{table}{0}
+\renewcommand{\thetable}{A.\arabic{table}}
 
 \begin{table}[htbp]
   \label{sec:mat}
@@ -785,65 +861,6 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
     entries the factor $L$ and \textit{Flops} correspond to the operation
     count for the matrix factorization.}
 \end{table}
-
-\TODO{keep table? performance profile?}
-
-\begin{table}[htbp]
-    \begin{center}
-      \texttt{
-        \input{data/cn255/table_cmp_facto.tex}}
-    \end{center}
-    \caption{Factorization times (seconds) obtained with MA87 and
-      SpLLT (i.e. MA87\_starpu). The factorizations were run with the
-      block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
-      and \texttt{nemin=32}. The lowest factorization times are shown
-      in bold.}
-\end{table}
-
-%\newpage
-
-\begin{figure}[!h]
-  \centering
-  \includegraphics[width=\textwidth]{data/cmp_perf_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
-\end{figure}
-
-\begin{figure}[!h]
-  \centering
-  \includegraphics[width=\textwidth]{data/cmp_facto_rel_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
-\end{figure}
-
-\section{Concluding remarks}\label{sec:conclusions}
-This report has described in detail the development of a new
-
- 
-%% \section*{Code Availability}
-%% A development version of the Cholesky factorization software used in this 
-%% paper may be checked out of
-%% our source code repository using the following command:
-
-%% \begin{verbatim}
-%%    svn co -r612 http://ccpforge.cse.rl.ac.uk/svn/spral/branches/xxxxxxx
-%% \end{verbatim}
-
-%% This code has not yet been optimised and so is not yet
-%% part of the HSL or SPRAL libraries that are we develop
-%% and maintain at the Rutherford Appleton Laboratory (see
-%% \url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
-
-\clearpage
-\bibliography{flipflapflopBib}
-
-%% \appendix
-
-%% \section{Test problems}\label{appendix}
-%% \setcounter{equation}{0}
-%% \setcounter{table}{0}
-%% \setcounter{figure}{0}
-%% \setcounter{table}{0}
-%% \renewcommand{\thetable}{A.\arabic{table}}
-
 
 %% In Table~\ref{Tbl:Problems} we list  our test problems along with 
 %% their characteristics. The problems are from the 

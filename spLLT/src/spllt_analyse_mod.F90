@@ -602,15 +602,21 @@ contains
 
   ! tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree
-  subroutine spllt_prune_tree(adata, sparent, nth)
+  subroutine spllt_prune_tree(adata, sparent, nth, keep)
     use spllt_utils_mod
+    use hsl_ma87_double
     implicit none
 
     type(spllt_adata_type), intent(inout) :: adata
     integer, dimension(:), intent(inout) :: sparent ! atree
     integer :: nth ! number of workers
+    type(MA87_keep), target, intent(in) :: keep
 
-    integer :: node, nlz
+    integer                         :: i, j
+    integer                         :: c
+    integer :: nlz ! number of nodes in the lzero layer
+    integer :: node , leaves, totleaves
+    integer                         :: n ! node to be replaced by its direct descendents in lzero
     integer(long) :: p, totflops 
     real(kind(1.d0))                :: rm, smallth
     integer, dimension(adata%nnodes)       :: lzero
@@ -619,8 +625,10 @@ contains
     logical                         :: found
 
     allocate(adata%small(adata%nnodes))
+    totleaves = 0
     adata%small = 0
 
+10 continue
     smallth = 0.01
     totflops = adata%weight(adata%nnodes)
 
@@ -636,7 +644,10 @@ contains
              adata%small(node) = 1 ! node is too small; mark it
           end if
        end if
+       if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
     end do
+
+    leaves = 0
 
     godown: do
        ! if (nth .eq. 1) exit ! serial execution process the whole tree as a subtree
@@ -661,20 +672,60 @@ contains
        ! if load is not balanced, replace heaviest node with its kids (if any)
        found = .false.
        findn: do
-          
+          if(leaves .eq. totleaves) exit godown ! reached the bottom of the tree
+        
+          if(leaves .eq. nlz) then
+             if(nlz .ge. nth*max(2.d0,(log(real(nth,kind(1.d0)))/log(2.d0))**2)) then 
+                exit godown ! all the nodes in l0 are leaves. nothing to do
+             else
+                smallth = smallth/2.d0
+                if(smallth .lt. 0.0001) then
+                   exit godown
+                else
+                   goto 10
+                end if
+             end if
+          end if
+          n = lzero(leaves+1) ! n is the node that must be replaced
+
+          ! append children of n 
+          do i=1,keep%nodes(n)%nchild
+             c = keep%nodes(n)%child(i)
+             if(real(adata%weight(c),kind(1.d0)) .gt. smallth*totflops) then
+                ! this child is big enough, add it
+                found = .true.
+                nlz = nlz+1
+                lzero  (nlz) = c
+                lzero_w(nlz) = real(adata%weight(c),kind(1.d0))
+             else
+                adata%small(c) = 1 ! node is too smal; mark it
+             end if
+
+          end do
+          if(found) exit findn ! if at least one child was added then we redo the mapping
+          leaves = leaves+1          
        end do findn
 
+       ! swap n with last element
+       lzero  (leaves+1) = lzero  (nlz)
+       lzero_w(leaves+1) = lzero_w(nlz)
+       nlz = nlz-1
+
     end do godown
+
+    ! mark all the children of nodes in l0
+    do i=1, nlz
+       n = lzero(i)
+       do j=1,keep%nodes(n)%nchild
+          c = keep%nodes(n)%child(j)
+          adata%small(c) = 1
+       end do
+    end do
 
     return
   end subroutine spllt_prune_tree
 
-  ! subroutine spllt_node_flops()
-  !   implicit none    
-
-  !   return
-  ! end subroutine spllt_node_flops
-
+  ! performs symbolic factorization of the atree
   subroutine spllt_symbolic(adata, nnodes, sptr, sparent, rptr)
     use spllt_mod
     implicit none
