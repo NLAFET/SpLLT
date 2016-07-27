@@ -148,7 +148,8 @@ contains
     ! factorize nodes
     do snode = 1, num_nodes
 #if defined(SPLLT_USE_NESTED_STF)
-       prio = 5 ! max priority 
+       ! prio = 5 ! max priority 
+       prio = -5 ! min priority 
        ! prio = huge(1)
 
        call spllt_factorize_node_task(fdata%nodes(snode), fdata, keep, control, prio)          

@@ -760,7 +760,7 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
    
    descrs[nh].handle = node_hdl;  descrs[nh].mode = STARPU_RW;
    nh = nh + 1;
-   printf("[spllt_insert_factorize_node_task_c] nc: %d\n", nc);
+   /* printf("[spllt_insert_factorize_node_task_c] nc: %d\n", nc); */
    for(i=0; i<nc; i++){
       descrs[nh].handle = cnode_hdls[i];  descrs[nh].mode = STARPU_R;
       nh = nh + 1;
