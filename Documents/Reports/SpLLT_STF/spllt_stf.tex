@@ -244,20 +244,23 @@ particular we will focus on a DAG-based variant of this algorithm that
 has been proven to be extremely efficient on multicore architectures
 such as for example the \ma solver~\cite{h.r.s:10}.
 
-The supernodal Cholesky method is a factorization algorithm for sparse
+\TODO{explain the three phases: analyse, factorization and solve} The
+supernodal Cholesky method is a factorization algorithm for sparse
 matrices where the input matrix $A$ is decomposed as:
 \begin{equation}\label{eq:chol}
   A = LL^{T}
 \end{equation}
-where the factor $L$ is a lower triangular matrix. Note that the
-sparsity pattern of the factor is not the same as the original matrix
-as because additional coefficients generally appear during the
-computation of this factor resulting in a denser matrix than the
-original one. This phenomenon is called \textit{fill-in} and can be
-greatly reduced by the use of a symmetric permutation applied to the
-matrix before the factorization. If, for example, we apply the
-symmetric permutation $P$ to the matrix $A$ then we transform the
-original matrix into $PAP^{T}$. The dependencies between the
+where the factor $L$ is a lower triangular matrix \TODO{quite word on
+  the solve phase (backward and forward substitutions, multiple rhs,
+  etc)}. Note that the sparsity pattern of the factor is not the same
+as the original matrix as because additional coefficients generally
+appear during the computation of this factor resulting in a denser
+matrix than the original one. This phenomenon is called
+\textit{fill-in} and can be greatly reduced by the use of a symmetric
+permutation applied to the matrix before the factorization. If, for
+example, we apply the symmetric permutation $P$ to the matrix $A$ then
+we transform the original matrix into $PAP^{T}$ \TODO{AMD
+  vs. nested-dissection ordering}. The dependencies between the
 coefficients in the factor $L$ during the factorization can be
 expressed in a tree structure called an \textit{elimination tree}
 where each node in this tree represent a column in the factor. In
@@ -287,8 +290,9 @@ when nodes are large enough and can be processed by multiple resources
 in parallel. One approach for the parallelization of the supernodal
 algorithm consists in exploiting these two levels of parallelism
 separately \alert{give more explanation about this
-  strategy. Separately is misleading} . Instead, in our work, we
-follows the approach proposed in~\cite{h.r.s:10} where supernodes are
+  strategy. Separately is misleading. talk about the distribution of
+  these two levels of parallelism} . Instead, in our work, we follows
+the approach proposed in~\cite{h.r.s:10} where supernodes are
 partitioned into square blocks of order \texttt{nb} and operations are
 applied on these blocks. Figure~\ref{fig:etree-simple-part} shows a
 simple assembly tree that consists of three supernodes where the
@@ -375,7 +379,8 @@ kernels:
 \end{itemize}
 
 Note that in this algorithm, we perform the update using a
-right-looking scheme.
+right-looking scheme. \TODO{remarks on the different schemes: fan-in,
+  fan-out, etc}
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -556,29 +561,28 @@ calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 In this section we describe the implementation of our DAG-based
 Cholesky solver using the STF programming parallel model presented in
 Section~\ref{sec:stf-model}. We developed two different version of our
-solver using first, the OpenMP standard and second, the StarPU runtime
-system whose features are presented in Section~\ref{sec:runtime}. A
-pseudocode of the STF-based supernodal algorithm on which our two
-implementations are based is presented in
-Figure~\ref{fig:spllt-facto-pseudocode}. This algorithm follows the
-sequential one corresponding to a bottom-up traversal of the assembly
-tree where at each node the tasks for the factorization and update
-operations are submitted to the runtime system. The kernels used in
-this algorithm are the following:
+code using first, the OpenMP standard and second, the StarPU runtime
+system whose features are presented in Section~\ref{sec:runtime}.
 
-
-Note that the task submission is done using a right looking scheme
-which means that every nodes in the tree must be allocated and
-partitioned before the submission of the numerical tasks. In addition,
-the \texttt{alloc} task is executed sequentially because we need to
-partition the supernodes and allocate the data structures in order to
-be able to tasks manipulating these blocks.
+A pseudocode of our solver is presented in
+Figure~\ref{fig:spllt-facto-pseudocode} and, following the sequential
+algorithm shown in Figure~\ref{fig:spllt-facto-seq-pseudocode},
+consists in a bottom-up traversal of the assembly tree where at each
+node the tasks for the factorization and update operations are
+submitted to the runtime system. The kernels used in the tasks, are
+the same as the ones presented in section~\ref{sec:chol}. Note that
+the task submission is done using a right looking scheme which means
+that every nodes in the tree must be allocated and partitioned before
+the submission of the numerical tasks. In addition, the \texttt{alloc}
+task is executed sequentially because the we need to allocate the data
+structures and partition the supernodes in order to submitted the
+numerical tasks.
 
 \begin{figure}[!h]
   \centering \lstinputlisting{listings/spllt_facto_stf.f90}
-\caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the sparse
-  Cholesky factorization using a STF model presented in
-  Section~\ref{sec:stf-model}.}
+  \caption{\label{fig:spllt-facto-pseudocode}Pseudo-code for the sparse
+    Cholesky factorization using a STF model presented in
+    Section~\ref{sec:stf-model}.}
 \end{figure}
 
 As explained in Section~\ref{sec:stf-model}, when using the STF model
@@ -588,26 +592,27 @@ the parallel algorithm. For this reason, in the submission of
 \texttt{factorize} tasks, the diagonal block \texttt{blk(k,k)} is
 associated with a read-write access mode indicating that the kernel is
 going to read and modify this block as it computes the Cholesky factor
-of this blocks. Similarly as the \texttt{solve} operations requires
-the diagonal block for computing the factors in the subdiagonal ones,
-we indicate that this diagonal block is read when submitting the
-\texttt{solve} by associating it with a read-only access mode. Using
-these information the runtime detects a dependency between the
-\texttt{factorize} and \texttt{solve} tasks but allows the parallel
+of this block. Similarly, as the \texttt{solve} operations require the
+diagonal block for computing the factors in the subdiagonal blocks, we
+have to indicate that this diagonal block is read when submitting the
+\texttt{solve} by associating it with a read-only access mode. With
+these information the runtime detects the dependencies between the
+\texttt{factorize} and \texttt{solve} tasks and allows the parallel
 execution of the solve tasks within a block-column. 
 
 In order to make sure the supernode is initialized before the
-factorization starts, we pass the symbolic handle \texttt{snode} to
-\texttt{init} tasks using a write access mode. Then the
-\texttt{factorize} task is associated with this handle in a read
-access mode and because all the subsequent factorization tasks in a
-supernode depend on the first \texttt{factorize} task it is guaranteed
-that the numerical task cannot start before the supernode is
-initialized. For the same reason, the \texttt{update\_btw} task takes
-the \texttt{anode} handle in input with a read access mode because it
-modifies a block in an ancestor node and the task cannot be executed
-before the node is initialized. The particularity of this symbolic
-handle is that it represents a set of blocks instead of one block.
+factorization starts, we use a symbolic handle called \texttt{snode}
+and pass it to the \texttt{init} tasks using a write access mode. Then
+we also pass it to the the \texttt{factorize} tasks in a read access
+mode and because all the subsequent factorization tasks in a supernode
+depend on the first \texttt{factorize} task we guarantee that the
+numerical task cannot start before the supernode is initialized. For
+the same reason, the \texttt{update\_btw} task takes the
+\texttt{anode} handle in input with a read access mode because it
+modifies a block in an ancestor node and the task should not be
+executed before the node is initialized. The particularity of this
+symbolic handle is that it represents a set of blocks instead of a
+unique block.
 
 One issue arise with the dependency detection of the \texttt{update}
 tasks that are applied on a given block. This task takes in input two
@@ -633,6 +638,22 @@ implementation of the \texttt{submit} routines are specific to the
 runtime system. This illustrate the fact that the expression of the
 algorithm is strictly separated from the task scheduling and data
 coherency management.
+
+\begin{figure}[!h]
+  \begin{minipage}{0.5\textwidth}
+    \centering
+    \lstset{basicstyle=\tt\scriptsize, language=C, procnamekeys={}}
+    \lstinputlisting{listings/spllt_starpu_facto_task.c}
+    \caption{\label{fig:exp-perf}\TODO{put caption}}
+  \end{minipage}
+  \hspace{0.5cm}
+  \begin{minipage}{0.5\textwidth}
+    \centering
+    \lstset{basicstyle=\tt\scriptsize}
+    \lstinputlisting{listings/spllt_omp_facto_task.f90}
+    \caption{\label{fig:exp-perf}\TODO{put caption}}
+  \end{minipage}
+\end{figure}
 
 In the \openmp version, blocks are identified using data pointers and
 these pointer are associated with a data access when submitting a
@@ -669,7 +690,7 @@ of symmetric positive-definite matrices from a wide range of
 application and sparsity structure. They are listed in
 Table~\ref{sec:mat} along with their sizes and number of entries. In
 addition, we indicated the number of entries in the factor $L$ and the
-operation count for the factorization when using the nested dissection
+operation count for the factorization when using the nested-dissection
 ordering \metis~\cite{k.k:98}. As explained in Section~\ref{sec:chol}
 this allows us to reduce the number of entries in the factor $L$ by
 limiting the fill-in. Note that in this table, matrix characteristics
@@ -692,18 +713,6 @@ two Intel(R) Xeon(R) E5-2695 v3 CPUs with fourteen cores each (twenty
 eight cores in total). Each core, clocked at 2.3 Ghz and is equipped
 with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
 1.03 TFlop/s in real, double precision arithmetic.
-
-\begin{figure}[!h]
-  \centering
-  \includegraphics[width=0.8\textwidth]{data/cmp_perf_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
-\end{figure}
-
-\begin{figure}[!h]
-  \centering
-  \includegraphics[width=0.8\textwidth]{data/cmp_facto_rel_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
-\end{figure}
 
 
 %% \begin{figure}[!h]
@@ -777,9 +786,7 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
     count for the matrix factorization.}
 \end{table}
 
-\TODO{put side-by-side factorization time and relative perf compared
-  to MA87. Probably nicer than a table. Maybe GFlops rate or even a
-  performance profile.}
+\TODO{keep table? performance profile?}
 
 \begin{table}[htbp]
     \begin{center}
@@ -792,6 +799,20 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
       and \texttt{nemin=32}. The lowest factorization times are shown
       in bold.}
 \end{table}
+
+%\newpage
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\textwidth]{data/cmp_perf_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
+
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\textwidth]{data/cmp_facto_rel_stf}
+  \caption{\label{fig:exp-perf}\TODO{put caption}}
+\end{figure}
 
 \section{Concluding remarks}\label{sec:conclusions}
 This report has described in detail the development of a new
