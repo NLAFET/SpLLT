@@ -22,19 +22,19 @@ set key box left top w 1.1 font "Courier,12"
 # set output "cmp_facto_all.pdf"
 # set output "cmp_facto_all0.pdf"
 # set output "cmp_facto_stf.pdf"
-set output "cmp_perf_stf.pdf"
-# set output "cmp_facto_rel_stf.pdf"
+# set output "cmp_perf_stf.pdf"
+set output "cmp_facto_rel_stf.pdf"
 
 # set title "Factorization times - 28 cores"
-set title "Factorization GFlop/s - 28 cores"
-# set title "Relative performance with MA87 - 28 cores"
+# set title "Factorization GFlop/s - 28 cores"
+set title "Relative performance with MA87 - 28 cores"
 
 set xlabel "Matrix \#"
-set ylabel "GFlop/s"
+# set ylabel "GFlop/s"
 # set ylabel "time (s)"
-# set ylabel "perf SpLLT / perf MA87"
+set ylabel "perf SpLLT / perf MA87"
 
-# set yrange [0:1.5]
+set yrange [0:1.5]
 # set logscale y 10
 
 set xrange [1:38]
@@ -45,7 +45,7 @@ set boxwidth 1.0 absolute
 
 # set arrow from 1,1 to 38,1 nohead  lt 0 lc rgb "#000000"  lw 2
 
-# set grid ytics lc rgbcolor "#000000" lt 0 lw 1
+set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 
 # STF (times)
 # plot 'cn255/data_cmp_facto.dat' using 2:xtic(1) ls 1 t 'MA87', \
@@ -53,13 +53,13 @@ set boxwidth 1.0 absolute
 #      ''                         using 4:xtic(1) ls 3 t 'SpLLT-STF (StarPU)'
 
 # STF (perf GFlop/s)
-plot 'cn255/data_cmp_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
-     ''                        using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-     ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)'
+# plot 'cn255/data_cmp_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
+#      ''                        using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
+#      ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)'
 
 # STF perf/times relative to MA87
-# plot 'cn255/data_cmp_perf.dat' using ($0+1):($3/$2) ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-#      ''                        using ($0+1):($4/$2) ls 3 w lp t 'SpLLT-STF (StarPU)'
+plot 'cn255/data_cmp_perf.dat' using ($0+1):($3/$2) ls 2 w lp t 'SpLLT-STF (OpenMP)', \
+     ''                        using ($0+1):($4/$2) ls 3 w lp t 'SpLLT-STF (StarPU)'
 
 # all 0
 # plot 'cn255/data_cmp_facto.dat' using 2:xtic(1) ls 1 t 'MA87', \
