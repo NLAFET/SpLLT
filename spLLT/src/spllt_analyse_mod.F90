@@ -230,6 +230,21 @@ contains
             min(keep%nodes(node)%least_desc, keep%nodes(anode)%least_desc)
     end do
 
+    ! prune tree
+    if (cntl%prune_tree) then
+       ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
+       call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
+    end if
+
+    ! Setup subtrees if required
+    if (cntl%prune_tree) then
+       do node = 1, num_nodes
+          if (adata%small(node) .eq. 1) then
+             
+          end if
+       end do
+    end if
+
     !**************************************   
     ! Fill out block information. 
     
@@ -619,27 +634,40 @@ contains
     integer                         :: n ! node to be replaced by its direct descendents in lzero
     integer(long) :: p, totflops 
     real(kind(1.d0))                :: rm, smallth
-    integer, dimension(adata%nnodes)       :: lzero
-    integer(long), dimension(adata%nnodes) :: lzero_w
-    integer(long), dimension(nth)       :: proc_w
+    integer, allocatable       :: lzero(:)
+    integer(long), allocatable :: lzero_w(:), proc_w(:)
     logical                         :: found
 
     allocate(adata%small(adata%nnodes))
-    totleaves = 0
-    adata%small = 0
+    
+    allocate(lzero_w (adata%nnodes))
+    allocate(lzero   (adata%nnodes))
+    allocate(proc_w  (nth))
+
+    smallth = 0.01
 
 10 continue
-    smallth = 0.01
-    totflops = adata%weight(adata%nnodes)
-
+    totleaves = 0
+    adata%small = 0
+    
+    totflops = adata%weight(adata%nnodes+1)
+    ! write(*,*)'totflops: ', totflops
+    ! write(*,*)'weights: ', adata%weight 
+    ! write(*,*)'nnodes: ', adata%nnodes
+    ! write(*,*)'root: ', sparent(1)
     ! initialize the l0 layer with the root nodes
     nlz = 0
+
     do node = 1, adata%nnodes
+          ! write(*,*) 'node: ', node, ', weight: ', adata%weight(node)
        if (sparent(node) .gt. adata%nnodes) then
-          if(real(adata%weight(node), kind(1.d0)) .gt. smallth*totflops) then
+          write(*,*) 'weight: ', real(adata%weight(node), kind(1.d0))
+          write(*,*) 'thresh: ', smallth*real(totflops, kind(1.d0))
+          if(real(adata%weight(node), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
              nlz = nlz+1
              lzero(nlz) = node
-             lzero_w(nlz) = adata%weight(node)
+             lzero_w(nlz) = -adata%weight(node)
+             write(*,*) 'node: ', node,', weight: ', adata%weight(node)
           else
              adata%small(node) = 1 ! node is too small; mark it
           end if
@@ -651,19 +679,23 @@ contains
 
     godown: do
        ! if (nth .eq. 1) exit ! serial execution process the whole tree as a subtree
+       if (nlz .le. 0) exit ! only small nodes ! 
        if(nlz .gt. nth*max(2.d0,(log(real(nth,kind(1.d0)))/log(2.d0))**2)) exit ! exit if already too many nodes in l0
 
        proc_w = 0
        
-       call spllt_sort(lzero_w, nlz)
-
+       ! sort lzero_w into ascending order and apply the same order on
+       ! lzero array
+       call spllt_sort(lzero_w, nlz, map=lzero)
+       ! write(*,*) 'lzero: ', lzero(1:nlz)
+       ! write(*,*) 'lzero_w: ', lzero_w(1:nlz)
        ! map subtrees to threads round-robin 
        do node=1, nlz
           ! find the least loaded proc
           p = minloc(proc_w,1)
-          proc_w(p) = proc_w(p) + lzero_w(node)
+          proc_w(p) = proc_w(p) + abs(lzero_w(node))
        end do
-
+       ! write(*,*)'nlz: ', nlz       
        ! all the subtrees have been mapped. Evaluate load balance
        rm = minval(proc_w)/maxval(proc_w)
 
@@ -679,7 +711,7 @@ contains
                 exit godown ! all the nodes in l0 are leaves. nothing to do
              else
                 smallth = smallth/2.d0
-                if(smallth .lt. 0.0001) then
+                if(smallth .lt. 1e-4) then
                    exit godown
                 else
                    goto 10
@@ -691,12 +723,12 @@ contains
           ! append children of n 
           do i=1,keep%nodes(n)%nchild
              c = keep%nodes(n)%child(i)
-             if(real(adata%weight(c),kind(1.d0)) .gt. smallth*totflops) then
+             if(real( adata%weight(c), kind(1.d0) ) .gt. smallth*real( totflops, kind(1.d0) )) then
                 ! this child is big enough, add it
                 found = .true.
                 nlz = nlz+1
                 lzero  (nlz) = c
-                lzero_w(nlz) = real(adata%weight(c),kind(1.d0))
+                lzero_w(nlz) = -adata%weight(c)
              else
                 adata%small(c) = 1 ! node is too smal; mark it
              end if
@@ -713,14 +745,24 @@ contains
 
     end do godown
 
+    ! write(*,*)'nlz: ', nlz
+    ! write(*,*)'lzero: ', lzero(1:nlz)
+
     ! mark all the children of nodes in l0
     do i=1, nlz
        n = lzero(i)
+       ! write(*,*)'n: ', n
        do j=1,keep%nodes(n)%nchild
           c = keep%nodes(n)%child(j)
+          ! write(*,*)'desc: ', keep%nodes(c)%least_desc
+          adata%small(keep%nodes(c)%least_desc:c) = -c
           adata%small(c) = 1
        end do
     end do
+
+    deallocate(lzero_w)
+    deallocate(lzero)
+    deallocate(proc_w)
 
     return
   end subroutine spllt_prune_tree
@@ -741,6 +783,8 @@ contains
     
     allocate(adata%weight(nnodes+1))
 
+    adata%weight = 0 
+
     do node = 1,nnodes
 
        parent = sparent(node)
@@ -753,12 +797,13 @@ contains
        do j=1,n
           nflops = nflops + (mm+j)**2
        end do
-       
+       ! write(*,*) 'nflops: ', nflops
        adata%weight(node) = adata%weight(node) + nflops
        adata%weight(parent) = adata%weight(parent) + adata%weight(node)
 
     end do
-
+    ! write(*,*) 'symbolic totflops: ', adata%weight(nnodes+1)
+    
     return
   end subroutine spllt_symbolic
 

@@ -301,11 +301,14 @@ contains
   !   return
   ! end subroutine spllt_realloc_1d
 
-  subroutine spllt_print_atree(keep)
+  subroutine spllt_print_atree(adata, keep, cntl)
+    use spllt_data_mod
     use hsl_ma87_double
     implicit none    
 
+    type(spllt_adata_type), intent(in)  :: adata
     type(MA87_keep), target, intent(in) :: keep
+    type(spllt_cntl), intent(in) :: cntl
 
     integer :: snode, num_nodes
     type(node_type), pointer     :: node ! node in the atree
@@ -329,11 +332,24 @@ contains
        write(2, '(i10)', advance="no")snode
        write(2, '(" ")', advance="no")
        write(2, '("[")', advance="no")
-       write(2, '("fillcolor=white ")', advance="no")
+       if (cntl%prune_tree) then
+          if (adata%small(snode) .eq. 1) then
+             write(2, '("fillcolor=grey ")', advance="no")
+          else
+             write(2, '("fillcolor=white ")', advance="no")
+          endif
+       else
+          write(2, '("fillcolor=white ")', advance="no")
+       endif
        write(2, '("label=""")', advance="no")  
        write(2, '("node:", i5,"\n")', advance="no")snode
        write(2, '("m:", i5,"\n")', advance="no")m
        write(2, '("n:", i5,"\n")', advance="no")n
+       if (cntl%prune_tree) then
+          write(2, '("small:", i5,"\n")', advance="no")adata%small(snode)
+          write(2, '("weight:", f5.1,"\n")', advance="no") &
+               & 100.0 * (real(adata%weight(snode), kind(1d0)) / real(adata%weight(num_nodes+1), kind(1d0)))
+       end if
        write(2, '("""")', advance="no")         
        write(2, '("]")', advance="no")
        write(2, '(" ")')
@@ -551,6 +567,8 @@ contains
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%nemin
+       case("--prune-tree")
+          options%prune_tree = .true.
        case default
           write(*,'("Unrecognised command line argument: ", a20)'), argval
        end select

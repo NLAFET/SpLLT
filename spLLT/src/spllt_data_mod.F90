@@ -145,10 +145,11 @@ module spllt_data_mod
   end type spllt_data_type
 
   type spllt_options
-     integer :: ncpu = 1 ! number of CPU workers
-     integer :: nb   = 16 ! blocking size
+     integer :: ncpu = 1              ! number of CPU workers
+     integer :: nb   = 16             ! blocking size
      character(len=100) :: mat = ''
-     integer :: nemin = -1
+     integer :: nemin = -1            ! nemin parameter for analysis
+     logical :: prune_tree = .false.  ! use tree pruning
   end type spllt_options
 
 end module spllt_data_mod

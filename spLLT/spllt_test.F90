@@ -60,7 +60,7 @@ contains
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, num_factor, resid
     real(wp), dimension(:), allocatable :: b, x
-    type(spllt_adata_type) :: a_pbl
+    type(spllt_adata_type) :: adata
     type(spllt_data_type)  :: pbl
 
     ! mc68
@@ -101,6 +101,9 @@ contains
        cntl%nemin = options%nemin
     end if
 
+    ! tree pruning
+    if (options%prune_tree) cntl%prune_tree = .true.
+
     ! write(*,*)"option mat: ", options%mat
     write(*,'("[spllt test mat] read matrix")')
     
@@ -132,10 +135,10 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(adata, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
-    num_flops   = a_pbl%num_flops
-    num_factor  = real(a_pbl%num_factor)
+    num_flops   = adata%num_flops
+    num_factor  = real(adata%num_factor)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        goto 9999
@@ -145,9 +148,9 @@ contains
     write(*,'("[>] [analysis] matrix nz : ", i40)') size(a%val)
     write(*,'("[>] [analysis] num factor: ", es20.5)') num_factor    
     write(*,'("[>] [analysis] num flops : ", es20.5)') num_flops    
-    write(*,'("[>] [analysis] num nodes : ", i10)') a_pbl%nnodes    
+    write(*,'("[>] [analysis] num nodes : ", i10)') adata%nnodes    
 
-    call spllt_print_atree(keep)
+    call spllt_print_atree(adata, keep, cntl)
 
     ! generate rhs
     nrhs = 1
@@ -186,7 +189,7 @@ contains
 #endif
 
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)
+    call spllt_ptg_factorize(adata, a%val, keep, cntl, pbl, info)
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -268,7 +271,7 @@ contains
     integer :: n, nnz
     type(spllt_cntl) :: cntl
 
-    type(spllt_adata_type) :: a_pbl
+    type(spllt_adata_type) :: adata
     type(spllt_data_type) :: pbl
     type(spllt_options) :: options
 
@@ -339,7 +342,7 @@ contains
     write(*,'("[>] analyse")')
 
     ! analysis
-    call spllt_analyse(a_pbl, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(adata, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
@@ -350,7 +353,8 @@ contains
     write(*,'("[>] [analysis] num flops: ", es10.3)') num_flops    
     write(*,'("[>] [analysis] num nodes: ", i10)') info%num_nodes    
 
-    call spllt_print_atree(keep)
+    ! print atree in a dot format
+    call spllt_print_atree(adata, keep, cntl)
     
     ! generate rhs
     nrhs = 1
@@ -381,7 +385,7 @@ contains
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU) 
     call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(a_pbl, a%val, keep, cntl, pbl, info)
+    call spllt_ptg_factorize(adata, a%val, keep, cntl, pbl, info)
 #endif
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then
