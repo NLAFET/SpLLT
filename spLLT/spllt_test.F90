@@ -61,7 +61,7 @@ contains
     real(wp) :: num_flops, num_factor, resid
     real(wp), dimension(:), allocatable :: b, x
     type(spllt_adata_type) :: adata
-    type(spllt_data_type)  :: pbl
+    type(spllt_data_type)  :: fdata
 
     ! mc68
     type(mc68_control) :: order_control
@@ -135,7 +135,7 @@ contains
     control%nemin = cntl%nemin
     
     ! analysis
-    call spllt_analyse(adata, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(adata, fdata, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops   = adata%num_flops
     num_factor  = real(adata%num_factor)
@@ -181,15 +181,15 @@ contains
 
 #if defined(SPLLT_STF_LL)
     ! Unroll the DAG using a Left-Looking strategy
-    call spllt_stf_ll_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
+    call spllt_stf_ll_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, fdata, cntl)
     
 #else
-    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
+    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, adata, fdata, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #endif
 
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(adata, a%val, keep, cntl, pbl, info)
+    call spllt_ptg_factorize(adata, a%val, keep, cntl, fdata, info)
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -197,7 +197,7 @@ contains
     call starpu_f_task_wait_for_all()
 #if defined(SPLLT_USE_GPU)
     ! put data back on home node e.g. from GPU to CPU
-    call spllt_data_unregister(keep, pbl)
+    call spllt_data_unregister(keep, fdata)
 #endif
     call starpu_f_fxt_stop_profiling()
 #elif defined(SPLLT_USE_OMP)
@@ -272,7 +272,7 @@ contains
     type(spllt_cntl) :: cntl
 
     type(spllt_adata_type) :: adata
-    type(spllt_data_type) :: pbl
+    type(spllt_data_type) :: fdata
     type(spllt_options) :: options
 
     ! mc68
@@ -342,7 +342,7 @@ contains
     write(*,'("[>] analyse")')
 
     ! analysis
-    call spllt_analyse(adata, pbl, a%n, a%ptr, a%row, order, keep, cntl, info)
+    call spllt_analyse(adata, fdata, a%n, a%ptr, a%row, order, keep, cntl, info)
     ! call MA87_analyse(a%n, a%ptr, a%row, order, keep, control, info)
     num_flops = info%num_flops
     if(info%flag .lt. spllt_success) then
@@ -383,9 +383,9 @@ contains
 
     ! factorize matrix
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_OMP) || defined(SPLLT_USE_STARPU) 
-    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, pbl, cntl)
+    call spllt_stf_factorize(a%n, a%ptr, a%row, a%val, order, keep, control, info, fdata, cntl)
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(adata, a%val, keep, cntl, pbl, info)
+    call spllt_ptg_factorize(adata, a%val, keep, cntl, fdata, info)
 #endif
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
     if(info%flag .lt. spllt_success) then

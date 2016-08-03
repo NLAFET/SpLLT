@@ -55,12 +55,14 @@ contains
     integer(long) :: dblk ! diagonal block within block column
     integer :: blkn ! number of columns within block column
     integer :: ci ! do loop variable. current block col.
+    integer :: root_node
 
     type(mc78_control) :: control78
     integer :: par
     integer :: info78
     integer, dimension(:), allocatable :: sptr, sparent, rlist
     integer(long), dimension(:), allocatable :: rptr
+    integer, dimension(:), allocatable :: nchild ! pointer on the nth child in the current node
 
     ! initialise
     info%flag = 0
@@ -130,19 +132,75 @@ contains
     ! Set up nodal data structures
     ! For each node, hold data in keep%nodes(node) 
     deallocate(keep%nodes, stat=st)    
-    allocate(keep%nodes(-1:num_nodes),stat=st)
+    allocate(keep%nodes(-1:num_nodes+1),stat=st)
     if (st /= 0) go to 9999
 
     deallocate(fdata%nodes, stat=st)
-    allocate(fdata%nodes(-1:num_nodes),stat=st)
+    allocate(fdata%nodes(-1:num_nodes+1),stat=st)
     if (st /= 0) go to 9999
 
     keep%nodes(0)%blk_en = 0
     keep%nodes(1)%blk_sa = 1
     keep%nodes(1)%sa = 1
-
+    
     ! loop over root nodes
     keep%nodes(:)%nchild = 0
+    ! setup nchild and child info
+    do node = 1, num_nodes+1
+
+       ! print *, "node: ", node, ", nchild: ", keep%nodes(node)%nchild  
+       par = sparent(node)
+       keep%nodes(node)%parent = par
+       if(par .gt. 0) then
+          keep%nodes(par)%nchild = keep%nodes(par)%nchild + 1
+       else
+          keep%nodes(node)%parent = -1
+       endif
+
+       ! Allocate space to store child nodes
+       allocate(keep%nodes(node)%child(keep%nodes(node)%nchild), stat=st)
+       if(st.ne.0) goto 9999
+    end do
+
+    allocate(nchild(num_nodes+1),stat=st)
+    if (st /= 0) go to 9999
+
+    ! Add children list to nodes, use nchild as a counter
+    nchild(:) = 0
+    do node = 1, num_nodes+1
+       par = sparent(node)
+       ! if(par.gt.num_nodes) cycle
+       if (par .gt. 0) then
+          nchild(par) = nchild(par) + 1
+          keep%nodes(par)%child(nchild(par)) = node
+       end if
+    end do
+
+    ! Setup least descendants, to allow easy walk of subtrees
+    do node = -1, num_nodes
+       ! initialise least descendat to self
+       keep%nodes(node)%least_desc = node
+    end do
+    do node = 1, num_nodes
+       ! walk up tree from leaves. A parent's least descendant is either this
+       ! nodes least descendant (itself in case of a leaf), or its existing
+       ! one if that is smaller.
+       anode = keep%nodes(node)%parent
+       keep%nodes(anode)%least_desc = &
+            min(keep%nodes(node)%least_desc, keep%nodes(anode)%least_desc)
+    end do
+
+    ! prune tree
+    allocate(adata%small(adata%nnodes))
+    if (st /= 0) go to 9999
+    adata%small = 0
+    if (cntl%prune_tree) then
+       ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
+       call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
+       ! call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
+    end if
+
+    ! set up blocking info
     do node = 1, num_nodes
        keep%nodes(node)%sa = sptr(node)
        keep%nodes(node)%en = sptr(node+1)-1
@@ -150,23 +208,19 @@ contains
        fdata%nodes(node)%node => keep%nodes(node)
        fdata%nodes(node)%num = node
        
-       par = sparent(node)
-       keep%nodes(node)%parent = par
-       if(par .le. num_nodes) then
-          keep%nodes(par)%nchild = keep%nodes(par)%nchild + 1
-       else
-          keep%nodes(node)%parent = -1
-       endif
-
        ! determine and record the block size for node
        ! note we are careful in case l_nb**2 overflows (in fact 1+l_nb must
        ! not overflow at the end), and limit the answer to huge(l_nb)/2
-       l_nb = cntl%nb
-       if (l_nb < 1) l_nb = spllt_nb_default
-       ! l_nb = min(huge(l_nb)/2_long, &
-       !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
-       l_nb = (l_nb-1) / 8 + 1
-       l_nb = 8 * l_nb
+       if (adata%small(node) .eq. 0) then
+          l_nb = cntl%nb
+          if (l_nb < 1) l_nb = spllt_nb_default
+          ! l_nb = min(huge(l_nb)/2_long, &
+          !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
+          l_nb = (l_nb-1) / 8 + 1
+          l_nb = 8 * l_nb
+       else
+          l_nb = max(rptr(node+1)-rptr(node), sptr(node+1)-sptr(node))
+       end if
        keep%nodes(node)%nb = l_nb
 
        ! Copy row list into keep%nodes
@@ -177,10 +231,6 @@ contains
           keep%nodes(node)%index(j) = rlist(ii)
           j = j + 1
        end do
-
-       ! Allocate space to store child nodes
-       allocate(keep%nodes(node)%child(keep%nodes(node)%nchild), stat=st)
-       if(st.ne.0) goto 9999
 
        ! Calculate number j of blocks in node and set
        ! keep%nodes(node)%blk_en
@@ -207,43 +257,14 @@ contains
     ! set keep%final_blk to hold total number of blocks.
     keep%final_blk = keep%nodes(num_nodes)%blk_en
 
-    ! Add children to nodes, use sptr as a counter as it has fufilled its purpose
-    sptr(:) = 0
-    do node = 1, num_nodes
-       par = sparent(node)
-       if(par.gt.num_nodes) cycle
-       sptr(par) = sptr(par) + 1
-       keep%nodes(par)%child(sptr(par)) = node
-    end do
-
-    ! Setup least descendants, to allow easy walk of subtrees
-    do node = -1, num_nodes
-       ! initialise least descendat to self
-       keep%nodes(node)%least_desc = node
-    end do
-    do node = 1, num_nodes
-       ! walk up tree from leaves. A parent's least descendant is either this
-       ! nodes least descendant (itself in case of a leaf), or its existing
-       ! one if that is smaller.
-       anode = keep%nodes(node)%parent
-       keep%nodes(anode)%least_desc = &
-            min(keep%nodes(node)%least_desc, keep%nodes(anode)%least_desc)
-    end do
-
-    ! prune tree
-    if (cntl%prune_tree) then
-       ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
-       call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
-    end if
-
-    ! Setup subtrees if required
-    if (cntl%prune_tree) then
-       do node = 1, num_nodes
-          if (adata%small(node) .eq. 1) then
+    ! ! Setup subtrees if required
+    ! if (cntl%prune_tree) then
+    !    do node = 1, num_nodes
+    !       if (adata%small(node) .eq. 1) then
              
-          end if
-       end do
-    end if
+    !       end if
+    !    end do
+    ! end if
 
     !**************************************   
     ! Fill out block information. 
@@ -284,80 +305,151 @@ contains
        ! sz is number of blocks in the current block column
        sz = (numrow - 1) / l_nb + 1
 
-       ! cb is the index of the block col. within node
-       cb = 0
-       col_used = 0
+       if (adata%small(node) .ge. 0) then
 
-       ! Loop over the block columns in node. 
-       do ci = sa, en, l_nb
-          k = 1 ! use k to hold position of block within block column
+          ! cb is the index of the block col. within node
+          cb = 0
+          col_used = 0
+
+          ! Loop over the block columns in node. 
+          do ci = sa, en, l_nb
+             k = 1 ! use k to hold position of block within block column
+             ! increment count of block columns
+             keep%nbcol = keep%nbcol + 1
+
+             cb = cb + 1
+
+             ! blkn is the number of columns in the block column.
+             ! For all but the last block col. blkn = l_nb.
+             blkn = min(l_nb, numcol-col_used)
+             col_used = col_used + blkn
+
+             dblk = blk
+
+#if defined(SPLLT_USE_PARSEC)
+             fdata%diags(keep%nbcol) = dblk
+#endif
+             ! loop over the row blocks (that is, loop over blocks in block col)
+             row_used = 0 
+             do blk = dblk, dblk+sz-1
+                ! store identity of block
+                keep%blocks(blk)%id       = blk
+                !print *, "node ", node, "=> blk", blk
+
+                ! store number of rows in the block.
+                ! For all but the last block, the number of rows is l_nb
+                keep%blocks(blk)%blkm     = min(l_nb, numrow-row_used)
+                row_used = row_used + keep%blocks(blk)%blkm
+
+                ! store number of columns in the block.
+                keep%blocks(blk)%blkn     = blkn
+
+                keep%maxmn = max(keep%maxmn, &
+                     keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
+
+                ! store position of the first entry of the block within the
+                ! block column of L
+                keep%blocks(blk)%sa       = k
+
+                ! store identity of diagonal block within current block column
+                keep%blocks(blk)%dblk     = dblk
+
+                ! store identity of last block within current block column
+                keep%blocks(blk)%last_blk = dblk + sz - 1
+
+                ! store node the blk belongs to
+                keep%blocks(blk)%node     = node
+
+                ! initialise dependency count
+                keep%blocks(blk)%dep_initial = cb
+
+                ! store identity of block column that blk belongs to
+                keep%blocks(blk)%bcol     = keep%nbcol
+
+                !$          call omp_init_lock(keep%blocks(blk)%lock)
+                !$          call omp_init_lock(keep%blocks(blk)%alock)
+
+                ! increment k by number of entries in block
+                k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
+
+             end do
+
+             ! Diagonal block has no dependency for factor(dblk)
+             keep%blocks(dblk)%dep_initial = cb - 1 
+
+             ! decrement number of row blocks and rows in next block column
+             sz = sz - 1
+             numrow = numrow - l_nb
+          end do
+
+       else
+          ! In a subtree, put all entries for a node in a single block
+          ! TODO error managment
+          if(sz.ne.1) then
+             print *, "ERROR: Subtree node should only ever be a single block!"
+             stop -1
+          endif
+
+          if (adata%small(node) .eq. 1) then 
+             root_node = node ! the root is the node himself when small equal to 1
+          else
+             root_node = -adata%small(node)
+          end if
+
+          if(node .eq. keep%nodes(root_node)%least_desc) then
+             ! First node of subtree, all to be in the same bcol array space
+             k = 1 ! Position within lfact(bcol)%lcol array for start of node
+          endif
+
           ! increment count of block columns
+          k = 1 ! FIXME delete (+repoint at lcol, not a subsection, FIXME below)
           keep%nbcol = keep%nbcol + 1
-
-          cb = cb + 1
 
           ! blkn is the number of columns in the block column.
           ! For all but the last block col. blkn = l_nb.
-          blkn = min(l_nb, numcol-col_used)
-          col_used = col_used + blkn
+          blkn = numcol
 
           dblk = blk
 
-#if defined(SPLLT_USE_PARSEC)
-          fdata%diags(keep%nbcol) = dblk
-#endif
-          ! loop over the row blocks (that is, loop over blocks in block col)
-          row_used = 0 
-          do blk = dblk, dblk+sz-1
-             ! store identity of block
-             keep%blocks(blk)%id       = blk
-             !print *, "node ", node, "=> blk", blk
+          ! store identity of block
+          keep%blocks(blk)%id       = blk
 
-             ! store number of rows in the block.
-             ! For all but the last block, the number of rows is l_nb
-             keep%blocks(blk)%blkm     = min(l_nb, numrow-row_used)
-             row_used = row_used + keep%blocks(blk)%blkm
+          ! store number of rows in the block.
+          ! For all but the last block, the number of rows is l_nb
+          keep%blocks(blk)%blkm     = numrow
 
-             ! store number of columns in the block.
-             keep%blocks(blk)%blkn     = blkn
+          ! store number of columns in the block.
+          keep%blocks(blk)%blkn     = blkn
 
-             keep%maxmn = max(keep%maxmn, &
-                  keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
+          keep%maxmn = max(keep%maxmn, &
+               keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
 
-             ! store position of the first entry of the block within the
-             ! block column of L
-             keep%blocks(blk)%sa       = k
+          ! store position of the first entry of the block within the
+          ! block column of L
+          keep%blocks(blk)%sa       = k
 
-             ! store identity of diagonal block within current block column
-             keep%blocks(blk)%dblk     = dblk
+          ! store identity of diagonal block within current block column
+          keep%blocks(blk)%dblk     = dblk
 
-             ! store identity of last block within current block column
-             keep%blocks(blk)%last_blk = dblk + sz - 1
+          ! store identity of last block within current block column
+          keep%blocks(blk)%last_blk = dblk + sz - 1
 
-             ! store node the blk belongs to
-             keep%blocks(blk)%node     = node
+          ! store node the blk belongs to
+          keep%blocks(blk)%node     = node
 
-             ! initialise dependency count
-             keep%blocks(blk)%dep_initial = cb
+          ! store identity of block column that blk belongs to
+          keep%blocks(blk)%bcol     = keep%nbcol
 
-             ! store identity of block column that blk belongs to
-             keep%blocks(blk)%bcol     = keep%nbcol
+          ! increment k by number of entries in block
+          k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
 
-             !$          call omp_init_lock(keep%blocks(blk)%lock)
-             !$          call omp_init_lock(keep%blocks(blk)%alock)
-
-             ! increment k by number of entries in block
-             k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
-
-          end do
+          blk = dblk + 1
 
           ! Diagonal block has no dependency for factor(dblk)
-          keep%blocks(dblk)%dep_initial = cb - 1 
+          keep%blocks(dblk)%dep_initial = 0
 
-          ! decrement number of row blocks and rows in next block column
-          sz = sz - 1
-          numrow = numrow - l_nb
-       end do
+       end if
+
     end do
 
     allocate (map(n),stat=st)
@@ -621,7 +713,7 @@ contains
     use spllt_utils_mod
     use hsl_ma87_double
     implicit none
-
+    
     type(spllt_adata_type), intent(inout) :: adata
     integer, dimension(:), intent(inout) :: sparent ! atree
     integer :: nth ! number of workers
@@ -638,7 +730,7 @@ contains
     integer(long), allocatable :: lzero_w(:), proc_w(:)
     logical                         :: found
 
-    allocate(adata%small(adata%nnodes))
+    write(*,*)'[analysis][prune_tree] nth: ', nth
     
     allocate(lzero_w (adata%nnodes))
     allocate(lzero   (adata%nnodes))
@@ -658,22 +750,29 @@ contains
     ! initialize the l0 layer with the root nodes
     nlz = 0
 
-    do node = 1, adata%nnodes
-          ! write(*,*) 'node: ', node, ', weight: ', adata%weight(node)
-       if (sparent(node) .gt. adata%nnodes) then
-          write(*,*) 'weight: ', real(adata%weight(node), kind(1.d0))
-          write(*,*) 'thresh: ', smallth*real(totflops, kind(1.d0))
-          if(real(adata%weight(node), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
-             nlz = nlz+1
-             lzero(nlz) = node
-             lzero_w(nlz) = -adata%weight(node)
-             write(*,*) 'node: ', node,', weight: ', adata%weight(node)
-          else
-             adata%small(node) = 1 ! node is too small; mark it
-          end if
-       end if
-       if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
-    end do
+    ! do node = 1, adata%nnodes+1
+    !    write(*,*) 'node: ', node, ', weight: ', adata%weight(node)
+    !    if (sparent(node) .gt. adata%nnodes) then
+    !    ! if (sparent(node) .le. 0) then
+    !       ! write(*,*) 'weight: ', real(adata%weight(node), kind(1.d0))
+    !       ! write(*,*) 'thresh: ', smallth*real(totflops, kind(1.d0))
+    !       if(real(adata%weight(node), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
+    !          nlz = nlz+1
+    !          lzero(nlz) = node
+    !          lzero_w(nlz) = -adata%weight(node)
+    !          write(*,*) 'node: ', node,', weight: ', adata%weight(node)
+    !       else
+    !          adata%small(node) = 1 ! node is too small; mark it
+    !       end if
+    !    end if
+    !    if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
+    ! end do
+
+    node = adata%nnodes+1 ! root node (symbolic)
+    nlz = nlz+1
+    lzero(nlz) = node
+    lzero_w(nlz) = -adata%weight(node)
+    if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
 
     leaves = 0
 
@@ -803,7 +902,9 @@ contains
 
     end do
     ! write(*,*) 'symbolic totflops: ', adata%weight(nnodes+1)
-    
+
+    print *, "root weight: ", adata%weight(nnodes+1)
+
     return
   end subroutine spllt_symbolic
 

@@ -4,7 +4,7 @@ contains
 
   ! STF-based Cholesky factorization
   ! right-looking variant for the task submission 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, adata, fdata, cntl)
     use spllt_data_mod
     use spllt_error_mod
     use hsl_ma87_double
@@ -30,6 +30,7 @@ contains
     type(MA87_control), intent(in) :: control 
     type(MA87_info), intent(out) :: info 
 
+    type(spllt_adata_type), target :: adata
     type(spllt_data_type), target :: fdata
     type(spllt_cntl)      :: cntl
 
@@ -80,6 +81,8 @@ contains
     ! nodes(snode)%index(cptr).
     ! integer(long) :: rb ! Index of block row in snode
 
+    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+
 #if defined(SPLLT_USE_OMP)
     integer :: nt
 #endif
@@ -96,6 +99,10 @@ contains
     blocks => keep%blocks
     nodes  => keep%nodes
     num_nodes = keep%info%num_nodes
+
+    if (cntl%prune_tree) then
+       allocate(buffer(1))
+    end if
 
     ! init facto, allocate map array, factor blocks
     call spllt_factorization_init(fdata, map, keep)    
@@ -147,15 +154,30 @@ contains
 
     ! factorize nodes
     do snode = 1, num_nodes
-#if defined(SPLLT_USE_NESTED_STF)
-       ! prio = 5 ! max priority 
-       prio = -5 ! min priority 
-       ! prio = huge(1)
 
-       call spllt_factorize_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
+       if (adata%small(snode) .lt. 0) cycle
+       if (adata%small(snode) .eq. 1) then
+
+          ! subtree factorization task
+          call spllt_factor_subtree_task(snode, keep, buffer)
+
+          ! Expand generated element out to ancestors
+          call spllt_apply_subtree(snode, buffer, keep%nodes, keep%blocks, keep%lfact, map)
+
+       else
+          ! if (adata%small())
+#if defined(SPLLT_USE_NESTED_STF)
+          ! prio = 5 ! max priority 
+          prio = -5 ! min priority 
+          ! prio = huge(1)
+
+          call spllt_factorize_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
 #else
-       call spllt_factorize_node(fdata%nodes(snode), map, fdata, keep, control)          
+          call spllt_factorize_node(fdata%nodes(snode), map, fdata, keep, control)          
 #endif
+
+       end if
+
     end do
 
 ! #if defined(SPLLT_USE_STARPU) && defined(SPLLT_USE_NESTED_STF)

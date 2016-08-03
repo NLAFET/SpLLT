@@ -4,6 +4,34 @@ module spllt_factorization_task_mod
   
 contains
 
+  subroutine spllt_factor_subtree_task(root, keep, buffer)
+    use hsl_ma87_double
+    use spllt_kernels_mod
+    implicit none
+
+    integer, intent(in) :: root
+    type(MA87_keep), target, intent(inout) :: keep
+    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+
+    type(node_type), pointer :: node ! node in the atree    
+    integer :: m, n, blk
+
+    node => keep%nodes(root)
+    blk = node%blk_sa
+
+    m = keep%blocks(blk)%blkm
+    n = keep%blocks(blk)%blkn
+
+    if (size(buffer).lt.(m-n)**2) then
+       deallocate(buffer)
+       allocate(buffer((m-n)**2))
+    end if
+
+    ! perform factorization of subtree rooted at snode
+    call spllt_factor_subtree(root, keep%nodes, keep%blocks, keep%lfact, buffer)
+ 
+  end subroutine spllt_factor_subtree_task
+
 #if defined(SPLLT_USE_STARPU)
   ! deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
