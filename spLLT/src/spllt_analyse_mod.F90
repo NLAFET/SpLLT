@@ -211,16 +211,16 @@ contains
        ! determine and record the block size for node
        ! note we are careful in case l_nb**2 overflows (in fact 1+l_nb must
        ! not overflow at the end), and limit the answer to huge(l_nb)/2
-       if (adata%small(node) .eq. 0) then
-          l_nb = cntl%nb
-          if (l_nb < 1) l_nb = spllt_nb_default
-          ! l_nb = min(huge(l_nb)/2_long, &
-          !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
-          l_nb = (l_nb-1) / 8 + 1
-          l_nb = 8 * l_nb
-       else
-          l_nb = max(rptr(node+1)-rptr(node), sptr(node+1)-sptr(node))
-       end if
+       ! if (adata%small(node) .eq. 0) then
+       l_nb = cntl%nb
+       if (l_nb < 1) l_nb = spllt_nb_default
+       ! l_nb = min(huge(l_nb)/2_long, &
+       !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
+       l_nb = (l_nb-1) / 8 + 1
+       l_nb = 8 * l_nb
+       ! else
+       ! l_nb = max(rptr(node+1)-rptr(node), sptr(node+1)-sptr(node))
+       ! end if
        keep%nodes(node)%nb = l_nb
 
        ! Copy row list into keep%nodes

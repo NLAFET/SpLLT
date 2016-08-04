@@ -159,7 +159,8 @@ contains
        if (adata%small(snode) .eq. 1) then
 
           ! subtree factorization task
-          call spllt_factor_subtree_task(snode, keep, buffer)
+          ! call spllt_factor_subtree_task(snode, keep, buffer)
+          call spllt_subtree_factorize_task(snode, keep, buffer, control)
 
           ! Expand generated element out to ancestors
           call spllt_apply_subtree(snode, buffer, keep%nodes, keep%blocks, keep%lfact, map)
@@ -171,9 +172,9 @@ contains
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
+          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
 #else
-          call spllt_factorize_node(fdata%nodes(snode), map, fdata, keep, control)          
+          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, keep, control)          
 #endif
 
        end if

@@ -28,7 +28,7 @@ module spllt_factorization_mod
 contains
 
 #if defined(SPLLT_USE_STARPU)
-  subroutine spllt_factorize_node_task(snode, fdata, keep, control, prio)
+  subroutine spllt_factorize_apply_node_task(snode, fdata, keep, control, prio)
     use iso_c_binding
     use hsl_ma87_double
     use starpu_f_mod
@@ -72,7 +72,7 @@ contains
 
     deallocate(cnode_handles)
 
-  end subroutine spllt_factorize_node_task
+  end subroutine spllt_factorize_apply_node_task
 
   ! factorize node StarPU task
   subroutine spllt_starpu_factorize_node_cpu_func(buffers, cl_arg) bind(C)
@@ -110,7 +110,7 @@ contains
 
     ! write(*,*)"num", snode%num
 
-    call spllt_factorize_node(snode, map, fdata, keep, control)
+    call spllt_factorize_apply_node(snode, map, fdata, keep, control)
 
     ! deallocate(map)
 
@@ -268,9 +268,102 @@ contains
 
   end subroutine spllt_factorization_fini
 
+  subroutine spllt_factorize_node(snode, fdata, keep)
+    use spllt_data_mod
+    use hsl_ma87_double
+    use spllt_factorization_task_mod
+    implicit none
+
+    type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
+    type(spllt_data_type), target, intent(inout)        :: fdata
+    type(MA87_keep), target, intent(inout)              :: keep 
+
+    type(node_type), pointer :: node ! node to factorize (hsl_ma87)
+    integer :: prio ! task priority
+    integer :: sa ! first column 
+    integer :: en ! last column
+    integer :: numcol ! number of columns in node 
+    integer :: numrow ! number of rows in node 
+    integer :: nc ! number of block columns
+    integer :: nr ! number of block rows
+    integer(long) :: dblk ! diagonal block
+    integer :: s_nb ! block size
+    integer :: ii, jj, kk ! indexes 
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
+    integer(long) :: blk, blk1, blk2 ! block id
+    
+    node => snode%node
+
+    ! node priority
+    ! num_nodes = keep%info%num_nodes
+    ! snum = snode%num 
+    ! prio = (num_nodes - snum + 1)*4
+    prio = 0
+
+    ! initialize node data
+    sa = node%sa
+    en = node%en
+    numcol = en - sa + 1
+    numrow = size(node%index)
+
+    ! s_nb is the size of the blocks
+    s_nb = node%nb
+
+    nc = (numcol-1) / s_nb + 1 
+    nr = (numrow-1) / s_nb + 1 
+
+    ! first block in node
+    dblk = node%blk_sa
+
+    do kk = 1, nc
+       ! write(*,*)"kk: ", kk
+       ! A_kk
+       bc_kk => fdata%bc(dblk)
+       call spllt_factorize_block_task(fdata, snode, bc_kk, keep%lfact, prio+3)
+
+       ! loop over the row blocks (that is, loop over blocks in block col)
+       do ii = kk+1,nr
+          ! do ii = nr,kk+1,-1             
+          ! A_mk
+          blk = dblk+ii-kk
+          ! bc_ik => keep%blocks(blk)
+          bc_ik => fdata%bc(blk)
+          ! write(*,*)"ii: ", ii
+          call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
+       end do
+
+       ! perform update operations within node
+       do jj = kk+1,nc
+
+          ! L_jk
+          blk2 = dblk+jj-kk
+          bc_jk => fdata%bc(blk2)
+
+          do ii = jj,nr
+
+             ! L_ik
+             blk1 = dblk+ii-kk                
+             bc_ik => fdata%bc(blk1)
+
+             ! A_ij
+             ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+             blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
+             bc_ij => fdata%bc(blk)
+             call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+
+          end do
+       end do
+
+       ! move to next block column in snode
+       dblk = keep%blocks(dblk)%last_blk + 1
+       ! numrow = numrow - s_nb
+    end do
+
+  end subroutine spllt_factorize_node
+
   ! node factorization
   ! Submit the DAG for the factorization of a node
-  subroutine spllt_factorize_node(snode, map, fdata, keep, control)
+  subroutine spllt_factorize_apply_node(snode, map, fdata, keep, control)
     use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
@@ -320,16 +413,12 @@ contains
     ! write(*,*) "---------- node ----------"
     ! write(*,*) 'snode: ', snode 
 
-    num_nodes = keep%info%num_nodes
-    snum = snode%num 
+    ! perform blocked cholesky factorizaton on node
+    call spllt_factorize_node(snode, fdata, keep)
 
+    ! update between
     node => snode%node
 
-    ! node priority
-    ! prio = (num_nodes - snum + 1)*4
-    prio = 0
-
-    ! initialize node data
     sa = node%sa
     en = node%en
     numcol = en - sa + 1
@@ -340,58 +429,6 @@ contains
 
     nc = (numcol-1) / s_nb + 1 
     nr = (numrow-1) / s_nb + 1 
-
-    ! write(*,'("numrow,numcol = ",i5,i5)')numrow, numcol
-    ! write(*,'("nr,nc = ",i5,i5)')nr, nc
-
-    ! first block in node
-    dblk = node%blk_sa
-
-    do kk = 1, nc
-       ! write(*,*)"kk: ", kk
-       ! A_kk
-       bc_kk => fdata%bc(dblk)
-       call spllt_factorize_block_task(fdata, snode, bc_kk, keep%lfact, prio+3)
-
-       ! loop over the row blocks (that is, loop over blocks in block col)
-       do ii = kk+1,nr
-          ! do ii = nr,kk+1,-1             
-          ! A_mk
-          blk = dblk+ii-kk
-          ! bc_ik => keep%blocks(blk)
-          bc_ik => fdata%bc(blk)
-          ! write(*,*)"ii: ", ii
-          call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
-       end do
-
-
-       do jj = kk+1,nc
-
-          ! L_jk
-          blk2 = dblk+jj-kk
-          bc_jk => fdata%bc(blk2)
-
-          do ii = jj,nr
-
-             ! L_ik
-             blk1 = dblk+ii-kk                
-             bc_ik => fdata%bc(blk1)
-
-             ! A_ij
-             ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
-             blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
-             bc_ij => fdata%bc(blk)
-             call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
-
-          end do
-       end do
-
-       ! move to next block column in snode
-       dblk = keep%blocks(dblk)%last_blk + 1
-       ! numrow = numrow - s_nb
-    end do
-
-    ! update between
 
     !  Loop over ancestors of snode
     a_num = node%parent  
@@ -520,6 +557,6 @@ contains
     end do
 
     return
-  end subroutine spllt_factorize_node
+  end subroutine spllt_factorize_apply_node
 
 end module spllt_factorization_mod

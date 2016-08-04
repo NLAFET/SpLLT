@@ -3,6 +3,402 @@ module spllt_kernels_mod
 
 contains
 
+  ! kernel for the factorization of a node within a subtree
+  subroutine spllt_subtree_factorize_node(node, blocks, lfact)
+    use spllt_data_mod
+    use hsl_ma87_double
+    implicit none
+
+    ! type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
+    type(node_type), target, intent(inout)        :: node ! node to factorize (ma87)    
+    type(block_type), dimension(*), intent(in)          :: blocks
+    type(lfactor), dimension(*), intent(inout)          :: lfact
+
+    integer :: prio ! task priority
+    integer :: sa ! first column 
+    integer :: en ! last column
+    integer :: numcol ! number of columns in node 
+    integer :: numrow ! number of rows in node 
+    integer :: nc ! number of block columns
+    integer :: nr ! number of block rows
+    integer(long) :: dblk ! diagonal block
+    integer :: s_nb ! block size
+    integer :: ii, jj, kk ! indexes 
+    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
+    integer(long) :: blk, blk1, blk2 ! block id
+
+    integer :: m, n, bcol 
+    integer :: m1, n1, sa1, bcol1 
+    integer :: m2, n2, sa2, bcol2 
+    integer :: d_m, d_n, d_sa, d_bcol 
+    logical :: is_diag
+
+    ! node => snode%node
+
+    ! node priority
+    ! num_nodes = keep%info%num_nodes
+    ! snum = snode%num 
+    ! prio = (num_nodes - snum + 1)*4
+    prio = 0
+
+    ! initialize node data
+    sa = node%sa
+    en = node%en
+    numcol = en - sa + 1
+    numrow = size(node%index)
+
+    ! s_nb is the size of the blocks
+    s_nb = node%nb
+
+    nc = (numcol-1) / s_nb + 1 
+    nr = (numrow-1) / s_nb + 1 
+
+    ! first block in node
+    dblk = node%blk_sa
+
+    do kk = 1, nc
+       ! A_kk
+
+       d_m    = blocks(dblk)%blkm
+       d_n    = blocks(dblk)%blkn
+       bcol   = blocks(dblk)%bcol
+       
+       d_sa   = blocks(dblk)%sa
+
+       ! call spllt_factorize_block_task(fdata, snode, bc_kk, keep%lfact, prio+3)
+       call spllt_factor_diag_block(d_m, d_n, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m-1))
+
+       ! loop over the row blocks (that is, loop over blocks in block col)
+       do ii = kk+1,nr
+          ! do ii = nr,kk+1,-1             
+          ! A_mk
+          blk = dblk+ii-kk
+          ! bc_ik => keep%blocks(blk)
+          ! bc_ik => fdata%bc(blk)
+          ! write(*,*)"ii: ", ii
+          ! call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
+          m  = blocks(blk)%blkm
+          n  = blocks(blk)%blkn
+          sa = blocks(blk)%sa
+
+          call spllt_solve_block(m, n, &
+               & lfact(bcol)%lcol(sa:sa+n*m-1), & 
+               & lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m))
+       end do
+
+       ! perform update operations within node
+       do jj = kk+1,nc
+
+          ! L_jk
+          blk2 = dblk+jj-kk
+          ! bc_jk => fdata%bc(blk2)
+          n2  = blocks(blk2)%blkn
+          m2  = blocks(blk2)%blkm
+          sa2 = blocks(blk2)%sa
+
+          do ii = jj,nr
+
+             ! L_ik
+             blk1 = dblk+ii-kk                
+             ! bc_ik => fdata%bc(blk1)
+             n1    = blocks(blk1)%blkn
+             m1    = blocks(blk1)%blkm
+             sa1   = blocks(blk1)%sa
+             bcol1 = blocks(blk1)%bcol
+
+             ! A_ij
+             ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
+             blk = get_dest_block(blocks(blk2), blocks(blk1))
+             ! bc_ij => fdata%bc(blk)
+             ! call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+             n  = blocks(blk)%blkn
+             m  = blocks(blk)%blkm
+             sa = blocks(blk)%sa
+
+             bcol = blocks(blk)%bcol
+             
+             call spllt_update_block(m, n, &
+                  & lfact(bcol)%lcol(sa:sa+n*m-1), &
+                  & blocks(blk)%dblk.eq.blocks(blk)%id, n1, &
+                  & lfact(bcol1)%lcol(sa2:sa2+n1*m2-1), &
+                  & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1))
+
+          end do
+       end do
+
+       ! move to next block column in snode
+       dblk = blocks(dblk)%last_blk + 1
+       ! numrow = numrow - s_nb
+    end do
+
+  end subroutine spllt_subtree_factorize_node
+
+  ! kernel for applying update on nodes within a subtree
+  subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, &
+       & map, row_list, col_list, workspace, control)
+    use spllt_data_mod
+    use hsl_ma87_double
+    implicit none
+
+    type(node_type), intent(in) :: node
+    integer, intent(in) :: root ! root node in the subtree
+    type(node_type), dimension(-1:), target, intent(in) :: nodes
+    type(block_type), dimension(*), intent(in)          :: blocks
+    type(lfactor), dimension(*), intent(inout)          :: lfact
+    integer, pointer :: map(:)
+    integer, pointer :: row_list(:), col_list(:)
+    real(wp), pointer :: workspace(:)
+    type(MA87_control), intent(in) :: control
+
+
+    integer :: numcol, numrow
+    integer :: s_nb ! block size of source node
+    integer :: sa, en
+    type(node_type), pointer :: anode ! ancestor node in the atree
+    ! locate source blocks
+    integer :: a_num ! ancestor id
+    integer :: cptr  ! Position in snode of the first row 
+    ! matching a column of the current block column of anode.
+    integer :: cptr2  ! Position in snode of the last row 
+    ! matching a column of the current block column of anode.
+    logical :: map_done
+    integer :: i, ilast
+    ! type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
+    integer :: cb, jb
+    integer :: jlast ! Last column in the cb-th block column of anode
+    integer :: k
+    integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
+    integer :: m, n
+    integer(long) :: id
+    integer :: csrc, csrc2, rsrc, rsrc2
+    integer :: n1
+    integer :: bcol, bcol1
+    integer(long) :: dblk
+    integer :: dcol, scol
+    integer :: ii, kk ! indexes
+    integer :: nc, nr
+
+
+    ! update between
+
+    sa = node%sa
+    en = node%en
+    numcol = en - sa + 1
+    numrow = size(node%index)
+
+    ! s_nb is the size of the blocks
+    s_nb = node%nb
+
+    nc = (numcol-1) / s_nb + 1 
+    nr = (numrow-1) / s_nb + 1 
+
+    !  Loop over ancestors of snode
+    a_num = node%parent  
+    !  Initialize cptr to correspond to the first row of the rectangular part of 
+    !  the snode matrix.
+    cptr = 1 + numcol
+    ! write(*,*)"numrow: ", numrow
+    do while(a_num.gt.0)
+       anode => nodes(a_num) 
+       ! a_node => fdata%nodes(a_num)
+       ! Skip columns that come from other children
+       do cptr = cptr, numrow
+          if(node%index(cptr).ge.anode%sa) exit
+       end do
+       if(cptr.gt.numrow) exit ! finished with node
+
+       map_done = .false. ! We will only build a map when we need it
+
+       ! Loop over affected block columns of anode
+       bcols: do
+          if(cptr.gt.numrow) exit
+          if(node%index(cptr).gt.anode%en) exit
+
+          ! compute local index of block column in anode and find the id of 
+          ! its diagonal block
+          cb = (node%index(cptr) - anode%sa)/anode%nb + 1
+          a_dblk = anode%blk_sa
+          do jb = 2, cb
+             a_dblk = blocks(a_dblk)%last_blk + 1
+          end do
+
+          ! Find cptr2
+          jlast = min(anode%sa + cb*anode%nb - 1, anode%en)
+          do cptr2 = cptr,numrow
+             if(node%index(cptr2) > jlast) exit
+          end do
+          cptr2 = cptr2 - 1
+          ! write(*,*)"j: ", nodes(snode)%index(cptr), ", jlast: ", nodes(snode)%index(cptr2)
+          ! Set info for source block csrc (hold start location
+          ! and number of entries)
+
+          ! csrc(1) = 1 + (cptr-(kk-1)*node%nb-1)*blocks(bc_kk%blk%id)%blkn
+          ! csrc(2) = (cptr2 - cptr + 1)*blocks(bc_kk%blk%id)%blkn
+
+          ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
+          ! Build a map of anode's blocks if this is first for anode
+          if(.not.map_done) call spllt_build_rowmap(anode, map) 
+          ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
+
+          ! Loop over the blocks of snode
+          ii = map(node%index(cptr)) 
+          ! ii = -1 
+          ilast = cptr ! Set start of current block
+
+          do i = cptr, numrow
+             k = map(node%index(i))
+
+             if(k.ne.ii) then
+                a_blk = a_dblk + ii - cb
+                ! a_bc => keep%blocks(a_blk)
+                ! a_bc => fdata%bc(a_blk)
+
+                m  = blocks(a_blk)%blkm
+                n  = blocks(a_blk)%blkn
+                id = blocks(a_blk)%id
+                sa = blocks(a_blk)%sa
+
+                ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+                ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
+
+                dblk = node%blk_sa
+                ! Loop over the block columns in node. 
+                do kk = 1, nc
+
+                   ! bc_kk => fdata%bc(dblk)
+
+                   n1 = blocks(dblk)%blkn
+                   
+                   csrc  = 1 + (cptr-(kk-1)*s_nb-1)*n1
+                   csrc2 = (cptr2 - cptr + 1)*n1
+
+                   rsrc  = 1 + (ilast-(kk-1)*s_nb-1)*n1
+                   rsrc2 = (i - ilast)*n1
+
+                   bcol1 = blocks(dblk)%bcol
+                   scol = bcol1 - blocks(node%blk_sa)%bcol + 1
+                   
+                   bcol = blocks(a_blk)%bcol
+                   dcol = bcol - blocks(anode%blk_sa)%bcol + 1
+
+                   call spllt_update_between(m, n, blocks(a_blk), dcol, anode, &
+                        & n1, scol, node, &
+                        & lfact(bcol)%lcol(sa:sa+m*n-1), &
+                        & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
+                        & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
+                        & row_list, col_list, workspace, &
+                        & control%min_width_blas)
+
+                   dblk = blocks(dblk)%last_blk + 1
+                end do
+
+                ii = k
+                ilast = i ! Update start of current block
+             end if
+          end do
+
+          ! i = min(i,numrow)
+          a_blk = a_dblk + ii - cb
+          ! a_bc => keep%blocks(a_blk)
+          ! a_bc => fdata%bc(a_blk
+          m  = blocks(a_blk)%blkm
+          n  = blocks(a_blk)%blkn
+          id = blocks(a_blk)%id
+          sa = blocks(a_blk)%sa
+
+          ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
+          ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
+
+          dblk = node%blk_sa
+          ! Loop over the block columns in node. 
+          do kk = 1, nc
+
+             ! bc_kk => fdata%bc(dblk)
+
+             n1 = blocks(dblk)%blkn
+
+             csrc  = 1 + (cptr-(kk-1)*s_nb-1)*n1
+             csrc2 = (cptr2 - cptr + 1)*n1
+
+             rsrc  = 1 + (ilast-(kk-1)*s_nb-1)*n1
+             rsrc2 = (i - ilast)*n1
+
+             bcol1 = blocks(dblk)%bcol
+             scol = bcol1 - blocks(node%blk_sa)%bcol + 1
+
+             bcol = blocks(a_blk)%bcol
+             dcol = bcol - blocks(anode%blk_sa)%bcol + 1
+
+             call spllt_update_between(m, n, blocks(a_blk), dcol, anode, &
+                  & n1, scol, node, &
+                  & lfact(bcol)%lcol(sa:sa+m*n-1), &
+                  & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
+                  & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
+                  & row_list, col_list, workspace, &
+                  & control%min_width_blas)
+
+             dblk = blocks(dblk)%last_blk + 1
+          end do
+
+          ! Move cptr down, ready for next block column of anode
+          cptr = cptr2 + 1
+       end do bcols
+
+       a_num = anode%parent
+    end do
+
+    
+  end subroutine spllt_subtree_apply_node
+
+  subroutine spllt_subtree_factorize(root, keep, buffer, control)
+    use spllt_data_mod
+    use hsl_ma87_double
+    implicit none
+    
+    integer, intent(in) :: root ! root of subtree
+    type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
+    real(wp), dimension(:), allocatable, intent(inout) :: buffer
+    type(MA87_control), intent(in) :: control
+    ! integer, intent(out) :: flag ! TODO error managment
+
+    integer :: node, m, n
+    type(node_type), pointer :: snode
+    integer(long) :: blk
+    ! workspaces
+    integer, pointer :: row_list(:), col_list(:)
+    real(wp), pointer :: workspace(:)
+    integer, pointer :: map(:)
+
+    blk = keep%nodes(root)%blk_sa
+    m = keep%blocks(blk)%blkm
+    n = keep%blocks(blk)%blkn
+    buffer(1:(m-n)**2) = 0.0
+
+    ! allocate workspaces
+    ! TODO use workspaces that are initialized in init routine
+    allocate(row_list(keep%maxmn))
+    allocate(col_list(keep%maxmn))
+    allocate(workspace(keep%maxmn*keep%maxmn))
+    allocate(map(keep%n))
+
+    ! Loop over nodes of tree in order
+    do node = keep%nodes(root)%least_desc, root
+       
+       snode => keep%nodes(node)
+       ! factorize supernode
+       call spllt_subtree_factorize_node(snode, keep%blocks, keep%lfact)
+       ! apply udpate on ancestor node (right-looking update)
+       call spllt_subtree_apply_node(snode, root, keep%nodes, keep%blocks, keep%lfact, &
+            & map, row_list, col_list, workspace, control)
+    end do
+
+    ! deallocate workspaces
+    deallocate(row_list, col_list)
+    deallocate(workspace)
+    deallocate(map)
+
+  end subroutine spllt_subtree_factorize
+  
   subroutine spllt_factor_subtree(root, nodes, blocks, lfact, buffer)
     use spllt_data_mod
     use hsl_ma87_double
