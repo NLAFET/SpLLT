@@ -34,6 +34,8 @@ contains
     !      end do
     !   end do
 
+    ! print *, "factor_subtree, root: ", root
+    
     ! Ensure buffer is sufficiently large, then zero out
     blk = nodes(root)%blk_sa
     m = blocks(blk)%blkm
@@ -49,9 +51,10 @@ contains
        bcol = blocks(blk)%bcol
        sa = blocks(blk)%sa
        id = blocks(blk)%id
-
+       ! print *, "node: ", node, ", blk: ", blk
        ! Factor node
-       call spllt_factor_diag_block(n, m, lfact(bcol)%lcol(sa:sa+n*m-1))
+       ! print *, "node: ", node, ", m: ", m, ", n: ", n
+       call spllt_factor_diag_block(m, n, lfact(bcol)%lcol(sa:sa+n*m-1))
 
        ! Apply updates
        ! First, within subtree
@@ -123,10 +126,10 @@ contains
           end do
        end do
     end do
-    !print *, "Finally, buffer = "
-    !do i = 1, m-n
+    ! print *, "Finally, buffer = "
+    ! do i = 1, m-n
     !   print "(i3,a,10es10.2)", i, ":", buffer((i-1)*(m-n)+1:i*(m-n))
-    !end do
+    ! end do
   end subroutine spllt_factor_subtree
 
   ! Apply updates from subtree's generated element to its ancestors

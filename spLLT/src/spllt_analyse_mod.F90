@@ -305,150 +305,150 @@ contains
        ! sz is number of blocks in the current block column
        sz = (numrow - 1) / l_nb + 1
 
-       if (adata%small(node) .ge. 0) then
+       ! if (adata%small(node) .ge. 0) then
 
-          ! cb is the index of the block col. within node
-          cb = 0
-          col_used = 0
+       ! cb is the index of the block col. within node
+       cb = 0
+       col_used = 0
 
-          ! Loop over the block columns in node. 
-          do ci = sa, en, l_nb
-             k = 1 ! use k to hold position of block within block column
-             ! increment count of block columns
-             keep%nbcol = keep%nbcol + 1
-
-             cb = cb + 1
-
-             ! blkn is the number of columns in the block column.
-             ! For all but the last block col. blkn = l_nb.
-             blkn = min(l_nb, numcol-col_used)
-             col_used = col_used + blkn
-
-             dblk = blk
-
-#if defined(SPLLT_USE_PARSEC)
-             fdata%diags(keep%nbcol) = dblk
-#endif
-             ! loop over the row blocks (that is, loop over blocks in block col)
-             row_used = 0 
-             do blk = dblk, dblk+sz-1
-                ! store identity of block
-                keep%blocks(blk)%id       = blk
-                !print *, "node ", node, "=> blk", blk
-
-                ! store number of rows in the block.
-                ! For all but the last block, the number of rows is l_nb
-                keep%blocks(blk)%blkm     = min(l_nb, numrow-row_used)
-                row_used = row_used + keep%blocks(blk)%blkm
-
-                ! store number of columns in the block.
-                keep%blocks(blk)%blkn     = blkn
-
-                keep%maxmn = max(keep%maxmn, &
-                     keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
-
-                ! store position of the first entry of the block within the
-                ! block column of L
-                keep%blocks(blk)%sa       = k
-
-                ! store identity of diagonal block within current block column
-                keep%blocks(blk)%dblk     = dblk
-
-                ! store identity of last block within current block column
-                keep%blocks(blk)%last_blk = dblk + sz - 1
-
-                ! store node the blk belongs to
-                keep%blocks(blk)%node     = node
-
-                ! initialise dependency count
-                keep%blocks(blk)%dep_initial = cb
-
-                ! store identity of block column that blk belongs to
-                keep%blocks(blk)%bcol     = keep%nbcol
-
-                !$          call omp_init_lock(keep%blocks(blk)%lock)
-                !$          call omp_init_lock(keep%blocks(blk)%alock)
-
-                ! increment k by number of entries in block
-                k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
-
-             end do
-
-             ! Diagonal block has no dependency for factor(dblk)
-             keep%blocks(dblk)%dep_initial = cb - 1 
-
-             ! decrement number of row blocks and rows in next block column
-             sz = sz - 1
-             numrow = numrow - l_nb
-          end do
-
-       else
-          ! In a subtree, put all entries for a node in a single block
-          ! TODO error managment
-          if(sz.ne.1) then
-             print *, "ERROR: Subtree node should only ever be a single block!"
-             stop -1
-          endif
-
-          if (adata%small(node) .eq. 1) then 
-             root_node = node ! the root is the node himself when small equal to 1
-          else
-             root_node = -adata%small(node)
-          end if
-
-          if(node .eq. keep%nodes(root_node)%least_desc) then
-             ! First node of subtree, all to be in the same bcol array space
-             k = 1 ! Position within lfact(bcol)%lcol array for start of node
-          endif
-
+       ! Loop over the block columns in node. 
+       do ci = sa, en, l_nb
+          k = 1 ! use k to hold position of block within block column
           ! increment count of block columns
-          k = 1 ! FIXME delete (+repoint at lcol, not a subsection, FIXME below)
           keep%nbcol = keep%nbcol + 1
+
+          cb = cb + 1
 
           ! blkn is the number of columns in the block column.
           ! For all but the last block col. blkn = l_nb.
-          blkn = numcol
+          blkn = min(l_nb, numcol-col_used)
+          col_used = col_used + blkn
 
           dblk = blk
 
-          ! store identity of block
-          keep%blocks(blk)%id       = blk
+#if defined(SPLLT_USE_PARSEC)
+          fdata%diags(keep%nbcol) = dblk
+#endif
+          ! loop over the row blocks (that is, loop over blocks in block col)
+          row_used = 0 
+          do blk = dblk, dblk+sz-1
+             ! store identity of block
+             keep%blocks(blk)%id       = blk
+             !print *, "node ", node, "=> blk", blk
 
-          ! store number of rows in the block.
-          ! For all but the last block, the number of rows is l_nb
-          keep%blocks(blk)%blkm     = numrow
+             ! store number of rows in the block.
+             ! For all but the last block, the number of rows is l_nb
+             keep%blocks(blk)%blkm     = min(l_nb, numrow-row_used)
+             row_used = row_used + keep%blocks(blk)%blkm
 
-          ! store number of columns in the block.
-          keep%blocks(blk)%blkn     = blkn
+             ! store number of columns in the block.
+             keep%blocks(blk)%blkn     = blkn
 
-          keep%maxmn = max(keep%maxmn, &
-               keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
+             keep%maxmn = max(keep%maxmn, &
+                  keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
 
-          ! store position of the first entry of the block within the
-          ! block column of L
-          keep%blocks(blk)%sa       = k
+             ! store position of the first entry of the block within the
+             ! block column of L
+             keep%blocks(blk)%sa       = k
 
-          ! store identity of diagonal block within current block column
-          keep%blocks(blk)%dblk     = dblk
+             ! store identity of diagonal block within current block column
+             keep%blocks(blk)%dblk     = dblk
 
-          ! store identity of last block within current block column
-          keep%blocks(blk)%last_blk = dblk + sz - 1
+             ! store identity of last block within current block column
+             keep%blocks(blk)%last_blk = dblk + sz - 1
 
-          ! store node the blk belongs to
-          keep%blocks(blk)%node     = node
+             ! store node the blk belongs to
+             keep%blocks(blk)%node     = node
 
-          ! store identity of block column that blk belongs to
-          keep%blocks(blk)%bcol     = keep%nbcol
+             ! initialise dependency count
+             keep%blocks(blk)%dep_initial = cb
 
-          ! increment k by number of entries in block
-          k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
+             ! store identity of block column that blk belongs to
+             keep%blocks(blk)%bcol     = keep%nbcol
 
-          blk = dblk + 1
+             !$          call omp_init_lock(keep%blocks(blk)%lock)
+             !$          call omp_init_lock(keep%blocks(blk)%alock)
+
+             ! increment k by number of entries in block
+             k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
+
+          end do
 
           ! Diagonal block has no dependency for factor(dblk)
-          keep%blocks(dblk)%dep_initial = 0
+          keep%blocks(dblk)%dep_initial = cb - 1 
 
-       end if
+          ! decrement number of row blocks and rows in next block column
+          sz = sz - 1
+          numrow = numrow - l_nb
+       end do
+
+       ! else
+       !    ! In a subtree, put all entries for a node in a single block
+       !    ! TODO error managment
+       !    if(sz.ne.1) then
+       !       print *, "ERROR: Subtree node should only ever be a single block!"
+       !       stop -1
+       !    endif
+
+       !    if (adata%small(node) .eq. 1) then 
+       !       root_node = node ! the root is the node himself when small equal to 1
+       !    else
+       !       root_node = -adata%small(node)
+       !    end if
+
+       !    if(node .eq. keep%nodes(root_node)%least_desc) then
+       !       ! First node of subtree, all to be in the same bcol array space
+       !       k = 1 ! Position within lfact(bcol)%lcol array for start of node
+       !    endif
+
+       !    ! increment count of block columns
+       !    k = 1 ! FIXME delete (+repoint at lcol, not a subsection, FIXME below)
+       !    keep%nbcol = keep%nbcol + 1
+
+       !    ! blkn is the number of columns in the block column.
+       !    ! For all but the last block col. blkn = l_nb.
+       !    blkn = numcol
+
+       !    dblk = blk
+
+       !    ! store identity of block
+       !    keep%blocks(blk)%id       = blk
+
+       !    ! store number of rows in the block.
+       !    ! For all but the last block, the number of rows is l_nb
+       !    keep%blocks(blk)%blkm     = numrow
+
+       !    ! store number of columns in the block.
+       !    keep%blocks(blk)%blkn     = blkn
+
+       !    keep%maxmn = max(keep%maxmn, &
+       !         keep%blocks(blk)%blkm,  keep%blocks(blk)%blkn)
+
+       !    ! store position of the first entry of the block within the
+       !    ! block column of L
+       !    keep%blocks(blk)%sa       = k
+
+       !    ! store identity of diagonal block within current block column
+       !    keep%blocks(blk)%dblk     = dblk
+
+       !    ! store identity of last block within current block column
+       !    keep%blocks(blk)%last_blk = dblk + sz - 1
+
+       !    ! store node the blk belongs to
+       !    keep%blocks(blk)%node     = node
+
+       !    ! store identity of block column that blk belongs to
+       !    keep%blocks(blk)%bcol     = keep%nbcol
+
+       !    ! increment k by number of entries in block
+       !    k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
+
+       !    blk = dblk + 1
+
+       !    ! Diagonal block has no dependency for factor(dblk)
+       !    keep%blocks(dblk)%dep_initial = 0
+
+       ! end if
 
     end do
 
@@ -772,7 +772,10 @@ contains
     nlz = nlz+1
     lzero(nlz) = node
     lzero_w(nlz) = -adata%weight(node)
-    if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
+    ! count leaf nodes
+    do node = 1, adata%nnodes+1
+       if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1       
+    end do
 
     leaves = 0
 
@@ -797,7 +800,7 @@ contains
        ! write(*,*)'nlz: ', nlz       
        ! all the subtrees have been mapped. Evaluate load balance
        rm = minval(proc_w)/maxval(proc_w)
-
+       ! print *, "rm: ", rm
        if((rm .gt. 0.9) .and. (nlz .ge. 1*nth)) exit ! if balance is higher than 90%, we're happy
 
        ! if load is not balanced, replace heaviest node with its kids (if any)
@@ -818,7 +821,7 @@ contains
              end if
           end if
           n = lzero(leaves+1) ! n is the node that must be replaced
-
+          ! print *, "TETE"
           ! append children of n 
           do i=1,keep%nodes(n)%nchild
              c = keep%nodes(n)%child(i)
