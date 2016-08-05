@@ -134,20 +134,23 @@ contains
   end subroutine spllt_subtree_factorize_node
 
   ! kernel for applying update on nodes within a subtree
-  subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, &
+  subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, buffer, &
        & map, row_list, col_list, workspace, control)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
-    type(node_type), intent(in) :: node
+    type(node_type), intent(in) :: node 
     integer, intent(in) :: root ! root node in the subtree
     type(node_type), dimension(-1:), target, intent(in) :: nodes
     type(block_type), dimension(*), intent(in)          :: blocks
     type(lfactor), dimension(*), intent(inout)          :: lfact
+    real(wp), dimension(:), allocatable, intent(inout)  :: buffer ! data array used 
+    ! to accumulate updates
     integer, pointer :: map(:)
-    integer, pointer :: row_list(:), col_list(:)
-    real(wp), pointer :: workspace(:)
+    integer, pointer :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
+    ! when scatering elements in update_between
+    real(wp), pointer :: workspace(:) ! workspace used for update between
     type(MA87_control), intent(in) :: control
 
 
@@ -178,6 +181,11 @@ contains
     integer :: ii, kk ! indexes
     integer :: nc, nr
 
+    ! varable for the applying update on buffer
+    integer :: acol, arow ! column and row pointer in the buffer
+    integer :: am, an ! sizes of root node
+    integer :: j, p
+    real(wp) :: v, a_ip, a_kp
 
     ! update between
 
@@ -199,6 +207,7 @@ contains
     cptr = 1 + numcol
     ! write(*,*)"numrow: ", numrow
     do while(a_num.gt.0)
+       if (a_num .gt. root) exit ! make sure we stay in the subtree
        anode => nodes(a_num) 
        ! a_node => fdata%nodes(a_num)
        ! Skip columns that come from other children
@@ -347,7 +356,53 @@ contains
        a_num = anode%parent
     end do
 
+    ! print *, "root: ", root,", cptr: ", cptr, ", numrow: ", numrow
     
+    ! accumulate update in buffer for nodes above root
+    acol = 1
+    arow = 1
+    am = size(nodes(root)%index)
+    an = nodes(root)%en - nodes(root)%sa + 1
+    ! start from curent position in node
+    i = cptr
+    do i = i, numrow
+       j = node%index(i)
+       ! Find col of generated element
+       do while(nodes(root)%index(acol) .ne. j)
+          acol = acol + 1
+       end do
+       arow = acol
+       do k = i, numrow ! rows to update
+          ! Find row of ancestor
+          do while(nodes(root)%index(arow) .ne. node%index(k))
+             arow = arow + 1
+          end do
+          ! Do update a_ki -= sum_p a_ip a_kp
+          v = 0.0
+          
+          dblk = node%blk_sa
+          ! Loop over the block columns in node. 
+          do kk = 1, nc
+             
+             bcol = blocks(dblk)%bcol
+             n = min(s_nb, numcol-(kk-1)*s_nb)
+
+             do p = (kk-1)*s_nb+1, min(numcol, kk*s_nb)
+                a_ip = lfact(bcol)%lcol((i-1)*n+p)
+                a_kp = lfact(bcol)%lcol((k-1)*n+p)
+                v = v + a_ip * a_kp
+             end do
+                          
+             dblk = blocks(dblk)%last_blk + 1
+          end do
+
+          buffer((arow-an-1)*(am-an) + (acol-an)) = &
+               buffer((arow-an-1)*(am-an) + (acol-an)) + v
+       end do
+    end do
+
+    print *, "root: ", root,", i: ", i, ", numrow: ", numrow
+
   end subroutine spllt_subtree_apply_node
 
   subroutine spllt_subtree_factorize(root, keep, buffer, control)
@@ -388,7 +443,7 @@ contains
        ! factorize supernode
        call spllt_subtree_factorize_node(snode, keep%blocks, keep%lfact)
        ! apply udpate on ancestor node (right-looking update)
-       call spllt_subtree_apply_node(snode, root, keep%nodes, keep%blocks, keep%lfact, &
+       call spllt_subtree_apply_node(snode, root, keep%nodes, keep%blocks, keep%lfact, buffer, &
             & map, row_list, col_list, workspace, control)
     end do
 

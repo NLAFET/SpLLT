@@ -196,8 +196,8 @@ contains
     adata%small = 0
     if (cntl%prune_tree) then
        ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
-       call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
-       ! call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
+       ! call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
+       call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
     end if
 
     ! set up blocking info
