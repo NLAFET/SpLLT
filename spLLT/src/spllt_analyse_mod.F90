@@ -216,8 +216,10 @@ contains
        if (l_nb < 1) l_nb = spllt_nb_default
        ! l_nb = min(huge(l_nb)/2_long, &
        !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
-       l_nb = (l_nb-1) / 8 + 1
-       l_nb = 8 * l_nb
+
+       ! l_nb = (l_nb-1) / 8 + 1
+       ! l_nb = 8 * l_nb
+
        ! else
        ! l_nb = max(rptr(node+1)-rptr(node), sptr(node+1)-sptr(node))
        ! end if
@@ -849,6 +851,10 @@ contains
 
     ! write(*,*)'nlz: ', nlz
     ! write(*,*)'lzero: ', lzero(1:nlz)
+
+    ! DEBUG
+    ! nlz = 1
+    ! lzero(1) = 2
 
     ! mark all the children of nodes in l0
     do i=1, nlz

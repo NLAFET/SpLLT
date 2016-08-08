@@ -18,10 +18,8 @@ contains
     integer :: m, n, blk
 
     node => keep%nodes(root)
-    blk = node%blk_sa
-
-    m = keep%blocks(blk)%blkm
-    n = keep%blocks(blk)%blkn
+    m = size(node%index)
+    n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
 
     if (size(buffer).lt.(m-n)**2) then
        deallocate(buffer)

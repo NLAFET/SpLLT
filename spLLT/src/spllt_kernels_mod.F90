@@ -184,8 +184,9 @@ contains
     ! varable for the applying update on buffer
     integer :: acol, arow ! column and row pointer in the buffer
     integer :: am, an ! sizes of root node
-    integer :: j, p
-    real(wp) :: v, a_ip, a_kp
+    integer :: j
+    real(wp) :: v, a_ik, a_kj
+    integer :: b_sz ! sizes of the buffer
 
     ! update between
 
@@ -208,6 +209,7 @@ contains
     ! write(*,*)"numrow: ", numrow
     do while(a_num.gt.0)
        if (a_num .gt. root) exit ! make sure we stay in the subtree
+       ! if (root .ne. 21 .and. a_num .gt. root) exit ! make sure we stay in the subtree
        anode => nodes(a_num) 
        ! a_node => fdata%nodes(a_num)
        ! Skip columns that come from other children
@@ -355,53 +357,81 @@ contains
 
        a_num = anode%parent
     end do
-
-    ! print *, "root: ", root,", cptr: ", cptr, ", numrow: ", numrow
     
+
+    ! print *, "root: ", root,", cptr: ", cptr, ", numrow: ", numrow, ", numcol: ", numcol, ", s_nb: ", s_nb
+    ! print *, "nc: ", nc
+
     ! accumulate update in buffer for nodes above root
     acol = 1
     arow = 1
     am = size(nodes(root)%index)
     an = nodes(root)%en - nodes(root)%sa + 1
+    b_sz = am-an
+
+    ! print *, "am: ", am, ", an: ", an
     ! start from curent position in node
-    i = cptr
-    do i = i, numrow
-       j = node%index(i)
+    ! print *, "numrow: ", numrow
+    ! print *, "size buffer: ", size(buffer), ", b_sz: ", b_sz
+    do i = cptr, numrow
        ! Find col of generated element
-       do while(nodes(root)%index(acol) .ne. j)
+       do while(nodes(root)%index(acol) .ne. node%index(i))
           acol = acol + 1
        end do
+       ! print *, "acol: ", acol, ", an: ", an, ", b_sz: ", b_sz
        arow = acol
-       do k = i, numrow ! rows to update
+       do j = i, numrow ! rows to update
           ! Find row of ancestor
-          do while(nodes(root)%index(arow) .ne. node%index(k))
+          do while(nodes(root)%index(arow) .ne. node%index(j))
              arow = arow + 1
           end do
-          ! Do update a_ki -= sum_p a_ip a_kp
-          v = 0.0
-          
+          ! print *, "acol: ", acol, ", am: ", am
+          ! Do update a_ij -= sum_p a_ik a_kj
+          v    = 0.0
+          a_ik = 0.0
+          a_kj = 0.0
+
+          ! udpate buffer : non blocked version
+          bcol = blocks(node%blk_sa)%bcol
+
+          ! n = numcol
+          ! do k = 1, n
+          !    a_ik = lfact(bcol)%lcol((i-1)*n+k)
+          !    a_kj = lfact(bcol)%lcol((j-1)*n+k)
+          !    v = v + a_ik * a_kj
+          ! end do
+          ! buffer((arow-an-1)*b_sz + (acol-an)) = &
+          !      buffer((arow-an-1)*b_sz + (acol-an)) + v
+
+          ! udpate buffer : blocked version
           dblk = node%blk_sa
           ! Loop over the block columns in node. 
           do kk = 1, nc
              
              bcol = blocks(dblk)%bcol
-             n = min(s_nb, numcol-(kk-1)*s_nb)
+             n = blocks(dblk)%blkn
+             ! print *, "bcol: ", bcol
+             ! if (nc .gt. 1) print *, "kk: ", kk
+             ! print *, "root: ", root, "bcol: ", bcol, ", n: ", n
+             do k = 1, n
+                
+                csrc = (i-(kk-1)*s_nb-1)*n + k
+                rsrc = (j-(kk-1)*s_nb-1)*n + k
 
-             do p = (kk-1)*s_nb+1, min(numcol, kk*s_nb)
-                a_ip = lfact(bcol)%lcol((i-1)*n+p)
-                a_kp = lfact(bcol)%lcol((k-1)*n+p)
-                v = v + a_ip * a_kp
+                a_ik = lfact(bcol)%lcol(csrc)
+                a_kj = lfact(bcol)%lcol(rsrc)
+                v = v + a_ik * a_kj
              end do
-                          
+             ! if (nc .gt. 1) print *, "v: ", v
              dblk = blocks(dblk)%last_blk + 1
           end do
-
-          buffer((arow-an-1)*(am-an) + (acol-an)) = &
-               buffer((arow-an-1)*(am-an) + (acol-an)) + v
+          buffer((arow-an-1) * b_sz + (acol-an)) = &
+               buffer((arow-an-1) * b_sz + (acol-an)) + v
+          
        end do
     end do
 
-    print *, "root: ", root,", i: ", i, ", numrow: ", numrow
+    ! print *, "root: ", root,", i: ", i, ", numrow: ", numrow
 
   end subroutine spllt_subtree_apply_node
 
@@ -418,15 +448,14 @@ contains
 
     integer :: node, m, n
     type(node_type), pointer :: snode
-    integer(long) :: blk
+
     ! workspaces
     integer, pointer :: row_list(:), col_list(:)
     real(wp), pointer :: workspace(:)
     integer, pointer :: map(:)
 
-    blk = keep%nodes(root)%blk_sa
-    m = keep%blocks(blk)%blkm
-    n = keep%blocks(blk)%blkn
+    m = size(keep%nodes(root)%index)
+    n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
     buffer(1:(m-n)**2) = 0.0
 
     ! allocate workspaces
@@ -632,8 +661,10 @@ contains
     ! cache some values in variables
     size_snode = size(nodes(root)%index)
     s_nb = nodes(root)%nb
-    m = blocks(nodes(root)%blk_sa)%blkm
-    n = blocks(nodes(root)%blk_sa)%blkn
+    m = size(nodes(root)%index)
+    n = nodes(root)%en - nodes(root)%sa + 1
+    ! m = blocks(nodes(root)%blk_sa)%blkm
+    ! n = blocks(nodes(root)%blk_sa)%blkn
     lds = size_snode-n
 
     if(m-n.eq.0) return ! was a root already
