@@ -91,6 +91,7 @@ contains
     integer :: stf_start_t, stf_stop_t, stf_rate_t
     integer :: start_nosub_t, rate_nosub_t
     integer :: start_setup_t, stop_setup_t, rate_setup_t
+    integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
 
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
@@ -160,10 +161,18 @@ contains
 
           ! subtree factorization task
           ! call spllt_factor_subtree_task(snode, keep, buffer)
+          call system_clock(subtree_start_t, subtree_rate_t)
           call spllt_subtree_factorize_task(snode, keep, buffer, control)
+          call system_clock(subtree_stop_t)
+          write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
+               & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
           ! Expand generated element out to ancestors
+          ! call system_clock(subtree_start_t, subtree_rate_t)
           call spllt_apply_subtree(snode, buffer, keep%nodes, keep%blocks, keep%lfact, map)
+          ! call system_clock(subtree_stop_t)
+          ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
+               ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
        else
           ! if (adata%small())
