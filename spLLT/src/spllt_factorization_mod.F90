@@ -475,7 +475,10 @@ contains
 
           ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
           ! Build a map of anode's blocks if this is first for anode
-          if(.not.map_done) call spllt_build_rowmap(anode, map) 
+          if(.not.map_done) then
+             call spllt_build_rowmap(anode, map)
+             map_done = .true.
+          end if
           ! write(*,*)"csrc(1): ", csrc(1), ", csrc(2): ", csrc(2)
 
           ! Loop over the blocks of snode

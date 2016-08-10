@@ -853,8 +853,8 @@ contains
     ! write(*,*)'lzero: ', lzero(1:nlz)
 
     ! DEBUG
-    nlz = 1
-    lzero(1) = 2
+    ! nlz = 1
+    ! lzero(1) = 3
 
     ! mark all the children of nodes in l0
     do i=1, nlz
