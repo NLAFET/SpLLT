@@ -481,30 +481,6 @@ compact format.
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-The popularity of task-based algorithms persuaded the OpenMP board to
-introduce the \textit{task} construct in Version 3.0 its API. Then
-motivated by the popularity of the STF model, the OpenMP board decided
-to include the \textit{depend} construct in Version 4.0 allowing users
-to express dependencies between tasks in a similar way to the STF
-model. In this work we propose an OpenMP implementation of our
-Cholesky solver and show advantages of using this in terms of
-performance, scalability and productivity. However, because many
-features are still unavailable in the OpenMP standard, we also
-developed another version based on the StarPU runtime system. As shown
-in the next section, both implementations of our solver rely on a STF
-model, but the StarPU-based implementation can benefit from a wider
-range of features available with StarPU. For example, although we
-focus on shared-memory architectures in this work, the StarPU version
-can be extended to a distributed-memory version whereas OpenMP doesn't
-provide any possibility for execution on distributed memory
-architectures.
-
-We present an example of a parallel implementation for the sequential
-code in Figure~\ref{fig:seq-example} using OpenMP in
-Figure~\ref{fig:stf-openmp-example}.
-
-\TODO{detail example code for OpenMP.}
-
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
   \centering \lstinputlisting{listings/stf-openmp-example.c}
@@ -513,16 +489,43 @@ Figure~\ref{fig:stf-openmp-example}.
     model with \openmp.}
 \end{figure}
 
-\begin{figure}[!h]
-  \lstset{language=C, procnamekeys={},escapechar=>}
-  \centering \lstinputlisting{listings/stf-starpu-example.c}
-  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
-    of the sequential code in Figure~\ref{fig:seq-example} using a STF
-    model with \starpu.}
-\end{figure}
+The popularity of task-based algorithms persuaded the OpenMP board to
+introduce the \textit{task} construct in Version 3.0 of its API. Then
+motivated by the popularity of the STF model, the OpenMP board decided
+to include the \textit{depend} construct in Version 4.0 allowing users
+to express dependencies between tasks in a similar way to the STF
+model presented in Section~\ref{sec:stf-model}. In this work we
+propose an OpenMP implementation of our Cholesky solver and show
+advantages of using this in terms of performance, scalability and
+productivity. However, because many features are still unavailable in
+the OpenMP standard, we also developed another version based on the
+StarPU runtime system. As shown in the next section, both
+implementations of our solver rely on a STF model, but the
+StarPU-based implementation can benefit from a wider range of features
+available with StarPU. For example, although we focus on shared-memory
+architectures in this work, the StarPU version can be extended to a
+distributed-memory version whereas OpenMP doesn't provide any
+possibility for execution on distributed memory architectures.
 
-In order to introduce the features provided by the StarPU API, we show
-in Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
+We present an example of a parallel implementation for the sequential
+code in Figure~\ref{fig:seq-example} using OpenMP in
+Figure~\ref{fig:stf-openmp-example}. In this example we first create
+the parallel section using the omp construct \textit{parallel} and
+then we put the master thread in charge of the task submission using
+the \textit{master} construct. As previously explained, the task are
+created with the \textit{task} construct and the data access are given
+to the runtime system using the \textit{depend} construct. In the
+\openmp standard read-only data access are indicated with the
+parameter \textit{in}, write-only with the parameter \textit{out} and
+read-write with the parameter \textit{inout}. Finally the task
+submission loop is concluded with the \textit{taskwait} clause
+indicating that the master thread should wait for the completion of
+the tasks previously submitted.
+
+Similarly to the \openmp example provided in
+Figure~\ref{fig:stf-openmp-example}, and in order to introduce the
+features provided by the StarPU API, we show in
+Figure~\ref{fig:stf-starpu-example} an example of a StarPU-based
 implementation for the simple example presented in
 Figure~\ref{fig:seq-example}. The task submission is done through the
 \texttt{starpu\_insert\_task} function that takes as input a
@@ -548,7 +551,20 @@ data consistency over multiple nodes. When all the tasks have been
 submitted to the runtime system, we wait for their completion by
 calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 
-\TODO{explain dynamic scheduling of ready tasks.}
+\begin{figure}[!h]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/scheduler}
+    \caption{\label{fig:etree-simple-part} Illustration of the dynamic
+      scheduling strategy of tasks in the runtime system.}
+\end{figure}
+
+\begin{figure}[!h]
+  \lstset{language=C, procnamekeys={},escapechar=>}
+  \centering \lstinputlisting{listings/stf-starpu-example.c}
+  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
+    of the sequential code in Figure~\ref{fig:seq-example} using a STF
+    model with \starpu.}
+\end{figure}
 
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:experiments}
