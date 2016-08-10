@@ -133,43 +133,52 @@ contains
 
   end subroutine spllt_subtree_factorize_node
 
-  ! ! expand the updates that are accumulated in workspace into buffer
-  ! subroutine spllt_subtree_expand_buffer(node, root)
-  !   use spllt_data_mod
-  !   use hsl_ma87_double
-  !   implicit none
+  ! expand the updates that are accumulated in workspace into buffer
+  subroutine spllt_subtree_expand_buffer(cptr, cptr2, rptr, rptr2, node, am, an, root, m, workspace, buffer)
+    use spllt_data_mod
+    use hsl_ma87_double
+    implicit none
 
-  !   type(node_type), intent(in) :: node 
-  !   type(node_type), intent(in) :: root 
-    
+    type(node_type), intent(in) :: node 
+    type(node_type), intent(in) :: root 
+    integer, intent(in) :: cptr, cptr2 ! Ljk
+    integer, intent(in) :: rptr, rptr2 ! Lik
+    integer, intent(in) :: m ! number of column in workspace
+    integer, intent(in) :: am, an ! root node sizes
+    real(wp), pointer, intent(in) :: workspace(:) ! accumulated updates
+    real(wp), allocatable, intent(inout) :: buffer(:) ! workspace used for update between
 
-  !   integer :: arow ! buffer row
-  !   integer :: acol ! buffer col
+    integer :: arow ! buffer row
+    integer :: acol ! buffer col
+    integer :: b_sz ! buffer size
+    integer :: i, j
 
-  !   ! expand workspace into buffer
-  !   arow = 1
-  !   acol = 1
-  !   do p = cptr, cptr2
-  !      ! column to update in buffer 
-  !      do while(root%index(acol).ne.node%index(p))
-  !         acol = acol + 1
-  !      end do
+    b_sz = am-an
 
-  !      arow = 1
-  !      do q = ilast, i-1 
-  !         ! rows to update in buffer
-  !         do while(root%index(arow).ne.node%index(q))
-  !            arow = arow + 1
-  !         end do
+    ! expand workspace into buffer
+    arow = 1
+    acol = 1
+    do j = cptr, cptr2
+       ! column to update in buffer 
+       do while(root%index(acol).ne.node%index(j))
+          acol = acol + 1
+       end do
 
-  !         ! print *, "arow: ", arow, "acol: ", acol
-  !         ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
-  !         buffer((arow-an-1)*b_sz + (acol-an)) = &
-  !              buffer((arow-an-1)*b_sz + (acol-an)) + workspace((q-ilast)*n + (p-cptr+1))
-  !      end do
-  !   end do
+       arow = 1
+       do i = rptr, rptr2 
+          ! rows to update in buffer
+          do while(root%index(arow).ne.node%index(i))
+             arow = arow + 1
+          end do
 
-  ! end subroutine spllt_subtree_expand_buffer
+          ! print *, "arow: ", arow, "acol: ", acol
+          ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
+          buffer((arow-an-1)*b_sz + (acol-an)) = &
+               buffer((arow-an-1)*b_sz + (acol-an)) + workspace((i-rptr)*m + (j-cptr+1))
+       end do
+    end do
+
+  end subroutine spllt_subtree_expand_buffer
 
   ! kernel for applying update on nodes within a subtree
   subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, buffer, &
@@ -486,28 +495,9 @@ contains
                 dblk = blocks(dblk)%last_blk + 1
              end do
 
-             ! expand workspace into buffer
-             arow = 1
-             acol = 1
-             do p = cptr, cptr2
-                ! column to update in buffer 
-                do while(anode%index(acol).ne.node%index(p))
-                   acol = acol + 1
-                end do
-
-                arow = 1
-                do q = ilast, i-1 
-                   ! rows to update in buffer
-                   do while(anode%index(arow).ne.node%index(q))
-                      arow = arow + 1
-                   end do
-
-                   ! print *, "arow-an: ", arow-an, "acol-an: ", acol-an
-                   ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
-                   buffer((arow-an-1)*b_sz + (acol-an)) = &
-                        buffer((arow-an-1)*b_sz + (acol-an)) + workspace((q-ilast)*m + (p-cptr+1))
-                end do
-             end do
+             ! expand accumulated udpate into buffer
+             call spllt_subtree_expand_buffer(cptr, cptr2, ilast, i-1, &
+                  & node, am, an, anode, m, workspace, buffer)
 
              ii = k
              ilast = i ! Update start of current block
@@ -549,27 +539,9 @@ contains
           dblk = blocks(dblk)%last_blk + 1
        end do
 
-       ! expand workspace into buffer
-       arow = 1
-       acol = 1
-       do p = cptr, cptr2
-          ! column to update in buffer 
-          do while(anode%index(acol).ne.node%index(p))
-             acol = acol + 1
-          end do
-
-          arow = 1
-          do q = ilast, i-1 
-             ! rows to update in buffer
-             do while(anode%index(arow).ne.node%index(q))
-                arow = arow + 1
-             end do
-
-             ! print *, "arow-an: ", arow-an, "acol-an: ", acol-an
-             buffer((arow-an-1)*b_sz + (acol-an)) = &
-                  buffer((arow-an-1)*b_sz + (acol-an)) + workspace((q-ilast)*m + (p-cptr+1))
-          end do
-       end do
+       ! expand accumulated udpate into buffer
+       call spllt_subtree_expand_buffer(cptr, cptr2, ilast, i-1, &
+            & node, am, an, anode, m, workspace, buffer)
        
        cptr = cptr2 + 1   
     end do buff_bcols
