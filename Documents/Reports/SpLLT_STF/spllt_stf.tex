@@ -481,14 +481,6 @@ compact format.
 \setcounter{table}{0}
 \setcounter{figure}{0}
 
-\begin{figure}[!h]
-  \lstset{language=C, procnamekeys={},escapechar=>}
-  \centering \lstinputlisting{listings/stf-openmp-example.c}
-  \caption{\label{fig:stf-openmp-example}Simple example of a parallel version
-    of the sequential code in Figure~\ref{fig:seq-example} using a STF
-    model with \openmp.}
-\end{figure}
-
 The popularity of task-based algorithms persuaded the OpenMP board to
 introduce the \textit{task} construct in Version 3.0 of its API. Then
 motivated by the popularity of the STF model, the OpenMP board decided
@@ -506,6 +498,14 @@ available with StarPU. For example, although we focus on shared-memory
 architectures in this work, the StarPU version can be extended to a
 distributed-memory version whereas OpenMP doesn't provide any
 possibility for execution on distributed memory architectures.
+
+\begin{figure}[!h]
+  \lstset{language=C, procnamekeys={},escapechar=>}
+  \centering \lstinputlisting{listings/stf-openmp-example.c}
+  \caption{\label{fig:stf-openmp-example}Simple example of a parallel version
+    of the sequential code in Figure~\ref{fig:seq-example} using a STF
+    model with \openmp.}
+\end{figure}
 
 We present an example of a parallel implementation for the sequential
 code in Figure~\ref{fig:seq-example} using OpenMP in
@@ -554,9 +554,28 @@ calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 \begin{figure}[!h]
     \centering
     \includegraphics[width=0.9\textwidth]{figures/scheduler}
-    \caption{\label{fig:etree-simple-part} Illustration of the dynamic
+    \caption{\label{fig:scheduler} Illustration of the dynamic
       scheduling strategy of tasks in the runtime system.}
 \end{figure}
+
+Both \openmp and \starpu implementations rely on a dynamic scheduler
+performing the scheduling of the ready tasks during the execution. In
+this model, a task is put in the scheduler as soon as it becomes ready
+for execution which is the case when all of its dependencies are
+fulfilled. On the other side of the scheduler, workers try to retrieve
+a task from the scheduler when they become idle. This dynamic
+scheduling strategy is illustrated in Figure~\ref{fig:scheduler} where
+the scheduler is placed between the runtime core where the DAG is
+build as a result of the task submission and the workers which can be
+CPUs and GPUs for example. The scheduler is responsible for storing
+the ready tasks in scheduling queues and distributing them to idle
+workers. Although \openmp Version 4.0 doesn't provide any features to
+control the scheduling policy, the Version 4.5 allows users to provide
+a priority along with a submitted task to give hints to the scheduler
+so that it can detect the most critical tasks in the DAG. \starpu not
+only support the use of task priority but it also give the possibility
+to use several scheduling strategies and to implement a new one if
+necessary.
 
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}

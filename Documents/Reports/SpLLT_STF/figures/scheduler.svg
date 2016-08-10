@@ -135,6 +135,22 @@
          style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
          id="path5355-6" />
     </marker>
+    <marker
+       inkscape:isstock="true"
+       style="overflow:visible"
+       id="marker5353-4"
+       refX="0"
+       refY="0"
+       orient="auto"
+       inkscape:stockid="Arrow2Lend"
+       inkscape:collect="always">
+      <path
+         inkscape:connector-curvature="0"
+         transform="matrix(-1.1,0,0,-1.1,-1.1,0)"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
+         id="path5355-4" />
+    </marker>
   </defs>
   <sodipodi:namedview
      id="base"
@@ -143,9 +159,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.98994949"
-     inkscape:cx="293.43883"
-     inkscape:cy="704.13449"
+     inkscape:zoom="1.979899"
+     inkscape:cx="463.87117"
+     inkscape:cy="931.06283"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -185,7 +201,7 @@
      inkscape:groupmode="layer"
      id="layer1">
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4,4;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165"
        cx="170"
        cy="175.05881"
@@ -194,18 +210,18 @@
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:13.75px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        x="163.73053"
-       y="177.29471"
+       y="178.29471"
        id="text4339"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan4341"
          x="163.73053"
-         y="177.29471"
+         y="178.29471"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch'">t<tspan
    style="font-size:64.99999762%;baseline-shift:sub"
    id="tspan6128">1</tspan></tspan></text>
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4,4;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165-8"
        cx="170"
        cy="224.55881"
@@ -229,7 +245,7 @@
          y="244.67595"
          id="tspan4364" /></text>
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165-8-2"
        cx="235"
        cy="199.55881"
@@ -329,23 +345,19 @@
          x="389.21124"
          y="292.0322"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch';font-size:17.5px">Scheduler</tspan></text>
-    <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker5353-5)"
-       d="m 65,197.3622 56.66415,0.25441"
-       id="path5101-8"
-       inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cc" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:15px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="58.24789"
-       y="181.9772"
+       x="48.24789"
+       y="181.0497"
        id="text5377-0"
-       sodipodi:linespacing="125%"><tspan
+       sodipodi:linespacing="125%"
+       inkscape:transform-center-x="8.5862966"
+       inkscape:transform-center-y="0.50507627"><tspan
          sodipodi:role="line"
          id="tspan5379-9"
-         x="58.24789"
-         y="181.9772"
+         x="48.24789"
+         y="181.0497"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.5px;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch'">Submit</tspan></text>
     <ellipse
        style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.794056;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
@@ -432,7 +444,7 @@
          y="293.7587"
          style="-inkscape-font-specification:'Courier 10 Pitch';font-family:'Courier 10 Pitch';font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:17.5px">workers</tspan></text>
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165-6"
        cx="472"
        cy="202.55881"
@@ -452,7 +464,7 @@
    style="font-size:64.99999762%;baseline-shift:sub"
    id="tspan6128-7">1</tspan></tspan></text>
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165-8-4"
        cx="435"
        cy="202.55881"
@@ -476,7 +488,7 @@
          y="222.67595"
          id="tspan4364-8" /></text>
     <circle
-       style="opacity:1;fill:none;fill-opacity:1;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
+       style="opacity:1;fill:#000000;fill-opacity:0.1254902;stroke:#000000;stroke-width:1;stroke-linecap:round;stroke-miterlimit:4;stroke-dasharray:4, 4;stroke-dashoffset:0;stroke-opacity:1"
        id="path4165-6-4"
        cx="600"
        cy="152.55881"
@@ -493,7 +505,13 @@
          x="592.34003"
          y="154.79471"
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:15px;font-family:'Courier 10 Pitch';-inkscape-font-specification:'Courier 10 Pitch'">t<tspan
-   style="font-size:64.99999762%;baseline-shift:sub"
-   id="tspan6128-7-0">1</tspan></tspan></text>
+   style="font-size:65%;baseline-shift:sub"
+   id="tspan4696">4</tspan></tspan></text>
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#marker5353-4)"
+       d="m 44.16607,197.36223 79.99628,0.0203"
+       id="path5101-1"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="cc" />
   </g>
 </svg>
