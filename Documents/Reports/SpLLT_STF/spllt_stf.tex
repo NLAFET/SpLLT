@@ -73,6 +73,8 @@
 \newcommand{\openmp}{OpenMP\xspace}
 \newcommand{\ma}{HSL\_MA87\xspace}
 \newcommand{\spllt}{SpLLT\xspace}
+\newcommand{\qrm}{\texttt{qr\_mumps}\xspace}
+\newcommand{\pastix}{\texttt{PaSTIX}\xspace}
 
 \bibliographystyle{siam}
 
@@ -89,10 +91,28 @@
 {Experiments with sparse Cholesky using runtime systems}
 
 
-\newcommand{\theabstract}{We describe the development of a prototype code for 
-the solution of large symmetric positive definite sparse systems that is
-efficient on parallel architectures.
-}
+\newcommand{\theabstract}{We describe the development of a prototype
+  code for the solution of large symmetric positive definite sparse
+  systems that is efficient on parallel architectures. We implement a
+  DAG-based Cholesky factorization which offer good performance and
+  scalability on multicore architecture.  Our approach consists in
+  using a runtime system for expressing the DAG corresponding to the
+  factorization algorithm. The runtime system, play the role of a
+  software layer between the application and the architecture and
+  handle the management of task dependencies as well as the task
+  scheduling. In this model, the application is expressed with a
+  high-level API, independent for the hardware details thus enabling
+  portability across different architectures. Although largely
+  employed in the context of dense linear algebra, this approach is
+  still challenging is the context of sparse algorithm because of the
+  irregularity of the DAGs arising in these problems. We address this
+  challenge by exploiting a Sequential Task Flow model and we
+  implement a DAG-based supernodal Cholesky factorization in two
+  different version, one implemented with the \openmp standard, and,
+  one implemented with the modern runtime system \starpu. We compare
+  these two implementation to the state-of-the-art \ma solver and show
+  that our implementation offer comparable performance results on a
+  multicore architecture. }
 
 \textwidth  16.18cm
 \textheight 23.4cm
@@ -215,23 +235,40 @@ adapt to the emerging ones. This problem occurs, for example, when
 targeting heterogeneous architectures such as GPU-accelerated
 multicore systems that have a more complex memory hierarchy than
 traditional multicore systems and equipped different types of
-processing units with different capabilities \TODO{advantage of
-  GPU-accelerated arch? computation rate, energy efficiency, etc}
-\TODO{computational intensity and device utilisation of kernels on the
-  GPU}. Instead, in this work, we explore an alternative approach
-based on the use of a runtime system which consists of a software
-layer between the architecture and the application. In this context
-the application is implemented using a high-level API provided by the
-runtime system and low level details such as data consistency across
-the architecture and task scheduling are delegated to the runtime
-system. \TODO{Introduce DPLASMA, Chamelon for the dense LA kernels}
-\TODO{present qr\_mumps and PaSTIX} We focus on the exploitation of a
-Sequential Task Flow (STF) programming model for expressing the DAG
-corresponding to our application. We show that our code, implemented
-with a task-based runtime system, can lead to an implementation of a
-sparse matrix factorization which is as efficient as a
-state-of-the-art solver on a multicore system.  \TODO{same approach as
-  qr\_mumps (programming model) but different from PaSTIX approach}
+processing units with different capabilities. Instead, in this work,
+we explore an alternative approach based on the use of a runtime
+system which consists of a software layer between the architecture and
+the application. In this context the application is implemented using
+a high-level API provided by the runtime system and low level details
+such as data consistency across the architecture and task scheduling
+are delegated to the runtime system. Several dense linear algebra
+software packages were build with using this approach such as
+DPLASMA~\cite{b.b.d.f.ea:11}, which is developed with the \parsec
+runtime system and Chameleon which supports several runtime systems
+including \starpu and \parsec. Both packages are deigned for
+distributed memory system equipped with accelerators. In the context
+of sparse linear algebra however, relatively few libraries adopted a
+this approach. Two examples of runtime-based sparse solvers are
+\qrm~\cite{a.b.g.l.:14}, which implements a multifrontal QR method,
+and \pastix~\cite{h.r.r:02} which implements a supernodal Cholesky
+method. Compared to the context of dense linear algebra, the
+difficulty for employing this approach in the sparse case steams from
+the fact that DAGs are extremely irregular with a large variability of
+task granularity and irregularities in the dependency pattern.
+
+We choose to use a Sequential Task Flow (STF) programming model for
+expressing the DAG corresponding to our application. This model, also
+used in \qrm, offers a simple way to express the parallel code from
+the sequential one. We show that our codes, implemented with a
+task-based runtime system supporting the STF model, can lead to an
+implementation of a sparse matrix factorization which is as efficient
+as a state-of-the-art solver on a multicore system.
+
+%% advantage of GPU-accelerated arch? computation rate, energy
+%% efficiency, etc
+
+% computational intensity and device utilisation of kernels on the
+% GPU
 
 \section{Task-based sparse Cholesky factorization}\label{sec:chol}
 \setcounter{equation}{0}
@@ -242,61 +279,73 @@ We first describe the supernodal Cholesky factorization method that we
 use for solving sparse symmetric positive-definite systems. In
 particular we will focus on a DAG-based variant of this algorithm that
 has been proven to be extremely efficient on multicore architectures
-such as for example the \ma solver~\cite{h.r.s:10}.
+such as for example the \ma solver~\cite{h.r.s:10}. The factorization
+is one of the three main phases for solving a linear system which
+includes an analysis phase, preceding the factorization, and a solve
+phase following it. We specifically focus in the factorization because
+it correspond to the most computationally expensive one.
 
-\TODO{explain the three phases: analyse, factorization and solve} The
-supernodal Cholesky method is a factorization algorithm for sparse
+The supernodal Cholesky method is a factorization algorithm for sparse
 matrices where the input matrix $A$ is decomposed as:
 \begin{equation}\label{eq:chol}
   A = LL^{T}
 \end{equation}
-where the factor $L$ is a lower triangular matrix \TODO{quite word on
-  the solve phase (backward and forward substitutions, multiple rhs,
-  etc)}. Note that the sparsity pattern of the factor is not the same
-as the original matrix as because additional coefficients generally
-appear during the computation of this factor resulting in a denser
-matrix than the original one. This phenomenon is called
+where the factor $L$ is a lower triangular matrix. The factorization
+is then followed by a solve phase for computing $x$ using the computed
+factor by means of forward an backward substitutions. These two steps
+consists in solving first, the system $Ly=x$ and second, the system
+$L^{T}x=y$. Note that the sparsity pattern of the factor is not the
+same as the original matrix as because additional coefficients
+generally appear during the computation of this factor resulting in a
+denser matrix than the original one. This phenomenon is called
 \textit{fill-in} and can be greatly reduced by the use of a symmetric
 permutation applied to the matrix before the factorization. If, for
 example, we apply the symmetric permutation $P$ to the matrix $A$ then
-we transform the original matrix into $PAP^{T}$ \TODO{AMD
-  vs. nested-dissection ordering}. The dependencies between the
-coefficients in the factor $L$ during the factorization can be
+we transform the original matrix into $PAP^{T}$. The two main
+techniques for determining the fill-reducing symmetric permutation are
+based on either Minimum Degree~\cite{t.w:67, l:85, a.d.d:96, a.d.d:04}
+or Nested Dissection~\cite{g.l:78} methods. The dependencies between
+the coefficients in the factor $L$ during the factorization can be
 expressed in a tree structure called an \textit{elimination tree}
 where each node in this tree represent a column in the factor. In
 order to increase the efficiency of operations by exploiting Level 3
 BLAS routines, the elimination tree is transformed into an
 \textit{assembly tree} where columns having a similar nonzero pattern
 are amalgamated into a dense matrix that is referred to a
-\textit{nodal} matrix or \textit{supernode}. The factorization is
-effected by traversing the assembly tree in a topological order and
-performing two main operations at each supernode: a dense Cholesky
-factorization of the current supernode and an update of the ancestor
-supernodes using the computed factors in the nodal factorization. The
-update operations may be performed according to several strategies:
-\textit{right-looking} updates where ancestors nodes are updated as
-soon as the nodal factorization is done, or \textit{left-looking}
-updates where the current supernode is updated just before being
-factorized. The assembly tree is computed during an analysis phase
-preceding the factorization and in our case we obtain it by using the
-software package HSL\_MC78 \alert{find reference for MC78}.
+\textit{nodal} matrix or \textit{supernode}. 
+
+The factorization is effected by traversing the assembly tree in a
+topological order and performing two main operations at each
+supernode: a dense Cholesky factorization of the current supernode and
+an update of the ancestor supernodes using the computed factors in the
+nodal factorization. The update operations may be performed according
+to several strategies: \textit{right-looking} updates where ancestors
+nodes are updated as soon as the nodal factorization is done, or
+\textit{left-looking} updates where the current supernode is updated
+just before being factorized. The assembly tree is computed during the
+analysis phase preceding the factorization and in our case we obtain
+it by using the software package HSL\_MC78~\cite{h.s:10}.
 
 There are two main sources of parallelism that can be exploited in the
 assembly tree which are the \textit{tree-level} and
-\textit{node-level}. The tree-level parallelism is due to the fact
-that supernodes located in separate branches of the tree can be
-processed independently and the node-level parallelism is exploited
-when nodes are large enough and can be processed by multiple resources
-in parallel. One approach for the parallelization of the supernodal
-algorithm consists in exploiting these two levels of parallelism
-separately \alert{give more explanation about this
-  strategy. Separately is misleading. talk about the distribution of
-  these two levels of parallelism} . Instead, in our work, we follows
-the approach proposed in~\cite{h.r.s:10} where supernodes are
-partitioned into square blocks of order \texttt{nb} and operations are
-applied on these blocks. Figure~\ref{fig:etree-simple-part} shows a
-simple assembly tree that consists of three supernodes where the
-dashed lines represent the block partitioning of
+\textit{node-level} parallelism. The tree-level parallelism is due to
+the fact that supernodes located in separate branches of the tree can
+be processed independently and the node-level parallelism is exploited
+when nodes are large enough to be efficiently processed by multiple
+resources in parallel. One approach for the parallelization of the
+supernodal algorithm consists in exploiting these two levels of
+parallelism independently. For example, several processes can be used
+to handle the factorization of independent supernodes in the tree and
+theses processes can exploit node-level parallelism by using
+multithreaded routines. Note that with this strategy, there is a
+synchronisation point between the processing of a node and the
+processing of its children therefore potentially limiting
+parallelism. Instead, in our work, we follows the approach proposed
+in~\cite{h.r.s:10} where supernodes are partitioned into square blocks
+of order \texttt{nb} and operations are applied on these
+blocks. Figure~\ref{fig:etree-simple-part} shows a simple assembly
+tree that consists of three supernodes where the dashed lines
+represent the block partitioning of
 supernodes. Figures~\ref{fig:dag-simple} represent the DAG associated
 with the factorization of the tree presented in
 Figure~\ref{fig:etree-simple-part}.
@@ -379,8 +428,10 @@ kernels:
 \end{itemize}
 
 Note that in this algorithm, we perform the update using a
-right-looking scheme. \TODO{remarks on the different schemes: fan-in,
-  fan-out, etc}
+right-looking scheme. Although the left and right looking schemes can
+lead to different performance result in serial, none of them is
+considered better than the other because their behaviour depend on the
+characteristic of the architecture hardware.
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
