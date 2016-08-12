@@ -431,7 +431,7 @@ Note that in this algorithm, we perform the update using a
 right-looking scheme. Although the left and right looking schemes can
 lead to different performance result in serial, none of them is
 considered better than the other because their behaviour depend on the
-characteristic of the architecture hardware.
+characteristic of the architecture.
  
 \section{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -782,8 +782,8 @@ slow to feed all the resources therefore bounding the execution time.
 %% the information associated with a supernode as well as the blocks
 %% associated with the nodal matrix.
 
-\TODO{In a new section, present MA87 and especially PTG-like
-  programming model.}
+\alert{Should we introduce another section to present the MA87
+  scheduler and task dependency management?}
 
 \section{Experimental results}\label{sec:experiments}
 
@@ -792,8 +792,7 @@ test matrices taken from the University of Florida Matrix
 Collection~\cite{d.h:11}. In this collection we selected a large set
 of symmetric positive-definite matrices from a wide range of
 application and sparsity structure. They are listed in
-Table~\ref{sec:mat} along with their sizes and number of entries. In
-addition, we indicated the number of entries in the factor $L$ and the
+Table~\ref{sec:mat} along with their sizes and number of entries. In this table we also indicated the number of entries in the factor $L$ and the
 operation count for the factorization when using the nested-dissection
 ordering \metis~\cite{k.k:98}. As explained in Section~\ref{sec:chol}
 this allows us to reduce the number of entries in the factor $L$ by
@@ -853,13 +852,17 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
 \begin{figure}[!h]
   \centering
   \includegraphics[width=\textwidth]{data/cmp_perf_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
+  \caption{\label{fig:exp-perf} Performance results for both \openmp
+    and \starpu versions of SpLLT solver and \ma solver on 28 cores
+    for our test matrices presented in Table~\ref{sec:mat}.}
 \end{figure}
 
 \begin{figure}[!h]
   \centering
   \includegraphics[width=\textwidth]{data/cmp_facto_rel_stf}
-  \caption{\label{fig:exp-perf}\TODO{put caption}}
+  \caption{\label{fig:exp-rel-perf}Performance results obtained with
+    SpLLT, \openmp and \starpu versions, relatively to the performance
+    obtained with \ma.}
 \end{figure}
 
 \section{Concluding remarks}\label{sec:conclusions}
