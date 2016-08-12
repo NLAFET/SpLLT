@@ -244,26 +244,32 @@ a high-level API provided by the runtime system and low level details
 such as data consistency across the architecture and task scheduling
 are delegated to the runtime system. Several dense linear algebra
 software packages were build with using this approach such as
-DPLASMA~\cite{b.b.d.f.ea:11}, which is developed with the \parsec
-runtime system and Chameleon which supports several runtime systems
-including \starpu and \parsec. Both packages are deigned for
-distributed memory system equipped with accelerators. In the context
-of sparse linear algebra however, relatively few libraries adopted a
-this approach. Two examples of runtime-based sparse solvers are
-\qrm~\cite{a.b.g.l.:14}, which implements a multifrontal QR method,
-and \pastix~\cite{h.r.r:02} which implements a supernodal Cholesky
-method. Compared to the context of dense linear algebra, the
-difficulty for employing this approach in the sparse case steams from
-the fact that DAGs are extremely irregular with a large variability of
-task granularity and irregularities in the dependency pattern.
+DPLASMA~\cite{b.b.d.f.ea:11}, which is developed with the
+\parsec~\cite{b.b.d.f.ea:13} runtime system and Chameleon which
+supports several runtime systems including \starpu~\cite{a.t.n.w:11}
+and \parsec. Both packages are deigned for distributed memory system
+equipped with accelerators. In the context of sparse linear algebra
+however, relatively few libraries adopted a this approach. Two
+examples of runtime-based sparse solvers are \qrm~\cite{a.b.g.l.:14},
+which implements a multifrontal QR method, and \pastix~\cite{h.r.r:02}
+which implements a supernodal Cholesky method. Compared to the context
+of dense linear algebra, the difficulty for employing this approach in
+the sparse case steams from the fact that DAGs are extremely irregular
+with a large variability of task granularity and irregularities in the
+dependency pattern.
 
-We choose to use a Sequential Task Flow (STF) programming model for
+We focus on a Sequential Task Flow (STF) programming model for
 expressing the DAG corresponding to our application. This model, also
 used in \qrm, offers a simple way to express the parallel code from
-the sequential one. We show that our codes, implemented with a
-task-based runtime system supporting the STF model, can lead to an
-implementation of a sparse matrix factorization which is as efficient
-as a state-of-the-art solver on a multicore system.
+the sequential one. Although this work is closely related to the
+approach employed in the \starpu version of \pastix, the expression of
+dependencies differs in these two solvers. In the \pastix solver,
+dependencies are explicitly expressed and therefore doesn't take
+advantage of the STF features available in \starpu. We show that our
+codes, implemented with a task-based runtime system supporting the STF
+model, can lead to an implementation of a sparse matrix factorization
+which is as efficient as a state-of-the-art solver on a multicore
+system.
 
 %% advantage of GPU-accelerated arch? computation rate, energy
 %% efficiency, etc
@@ -604,6 +610,14 @@ submitted to the runtime system, we wait for their completion by
 calling the routine \texttt{starpu\_task\_wait\_for\_all}.
 
 \begin{figure}[!h]
+  \lstset{language=C, procnamekeys={},escapechar=>}
+  \centering \lstinputlisting{listings/stf-starpu-example.c}
+  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
+    of the sequential code in Figure~\ref{fig:seq-example} using a STF
+    model with \starpu.}
+\end{figure}
+
+\begin{figure}[!h]
     \centering
     \includegraphics[width=0.9\textwidth]{figures/scheduler}
     \caption{\label{fig:scheduler} Illustration of the dynamic
@@ -628,14 +642,6 @@ so that it can detect the most critical tasks in the DAG. \starpu not
 only support the use of task priority but it also give the possibility
 to use several scheduling strategies and to implement a new one if
 necessary.
-
-\begin{figure}[!h]
-  \lstset{language=C, procnamekeys={},escapechar=>}
-  \centering \lstinputlisting{listings/stf-starpu-example.c}
-  \caption{\label{fig:stf-starpu-example}Simple example of a parallel version
-    of the sequential code in Figure~\ref{fig:seq-example} using a STF
-    model with \starpu.}
-\end{figure}
 
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
 \label{sec:spllt-stf}
@@ -856,6 +862,16 @@ factorization times are represented in Figures~\ref{fig:exp-perf} for
 the different solvers. Additionally Figures~\ref{fig:exp-rel-perf}
 illustrate the relative performance of the \spllt codes compared \ma.
 
+For matrices \#27 to \#38, corresponding to the bigger problems of our
+test set, the performance behaviour of the \openmp and \starpu version
+of \spllt is very similar and comparable to the one obtained with our
+reference solver \ma. On smaller problems, with factorization times
+generally smaller than a second, it appears that the \openmp version
+gives better results that the \starpu one, with results competitive
+with \ma except on some specific problems. Matrices \# 1 and \# 15,
+for examples, gives extremely poor results with both version of our
+code.
+
 %% \begin{figure}[!h]
 %%   \begin{minipage}{0.5\textwidth}
 %%     \centering
@@ -918,7 +934,10 @@ This report has described in detail the development of a new
 %% \url{http://www.hsl.rl.ac.uk/} and \url{http://www.numerical.rl.ac.uk/spral/}).
 
 \clearpage
+
 \bibliography{flipflapflopBib}
+
+\clearpage
 
 \appendix
 
