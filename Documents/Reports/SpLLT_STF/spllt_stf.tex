@@ -75,6 +75,7 @@
 \newcommand{\spllt}{SpLLT\xspace}
 \newcommand{\qrm}{\texttt{qr\_mumps}\xspace}
 \newcommand{\pastix}{\texttt{PaSTIX}\xspace}
+\newcommand{\nb}{\texttt{nb}\xspace}
 
 \bibliographystyle{siam}
 
@@ -637,7 +638,7 @@ necessary.
 \end{figure}
 
 \section{Parallelisation of a task-based Cholesky factorization using an STF programming model}
-\label{sec:experiments}
+\label{sec:spllt-stf}
 
 %% In this section we describe the STF-based parallel code of our
 %% DAG-based Cholesky solver. We developed two different versions using
@@ -771,8 +772,12 @@ cases, the submission of tasks in the DAG may be a limiting factor for
 the performance. This happens when the number of tasks is important
 and the task granularity is small. In such cases, especially when the
 number of resources increases, the unrolling of the DAG may be too
-slow to feed all the resources therefore bounding the execution time.
-
+slow to feed all the resources therefore bounding the execution
+time. In that respect the partition parameter $nb$ may influence the
+performance as a small value for this parameter increases the amount
+of tasks in the DAG and therefore the overhead associated with the
+task submission and also the task management in the runtime system
+including the task scheduling.
 
 %% The \texttt{init} task is responsible for setting up the blocks in a
 %% given supernode. In our code a supernode is represented by a symbolic
@@ -792,31 +797,64 @@ test matrices taken from the University of Florida Matrix
 Collection~\cite{d.h:11}. In this collection we selected a large set
 of symmetric positive-definite matrices from a wide range of
 application and sparsity structure. They are listed in
-Table~\ref{sec:mat} along with their sizes and number of entries. In this table we also indicated the number of entries in the factor $L$ and the
-operation count for the factorization when using the nested-dissection
-ordering \metis~\cite{k.k:98}. As explained in Section~\ref{sec:chol}
-this allows us to reduce the number of entries in the factor $L$ by
-limiting the fill-in. Note that in this table, matrix characteristics
-are obtained without node amalgamation. This means that the number of
-entries in $L$ as well as the flop count is minimal but in our
-experiment we use node amalgamation to have a better efficiency of
-operations at the cost of an increase in the number of entries in $L$
-as well as the operation count. The node amalgamation is controlled by
-a parameter \texttt{nemin} used during the analysis phase. The
-strategy for amalgamating the nodes in analysis routine of the MA78 is
-as follow: the elimination tree is traversed using a post order and
-when a node is visited, it is merge with its parents if the column
-count in both nodes is lower than \texttt{nemin} or if the merging
-generate no additional fill-in in $L$. In our experiment we set the
-\texttt{nemin} value to $32$ which correspond to a good trade-off
-between sparsity and efficiency of operations in our experiments.
+Table~\ref{table:mat} along with their sizes and number of entries. In
+this table we also indicated the number of entries in the factor $L$
+and the operation count for the factorization when using the
+nested-dissection ordering \metis~\cite{k.k:98}. As explained in
+Section~\ref{sec:chol} this allows us to reduce the number of entries
+in the factor $L$ by limiting the fill-in. Note that in this table,
+matrix characteristics are obtained without node amalgamation. This
+means that the number of entries in $L$ as well as the flop count is
+minimized. However, in our experiments we use node amalgamation to
+obtain a better efficiency of operations at the cost of an increase in
+the number of entries in $L$ as well as the operation count. The node
+amalgamation is controlled by a parameter \texttt{nemin} used during
+the analysis phase and the strategy for amalgamating the nodes in
+analysis routine of the MA78 is as follow: the elimination tree is
+traversed using a post order and when a node is visited, it is merge
+with its parents if the column count in both nodes is lower than
+\texttt{nemin} or if the merging generate no additional fill-in in
+$L$. In our experiment we set the \texttt{nemin} value to $32$ which
+correspond to a good trade-off between sparsity and efficiency of
+operations in our experiments.
 
 In this study the tests were made on a multicore machine equipped with
 two Intel(R) Xeon(R) E5-2695 v3 CPUs with fourteen cores each (twenty
 eight cores in total). Each core, clocked at 2.3 Ghz and is equipped
 with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
-1.03 TFlop/s in real, double precision arithmetic.
+1.03 TFlop/s in real, double precision arithmetic. The code is
+compiled with the GNU compiler (\texttt{gcc} and \texttt{gfortran}),
+the BLAS and LAPACK routines are provided by the Intel MKL v11.3
+library and we used the trunk development version of the \starpu
+runtime system freely available through anonymous SVN access.
 
+The choice for the parameter \nb in the parallel execution is not
+trivial as it impacts several aspects of the execution that influences
+the performance. Although small value for this parameter increases the
+number of tasks in the DAG and thus the parallelism, it also reduces
+the performance of the level 3 BLAS routines executed in the
+tasks. The optimal value for this parameter thus correspond to a
+trade-off between a sufficient amount of parallelism to feed the
+resources and a good kernels efficiency. In addition, as we have seen
+in Section~\ref{sec:spllt-stf} the parameter \nb influence the
+overhead for managing the task because when the number of tasks in the
+DAG increases, it also increase the time needed for the handling the
+DAG including the task submission, dependency detection and
+scheduling. Finally, the optimal value for \nb depend on a large
+number of parameters such as processing unit capabilities, number of
+resources and cannot be easily determined without a precise
+performance model for the application which is, in practice, extremely
+difficult to establish. Instead we empirically determine a good \nb
+value for each problem by running multiple tests on a range of values
+which is \texttt{nb=(256, 384, 512, 768, 1024)} in these experiments.
+
+The best factorization times obtained with \spllt and \ma for every
+problem listed in Table~\ref{table:mat} are reported in
+Table~\ref{table:exp-times} along with the corresponding value of \nb
+for the experiment. The Gflop/s rates corresponding to the best
+factorization times are represented in Figures~\ref{fig:exp-perf} for
+the different solvers. Additionally Figures~\ref{fig:exp-rel-perf}
+illustrate the relative performance of the \spllt codes compared \ma.
 
 %% \begin{figure}[!h]
 %%   \begin{minipage}{0.5\textwidth}
@@ -832,15 +870,11 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
 %%   \end{minipage}
 %% \end{figure}
 
-
-\TODO{keep table with factorization times? performance profile?}
-
 \begin{table}[htbp]
     \begin{center}
-      \texttt{
-        \input{data/cn255/table_cmp_facto.tex}}
+      \texttt{ \input{data/cn255/table_cmp_facto.tex}}
     \end{center}
-    \caption{Factorization times (seconds) obtained with MA87 and
+    \caption{\label{table:exp-times}Factorization times (seconds) obtained with MA87 and
       SpLLT (i.e. MA87\_starpu). The factorizations were run with the
       block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
       and \texttt{nemin=32}. The lowest factorization times are shown
@@ -854,7 +888,7 @@ with AVX2, has a peak of 36.8 GFlop/s corresponding to a total peak of
   \includegraphics[width=\textwidth]{data/cmp_perf_stf}
   \caption{\label{fig:exp-perf} Performance results for both \openmp
     and \starpu versions of SpLLT solver and \ma solver on 28 cores
-    for our test matrices presented in Table~\ref{sec:mat}.}
+    for our test matrices presented in Table~\ref{table:mat}.}
 \end{figure}
 
 \begin{figure}[!h]
@@ -896,7 +930,7 @@ This report has described in detail the development of a new
 \renewcommand{\thetable}{A.\arabic{table}}
 
 \begin{table}[htbp]
-  \label{sec:mat}
+  \label{table:mat}
   \begin{center}
     \texttt{\begin{tabular}{rl|rrrrl}
       \hline
