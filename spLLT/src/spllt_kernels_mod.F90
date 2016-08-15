@@ -134,12 +134,14 @@ contains
   end subroutine spllt_subtree_factorize_node
 
   ! expand the updates that are accumulated in workspace into buffer
-  subroutine spllt_subtree_expand_buffer(cptr, cptr2, col_list, rptr, rptr2, row_list, &
+  subroutine spllt_subtree_expand_buffer(is_diag, cptr, cptr2, col_list, &
+       & rptr, rptr2, row_list, &
        & node, am, an, root, m, workspace, buffer)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
 
+    logical, intent(in) :: is_diag
     type(node_type), intent(in) :: node 
     type(node_type), intent(in) :: root 
     integer, intent(in) :: cptr, cptr2 ! Ljk
@@ -153,51 +155,84 @@ contains
     integer :: arow ! buffer row
     integer :: acol ! buffer col
     integer :: b_sz ! buffer size
-    integer :: i, j
+    integer :: i, j, ii, jj
+    integer :: buf_rptr, buf_ptr
+    integer :: buf_ptr0, buf_ptr1, buf_ptr2, buf_ptr3 ! buffer col
+    integer :: rls, cls
+    integer :: imax, cmax
+    integer :: ndiag
 
     b_sz = am-an
 
     ! expand workspace into buffer
     arow = 1
     acol = 1
+    
+    cls = cptr2-cptr+1
+    rls = rptr2-rptr+1
+    ndiag = 0
+    if (is_diag) ndiag = m
 
     ! build col_list
-    do j = cptr, cptr2
-       do while(root%index(acol).ne.node%index(j))
+    ! col_list = 1
+    do j = 1, cls
+       do while(root%index(acol).ne.node%index(cptr+j-1))
           acol = acol + 1
        end do
-       col_list(j-cptr+1) = acol
+       col_list(j) = acol
     end do
 
     ! build row_list
-    do i = rptr, rptr2
+    do i = 1, rls 
        ! rows to update in buffer
-       do while(root%index(arow).ne.node%index(i))
+       do while(root%index(arow).ne.node%index(rptr+i-1))
           arow = arow + 1
        end do
-       row_list(i-rptr+1) = arow
+       row_list(i) = arow
     end do
 
-    do i = rptr, rptr2 
+    do i = 1, rls 
        ! rows to update in buffer
        ! do while(root%index(arow).ne.node%index(i))
        !    arow = arow + 1
        ! end do
-       arow = row_list(i-rptr+1)
+       arow = row_list(i)
+       buf_rptr = (arow-an-1)*b_sz
+       ii = (i-1)*m
+       imax = cls
+       if (i.le.ndiag) imax = i
+       cmax = 4*(imax/4)
 
-       do j = cptr, cptr2
+       do j = 1, cmax, 4
           ! column to update in buffer 
           ! do while(root%index(acol).ne.node%index(j))
           !    acol = acol + 1
           ! end do
-          acol = col_list(j-cptr+1)
+          ! acol = col_list(j)
 
+          buf_ptr0 = buf_rptr + col_list(j+0) - an
+          buf_ptr1 = buf_rptr + col_list(j+1) - an
+          buf_ptr2 = buf_rptr + col_list(j+2) - an
+          buf_ptr3 = buf_rptr + col_list(j+3) - an
+
+          buffer(buf_ptr0) = buffer(buf_ptr0) + workspace(ii + j+0)
+          buffer(buf_ptr1) = buffer(buf_ptr1) + workspace(ii + j+1)
+          buffer(buf_ptr2) = buffer(buf_ptr2) + workspace(ii + j+2)
+          buffer(buf_ptr3) = buffer(buf_ptr3) + workspace(ii + j+3)
+
+
+          ! buf_ptr = buf_rptr + (acol-an) 
           ! print *, "arow: ", arow, "acol: ", acol
           ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
-          buffer((arow-an-1)*b_sz + (acol-an)) = &
-               buffer((arow-an-1)*b_sz + (acol-an)) + workspace((i-rptr)*m + (j-cptr+1))
+          ! buffer(buf_ptr) = buffer(buf_ptr) + workspace(ii + j)
           
        end do
+       do j = cmax+1, imax
+          acol = col_list(j)
+          buf_ptr = buf_rptr + (acol-an) 
+          buffer(buf_ptr) = buffer(buf_ptr) + workspace(ii + j)
+       end do
+
     end do
 
   end subroutine spllt_subtree_expand_buffer
@@ -480,7 +515,7 @@ contains
        if(.not.map_done) then
 
           rr = 1
-          do row = 1, am, anode%nb
+          do row = an+1, am, anode%nb
              do i = row, min(row+anode%nb-1, am)
                 rowptr = anode%index(i)
                 map(rowptr) = rr
@@ -558,7 +593,8 @@ contains
              end do
 
              ! expand accumulated udpate into buffer
-             call spllt_subtree_expand_buffer(cptr, cptr2, col_list, ilast, i-1, row_list, &
+             call spllt_subtree_expand_buffer(is_diag, cptr, cptr2, col_list, &
+                  & ilast, i-1, row_list, &
                   & node, am, an, anode, m, workspace, buffer)
 
              ii = k
@@ -627,217 +663,12 @@ contains
        end do
 
        ! expand accumulated udpate into buffer
-       call spllt_subtree_expand_buffer(cptr, cptr2, col_list, ilast, i-1, row_list, &
+       call spllt_subtree_expand_buffer(is_diag, cptr, cptr2, col_list, &
+            & ilast, i-1, row_list, &
             & node, am, an, anode, m, workspace, buffer)
        
        cptr = cptr2 + 1   
     end do buff_bcols
-
-
-    ! map_done = .false. ! We will only build a map when we need it
-    ! buff_bcols: do
-    !    if(cptr.gt.numrow) exit
-
-    !    ! compute local index of block column in anode and find the id of 
-    !    ! its diagonal block
-    !    cb = (node%index(cptr) - anode%sa)/anode%nb + 1
-    !    print *, "cptr: ", cptr, "node%index(cptr): ", node%index(cptr), ", anode%sa: ", anode%sa 
-    !    print *, "cb: ", cb, ", a_nb: ", anode%nb
-    !    ! Find cptr2
-    !    jlast = anode%sa + cb*anode%nb - 1
-    !    do cptr2 = cptr,numrow
-    !       if(node%index(cptr2) > jlast) exit
-    !    end do
-    !    cptr2 = cptr2 - 1
-
-    !    m = cptr2 - cptr + 1 ! number of columns in update
-
-    !    if(.not.map_done) call spllt_build_rowmap(anode, map)
-
-    !    ! Loop over the blocks of snode
-    !    ii = map(node%index(cptr)) 
-    !    ! ii = -1 
-    !    ilast = cptr ! Set start of current block
-
-    !    do i = cptr, numrow
-    !       k = map(node%index(i))
-
-    !       if(k.ne.ii) then
-
-    !          ! n = i - ilast
-
-    !          ! dblk = node%blk_sa
-    !          ! ! Loop over block columns in node.
-    !          ! ! accumulate update in workspace
-    !          ! do kk = 1, nc
-
-    !          !    n1 = blocks(dblk)%blkn
-
-    !          !    csrc  = 1 + (cptr-(kk-1)*s_nb-1)*n1
-    !          !    csrc2 = m*n1
-
-    !          !    rsrc  = 1 + (ilast-(kk-1)*s_nb-1)*n1
-    !          !    rsrc2 = n*n1
-
-    !          !    bcol1 = blocks(dblk)%bcol
-
-    !          !    ! print *, "kk: ",kk
-    !          !    ! print *, "cptr: ", cptr, ", cptr2: ", cptr2
-    !          !    ! print *, "ilast: ", ilast, ", i: ", i
-    !          !    ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
-
-    !          !    ! workspace += a_ik * a_kj
-    !          !    call dgemm('T', 'N', int(m), int(n), n1, &
-    !          !         & one, &
-    !          !         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-    !          !         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-    !          !         & one, workspace, int(m))
-
-    !          ! end do
-
-    !          ! ! expand workspace into buffer
-    !          ! arow = 1
-    !          ! acol = 1
-    !          ! do p = cptr, cptr2
-    !          !    ! column to update in buffer 
-    !          !    do while(anode%index(acol).ne.node%index(p))
-    !          !       acol = acol + 1
-    !          !    end do
-
-    !          !    arow = 1
-    !          !    do q = ilast, i-1 
-    !          !       ! rows to update in buffer
-    !          !       do while(anode%index(arow).ne.node%index(q))
-    !          !          arow = arow + 1
-    !          !       end do
-
-    !          !       ! print *, "arow: ", arow, "acol: ", acol
-    !          !       ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
-    !          !       buffer((arow-an-1)*b_sz + (acol-an)) = &
-    !          !            buffer((arow-an-1)*b_sz + (acol-an)) + workspace((q-ilast)*n + (p-cptr+1))
-    !          !    end do
-    !          ! end do
-
-    !          ! ii = k
-    !          ! ilast = i ! Update start of current block
-    !       end if
-    !    end do
-
-    !    n = i - ilast
-    !    ! initialize workspace
-    !    workspace = 0
-
-    !    dblk = node%blk_sa
-    !    ! Loop over the block columns in node. 
-    !    do kk = 1, nc
-          
-    !       n1 = blocks(dblk)%blkn
-          
-    !       csrc  = 1 + (cptr-(kk-1)*s_nb-1)*n1
-    !       csrc2 = m*n1
-
-    !       rsrc  = 1 + (ilast-(kk-1)*s_nb-1)*n1
-    !       rsrc2 = n*n1
-
-    !       bcol1 = blocks(dblk)%bcol
-
-    !       ! print *, "kk: ",kk
-    !       ! print *, "cptr: ", cptr, ", cptr2: ", cptr2
-    !       ! print *, "ilast: ", ilast, ", i: ", i
-    !       ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
-          
-    !       ! workspace += a_ik * a_kj
-    !       call dgemm('T', 'N', int(m), int(n), n1, &
-    !            & one, &
-    !            & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-    !            & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-    !            & one, workspace, int(m))
-
-    !    end do
-       
-    !    ! expand workspace into buffer
-    !    arow = 1
-    !    acol = 1
-    !    do p = cptr, cptr2
-    !       ! column to update in buffer 
-    !       do while(anode%index(acol).ne.node%index(p))
-    !          acol = acol + 1
-    !       end do
-          
-    !       arow = 1
-    !       do q = ilast, i-1 
-    !          ! rows to update in buffer
-    !          do while(anode%index(arow).ne.node%index(q))
-    !             arow = arow + 1
-    !          end do
-
-    !          ! print *, "arow: ", arow, "acol: ", acol
-    !          ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
-    !          buffer((arow-an-1)*b_sz + (acol-an)) = &
-    !               buffer((arow-an-1)*b_sz + (acol-an)) + workspace((q-ilast)*n + (p-cptr+1))
-    !       end do
-    !    end do
-
-    !    ! Move cptr down, ready for next block column of anode
-    !    cptr = cptr2 + 1       
-    ! end do buff_bcols
-
-    ! ! start from curent position in node
-    ! do i = cptr, numrow
-    !    ! Find col of generated element
-    !    do while(nodes(root)%index(acol) .ne. node%index(i))
-    !       acol = acol + 1
-    !    end do
-
-    !    arow = acol
-    !    do j = i, numrow ! rows to update
-    !       ! Find row of ancestor
-    !       do while(nodes(root)%index(arow) .ne. node%index(j))
-    !          arow = arow + 1
-    !       end do
-
-    !       ! Do update a_ij -= sum_p a_ik a_kj
-    !       v    = 0.0
-    !       a_ik = 0.0
-    !       a_kj = 0.0
-
-    !       ! udpate buffer : non blocked version
-    !       bcol = blocks(node%blk_sa)%bcol
-
-    !       ! n = numcol
-    !       ! do k = 1, n
-    !       !    a_ik = lfact(bcol)%lcol((i-1)*n+k)
-    !       !    a_kj = lfact(bcol)%lcol((j-1)*n+k)
-    !       !    v = v + a_ik * a_kj
-    !       ! end do
-    !       ! buffer((arow-an-1)*b_sz + (acol-an)) = &
-    !       !      buffer((arow-an-1)*b_sz + (acol-an)) + v
-
-    !       ! udpate buffer : blocked version
-    !       dblk = node%blk_sa
-    !       ! Loop over the block columns in node. 
-    !       do kk = 1, nc
-             
-    !          bcol = blocks(dblk)%bcol
-    !          n = blocks(dblk)%blkn
-
-    !          do k = 1, n
-                
-    !             csrc = (i-(kk-1)*s_nb-1)*n + k
-    !             rsrc = (j-(kk-1)*s_nb-1)*n + k
-
-    !             a_ik = lfact(bcol)%lcol(csrc)
-    !             a_kj = lfact(bcol)%lcol(rsrc)
-    !             v = v + a_ik * a_kj
-    !          end do
-
-    !          dblk = blocks(dblk)%last_blk + 1
-    !       end do
-    !       buffer((arow-an-1) * b_sz + (acol-an)) = &
-    !            buffer((arow-an-1) * b_sz + (acol-an)) + v
-          
-    !    end do
-    ! end do
 
   end subroutine spllt_subtree_apply_node
 
