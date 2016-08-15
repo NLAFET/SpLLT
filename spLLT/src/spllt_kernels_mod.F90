@@ -134,7 +134,8 @@ contains
   end subroutine spllt_subtree_factorize_node
 
   ! expand the updates that are accumulated in workspace into buffer
-  subroutine spllt_subtree_expand_buffer(cptr, cptr2, rptr, rptr2, node, am, an, root, m, workspace, buffer)
+  subroutine spllt_subtree_expand_buffer(cptr, cptr2, col_list, rptr, rptr2, row_list, &
+       & node, am, an, root, m, workspace, buffer)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
@@ -143,6 +144,7 @@ contains
     type(node_type), intent(in) :: root 
     integer, intent(in) :: cptr, cptr2 ! Ljk
     integer, intent(in) :: rptr, rptr2 ! Lik
+    integer, pointer, intent(in) :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
     integer, intent(in) :: m ! number of column in workspace
     integer, intent(in) :: am, an ! root node sizes
     real(wp), pointer, intent(in) :: workspace(:) ! accumulated updates
@@ -158,23 +160,43 @@ contains
     ! expand workspace into buffer
     arow = 1
     acol = 1
+
+    ! build col_list
     do j = cptr, cptr2
-       ! column to update in buffer 
        do while(root%index(acol).ne.node%index(j))
           acol = acol + 1
        end do
+       col_list(j-cptr+1) = acol
+    end do
 
-       arow = 1
-       do i = rptr, rptr2 
-          ! rows to update in buffer
-          do while(root%index(arow).ne.node%index(i))
-             arow = arow + 1
-          end do
+    ! build row_list
+    do i = rptr, rptr2
+       ! rows to update in buffer
+       do while(root%index(arow).ne.node%index(i))
+          arow = arow + 1
+       end do
+       row_list(i-rptr+1) = arow
+    end do
+
+    do i = rptr, rptr2 
+       ! rows to update in buffer
+       ! do while(root%index(arow).ne.node%index(i))
+       !    arow = arow + 1
+       ! end do
+       arow = row_list(i-rptr+1)
+
+       do j = cptr, cptr2
+          ! column to update in buffer 
+          ! do while(root%index(acol).ne.node%index(j))
+          !    acol = acol + 1
+          ! end do
+          acol = col_list(j-cptr+1)
 
           ! print *, "arow: ", arow, "acol: ", acol
           ! print *, "workspace: ", workspace((q-ilast)*n + (p-cptr+1))
           buffer((arow-an-1)*b_sz + (acol-an)) = &
                buffer((arow-an-1)*b_sz + (acol-an)) + workspace((i-rptr)*m + (j-cptr+1))
+          
        end do
     end do
 
@@ -236,6 +258,12 @@ contains
     integer :: b_sz ! sizes of the buffer
     integer :: p, q
     integer :: buff_col
+    integer :: row, rr, rowptr
+    logical :: is_diag
+
+    ! timing
+    ! integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
+
 
     ! update between
 
@@ -320,7 +348,7 @@ contains
                 n  = blocks(a_blk)%blkn
                 id = blocks(a_blk)%id
                 sa = blocks(a_blk)%sa
-
+                
                 ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
 
@@ -410,6 +438,7 @@ contains
        a_num = anode%parent
     end do
     
+    ! return
 
     ! print *, "root: ", root,", cptr: ", cptr, ", numrow: ", numrow, ", numcol: ", numcol, ", s_nb: ", s_nb
     ! print *, "nc: ", nc
@@ -449,7 +478,17 @@ contains
        m = cptr2 - cptr + 1 ! number of columns in update
        
        if(.not.map_done) then
-          call spllt_build_rowmap(anode, map)
+
+          rr = 1
+          do row = 1, am, anode%nb
+             do i = row, min(row+anode%nb-1, am)
+                rowptr = anode%index(i)
+                map(rowptr) = rr
+             end do
+             rr = rr + 1
+          end do
+
+          ! call spllt_build_rowmap(anode, map)
           map_done = .true.
        end if
 
@@ -461,6 +500,8 @@ contains
           k = map(node%index(i))
 
           if(k.ne.ii) then
+
+             is_diag = k.eq.cb ! check is bock is on diagonal
 
              n = i - ilast
              ! print *, "m: ", m, ", n: ", n, ", k: ", k, ", ii: ", ii, ", cb: ", cb
@@ -484,19 +525,40 @@ contains
                 ! print *, "kk: ",kk
                 ! print *, "ilast: ", ilast, ", i: ", i
                 ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
+                ! print *, "r: ", k, ", c: ", cb
 
                 ! workspace += a_ik * a_kj
-                call dgemm('T', 'N', int(m), int(n), n1, &
-                     & one, &
-                     & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-                     & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-                     & one, workspace, int(m))
+                if (is_diag) then
+                   
+                   call dsyrk('U', 'T', m, n1, one, &
+                        & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                        & one, workspace, m)
+
+                   if (n-m .gt. 0) then
+
+                      call dgemm('T', 'N', m, n-m, n1, &
+                           & one, &
+                           & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                           & lfact(bcol1)%lcol(rsrc+n1*m), n1, & 
+                           & one, &
+                           & workspace(1+m*m), m)
+                   end if
+
+                else
+                   
+                   call dgemm('T', 'N', m, n, n1, &
+                        & one, &
+                        & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                        & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
+                        & one, workspace, int(m))
+
+                end if
 
                 dblk = blocks(dblk)%last_blk + 1
              end do
 
              ! expand accumulated udpate into buffer
-             call spllt_subtree_expand_buffer(cptr, cptr2, ilast, i-1, &
+             call spllt_subtree_expand_buffer(cptr, cptr2, col_list, ilast, i-1, row_list, &
                   & node, am, an, anode, m, workspace, buffer)
 
              ii = k
@@ -504,10 +566,13 @@ contains
           end if
        end do
 
+       is_diag = k.eq.cb
+
        n = i - ilast
        ! initialize workspace
        workspace = 0
 
+       ! print *, "r: ", k, ", c: ", cb
        ! print *, "ilast: ", ilast, ", i: ", i
        ! print *, "m: ", m, ", n: ", n, ", k: ", k, ", cb: ", cb
        dblk = node%blk_sa
@@ -530,21 +595,44 @@ contains
           ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
 
           ! workspace += a_ik * a_kj
-          call dgemm('T', 'N', int(m), int(n), n1, &
-               & one, &
-               & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-               & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-               & one, workspace, int(m))
+          if (is_diag) then
+
+             call dsyrk('U', 'T', m, n1, one, &
+                  & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                  & one, &
+                  & workspace, m)
+
+             if (n-m .gt. 0) then
+
+                call dgemm('T', 'N', m, n-m, n1, &
+                     & one, &
+                     & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                     & lfact(bcol1)%lcol(rsrc+n1*m), n1, & 
+                     & one, &
+                     & workspace(1+m*m), m)
+
+             end if
+
+          else
+             
+             call dgemm('T', 'N', int(m), int(n), n1, &
+                  & one, &
+                  & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
+                  & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
+                  & one, workspace, int(m))
+
+          end if
 
           dblk = blocks(dblk)%last_blk + 1
        end do
 
        ! expand accumulated udpate into buffer
-       call spllt_subtree_expand_buffer(cptr, cptr2, ilast, i-1, &
+       call spllt_subtree_expand_buffer(cptr, cptr2, col_list, ilast, i-1, row_list, &
             & node, am, an, anode, m, workspace, buffer)
        
        cptr = cptr2 + 1   
     end do buff_bcols
+
 
     ! map_done = .false. ! We will only build a map when we need it
     ! buff_bcols: do
