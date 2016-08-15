@@ -146,7 +146,7 @@ contains
     type(node_type), intent(in) :: root 
     integer, intent(in) :: cptr, cptr2 ! Ljk
     integer, intent(in) :: rptr, rptr2 ! Lik
-    integer, pointer, intent(in) :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
+    integer, pointer, intent(inout) :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
     integer, intent(in) :: m ! number of column in workspace
     integer, intent(in) :: am, an ! root node sizes
     real(wp), pointer, intent(in) :: workspace(:) ! accumulated updates
@@ -175,12 +175,12 @@ contains
 
     ! build col_list
     ! col_list = 1
-    do j = 1, cls
-       do while(root%index(acol).ne.node%index(cptr+j-1))
-          acol = acol + 1
-       end do
-       col_list(j) = acol
-    end do
+    ! do j = 1, cls
+    !    do while(root%index(acol).ne.node%index(cptr+j-1))
+    !       acol = acol + 1
+    !    end do
+    !    col_list(j) = acol
+    ! end do
 
     ! build row_list
     do i = 1, rls 
@@ -480,8 +480,6 @@ contains
 
     ! accumulate update in buffer for nodes above root
     anode => nodes(root)
-    acol = 1
-    arow = 1
     am = size(anode%index)
     an = anode%en - anode%sa + 1
     b_sz = am-an
@@ -507,6 +505,15 @@ contains
        end do
        cptr2 = cptr2 - 1
     
+       ! build col_list
+       acol = buff_col
+       do j = cptr, cptr2
+          do while(anode%index(acol).ne.node%index(j))
+             acol = acol + 1
+          end do
+          col_list(j-cptr+1) = acol
+       end do
+
        ! print *, "cptr: ", cptr, ", cptr2: ", cptr2
        ! print *, "cptr: ", cptr, ", cptr2: ", cptr2, ", cb: ", cb, ", buff_col-an: ", buff_col-an, ", jlast: ", jlast
 
