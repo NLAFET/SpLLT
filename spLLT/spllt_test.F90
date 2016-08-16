@@ -44,6 +44,8 @@ contains
     use spllt_parsec_mod
     use spllt_ptg_mod
 #endif
+    use hsl_mc56_double
+    use hsl_mc69_double
     implicit none
     
     character(len=*), intent(in) :: mf
@@ -71,6 +73,10 @@ contains
     type(ma87_keep) :: keep
     type(ma87_control) :: control
     type(ma87_info) :: info
+
+    ! mc56
+    type(mc56_control) :: control56
+    integer :: info56
 
     ! timing
     integer :: start_t, stop_t, rate_t
@@ -106,14 +112,22 @@ contains
 
     ! write(*,*)"option mat: ", options%mat
     write(*,'("[spllt test mat] read matrix")')
-    
-    rb_options%values = 3 ! Make up values if necessary
-    rb_options%format = 1 ! Coordinate
-    call rb_read(matfile, a%m, a%n, a%ptr, a%row, a%col, &
-         a%val, rb_options, flag)
+
+    ! read matrix
+    ! rb_options%values = 3 ! Make up values if necessary
+    ! ! rb_options%values = 0 ! As per file
+    ! rb_options%format = 1 ! Coordinate
+    ! call rb_read(matfile, a%m, a%n, a%ptr, a%row, a%col, &
+    !      a%val, rb_options, flag)
+
+    control56%values = 3 ! make up values if necessary (posdef)
+    call mc56_read(matfile, a, control56, info56)
 
     m = a%m
     n = a%n
+
+    call mc69_cscl_clean(HSL_MATRIX_REAL_SYM_PSDEF, a%n, a%n, &
+         a%ptr, a%row, flag, val=a%val)
 
     write(*,'("[>] generate ordering")')
 

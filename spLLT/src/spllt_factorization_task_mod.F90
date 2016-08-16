@@ -4,7 +4,7 @@ module spllt_factorization_task_mod
   
 contains
 
-  subroutine spllt_subtree_factorize_task(root, keep, buffer, control)
+  subroutine spllt_subtree_factorize_task(root, keep, buffer, cntl)
     use hsl_ma87_double
     use spllt_kernels_mod
     implicit none
@@ -12,7 +12,8 @@ contains
     integer, intent(in) :: root
     type(MA87_keep), target, intent(inout) :: keep
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-    type(MA87_control), intent(in) :: control
+    ! type(MA87_control), intent(in) :: control
+    type(spllt_cntl), intent(in) :: cntl
 
     type(node_type), pointer :: node ! node in the atree    
     integer :: m, n, blk
@@ -26,7 +27,7 @@ contains
        allocate(buffer((m-n)**2))
     end if
     
-    call spllt_subtree_factorize(root, keep, buffer, control)    
+    call spllt_subtree_factorize(root, keep, buffer, cntl)
 
   end subroutine spllt_subtree_factorize_task
 

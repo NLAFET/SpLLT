@@ -198,6 +198,8 @@ contains
        ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
        ! call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
        call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
+       ! call spllt_prune_tree(adata, sparent, 4, keep) ! TESTS
+       ! call spllt_prune_tree(adata, sparent, 16, keep) ! TESTS
     end if
 
     ! set up blocking info
@@ -834,6 +836,7 @@ contains
                 lzero  (nlz) = c
                 lzero_w(nlz) = -adata%weight(c)
              else
+                adata%small(keep%nodes(c)%least_desc:c) = -c
                 adata%small(c) = 1 ! node is too smal; mark it
              end if
 
@@ -853,8 +856,9 @@ contains
     ! write(*,*)'lzero: ', lzero(1:nlz)
 
     ! DEBUG
+    ! adata%small = 0
     ! nlz = 1
-    ! lzero(1) = 3
+    ! lzero(1) = 1
 
     ! mark all the children of nodes in l0
     do i=1, nlz
@@ -867,6 +871,16 @@ contains
           adata%small(c) = 1
        end do
     end do
+
+    ! DEBUG
+    ! adata%small = 0
+    ! c = 703
+    ! adata%small(keep%nodes(c)%least_desc:c) = -c
+    ! adata%small(c) = 1
+
+    ! c = 668
+    ! adata%small(keep%nodes(c)%least_desc:c) = -c
+    ! adata%small(c) = 1
 
     deallocate(lzero_w)
     deallocate(lzero)

@@ -65,7 +65,6 @@ contains
        
        d_sa   = blocks(dblk)%sa
 
-       ! call spllt_factorize_block_task(fdata, snode, bc_kk, keep%lfact, prio+3)
        call spllt_factor_diag_block(d_m, d_n, lfact(bcol)%lcol(d_sa:d_sa+d_n*d_m-1))
 
        ! loop over the row blocks (that is, loop over blocks in block col)
@@ -116,7 +115,7 @@ contains
              sa = blocks(blk)%sa
 
              bcol = blocks(blk)%bcol
-             
+
              call spllt_update_block(m, n, &
                   & lfact(bcol)%lcol(sa:sa+n*m-1), &
                   & blocks(blk)%dblk.eq.blocks(blk)%id, n1, &
@@ -239,7 +238,7 @@ contains
 
   ! kernel for applying update on nodes within a subtree
   subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, buffer, &
-       & map, row_list, col_list, workspace, control)
+       & map, row_list, col_list, workspace, cntl)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
@@ -255,8 +254,8 @@ contains
     integer, pointer :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
     ! when scatering elements in update_between
     real(wp), pointer :: workspace(:) ! workspace used for update between
-    type(MA87_control), intent(in) :: control
-
+    ! type(MA87_control), intent(in) :: control
+    type(spllt_cntl), intent(in) :: cntl
 
     integer :: numcol, numrow
     integer :: s_nb ! block size of source node
@@ -295,6 +294,7 @@ contains
     integer :: buff_col
     integer :: row, rr, rowptr
     logical :: is_diag
+    real(wp) :: alpha
 
     ! timing
     ! integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
@@ -321,7 +321,6 @@ contains
     ! write(*,*)"numrow: ", numrow
     do while(a_num.gt.0)
        if (a_num .gt. root) exit ! make sure we stay in the subtree
-       ! if (root .ne. 21 .and. a_num .gt. root) exit ! make sure we stay in the subtree
        anode => nodes(a_num) 
        ! a_node => fdata%nodes(a_num)
        ! Skip columns that come from other children
@@ -413,7 +412,7 @@ contains
                         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
                         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
                         & row_list, col_list, workspace, &
-                        & control%min_width_blas)
+                        & cntl%min_width_blas)
 
                    dblk = blocks(dblk)%last_blk + 1
                 end do
@@ -461,7 +460,7 @@ contains
                   & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
                   & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
                   & row_list, col_list, workspace, &
-                  & control%min_width_blas)
+                  & cntl%min_width_blas)
 
              dblk = blocks(dblk)%last_blk + 1
           end do
@@ -544,11 +543,12 @@ contains
           if(k.ne.ii) then
 
              is_diag = k.eq.cb ! check is bock is on diagonal
+             ! is_diag =  .false. ! DEBUG
 
              n = i - ilast
              ! print *, "m: ", m, ", n: ", n, ", k: ", k, ", ii: ", ii, ", cb: ", cb
              ! initialize workspace
-             workspace = 0
+             ! workspace = 0
 
              dblk = node%blk_sa
              ! Loop over the block columns in node. 
@@ -569,12 +569,18 @@ contains
                 ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
                 ! print *, "r: ", k, ", c: ", cb
 
+                if (kk.eq.1) then
+                   alpha = zero
+                else
+                   alpha = one
+                end if
+
                 ! workspace += a_ik * a_kj
                 if (is_diag) then
                    
                    call dsyrk('U', 'T', m, n1, one, &
                         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-                        & one, workspace, m)
+                        & alpha, workspace, m)
 
                    if (n-m .gt. 0) then
 
@@ -582,7 +588,7 @@ contains
                            & one, &
                            & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
                            & lfact(bcol1)%lcol(rsrc+n1*m), n1, & 
-                           & one, &
+                           & alpha, &
                            & workspace(1+m*m), m)
                    end if
 
@@ -592,7 +598,7 @@ contains
                         & one, &
                         & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
                         & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-                        & one, workspace, int(m))
+                        & alpha, workspace, int(m))
 
                 end if
 
@@ -610,10 +616,11 @@ contains
        end do
 
        is_diag = k.eq.cb
+       ! is_diag =  .false. ! DEBUG
 
        n = i - ilast
        ! initialize workspace
-       workspace = 0
+       ! workspace = 0
 
        ! print *, "r: ", k, ", c: ", cb
        ! print *, "ilast: ", ilast, ", i: ", i
@@ -637,12 +644,18 @@ contains
           ! print *, "ilast: ", ilast, ", i: ", i
           ! print *, "m: ", cptr2-cptr+1, ", n: ", i-ilast, ", n1: ", n1
 
+          if (kk.eq.1) then
+             alpha = zero
+          else
+             alpha = one
+          end if
+
           ! workspace += a_ik * a_kj
           if (is_diag) then
 
              call dsyrk('U', 'T', m, n1, one, &
                   & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
-                  & one, &
+                  & alpha, &
                   & workspace, m)
 
              if (n-m .gt. 0) then
@@ -651,7 +664,7 @@ contains
                      & one, &
                      & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
                      & lfact(bcol1)%lcol(rsrc+n1*m), n1, & 
-                     & one, &
+                     & alpha, &
                      & workspace(1+m*m), m)
 
              end if
@@ -662,7 +675,7 @@ contains
                   & one, &
                   & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), n1, &
                   & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), n1, &
-                  & one, workspace, int(m))
+                  & alpha, workspace, int(m))
 
           end if
 
@@ -679,7 +692,7 @@ contains
 
   end subroutine spllt_subtree_apply_node
 
-  subroutine spllt_subtree_factorize(root, keep, buffer, control)
+  subroutine spllt_subtree_factorize(root, keep, buffer, cntl)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
@@ -687,7 +700,9 @@ contains
     integer, intent(in) :: root ! root of subtree
     type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
     real(wp), dimension(:), allocatable, intent(inout) :: buffer
-    type(MA87_control), intent(in) :: control
+    ! type(MA87_control), intent(in) :: control
+    type(spllt_cntl), intent(in) :: cntl
+
     ! integer, intent(out) :: flag ! TODO error managment
 
     integer :: node, m, n
@@ -717,7 +732,7 @@ contains
        call spllt_subtree_factorize_node(snode, keep%blocks, keep%lfact)
        ! apply udpate on ancestor node (right-looking update)
        call spllt_subtree_apply_node(snode, root, keep%nodes, keep%blocks, keep%lfact, buffer, &
-            & map, row_list, col_list, workspace, control)
+            & map, row_list, col_list, workspace, cntl)
     end do
 
     ! deallocate workspaces
@@ -1078,7 +1093,7 @@ contains
 
     integer :: dpotrf_info ! error flag for dpotrf
     integer :: i, j ! Loop indices
-
+    ! print *, "max dest: ", minval(dest(1:m*n))
     call dpotrf('Upper', n, dest, n, dpotrf_info)
     ! check for errors
     if(dpotrf_info.ne.0) return

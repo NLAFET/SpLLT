@@ -158,11 +158,11 @@ contains
 
        if (adata%small(snode) .lt. 0) cycle
        if (adata%small(snode) .eq. 1) then
-
+          print *, "[>] [spllt_stf_factorize] root: ", snode
           ! subtree factorization task
           ! call spllt_factor_subtree_task(snode, keep, buffer)
           call system_clock(subtree_start_t, subtree_rate_t)
-          call spllt_subtree_factorize_task(snode, keep, buffer, control)
+          call spllt_subtree_factorize_task(snode, keep, buffer, cntl)
           call system_clock(subtree_stop_t)
           write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
                & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
@@ -172,7 +172,7 @@ contains
           call spllt_apply_subtree(snode, buffer, keep%nodes, keep%blocks, keep%lfact, map)
           call system_clock(subtree_stop_t)
           write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
-               & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
+          & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
        else
           ! if (adata%small())

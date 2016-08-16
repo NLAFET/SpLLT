@@ -47,6 +47,7 @@ module spllt_data_mod
      integer :: nemin = 32 ! node amalgamation parameter
      logical :: prune_tree = .false.
      integer :: min_width_blas  = 8      ! Minimum width of source block
+     ! integer :: min_width_blas  = 0      ! Minimum width of source block
      ! before we use an indirect update_between
   end type spllt_cntl
 
