@@ -692,7 +692,8 @@ contains
 
   end subroutine spllt_subtree_apply_node
 
-  subroutine spllt_subtree_factorize(root, keep, buffer, cntl)
+  subroutine spllt_subtree_factorize(root, keep, buffer, &
+       & cntl, map, col_list, row_list, workspace)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
@@ -701,7 +702,10 @@ contains
     type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
     real(wp), dimension(:), allocatable, intent(inout) :: buffer
     ! type(MA87_control), intent(in) :: control
-    type(spllt_cntl), intent(in) :: cntl
+    type(spllt_cntl), intent(in)     :: cntl
+    integer, pointer, intent(inout)  :: map(:)
+    integer, pointer, intent(inout)  :: row_list(:), col_list(:)
+    real(wp), pointer, intent(inout) :: workspace(:) ! workspace for accumulating updates
 
     ! integer, intent(out) :: flag ! TODO error managment
 
@@ -709,20 +713,10 @@ contains
     type(node_type), pointer :: snode
 
     ! workspaces
-    integer, pointer :: row_list(:), col_list(:)
-    real(wp), pointer :: workspace(:)
-    integer, pointer :: map(:)
 
     m = size(keep%nodes(root)%index)
     n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
     buffer(1:(m-n)**2) = 0.0
-
-    ! allocate workspaces
-    ! TODO use workspaces that are initialized in init routine
-    allocate(row_list(keep%maxmn))
-    allocate(col_list(keep%maxmn))
-    allocate(workspace(keep%maxmn*keep%maxmn))
-    allocate(map(keep%n))
 
     ! Loop over nodes of tree in order
     do node = keep%nodes(root)%least_desc, root
@@ -734,11 +728,6 @@ contains
        call spllt_subtree_apply_node(snode, root, keep%nodes, keep%blocks, keep%lfact, buffer, &
             & map, row_list, col_list, workspace, cntl)
     end do
-
-    ! deallocate workspaces
-    deallocate(row_list, col_list)
-    deallocate(workspace)
-    deallocate(map)
 
   end subroutine spllt_subtree_factorize
   

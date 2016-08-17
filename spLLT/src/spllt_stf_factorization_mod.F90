@@ -91,6 +91,10 @@ contains
     integer :: start_setup_t, stop_setup_t, rate_setup_t
     integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
 
+    ! subtree factor variable
+    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+
+
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
 
@@ -101,6 +105,8 @@ contains
 
     ! init facto, allocate map array, factor blocks
     call spllt_factorization_init(fdata, map, keep)    
+
+    if (cntl%prune_tree) allocate(buffer(1))
 
     ! start measuring time for submitting tasks
     call system_clock(stf_start_t, stf_rate_t)
@@ -159,7 +165,7 @@ contains
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(snode, fdata, keep, cntl, map)
+          call spllt_subtree_factorize_apply(snode, fdata, keep, cntl, map, buffer)
 
        else
           ! if (adata%small())
