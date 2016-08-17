@@ -158,7 +158,7 @@ contains
 
        if (adata%small(snode) .lt. 0) cycle
        if (adata%small(snode) .eq. 1) then
-          print *, "[>] [spllt_stf_factorize] root: ", snode
+          ! print *, "[>] [spllt_stf_factorize] root: ", snode
           ! subtree factorization task
           ! call spllt_factor_subtree_task(snode, keep, buffer)
           call system_clock(subtree_start_t, subtree_rate_t)
