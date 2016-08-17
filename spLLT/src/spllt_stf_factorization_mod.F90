@@ -81,8 +81,6 @@ contains
     ! nodes(snode)%index(cptr).
     ! integer(long) :: rb ! Index of block row in snode
 
-    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-
 #if defined(SPLLT_USE_OMP)
     integer :: nt
 #endif
@@ -100,10 +98,6 @@ contains
     blocks => keep%blocks
     nodes  => keep%nodes
     num_nodes = keep%info%num_nodes
-
-    if (cntl%prune_tree) then
-       allocate(buffer(1))
-    end if
 
     ! init facto, allocate map array, factor blocks
     call spllt_factorization_init(fdata, map, keep)    
@@ -158,21 +152,14 @@ contains
 
        if (adata%small(snode) .lt. 0) cycle
        if (adata%small(snode) .eq. 1) then
-          ! print *, "[>] [spllt_stf_factorize] root: ", snode
-          ! subtree factorization task
-          ! call spllt_factor_subtree_task(snode, keep, buffer)
-          call system_clock(subtree_start_t, subtree_rate_t)
-          call spllt_subtree_factorize_task(snode, keep, buffer, cntl)
-          call system_clock(subtree_stop_t)
-          write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
-               & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
-          ! Expand generated element out to ancestors
-          call system_clock(subtree_start_t, subtree_rate_t)
-          call spllt_apply_subtree(snode, buffer, keep%nodes, keep%blocks, keep%lfact, map)
-          call system_clock(subtree_stop_t)
-          write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
-          & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
+          ! print *, "[>] [spllt_stf_factorize] root: ", snode
+        
+          ! factorize the subtree rooted at node snode. All
+          ! contributions to ancestors above the root node are
+          ! accumulated into a buffer that is scatered after the
+          ! subtree factorization
+          call spllt_subtree_factorize_apply(snode, fdata, keep, cntl, map)
 
        else
           ! if (adata%small())

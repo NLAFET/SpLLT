@@ -27,6 +27,45 @@ module spllt_factorization_mod
 
 contains
 
+  subroutine spllt_subtree_factorize_apply(snode, fdata, keep, cntl, map)
+    use spllt_data_mod
+    use hsl_ma87_double
+    use spllt_kernels_mod
+    use spllt_factorization_task_mod
+    implicit none
+
+    integer, intent(inout)                            :: snode ! node to factorize (spllt)    
+    type(spllt_data_type), target, intent(inout)      :: fdata
+    type(MA87_keep), target, intent(inout)            :: keep 
+    type(spllt_cntl), intent(inout)                   :: cntl
+    integer, intent(inout) :: map(:)
+
+    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+
+    if (cntl%prune_tree) then
+       allocate(buffer(1))
+    end if
+
+    ! subtree factorization task
+    ! call spllt_factor_subtree_task(snode, keep, buffer)
+    ! call system_clock(subtree_start_t, subtree_rate_t)
+    call spllt_subtree_factorize_task(snode, keep, buffer, cntl)
+    ! call system_clock(subtree_stop_t)
+    ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
+         ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
+
+    ! Expand generated element out to ancestors
+    ! call system_clock(subtree_start_t, subtree_rate_t)
+    call spllt_apply_subtree(snode, buffer, &
+         & keep%nodes, keep%blocks, keep%lfact, map)
+    ! call system_clock(subtree_stop_t)
+    ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
+         ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
+
+    ! deallocate(buffer)
+
+  end subroutine spllt_subtree_factorize_apply
+
 #if defined(SPLLT_USE_STARPU)
   subroutine spllt_factorize_apply_node_task(snode, fdata, keep, control, prio)
     use iso_c_binding
