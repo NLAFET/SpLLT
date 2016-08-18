@@ -149,7 +149,7 @@ contains
     integer, intent(in) :: m ! number of column in workspace
     integer, intent(in) :: am, an ! root node sizes
     real(wp), pointer, intent(in) :: workspace(:) ! accumulated updates
-    real(wp), allocatable, intent(inout) :: buffer(:) ! workspace used for update between
+    real(wp), pointer, intent(inout) :: buffer(:) ! workspace used for update between
 
     integer :: arow ! buffer row
     integer :: acol ! buffer col
@@ -248,7 +248,7 @@ contains
     type(node_type), dimension(-1:), target, intent(in) :: nodes
     type(block_type), dimension(*), intent(in)          :: blocks
     type(lfactor), dimension(*), intent(inout)          :: lfact
-    real(wp), dimension(:), allocatable, intent(inout)  :: buffer ! data array used 
+    real(wp), dimension(:), pointer, intent(inout)  :: buffer ! data array used 
     ! to accumulate updates
     integer, pointer :: map(:)
     integer, pointer :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
@@ -692,15 +692,16 @@ contains
 
   end subroutine spllt_subtree_apply_node
 
-  subroutine spllt_subtree_factorize(root, keep, buffer, &
+  subroutine spllt_subtree_factorize(root, val, keep, buffer, &
        & cntl, map, col_list, row_list, workspace)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
     
     integer, intent(in) :: root ! root of subtree
+    real(wp), dimension(*), intent(in) :: val ! user's matrix values
     type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
-    real(wp), dimension(:), allocatable, intent(inout) :: buffer
+    real(wp), dimension(:), pointer, intent(inout) :: buffer
     ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), intent(in)     :: cntl
     integer, pointer, intent(inout)  :: map(:)
@@ -712,11 +713,16 @@ contains
     integer :: node, m, n
     type(node_type), pointer :: snode
 
-    ! workspaces
-
     m = size(keep%nodes(root)%index)
     n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
     buffer(1:(m-n)**2) = 0.0
+
+    ! initialize all nodes on the subtree. This is required because we
+    ! update with a right-looking scheme.
+    do node = keep%nodes(root)%least_desc, root
+       ! init node
+       call spllt_init_node(node, val, keep)
+    end do
 
     ! Loop over nodes of tree in order
     do node = keep%nodes(root)%least_desc, root

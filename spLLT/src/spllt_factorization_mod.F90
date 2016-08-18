@@ -27,43 +27,55 @@ module spllt_factorization_mod
 
 contains
 
-  subroutine spllt_subtree_factorize_apply(root, fdata, keep, cntl, map, buffer)
+  subroutine spllt_subtree_factorize_apply(root, fdata, val, keep, cntl, map, buffer)
     use spllt_data_mod
     use hsl_ma87_double
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    integer, intent(inout)                             :: root ! node to factorize (spllt)    
-    type(spllt_data_type), target, intent(inout)       :: fdata
-    type(MA87_keep), target, intent(inout)             :: keep 
-    type(spllt_cntl), intent(inout)                    :: cntl
-    integer, pointer, intent(inout)                    :: map(:)
-    real(wp), dimension(:), allocatable, intent(inout) :: buffer ! update_buffer workspace
+    integer, intent(inout)                          :: root ! node to factorize (spllt)    
+    type(spllt_data_type), target, intent(inout)    :: fdata
+    real(wp), dimension(*), intent(in)              :: val ! user's matrix values
+    type(MA87_keep), target, intent(inout)          :: keep 
+    type(spllt_cntl), intent(inout)                 :: cntl
+    integer, pointer, intent(inout)                 :: map(:)
+    type(spllt_bc_type), intent(inout)              :: buffer ! update_buffer workspace
 
     type(node_type), pointer :: node ! node in the atree    
     integer :: m, n
+#if defined(SPLLT_USE_STARPU)
+    type(spllt_bc_type) :: buf
+#endif
 
     node => keep%nodes(root)
     m = size(node%index)
     n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
 
-    if (size(buffer).lt.(m-n)**2) then
-       deallocate(buffer)
-       allocate(buffer((m-n)**2))
+    if (size(buffer%c).lt.(m-n)**2) then
+       deallocate(buffer%c)
+       allocate(buffer%c((m-n)**2))
     end if
+
+#if defined(SPLLT_USE_STARPU)   
+    call starpu_f_task_wait_for_all() ! DEBUG
+#endif
 
     ! subtree factorization task
     ! call spllt_factor_subtree_task(snode, keep, buffer)
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_factorize_task(root, fdata, keep, buffer, cntl, map)
+    call spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all() ! DEBUG
+#endif
+
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_apply_subtree(root, buffer, &
+    call spllt_apply_subtree(root, buffer%c, &
          & keep%nodes, keep%blocks, keep%lfact, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &

@@ -777,3 +777,10 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
 
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 }
+
+// subtree_factorize StarPU task insert
+
+void spllt_insert_subtree_factorize_task_c(starpu_data_handle_t root_hdl) {
+
+   
+}

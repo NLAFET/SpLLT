@@ -60,27 +60,6 @@ contains
     integer :: ii, jj, kk
     integer :: prio
 
-    ! update between variables
-    ! integer :: csrc(2), rsrc(2) ! used for update_between tasks to
-    type(node_type), pointer :: anode ! ancestor node in the atree
-    type(spllt_node_type), pointer :: a_node ! ancestor node in the atree
-    ! locate source blocks
-    integer :: a_num ! ancestor id
-    integer :: cptr  ! Position in snode of the first row 
-    ! matching a column of the current block column of anode.
-    integer :: cptr2  ! Position in snode of the last row 
-    ! matching a column of the current block column of anode.
-    logical :: map_done
-    integer :: i, ilast
-    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
-    integer :: cb, jb
-    integer :: jlast ! Last column in the cb-th block column of anode
-    ! real(wp) :: soln(0)
-    integer :: k
-    integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
-    ! nodes(snode)%index(cptr).
-    ! integer(long) :: rb ! Index of block row in snode
-
 #if defined(SPLLT_USE_OMP)
     integer :: nt
 #endif
@@ -92,8 +71,7 @@ contains
     integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
 
     ! subtree factor variable
-    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-
+    type(spllt_bc_type) :: buffer
 
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
@@ -106,7 +84,7 @@ contains
     ! init facto, allocate map array, factor blocks
     call spllt_factorization_init(fdata, map, keep)    
 
-    if (cntl%prune_tree) allocate(buffer(1))
+    if (cntl%prune_tree) allocate(buffer%c(1))
 
     ! start measuring time for submitting tasks
     call system_clock(stf_start_t, stf_rate_t)
@@ -141,6 +119,8 @@ contains
        prio = 5 ! max priority 
        ! prio = huge(1)
        ! init node
+       if (adata%small(snode) .lt. 0) cycle
+
        call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
     end do
     ! call system_clock(stop_cpya2l_t)
@@ -165,7 +145,7 @@ contains
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(snode, fdata, keep, cntl, map, buffer)
+          call spllt_subtree_factorize_apply(snode, fdata, val, keep, cntl, map, buffer)
 
        else
           ! if (adata%small())

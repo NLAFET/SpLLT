@@ -4,21 +4,33 @@ module spllt_factorization_task_mod
   
 contains
 
-  subroutine spllt_subtree_factorize_task(root, fdata, keep, buffer, cntl, map)
+  subroutine spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
     use hsl_ma87_double
     use spllt_kernels_mod
+#if defined(SPLLT_USE_STARPU)
+    use spllt_starpu_factorization_mod
+#endif
     implicit none
 
     integer, intent(in) :: root
     type(spllt_data_type), target, intent(inout)  :: fdata
+    real(wp), dimension(*), intent(in) :: val ! user's matrix values
     type(MA87_keep), target, intent(inout) :: keep
-    real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
+    type(spllt_bc_type), intent(inout) :: buffer ! update_buffer workspace
     ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
+
+#if defined(SPLLT_USE_STARPU)
     
-    call spllt_subtree_factorize(root, keep, buffer, cntl, map, &
+    
+
+#else
+    
+    call spllt_subtree_factorize(root, val, keep, buffer%c, cntl, map, &
          & fdata%col_list%c, fdata%row_list%c, fdata%workspace%c)
+
+#endif
 
   end subroutine spllt_subtree_factorize_task
 
