@@ -165,6 +165,18 @@ module spllt_starpu_factorization_mod
      end subroutine spllt_starpu_codelet_unpack_args_init_node
   end interface
 
+  ! subtree_factorize StarPU task insert
+  interface
+     subroutine spllt_insert_subtree_factorize_task_c(root, val, keep, &
+          & buffer_hdl, cntl, map_hdl, rlst_hdl, clst_hdl, work_hdl)
+       use iso_c_binding
+       integer(c_int), value  :: root ! root node of the subtree
+       type(c_ptr), value     :: val, keep, cntl ! info
+       type(c_ptr), value     :: buffer_hdl ! buffer memory containing accumulated update
+       type(c_ptr), value     :: map_hdl, rlst_hdl, clst_hdl, work_hdl ! scratch memory
+     end subroutine spllt_insert_subtree_factorize_task_c
+  end interface
+
 contains
 
   ! factorize block StarPU task insert
@@ -579,5 +591,21 @@ contains
     call spllt_init_node(snode, val, keep)
     
   end subroutine spllt_starpu_init_node_cpu_func
+
+  ! init node StarPU CPU kernel  
+  subroutine spllt_starpu_subtree_factorize_cpu_func(buffers, cl_arg) bind(C)
+    use iso_c_binding
+    implicit none
+
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+
+    type(c_ptr), target       :: val_c, keep_c, cntl_c
+    integer, target           :: root
+
+    call spllt_starpu_codelet_unpack_args_subtree_factorize(cl_arg, &
+         & c_loc(root), c_loc(val_c), c_loc(keep_c), c_loc(cntl_c))
+
+  end subroutine spllt_starpu_subtree_factorize_cpu_func
 
 end module spllt_starpu_factorization_mod
