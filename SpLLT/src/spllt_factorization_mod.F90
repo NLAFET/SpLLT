@@ -40,31 +40,36 @@ contains
     type(MA87_keep), target, intent(inout)          :: keep 
     type(spllt_cntl), intent(inout)                 :: cntl
     integer, pointer, intent(inout)                 :: map(:)
-    type(spllt_bc_type), intent(inout)              :: buffer ! update_buffer workspace
+    type(spllt_bc_type), target, intent(inout)      :: buffer ! update_buffer workspace
 
     type(node_type), pointer :: node ! node in the atree    
-    integer :: m, n
-#if defined(SPLLT_USE_STARPU)
-    type(spllt_bc_type) :: buf
-#endif
+    integer :: m, n, b_sz
+    type(spllt_bc_type), pointer :: buf
 
     node => keep%nodes(root)
     m = size(node%index)
     n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
+    b_sz = m-n
 
+#if defined(SPLLT_USE_STARPU)   
+    
+    allocate(buf)
+    allocate(buf%c((m-n)**2))
+    
+    call starpu_matrix_data_register(buf%hdl, buf%mem_node, &
+         & c_loc(buf%c(1)), b_sz, b_sz, b_sz, int(wp, kind=c_size_t))
+#else
     if (size(buffer%c).lt.(m-n)**2) then
        deallocate(buffer%c)
        allocate(buffer%c((m-n)**2))
     end if
-
-#if defined(SPLLT_USE_STARPU)   
-    call starpu_f_task_wait_for_all() ! DEBUG
+    buf => buffer
 #endif
 
     ! subtree factorization task
     ! call spllt_factor_subtree_task(snode, keep, buffer)
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
+    call spllt_subtree_factorize_task(root, fdata, val, keep, buf, cntl, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
@@ -75,13 +80,17 @@ contains
 
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_apply_subtree(root, buffer%c, &
+    call spllt_apply_subtree(root, buf%c, &
          & keep%nodes, keep%blocks, keep%lfact, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
-    ! deallocate(buffer)
+#if defined(SPLLT_USE_STARPU)   
+    call starpu_f_data_unregister_submit(buf%hdl)
+    deallocate(buf%c)
+    deallocate(buf)
+#endif
 
   end subroutine spllt_subtree_factorize_apply
 
@@ -223,10 +232,8 @@ contains
     call starpu_f_vector_data_register(fdata%col_list%hdl, -1, c_null_ptr, &
          & int(keep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
 
-#if defined(SPLLT_USE_NESTED_STF)
     call starpu_f_vector_data_register(fdata%map%hdl, -1, c_null_ptr, &
          & int(n, kind=c_int), int(c_int, kind=c_size_t))
-#endif
 
 #elif defined(SPLLT_USE_OMP)
 
@@ -296,10 +303,7 @@ contains
 
     call starpu_f_data_unregister_submit(fdata%row_list%hdl)
     call starpu_f_data_unregister_submit(fdata%col_list%hdl)
-
-#if defined(SPLLT_USE_NESTED_STF)
     call starpu_f_data_unregister_submit(fdata%map%hdl)
-#endif
 
 #endif
     

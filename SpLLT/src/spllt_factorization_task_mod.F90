@@ -10,25 +10,36 @@ contains
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
 #endif
+    use iso_c_binding
     implicit none
 
     integer, intent(in) :: root
     type(spllt_data_type), target, intent(inout)  :: fdata
-    real(wp), dimension(*), intent(in) :: val ! user's matrix values
+    real(wp), dimension(*), target, intent(in) :: val ! user's matrix values
     type(MA87_keep), target, intent(inout) :: keep
     type(spllt_bc_type), intent(inout) :: buffer ! update_buffer workspace
     ! type(MA87_control), intent(in) :: control
-    type(spllt_cntl), intent(in) :: cntl
+    type(spllt_cntl), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
 #if defined(SPLLT_USE_STARPU)
+    type(c_ptr) :: val_c, keep_c, cntl_c 
+#endif
+
+#if defined(SPLLT_USE_STARPU)
     
-    
+    val_c  = c_loc(val(1)) 
+    keep_c = c_loc(keep)
+    cntl_c = c_loc(cntl)
+
+    call spllt_insert_subtree_factorize_task_c(root, val_c, keep_c, buffer%hdl, &
+         & cntl_c, fdata%map%hdl, fdata%row_list%hdl, fdata%col_list%hdl, &
+         & fdata%workspace%hdl)
 
 #else
     
     call spllt_subtree_factorize(root, val, keep, buffer%c, cntl, map, &
-         & fdata%col_list%c, fdata%row_list%c, fdata%workspace%c)
+         & fdata%row_list%c, fdata%col_list%c , fdata%workspace%c)
 
 #endif
 

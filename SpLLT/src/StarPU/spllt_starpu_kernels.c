@@ -780,6 +780,8 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
 
 // subtree_factorize StarPU task insert
 
+void spllt_starpu_subtree_factorize_cpu_func(void *buffers[], void *cl_arg);
+
 struct starpu_codelet cl_subtree_factorize = {
   .where = STARPU_CPU,
   .cpu_funcs = {spllt_starpu_subtree_factorize_cpu_func, NULL},
@@ -797,17 +799,23 @@ void spllt_insert_subtree_factorize_task_c(int root,
                                            starpu_data_handle_t buffer_hdl,
                                            void *cntl,
                                            starpu_data_handle_t map_hdl,
-                                           starpu_data_handle_t row_list_hdl,
-                                           starpu_data_handle_t col_list_hdl,
-                                           starpu_data_handle_t workspace_handle) {
+                                           starpu_data_handle_t rlst_hdl,
+                                           starpu_data_handle_t clst_hdl,
+                                           starpu_data_handle_t work_hdl) {
 
    int ret;
    
    ret = starpu_task_insert(&cl_subtree_factorize,
                             STARPU_VALUE, &root, sizeof(int),
-                            STARPU_VALUE, &val, sizeof(void *),
-                            STARPU_VALUE, &keep, sizeof(void *),
-                            STARPU_VALUE, &cntl, sizeof(void *));
+                            STARPU_VALUE, &val, sizeof(void*),
+                            STARPU_VALUE, &keep, sizeof(void*),
+                            STARPU_VALUE, &cntl, sizeof(void*),
+                            STARPU_RW, buffer_hdl,
+                            STARPU_SCRATCH, map_hdl,
+                            STARPU_SCRATCH, rlst_hdl,
+                            STARPU_SCRATCH, clst_hdl,
+                            STARPU_SCRATCH, work_hdl,
+                            0);
    
    STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 }
@@ -817,6 +825,6 @@ void spllt_starpu_codelet_unpack_args_subtree_factorize(void *cl_arg,
                                                         void *keep, void *cntl) {
    
    starpu_codelet_unpack_args(cl_arg,
-                              root, fdata, 
-                              keep, control);
+                              root, val, 
+                              keep, cntl);
 }

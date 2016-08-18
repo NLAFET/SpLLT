@@ -693,7 +693,7 @@ contains
   end subroutine spllt_subtree_apply_node
 
   subroutine spllt_subtree_factorize(root, val, keep, buffer, &
-       & cntl, map, col_list, row_list, workspace)
+       & cntl, map, row_list, col_list, workspace)
     use spllt_data_mod
     use hsl_ma87_double
     implicit none
