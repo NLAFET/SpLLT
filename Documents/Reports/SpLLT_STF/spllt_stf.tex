@@ -102,25 +102,23 @@
   code for the solution of large sparse symmetric positive definite
   systems that is efficient on parallel architectures. We implement a
   DAG-based Cholesky factorization that offers good performance and
-  scalability on multicore architectures.  Our approach uses
-  a runtime system to execute the DAG corresponding to the
-  factorization algorithm. The runtime system plays the role of a
-  software layer between the application and the architecture and
-  handles the management of task dependencies as well as the task
-  scheduling. In this model, the application is expressed with a
-  high-level API, independent of the hardware details, thus enabling
-  portability across different architectures. Although already widely used
-  in the context of dense linear algebra, this approach is
-  nevertheless challenging in the context of sparse algorithms because of the
-  irregularity and variable granularity of the DAGs arising in these systems. 
-  We address this
-  challenge by exploiting a Sequential Task Flow model and
-  implementing a DAG-based supernodal Cholesky factorization in two
-  different versions, one implemented with the \openmp standard, and
-  the other with the modern runtime system \starpu. We compare
-  these implementations to the state-of-the-art \ma solver and show
-  that we get comparable performance on a
-  multicore architecture. }
+  scalability on multicore architectures.  Our approach uses a runtime
+  system to execute the DAG corresponding to the factorization
+  algorithm. The runtime system plays the role of a software layer
+  between the application and the architecture and handles the
+  management of task dependencies as well as the task scheduling. In
+  this model, the application is expressed with a high-level API,
+  independent of the hardware details, thus enabling portability
+  across different architectures. Although already widely used in the
+  context of dense linear algebra, this approach is nevertheless
+  challenging in the context of sparse algorithms because of the
+  irregularity and variable granularity of the DAGs arising in these
+  systems.  We assess the ability of two different Sequential Task
+  Flow implementations to address this challenge: one implemented with
+  the \openmp standard, and the other with the modern runtime system
+  \starpu. We compare these implementations to the state-of-the-art
+  \ma solver and demonstrate comparable performance on a multicore
+  architecture. }
 
 \textwidth  16.18cm
 \textheight 23.4cm
