@@ -1,18 +1,19 @@
 #include "pastix_fortran.h"
 
 program run_prob
-   use hsl_mc56
+   use hsl_mc56_double
    use hsl_zd11_double
    use hsl_fa14_double
-   use mpi
+   ! use mpi
 !$ use omp_lib
    implicit none
 
    integer, parameter :: dp = kind(0d0)
 
-   type(mc56_control) :: file_control
-   integer :: finfo
-   character(len=3) :: dattyp
+   integer :: matrix_type
+   character(len=200) :: matfile    
+   type(mc56_control) :: control56
+   integer :: info56
 
    type(ZD11_type) :: matrix
 
@@ -48,19 +49,37 @@ program run_prob
       end subroutine pastix_fortran
    end interface
 
-   pastix_comm = 0
-   required=MPI_THREAD_MULTIPLE
-   call MPI_Init_thread(required,provided,StatInfo)
-   pastix_comm = MPI_COMM_WORLD
+   ! pastix_comm = 0
+   ! required=MPI_THREAD_MULTIPLE
+   ! call MPI_Init_thread(required,provided,StatInfo)
+   ! pastix_comm = MPI_COMM_WORLD
 
    ! Read in a matrix
+   matfile = 'matrix.rb'
+      
+   ! matrix_type = HSL_MATRIX_REAL_SYM_PSDEF
+
    write(*, "(a)") "Reading..."
-   call MC56_init(file_control)
-   file_control%iunit = 11
-   open(unit=file_control%iunit, file="matrix.rb", status="old")
-   call MC56_read(file_control, dattyp, matrix, seed, finfo)
-   close(unit=file_control%iunit)
+   ! select case(matrix_type)
+   ! case(HSL_MATRIX_REAL_SYM_PSDEF)
+   control56%values = 3 ! make up values if necessary (posdef)
+   ! case(HSL_MATRIX_REAL_SYM_INDEF)
+      ! control56%values = 2 ! make up values if necessary (indef)
+   ! end select
+   call mc56_read(matfile, matrix, control56, info56)
+   if(info56.ne.0) then
+      print *, "mc56 failed with error ", info56
+      stop
+   endif
    write(*, "(a)") "ok"
+
+   ! write(*, "(a)") "Reading..."
+   ! call MC56_init(file_control)
+   ! file_control%iunit = 11
+   ! open(unit=file_control%iunit, file="matrix.rb", status="old")
+   ! call MC56_read(file_control, dattyp, matrix, seed, finfo)
+   ! close(unit=file_control%iunit)
+   ! write(*, "(a)") "ok"
 
    ! Use MA57 for ordering
    write(*, "(a)") "Ordering..."
@@ -186,7 +205,7 @@ program run_prob
    call pastix_fortran(pastix_data, pastix_comm, matrix%n, matrix%ptr, &
       matrix%row, matrix%val, order, invp, rhs, nrhs, icontrol, dcontrol)
 
-   call MPI_FINALIZE(StatInfo)
+   ! call MPI_FINALIZE(StatInfo)
 
 contains
 
