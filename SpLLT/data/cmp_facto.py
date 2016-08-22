@@ -71,7 +71,7 @@ for mat in flistmat:
             f.close()
             spllt_gnu_omp_t_facto.append(float(v))
 
-    # spLLT
+    # StarPU
     spllt_t_facto = []
     spllt_t_insert = []
     spllt_flops = []

@@ -22,8 +22,8 @@ forall nodes snode in post-order
     end do
     
     forall ancestors(snode) anode 
-      do j=k+1..p(anode) in snode
-         do i=k+1..q(anode) in snode
+      do j=k+1..p in snode
+         do i=j..q in snode
             call update_btw(blk(j,k), blk(i,k), a_blk(rmap(i), cmap(j)))
          end do
       end do

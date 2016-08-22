@@ -213,44 +213,40 @@ sparse Cholesky decomposition to solve the linear system
   Ax = b,
 \end{equation}
 where $A$ is a large sparse symmetric positive-definite matrix. We
-particularly focus on exploiting multicore architectures that are
-now ubiquitous in high performance computing.
-Despite their popularity, exploiting the capabilities of
-multicore processors remains a challenge.
-DAG-based algorithms have been shown to be extremely
-efficient in terms of performance and scalability. They have
-been widely used in the context of dense linear algebra such as in the
-PLASMA software package~\cite{a.d.d.h.ea:09}
-and have been adapted to
+particularly focus on exploiting multicore architectures that are now
+ubiquitous in high performance computing.  Despite their popularity,
+exploiting the capabilities of multicore processors remains a
+challenge.  DAG-based algorithms have been shown to be extremely
+efficient in terms of performance and scalability. They have been
+widely used in the context of dense linear algebra such as in the
+PLASMA software package~\cite{a.d.d.h.ea:09} and have been adapted to
 sparse algorithms in, for example, the \texttt{HSL\_MA87}
-solver~\cite{h.r.s:10} that implements a supernodal
-Cholesky factorization and the \texttt{qr\_mumps} solver~\cite{b:13}
-that implements a multifrontal QR method.
+solver~\cite{h.r.s:10} that implements a supernodal Cholesky
+factorization and the \texttt{qr\_mumps} solver~\cite{b:13} that
+implements a multifrontal QR method.
 
 The traditional approach for implementing a task-based solver includes
 the development of an ad hoc scheduler which relies on the knowledge
-of the algorithm 
-to manage synchronisations and
-enforce dependencies between processes and
-is implemented using a low-level multithreading
-library such as pthreads (POSIX threads) 
-This approach, however, causes a
-lack of portability of the implemented software as it is developed for
-a given target architecture. It can then be costly in terms of
-programming effort to port the code to different architectures and
-adapt it to emerging ones. This problem occurs, for example, when
-targeting heterogeneous architectures such as GPU-accelerated
-multicore systems that have a more complex memory hierarchy than
-traditional multicore systems and are equipped with  different types of
-processing units with different capabilities. Instead, in this work,
-we explore an alternative approach based on the use of a runtime
-system that consists of a software layer between the architecture and
-the application. In this context the application is implemented using
-a high-level API provided by the runtime system, and low level details
-such as data consistency and task scheduling
-are delegated to the runtime system. Several dense linear algebra
-software packages were built using this approach such as
-DPLASMA~\cite{b.b.d.f.ea:11}, which uses the
+of the algorithm to manage synchronisations and enforce dependencies
+between processes and is implemented using a low-level multithreading
+library such as pthreads (POSIX threads). This approach, however,
+causes a lack of portability of the implemented software as it is
+developed for a given target architecture. It can then be costly in
+terms of programming effort to port the code to different
+architectures and adapt it to emerging ones. This problem occurs, for
+example, when targeting heterogeneous architectures such as
+GPU-accelerated multicore systems that have a more complex memory
+hierarchy than traditional multicore systems and are equipped with
+different types of processing units with different
+capabilities. Instead, in this work, we explore an alternative
+approach based on the use of a runtime system that consists of a
+software layer between the architecture and the application. In this
+context the application is implemented using a high-level API provided
+by the runtime system, and low level details such as data consistency
+and task scheduling are delegated to the runtime system. 
+
+Several dense linear algebra software packages were built using this
+approach such as DPLASMA~\cite{b.b.d.f.ea:11}, which uses the
 \parsec~\cite{b.b.d.f.ea:13} runtime system and Chameleon which
 supports several runtime systems including \starpu~\cite{a.t.n.w:11}
 and \parsec. Both packages are designed for distributed memory systems
@@ -259,10 +255,10 @@ however, relatively few libraries have adopted this approach. Two
 examples of runtime-based sparse solvers are \qrm~\cite{a.b.g.l.:14},
 that implements a multifrontal QR method, and \pastix~\cite{h.r.r:02}
 that implements a supernodal Cholesky method. Compared to the context
-of dense linear algebra, the difficulty with employing this approach in
-the sparse case stems from the fact that the DAGs are extremely irregular
-with a large variability of task granularity and irregularities in the
-dependency pattern.
+of dense linear algebra, the difficulty with employing this approach
+in the sparse case stems from the fact that the DAGs are extremely
+irregular with a large variability of task granularity and
+irregularities in the dependency pattern.
 
 We focus on a Sequential Task Flow (STF) programming model for
 expressing the DAG corresponding to our application. This model
@@ -436,16 +432,28 @@ kernels:
   blocks \texttt{bc\_ik} and \texttt{bc\_jk} from a column previously
   processed.
 \item \texttt{update\_btw(snode, bc\_ik, bc\_jk, anode, bc\_ij)}:
-  performs the update operation of the block \texttt{bc\_ij} from the
-  supernode \texttt{anode} with the blocks \texttt{bc\_ik} and
-  \texttt{bc\_jk} from the descendant supernode \texttt{snode}.
+  performs the update operation between the factors computed in the
+  blocks \texttt{bc\_ik} and \texttt{bc\_jk} in the supernode
+  \texttt{snode} and the block \texttt{bc\_ij} located in the ancestor
+  supernode \texttt{anode}. In the pseudo code, \texttt{p} and
+  \texttt{q} represent the number of subdiagonal blocks involved in
+  the update of the ancestor node \texttt{anode} in the k-th column of
+  \texttt{snode}. Arrays \texttt{rmap} and \texttt{cmap} give
+  respectively the row mapping and column mapping between the rows and
+  columns in \texttt{snode} and the one in \texttt{anode}. 
 \end{itemize}
 
-In this algorithm, we perform the update using a
-right-looking scheme. Although left and right looking schemes can
-lead to different performance in serial mode, neither is
-considered better because their behaviour depends on the
-characteristics of the architecture.
+In this algorithm, we perform the update using a right-looking
+scheme. Although left and right looking schemes can lead to different
+performance in serial mode, neither is considered better because their
+behaviour depends on the characteristics of the architecture. In a
+parallel mode, this code is used to create the task-graph
+corresponding to factorization and both left and right-looking schemes
+produce the same DAG. Although these two schemes might influence the
+order in which tasks are submitted to the runtime systems, however, in
+our approach these tasks are dynamically scheduled and prioritised
+depending on their position in the DAG and therefore independently
+from the submission order.
 
 \lsection{Sequential Task Flow parallel programming model}\label{sec:stf-model}
 
@@ -549,18 +557,24 @@ introduce the \textit{task} construct in Version 3.0 of its API. Then,
 motivated by the popularity of the STF model, the OpenMP board decided
 to include the \textit{depend} construct in Version 4.0 allowing users
 to express dependencies between tasks in a similar way to the STF
-model presented in Section~\ref{sec:stf-model}. In this work we
-use an OpenMP implementation of our Cholesky solver and show
-advantages of using this in terms of performance, scalability and
+model presented in Section~\ref{sec:stf-model}. In this work we use an
+OpenMP implementation of our Cholesky solver and show advantages of
+using this in terms of performance, scalability and
 productivity. However, because many features are still unavailable in
-the OpenMP standard, we also developed a version based on the
-StarPU runtime system. As shown in the next section, both
-implementations of our solver rely on a STF model, but the
-StarPU-based implementation can benefit from a wider range of features
-available with StarPU. For example, although we focus on shared-memory
-architectures in this work, the StarPU version can be extended to a
-distributed-memory version whereas OpenMP doesn't provide any
-possibility for execution on distributed memory architectures.
+the OpenMP standard, we also developed a version based on the StarPU
+runtime system. As shown in the next section, both implementations of
+our solver rely on a STF model, but the StarPU-based implementation
+can benefit from a wider range of features available with StarPU. For
+example, although we focus on shared-memory architectures in this
+work, the \starpu version can be extended to a distributed-memory
+version whereas \openmp doesn't provide any possibility for execution
+on distributed memory architectures. In addition as explained below,
+as opposed to \starpu, \openmp does not provide any functionality
+allowing users to control the scheduling of tasks. Every
+implementation of the standard provide a default scheduler which is
+transparent to the application and this might become a limitation
+especially when the application is executed in a heterogeneous context
+such as a GPU-accelerated multicore architectures.
 
 \begin{figure}[!h]
   \lstset{language=C, procnamekeys={},escapechar=>}
@@ -648,7 +662,8 @@ only supports the use of task priorities but also makes it possible
 to use different scheduling strategies and to implement a new one if
 necessary.
 
-\lsection{Parallelisation of a task-based Cholesky factorization using an STF programming model}
+\lsection{Parallelisation of a task-based Cholesky factorization using
+  an STF programming model}
 \label{sec:spllt-stf}
 
 %% In this section we describe the STF-based parallel code of our
@@ -701,17 +716,17 @@ have to indicate that this diagonal block is read when submitting the
 \texttt{solve} by associating it with a read-only access mode. With
 this information the runtime detects the dependencies between the
 \texttt{factorize} and \texttt{solve} tasks and allows the parallel
-execution of the solve tasks within a block-column. 
+execution of the solve tasks within a block-column.
 
 In order to make sure the supernode is initialized before the
 factorization starts, we use a symbolic handle called \texttt{snode}
 and pass it to the \texttt{init} tasks using a write access mode. Then
 we also pass it to the \texttt{factorize} tasks in read access
 mode. Because all the subsequent factorization tasks in a supernode
-depend on the first \texttt{factorize} task, we thus guarantee that the
-numerical task cannot start before the supernode is initialized. For
-the same reason, the \texttt{update\_btw} task takes the
-\texttt{anode} handle as input with read access mode because it
+depend on the first \texttt{factorize} task, we thus guarantee that
+the numerical task cannot start before the supernode is
+initialized. For the same reason, the \texttt{update\_btw} task takes
+the \texttt{anode} handle as input with read access mode because it
 modifies a block in an ancestor node and the task should not be
 executed before the node is initialized. The specific nature of this
 symbolic handle is that it represents a set of blocks instead of a
@@ -719,21 +734,20 @@ single block.
 
 One issue arises with the dependency detection of the \texttt{update}
 tasks that are applied on a given block. This task takes as input two
-blocks $L_{ik}$ and $L_{jk}$ and performs on a third block $L_{ij}$ the
-operation
+blocks $L_{ik}$ and $L_{jk}$ and performs on a third block $L_{ij}$
+the operation
 \begin{equation*}
   L_{ij} = L_{ij} - L_{ik}L_{jk}^{T}.
 \end{equation*}
-These update operations are commutative in infinite precision arithmetic. 
-However, when two
-\texttt{update} tasks applied to the same block are submitted, the
-runtime system detects that these task modify the same data and will
-enforce the same order of execution for these tasks as the order of
-submission. With StarPU it is possible to avoid these unnecessary
-dependency that potentially limit the parallelism using the
-\texttt{STARPU\_COMMUTE} flag indicating that operations performed by
-a kernel are commutative. The OpenMP standard still does not provide
-such a functionality.
+These update operations are commutative in infinite precision
+arithmetic.  However, when two \texttt{update} tasks applied to the
+same block are submitted, the runtime system detects that these task
+modify the same data and will enforce the same order of execution for
+these tasks as the order of submission. With StarPU it is possible to
+avoid these unnecessary dependency that potentially limit the
+parallelism using the \texttt{STARPU\_COMMUTE} flag indicating that
+operations performed by a kernel are commutative. The OpenMP standard
+still does not provide such a functionality.
 
 The STF code that is presented in
 Figure~\ref{fig:spllt-facto-pseudocode} is independent from the
@@ -741,8 +755,8 @@ runtime system used for the implementation. In practice only the
 implementation of the \texttt{submit} routines are specific to the
 runtime system. This illustrates the fact that the expression of the
 algorithm is strictly separated from the task scheduling and data
-management. An example of the implementation of this
-\texttt{submit} routine in the \starpu version is given in
+management. An example of the implementation of this \texttt{submit}
+routine in the \starpu version is given in
 Figure~\ref{fig:spllt-starpu-slv-task}, and its equivalent in the
 \openmp version is given in Figure~\ref{fig:spllt-omp-slv-task}. In
 this example we show the submission of the solve tasks. In the \openmp
@@ -753,12 +767,12 @@ that use these blocks. In the case of \starpu, blocks are associated
 with a handle that is set up in the \texttt{alloc} routine. Tasks are
 then associated with this handle instead of using a pointer as we do
 with \openmp. There are several advantages associated with the use of
-this handle. For example, \starpu is capable of detecting when data are
-written for the first time and will allocate it using the information
-contained in the handle. We don't use this feature for the allocation
-of blocks, but we use it for the management of scratch memory that is
-needed in the \texttt{update\_btw} task. We do not include this in the
-pseudo-code for the sake of clarity.
+this handle. For example, \starpu is capable of detecting when data
+are written for the first time and will allocate it using the
+information contained in the handle. We don't use this feature for the
+allocation of blocks, but we use it for the management of scratch
+memory that is needed in the \texttt{update\_btw} task. We do not
+include this in the pseudo-code for the sake of clarity.
 
 \begin{figure}[!h]
   \begin{minipage}{0.5\textwidth}
@@ -791,16 +805,67 @@ of tasks in the DAG and therefore the overhead associated with
 task submission and task management in the runtime system
 including the task scheduling.
 
-%% The \texttt{init} task is responsible for setting up the blocks in a
-%% given supernode. In our code a supernode is represented by a symbolic
-%% data structure denoted \texttt{snode} and we indicate that we modify
-%% this structure by using the \textit{write} data-access in the
-%% \texttt{init} task. This \texttt{snode} symbolic structure represent
-%% the information associated with a supernode as well as the blocks
-%% associated with the nodal matrix.
+As motioned in Section~\ref{sec:runtime} although \starpu provided a
+complete API for designing new scheduling policies, it also provide a
+number of scheduler implementing common scheduling strategies. In our
+experiment we choose to use the LWS (Locality Work Stealing) scheduler
+which takes into account data locality and priority and is providing
+good results on multicore architecture. In the scheduler tasks are
+prioritized according to a priority value provided by the user when
+submitting a task. In our case the priority depend on the position of
+a task in DAG, in which for example the \texttt{factorize} tasks is
+given the highest priority as it lies on the critical path. In the
+\openmp version, however, the scheduler cannot be chosen and task are
+not given any priority.
 
-\alert{Should we introduce another section to present the MA87
-  scheduler and task dependency management?}
+
+\lsection{Strategy of parallelization and task scheduling in MA87}\label{sec:ma87}
+
+In this section we briefly introduce the strategy adopted in the
+reference solver \ma for the parallelization of the DAG-based sparse
+Cholesky factorization. The aim is to compare its approach with the
+STF model that is implemented in our solver. The approach for
+representing the DAG in \ma is similar to the one used in the PTG
+model. The DAG is implicitly represented and the DAG is progressively
+unrolled during the execution. However, the built-in scheduler,
+implemented with OpenMP without using the tasking capabilities of the
+recent version of the standard, is designed specifically for the
+solver and rely on the knowledge of the algorithm.
+
+During the analysis phase every blocks is associated with a counter
+representing the number of tasks that manipulate this the associated
+data. From the beginning of the execution, every thread try to pop
+some task from the scheduler, the factorization starts with processing
+of the blocks associated with a counter equal to zero (diagonal block
+is the leaf nodes), and when given thread finishes the execution of a
+task, it mainly performs the two operations: if necessary decrease the
+counter associated with the blocks involved in the computation and
+then push in the scheduler the tasks that become ready for execution
+as a results of the completion of the current one. 
+
+As you can see, the strategy employed in \ma shares commonalty with
+the PTG model in that it follows the data-flow associated with each
+task to submit the subsequent tasks in the scheduler. This approach
+offers several advantages over the STF that can impact the performance
+as we show with experimental results in
+Section~\ref{sec:experiments}. First, unlike the STF model where one
+single master thread is involved in unrolling, every thread is
+responsible for submitting tasks to the scheduler which means that the
+DAG is built in parallel and the cost for setting up the DAG is shared
+between all the resources involved in the execution. In addition, the
+only tasks that are instantiated are either the tasks ready for
+execution which are stored in the scheduler or the tasks being
+executed. In our solver instead, every tasks in the DAG is
+instantiated and submitted to the runtime system and stored in memory
+which induces a higher memory footprint for representing the DAG.
+
+The scheduling strategy used in \ma is similar to the LWS scheduler
+presented in the previous section where the scheduler tries to enforce
+data reuse and takes into account task priorities which depend on
+their position is the DAG.
+
+%% \alert{Should we introduce another section to present the MA87
+%%   scheduler and task dependency management?}
 
 \lsection{Experimental results}\label{sec:experiments}
 
@@ -899,8 +964,7 @@ version of our code.
     \caption{\label{table:exp-times}Factorization times (seconds) obtained with MA87 and
       SpLLT (i.e. MA87\_starpu). The factorizations were run with the
       block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
-      and \texttt{nemin=32}. The lowest factorization times are shown
-      in bold.}
+      and \texttt{nemin=32}.}
 \end{table}
 
 %\newpage
@@ -920,6 +984,14 @@ version of our code.
     SpLLT, \openmp and \starpu versions, relatively to the performance
     obtained with \ma.}
 \end{figure}
+
+\begin{table}[htbp]
+    \begin{center}
+      \texttt{ \input{data/cn255/table_cmp_task_insert.tex}}
+    \end{center}
+    \caption{\label{table:exp-times}Times (seconds) spend by the
+      master thread to submit all the tasks to the runtime system.}
+\end{table}
 
 \section{Concluding remarks}\label{sec:conclusions}
 This report has described in detail the development of a new

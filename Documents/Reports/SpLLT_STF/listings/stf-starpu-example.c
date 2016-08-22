@@ -15,11 +15,11 @@ struct starpu_codelet g_cl = >\label{code:stf-starpu-example1}>
     .nbuffers = 3
   }; >\label{code:stf-starpu-example2}>
 
-starpu_data_handle_t x_handle[N], y_handle[N]; >\label{code:stf-starpu-example3}>
-
-starpu_init();
+starpu_init(); /* initialization of StarPU */
 
 /* declaration of data handles */
+starpu_data_handle_t x_handle[N], y_handle[N]; >\label{code:stf-starpu-example3}>
+
 for (i = 0; i < N; i++) {  >\label{code:ex1}>
   starpu_variable_data_register(&x_handle[i], STARPU_MAIN_RAM, 
                                 (uintptr_t) &x[i], sizeof(double));
@@ -40,7 +40,7 @@ for (i = 1; i < N; i++) {  >\label{code:ex2}>
                      STARPU_W, y_handle[i],
                      0);
 }
-
+/* wait for all submitted tasks to be executed */
 starpu_task_wait_for_all();  >\label{code:ex3}>
 
-starpu_shutdown();
+starpu_shutdown(); /* shutdown StarPU */
