@@ -826,11 +826,12 @@ reference solver \ma for the parallelization of the DAG-based sparse
 Cholesky factorization. The aim is to compare its approach with the
 STF model that is implemented in our solver. The approach for
 representing the DAG in \ma is similar to the one used in the PTG
-model. The DAG is implicitly represented and the DAG is progressively
-unrolled during the execution. However, the built-in scheduler,
-implemented with OpenMP without using the tasking capabilities of the
-recent version of the standard, is designed specifically for the
-solver and rely on the knowledge of the algorithm.
+model in that the DAG is implicitly represented and progressively
+unrolled during the execution following the output dependencies of
+completed tasks. However, the built-in scheduler, implemented with
+OpenMP without using the tasking capabilities of the recent version of
+the standard, is designed specifically for the solver and rely on the
+knowledge of the algorithm.
 
 During the analysis phase every blocks is associated with a counter
 representing the number of tasks that manipulate this the associated
@@ -943,6 +944,30 @@ competitive with \ma except on some specific problems. Matrices \# 1
 and \# 15, for examples, gives extremely poor results with both
 version of our code.
 
+In order to understand the behaviour of the our STF-based
+implementation and identify the main limiting factors for performance
+on smaller problems we gathered information on the DAG and measured
+the time spent for submitting tasks during execution on a subset of
+our test matrices. These results are shown on
+Table~\ref{table:dag-stats} where we put the number of tasks in the
+DAGs, the average time spent in tasks for each probelems and the task
+insert times. As expected the DAG size generally gets bigger with the
+problem size expect for the to matrices \# 1 and \# 15 which gives
+very low performance results. Conequently these matrices have the
+lowest granularity which induces more time spent in the runtime system
+for submitting the tasks. This behaviour occurs for the matrices \# 1,
+\# 2, \# 13, \# 15, \# 19 and \# 24 for which the time for submitting
+the DAG is close or equal to the factorization time. This means that
+the DAG unrolling is too slow for feeding the resources and constraint
+the factorization time therefore limiting the scalability of the
+code. On the matrices with bigger granularity of tasks in the DAG, the
+task submission time is no longer an issue as we observe on matrices
+\# 8, \# 32, \# 35 and \# 38 for which our code give comparable
+results with \ma. As explained in Section~\ref{sec:ma87}, in \ma the
+DAG is progressively unrolled by the threads which means that the cost
+for the task submission is distributed among the resources and
+therefore does not constrain the execution time.
+
 %% \begin{figure}[!h]
 %%   \begin{minipage}{0.5\textwidth}
 %%     \centering
@@ -961,10 +986,11 @@ version of our code.
     \begin{center}
       \texttt{ \input{data/cn255/table_cmp_facto.tex}}
     \end{center}
-    \caption{\label{table:exp-times}Factorization times (seconds) obtained with MA87 and
-      SpLLT (i.e. MA87\_starpu). The factorizations were run with the
-      block sizes \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores
-      and \texttt{nemin=32}.}
+    \caption{\label{table:exp-times}Factorization times (seconds)
+      obtained with MA87 and SpLLT with both \openmp and \starpu
+      versions. The factorizations were run with the block sizes
+      \texttt{nb=(256, 384, 512, 768, 1024)} on 28 cores and
+      \texttt{nemin=32}.}
 \end{table}
 
 %\newpage
@@ -989,8 +1015,9 @@ version of our code.
     \begin{center}
       \texttt{ \input{data/cn255/table_cmp_task_insert.tex}}
     \end{center}
-    \caption{\label{table:exp-times}Times (seconds) spend by the
-      master thread to submit all the tasks to the runtime system.}
+    \caption{\label{table:dag-stats}DAG information along with the
+      times (seconds) spend by the master thread to submit all the
+      tasks to the runtime system on a subset of our test matrices.}
 \end{table}
 
 \section{Concluding remarks}\label{sec:conclusions}
