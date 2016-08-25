@@ -195,9 +195,9 @@ contains
     if (st /= 0) go to 9999
     adata%small = 0
     if (cntl%prune_tree) then
-       ! call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
+       call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
        ! call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
-       call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
+       ! call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
        ! call spllt_prune_tree(adata, sparent, 4, keep) ! TESTS
        ! call spllt_prune_tree(adata, sparent, 16, keep) ! TESTS
     end if
@@ -780,7 +780,7 @@ contains
     do node = 1, adata%nnodes+1
        if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1       
     end do
-
+    
     leaves = 0
 
     godown: do
@@ -793,7 +793,6 @@ contains
        ! sort lzero_w into ascending order and apply the same order on
        ! lzero array
        call spllt_sort(lzero_w, nlz, map=lzero)
-       ! write(*,*) 'lzero: ', lzero(1:nlz)
        ! write(*,*) 'lzero_w: ', lzero_w(1:nlz)
        ! map subtrees to threads round-robin 
        do node=1, nlz
@@ -825,17 +824,19 @@ contains
              end if
           end if
           n = lzero(leaves+1) ! n is the node that must be replaced
-          ! print *, "TETE"
-          ! append children of n 
-          do i=1,keep%nodes(n)%nchild
+          ! print *, "n:", n, ", nchild:", keep%nodes(n)%nchild, ", sz:", size(keep%nodes(n)%child) 
+          ! append children of n
+          do i=1, size(keep%nodes(n)%child) ! keep%nodes(n)%nchild
              c = keep%nodes(n)%child(i)
-             if(real( adata%weight(c), kind(1.d0) ) .gt. smallth*real( totflops, kind(1.d0) )) then
+             ! print *, "c:", c             
+             if(real(adata%weight(c), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
                 ! this child is big enough, add it
                 found = .true.
                 nlz = nlz+1
                 lzero  (nlz) = c
                 lzero_w(nlz) = -adata%weight(c)
              else
+                ! print *, "TETET"
                 adata%small(keep%nodes(c)%least_desc:c) = -c
                 adata%small(c) = 1 ! node is too smal; mark it
              end if
@@ -844,6 +845,7 @@ contains
           if(found) exit findn ! if at least one child was added then we redo the mapping
           leaves = leaves+1          
        end do findn
+       ! write(*,*) 'lzero: ', lzero(1:nlz)
 
        ! swap n with last element
        lzero  (leaves+1) = lzero  (nlz)
@@ -853,7 +855,7 @@ contains
     end do godown
 
     ! write(*,*)'nlz: ', nlz
-    ! write(*,*)'lzero: ', lzero(1:nlz)
+    ! write(*,*)'final lzero: ', lzero(1:nlz)
 
     ! DEBUG
     ! adata%small = 0
@@ -866,6 +868,7 @@ contains
        ! write(*,*)'n: ', n
        do j=1,keep%nodes(n)%nchild
           c = keep%nodes(n)%child(j)
+          ! print *, "c: ", c
           ! write(*,*)'desc: ', keep%nodes(c)%least_desc
           adata%small(keep%nodes(c)%least_desc:c) = -c
           adata%small(c) = 1

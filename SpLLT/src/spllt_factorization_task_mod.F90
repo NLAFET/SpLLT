@@ -4,6 +4,56 @@ module spllt_factorization_task_mod
   
 contains
 
+  subroutine spllt_scatter_block_task(rptr, rptr2, cptr, cptr2,  buffer, root, &
+       & a_rptr, a_cptr, dest, anode)
+    use hsl_ma87_double
+    use spllt_kernels_mod
+#if defined(SPLLT_USE_STARPU)
+    use iso_c_binding
+    use spllt_starpu_factorization_mod
+#endif
+    implicit none
+
+    integer, intent(in) :: rptr, rptr2, cptr, cptr2
+    type(spllt_bc_type), intent(in) :: buffer
+    type(node_type), target :: root
+    integer, intent(in) :: a_rptr, a_cptr
+    type(spllt_bc_type) :: dest
+    type(node_type), target :: anode
+    
+    integer :: rm, rn
+    integer :: b_sz
+    integer :: m, n
+    integer :: bsa, ben
+
+#if defined(SPLLT_USE_STARPU)
+
+    call spllt_starpu_insert_subtree_scatter_block_task_c(rptr, rptr2, cptr, cptr2, &
+         buffer%hdl, c_loc(root), a_rptr, a_cptr, dest%hdl, c_loc(anode))
+
+#else
+    rm = size(root%index)
+    rn = root%en - root%sa + 1
+    b_sz = rm-rn
+
+    m = rptr2-rptr+1
+    n = cptr2-cptr+1
+
+    bsa = (rptr-rn-1)*b_sz+cptr-rn
+    ben = (rptr2-rn-1)*b_sz+cptr2-rn
+    
+    call spllt_scatter_block(m, n, &
+         root%index(rptr:rptr2), &
+         root%index(cptr:cptr2), &
+         buffer%c(bsa:ben), b_sz, &
+         anode%index(a_rptr), &
+         anode%index(a_cptr), &
+         dest%c, &
+         dest%blk%blkn)
+#endif
+
+  end subroutine spllt_scatter_block_task
+
   subroutine spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
     use hsl_ma87_double
     use spllt_kernels_mod

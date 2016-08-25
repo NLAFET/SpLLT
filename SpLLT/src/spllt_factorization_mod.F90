@@ -27,6 +27,185 @@ module spllt_factorization_mod
 
 contains
 
+  ! Apply updates from subtree's generated element to its ancestors
+  ! This routine aquires all locks as needed, and decrements dependencies
+  ! upon release of relevant locks.
+  ! NB: This is basically an immediate acting variant of add_between_updates()
+  subroutine spllt_subtree_apply_buffer(root, buffer, nodes, blocks, lfact, map, &
+       fdata)
+    use spllt_data_mod
+    use hsl_ma87_double
+    use spllt_factorization_task_mod
+    implicit none
+
+    integer, intent(in) :: root ! root of subtree
+    ! real(wp), dimension(*), intent(in) :: buffer ! generated element
+    type(spllt_bc_type), intent(in) :: buffer
+
+    type(node_type), dimension(-1:), intent(in) :: nodes
+    type(block_type), dimension(*), intent(inout) :: blocks
+    type(lfactor), dimension(*), intent(inout) :: lfact
+    integer, dimension(:), intent(inout) :: map ! Workarray to hold map from row
+    ! indices to block indices in ancestor node. 
+    type(spllt_data_type) :: fdata
+
+    integer :: dest ! target block
+    integer :: rsrc(2), csrc(2) ! specifices block of gen element to act on
+
+    integer :: a_nb  ! Block size of anode
+    integer :: anode ! Ancestor of snode
+    integer(long) :: blk   ! Block id
+    integer :: bsa, ben
+    integer :: cb    ! Local index of column block in anode
+    integer :: cptr  ! Position in snode of the first row 
+    ! matching a column of the current block column of anode.
+    integer :: cptr2  ! Position in snode of the last row 
+    ! matching a column of the current block column of anode.
+    integer(long) :: dblk ! id of diagonal block of anode
+    integer :: i
+    integer :: ilast
+    integer :: jb ! Block index in anode
+    integer :: jlast ! Last column in the cb-th block column of anode
+    integer :: k
+    integer :: k1
+    integer :: lds ! leading dimension (row width) of generated element buffer
+    logical :: map_done ! True if map has been built for anode.
+    integer :: m ! set to blocks(src)%blkm
+    integer :: n ! set to blocks(src)%blkn
+    integer :: numcol ! number of cols in snode
+    integer :: rb ! Index of block row in snode
+    integer :: size_anode ! size(nodes(anode)%index)
+    integer :: size_snode ! size(nodes(snode)%index)
+    integer :: s_nb   ! Block size of snode
+
+    ! cache some values in variables
+    size_snode = size(nodes(root)%index)
+    s_nb = nodes(root)%nb
+    m = size(nodes(root)%index)
+    n = nodes(root)%en - nodes(root)%sa + 1
+    ! m = blocks(nodes(root)%blk_sa)%blkm
+    ! n = blocks(nodes(root)%blk_sa)%blkn
+    lds = size_snode-n
+
+    if(m-n.eq.0) return ! was a root already
+
+    ! Loop over ancestors of subtree root
+    anode = nodes(root)%parent
+    ! Initialize cptr to correspond to the first row of the rectangular part of
+    ! the snode matrix.
+    numcol = nodes(root)%en - nodes(root)%sa + 1
+    cptr = 1 + numcol
+
+    do while(anode.gt.0)
+       ! Skip columns that come from other children
+       do cptr = cptr, size_snode
+          if(nodes(root)%index(cptr).ge.nodes(anode)%sa) exit
+       end do
+       if(cptr.gt.size_snode) exit ! finished with snode
+
+       map_done = .false. ! We will only build a map when we need it
+       a_nb = nodes(anode)%nb
+
+       ! Loop over affected block columns of anode
+       bcols: do
+          if(cptr.gt.size_snode) exit
+          if(nodes(root)%index(cptr).gt.nodes(anode)%en) exit
+
+          ! compute local index of block column in anode and find the id of 
+          ! its diagonal block
+          cb = (nodes(root)%index(cptr) - nodes(anode)%sa)/a_nb + 1
+          dblk = nodes(anode)%blk_sa
+          do jb = 2, cb
+             dblk = blocks(dblk)%last_blk + 1
+          end do
+
+          ! Find cptr2
+          jlast = min(nodes(anode)%sa + cb*a_nb - 1, nodes(anode)%en)
+          do cptr2 = cptr, size_snode
+             if(nodes(root)%index(cptr2) > jlast) exit
+          end do
+          cptr2 = cptr2 - 1 
+
+          ! Set info for source block csrc (hold start and end locations)
+          csrc(1) = cptr
+          csrc(2) = cptr2
+
+          ! Build a map of anode's blocks if this is first for anode
+          if(.not.map_done) then
+             ! The indices for each row block in anode are mapped to a local row
+             ! block index.
+             size_anode = size(nodes(anode)%index)
+             map_done = .true.
+             jb = 1
+             do i = 1, size_anode, a_nb
+                do k = i, size_anode
+                   k1 = nodes(anode)%index(k)
+                   map(k1) = jb
+                end do
+                jb = jb + 1 
+             end do
+          endif
+
+          ! Loop over the blocks of snode
+          jb = map(nodes(root)%index(cptr))
+          i = cptr
+          ilast = i ! Set start of current block
+          blk = nodes(root)%blk_sa
+          rb = 1 ! block index 
+          do i = i, size_snode
+             k = map(nodes(root)%index(i))
+             if(k.ne.jb) then
+                ! Moved to a new block in anode
+                dest = dblk + jb - cb
+                ! Set info for source block rsrc (hold start and end locations)
+                rsrc(1) = ilast
+                rsrc(2) = i-1
+                bsa = (rsrc(1)-n-1)*lds+csrc(1)-n
+                ben = (rsrc(2)-n-1)*lds+csrc(2)-n
+
+                call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
+                     & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
+
+                ! call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
+                !      nodes(root)%index(rsrc(1):rsrc(2)), &
+                !      nodes(root)%index(csrc(1):csrc(2)), &
+                !      buffer%c(bsa:ben), lds, &
+                !      nodes(anode)%index((jb-1)*a_nb+1), &
+                !      nodes(anode)%index((cb-1)*a_nb+1), &
+                !      lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
+                !      blocks(dest)%blkn)
+                jb = k
+                ilast = i ! Update start of current block
+             endif
+          end do
+          dest = dblk+jb-cb
+          rsrc(1) = ilast
+          rsrc(2) = i-1
+          bsa = (rsrc(1)-n-1)*lds+csrc(1)-n
+          ben = (rsrc(2)-n-1)*lds+csrc(2)-n
+
+          call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
+               & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
+
+          ! call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
+          !      nodes(root)%index(rsrc(1):rsrc(2)), &
+          !      nodes(root)%index(csrc(1):csrc(2)), &
+          !      buffer%c(bsa:ben), lds, &
+          !      nodes(anode)%index((jb-1)*a_nb+1), &
+          !      nodes(anode)%index((cb-1)*a_nb+1), &
+          !      lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
+          !      blocks(dest)%blkn)
+
+          ! Move cptr down, ready for next block column of anode
+          cptr = cptr2 + 1
+       end do bcols
+
+       ! Move up the tree
+       anode = nodes(anode)%parent
+    end do
+  end subroutine spllt_subtree_apply_buffer
+
+
   subroutine spllt_subtree_factorize_apply(root, fdata, val, keep, cntl, map, buffer)
     use spllt_data_mod
     use hsl_ma87_double
@@ -53,11 +232,17 @@ contains
 
 #if defined(SPLLT_USE_STARPU)   
     
-    allocate(buf)
-    allocate(buf%c((m-n)**2))
+    ! allocate(buf)
+    ! allocate(buf%c((m-n)**2))
+
+    ! allocate(fdata%nodes(root)%buffer%c((m-n)**2))
+
+    call starpu_f_matrix_data_register(fdata%nodes(root)%buffer%hdl, & 
+         -1, c_null_ptr, &
+         ! fdata%nodes(root)%buffer%mem_node, c_loc(fdata%nodes(root)%buffer%c(1)), &         
+         int(b_sz, kind=c_int), int(b_sz, kind=c_int), int(b_sz, kind=c_int), &
+         int(wp, kind=c_size_t))
     
-    call starpu_matrix_data_register(buf%hdl, buf%mem_node, &
-         & c_loc(buf%c(1)), b_sz, b_sz, b_sz, int(wp, kind=c_size_t))
 #else
     if (size(buffer%c).lt.(m-n)**2) then
        deallocate(buffer%c)
@@ -69,27 +254,34 @@ contains
     ! subtree factorization task
     ! call spllt_factor_subtree_task(snode, keep, buffer)
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_factorize_task(root, fdata, val, keep, buf, cntl, map)
+    call spllt_subtree_factorize_task(root, fdata, val, keep, fdata%nodes(root)%buffer, cntl, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
-#if defined(SPLLT_USE_STARPU)
-    call starpu_f_task_wait_for_all() ! DEBUG
-#endif
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all() ! DEBUG
+! #endif
 
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_apply_subtree(root, buf%c, &
-         & keep%nodes, keep%blocks, keep%lfact, map)
+    call spllt_subtree_apply_buffer(root, fdata%nodes(root)%buffer, keep%nodes, keep%blocks, &
+         keep%lfact, map, fdata)
+
+    ! call spllt_apply_subtree(root, buf%c, &
+    !      & keep%nodes, keep%blocks, keep%lfact, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
+! #if defined(SPLLT_USE_STARPU)
+!     call starpu_f_task_wait_for_all() ! DEBUG
+! #endif
+
 #if defined(SPLLT_USE_STARPU)   
-    call starpu_f_data_unregister_submit(buf%hdl)
-    deallocate(buf%c)
-    deallocate(buf)
+    call starpu_f_data_unregister_submit(fdata%nodes(root)%buffer%hdl)
+    ! deallocate(buf%c)
+    ! deallocate(buf)
 #endif
 
   end subroutine spllt_subtree_factorize_apply
@@ -221,7 +413,7 @@ contains
     
     ! register workspace handle
     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
-         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
+         & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp, kind=c_size_t))
 
     ! register col_list and row_list workspaces
     ! register row_list handle

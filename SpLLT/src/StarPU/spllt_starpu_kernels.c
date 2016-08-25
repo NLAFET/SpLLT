@@ -810,7 +810,7 @@ void spllt_insert_subtree_factorize_task_c(int root,
                             STARPU_VALUE, &val, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
                             STARPU_VALUE, &cntl, sizeof(void*),
-                            STARPU_RW, buffer_hdl,
+                            STARPU_W, buffer_hdl,
                             STARPU_SCRATCH, map_hdl,
                             STARPU_SCRATCH, rlst_hdl,
                             STARPU_SCRATCH, clst_hdl,
@@ -827,4 +827,56 @@ void spllt_starpu_codelet_unpack_args_subtree_factorize(void *cl_arg,
    starpu_codelet_unpack_args(cl_arg,
                               root, val, 
                               keep, cntl);
+}
+
+// subtree_scatter_block StarPU task insert
+
+void spllt_starpu_subtree_scatter_block_cpu_func(void *buffers[], void *cl_arg);
+
+struct starpu_codelet cl_subtree_scatter_block = {
+  .where = STARPU_CPU,
+  .cpu_funcs = {spllt_starpu_subtree_scatter_block_cpu_func, NULL},
+  .nbuffers = STARPU_VARIABLE_NBUFFERS, 
+  .name = "SUBTREE_SCATTER_BLOCK",
+/* #if defined(usebound) || defined(calibratecpus) || defined(calibrategpus) */
+/*   .model = &partition_history_based_model */
+/* #elif defined(useperfmodels) */
+/*   .model = &partition_history_based_model */
+/* #endif */
+};
+
+void spllt_starpu_codelet_unpack_args_subtree_scatter_block(
+      void *cl_arg,
+      int *rptr, int *rptr2, int *cptr, int *cptr2,
+      void *root,
+      int *a_rptr, int *a_cptr, void *anode) {
+
+   starpu_codelet_unpack_args(cl_arg,
+                              rptr, rptr2, cptr, cptr2, 
+                              root,
+                              a_rptr, a_cptr, anode);
+}
+
+
+void spllt_starpu_insert_subtree_scatter_block_task_c(
+      int rptr, int rptr2, int cptr, int cptr2,
+      starpu_data_handle_t buffer_hdl, void *root,
+      int a_rptr, int a_cptr, 
+      starpu_data_handle_t dest_hdl, 
+      void *anode) {
+
+   int ret;
+
+   ret = starpu_task_insert(&cl_subtree_scatter_block,
+                            STARPU_VALUE, &rptr, sizeof(int),
+                            STARPU_VALUE, &rptr2, sizeof(int),
+                            STARPU_VALUE, &cptr, sizeof(int),
+                            STARPU_VALUE, &cptr2, sizeof(int),
+                            STARPU_R, buffer_hdl,
+                            STARPU_VALUE, &root, sizeof(void*),
+                            STARPU_VALUE, &a_rptr, sizeof(int),
+                            STARPU_VALUE, &a_cptr, sizeof(int),
+                            STARPU_RW, dest_hdl,
+                            STARPU_VALUE, &anode, sizeof(void*),
+                            0);
 }

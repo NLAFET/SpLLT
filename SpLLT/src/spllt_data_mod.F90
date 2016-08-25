@@ -51,16 +51,6 @@ module spllt_data_mod
      ! before we use an indirect update_between
   end type spllt_cntl
 
-  ! node type
-  type spllt_node_type
-     type(node_type), pointer :: node
-     integer :: num ! node id
-#if defined(SPLLT_USE_STARPU)
-     type(c_ptr)    :: hdl  ! StarPU handle
-     type(c_ptr)    :: hdl2  ! StarPU second handle
-#endif     
-  end type spllt_node_type
-
   ! useful type for representing dependencies betwewen blocks
 
   ! input dependency
@@ -100,6 +90,17 @@ module spllt_data_mod
      type(spllt_dep_upd_out), pointer :: dep_out(:) => null()
 #endif
   end type spllt_bc_type
+
+  ! node type
+  type spllt_node_type
+     type(node_type), pointer :: node
+     integer :: num ! node id
+#if defined(SPLLT_USE_STARPU)
+     type(c_ptr)    :: hdl  ! StarPU handle
+     type(c_ptr)    :: hdl2  ! StarPU second handle
+#endif
+     type(spllt_bc_type) :: buffer ! buffer for accumulating updates
+  end type spllt_node_type
 
   type spllt_workspace_i
      integer, pointer :: c(:)

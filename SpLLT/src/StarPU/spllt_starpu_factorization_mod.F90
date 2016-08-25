@@ -189,6 +189,30 @@ module spllt_starpu_factorization_mod
      end subroutine spllt_starpu_codelet_unpack_args_subtree_factorize
   end interface
 
+  ! subtree_scatter_block StarPU task insert
+  interface
+     subroutine spllt_starpu_insert_subtree_scatter_block_task_c(rptr, rptr2, cptr, cptr2, &
+          buffer_hdl, root, a_rptr, a_cptr, dest_hdl, anode) bind (C)
+       use iso_c_binding
+       integer(c_int), value  :: rptr, rptr2, cptr, cptr2
+       type(c_ptr), value  :: buffer_hdl, root
+       integer(c_int), value  :: a_rptr, a_cptr
+       type(c_ptr), value  :: dest_hdl, anode
+     end subroutine spllt_starpu_insert_subtree_scatter_block_task_c
+  end interface
+
+  ! unpack args
+  interface
+     subroutine spllt_starpu_codelet_unpack_args_subtree_scatter_block(cl_arg, & 
+          rptr, rptr2, cptr, cptr2, root, a_rptr, a_cptr, anode) bind(C)
+       use iso_c_binding
+       type(c_ptr), value :: cl_arg
+       type(c_ptr), value :: rptr, rptr2, cptr, cptr2
+       type(c_ptr), value :: root, anode
+       type(c_ptr), value :: a_rptr, a_cptr
+     end subroutine spllt_starpu_codelet_unpack_args_subtree_scatter_block
+  end interface
+
 contains
 
   ! factorize block StarPU task insert
@@ -661,5 +685,66 @@ contains
        & cntl, map, rlst, clst, work)
 
   end subroutine spllt_starpu_subtree_factorize_cpu_func
+
+  ! init node StarPU CPU kernel  
+  subroutine spllt_starpu_subtree_scatter_block_cpu_func(buffers, cl_arg) bind(C)
+    use iso_c_binding
+    use hsl_ma87_double
+    use spllt_data_mod
+    use spllt_kernels_mod
+    implicit none
+
+    type(c_ptr), value        :: cl_arg
+    type(c_ptr), value        :: buffers
+
+    integer, target           :: rptr, rptr2, cptr, cptr2
+    type(c_ptr), target       :: root_c, anode_c
+    integer, target           :: a_rptr, a_cptr
+    type(node_type), pointer  :: root, anode
+    
+    type(c_ptr), target       :: buffer_c, dest_c
+    integer, target           :: bm, bn, bld 
+    integer, target           :: blkm, blkn, blkld 
+    real(wp), pointer         :: buffer(:), dest(:)
+
+    integer :: rm, rn, b_sz
+    integer :: m, n
+    integer :: bsa, ben
+    
+    call spllt_starpu_codelet_unpack_args_subtree_scatter_block(cl_arg, &
+         c_loc(rptr), c_loc(rptr2), c_loc(cptr), c_loc(cptr2), &
+         c_loc(root_c), c_loc(a_rptr), c_loc(a_cptr), c_loc(anode_c))
+    
+    call c_f_pointer(root_c, root)
+    call c_f_pointer(anode_c, anode)
+
+    call starpu_f_get_buffer(buffers, 0, &
+         & c_loc(buffer_c), c_loc(bm), c_loc(bn), c_loc(bld))
+    call c_f_pointer(buffer_c, buffer, (/bld*bn/))
+
+    call starpu_f_get_buffer(buffers, 1, &
+         & c_loc(dest_c), c_loc(blkm), c_loc(blkn), c_loc(blkld))
+    call c_f_pointer(dest_c, dest, (/blkld*blkn/))
+
+    rm = size(root%index)
+    rn = root%en - root%sa + 1
+    b_sz = rm-rn    
+
+    m = rptr2-rptr+1
+    n = cptr2-cptr+1
+    ! write(*,*)"m:", m, ", n:", n
+    bsa = (rptr-rn-1)*b_sz+cptr-rn
+    ben = (rptr2-rn-1)*b_sz+cptr2-rn
+
+    call spllt_scatter_block(m, n, &
+         root%index(rptr:rptr2), &
+         root%index(cptr:cptr2), &
+         buffer(bsa:ben), b_sz, &
+         anode%index(a_rptr), &
+         anode%index(a_cptr), &
+         dest, &
+         blkn)
+
+  end subroutine spllt_starpu_subtree_scatter_block_cpu_func
 
 end module spllt_starpu_factorization_mod
