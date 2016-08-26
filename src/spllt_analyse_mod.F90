@@ -863,7 +863,7 @@ contains
     end do godown
 
     ! write(*,*)'nlz: ', nlz
-    write(*,*)'final lzero: ', lzero(1:nlz)
+    ! write(*,*)'final lzero: ', lzero(1:nlz)
 
     ! DEBUG
     ! adata%small = 0
