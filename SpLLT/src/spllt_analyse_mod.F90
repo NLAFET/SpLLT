@@ -866,7 +866,8 @@ contains
     do i=1, nlz
        n = lzero(i)
        ! write(*,*)'n: ', n
-       do j=1,keep%nodes(n)%nchild
+       ! print *, "n:", n, ", nchild:", keep%nodes(n)%nchild, ", sz:", size(keep%nodes(n)%child) 
+       do j=1, size(keep%nodes(n)%child) ! keep%nodes(n)%nchild
           c = keep%nodes(n)%child(j)
           ! print *, "c: ", c
           ! write(*,*)'desc: ', keep%nodes(c)%least_desc
@@ -874,6 +875,8 @@ contains
           adata%small(c) = 1
        end do
     end do
+
+    ! print *, "TETETET"
 
     ! DEBUG
     ! adata%small = 0
