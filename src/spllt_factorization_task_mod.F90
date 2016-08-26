@@ -59,6 +59,8 @@ contains
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
 #endif
     use iso_c_binding
     implicit none
@@ -67,13 +69,25 @@ contains
     type(spllt_data_type), target, intent(inout)  :: fdata
     real(wp), dimension(*), target, intent(in) :: val ! user's matrix values
     type(MA87_keep), target, intent(inout) :: keep
-    type(spllt_bc_type), intent(inout) :: buffer ! update_buffer workspace
+    type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
     ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
 #if defined(SPLLT_USE_STARPU)
     type(c_ptr) :: val_c, keep_c, cntl_c 
+#endif
+
+#if defined(SPLLT_USE_OMP)
+    real(wp), pointer :: p_val(:)
+    real(wp), dimension(:), pointer :: buffer_c
+    type(spllt_bc_type), pointer :: p_workspace(:) => null()
+    type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
+    real(wp), dimension(:), pointer :: work
+    integer, dimension(:), pointer :: rlst, clst
+#if defined(SPLLT_OMP_TRACE)
+    integer :: th_id
+#endif
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -85,6 +99,28 @@ contains
     call spllt_insert_subtree_factorize_task_c(root, val_c, keep_c, buffer%hdl, &
          & cntl_c, fdata%map%hdl, fdata%row_list%hdl, fdata%col_list%hdl, &
          & fdata%workspace%hdl)
+
+#elif defined(SPLLT_USE_OMP)
+
+    p_val => val
+    buffer_c => buffer%c
+
+    p_workspace => fdata%workspace
+
+    p_rlst => fdata%row_list
+    p_clst => fdata%col_list
+
+!$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst)
+
+    th_id = omp_get_thread_num()
+
+    work => p_workspace(th_id)%c
+
+    rlst => p_rlst(th_id)%c
+    clst => p_clst(th_id)%c
+
+    
+!$omp end task
 
 #else
     
