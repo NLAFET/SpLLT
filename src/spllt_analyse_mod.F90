@@ -121,7 +121,7 @@ contains
     call mc78_analyse(n, aptr, arow, order, num_nodes, &
          sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
          nflops=adata%num_flops)
-    print *, "sz sparent:", size(sparent)
+    ! print *, "sz sparent:", size(sparent)
     
     adata%nnodes = num_nodes
 
@@ -152,13 +152,15 @@ contains
 
        ! print *, "node: ", node, ", nchild: ", keep%nodes(node)%nchild
        if (node.le.num_nodes) then
-          keep%nodes(node)%parent = sparent(node)
+          par = sparent(node)
+          keep%nodes(node)%parent = par 
           keep%nodes(par)%nchild = keep%nodes(par)%nchild + 1
        else
           keep%nodes(node)%parent = -1 ! virutal root node: no parent node
        end if
 
        ! Allocate space to store child nodes
+       ! print *, "node:", node, ", nchild:", keep%nodes(node)%nchild
        allocate(keep%nodes(node)%child(keep%nodes(node)%nchild), stat=st)
        if(st.ne.0) goto 9999
     end do
@@ -170,7 +172,7 @@ contains
     nchild(:) = 0
     do node = 1, num_nodes+1
        ! par = sparent(node)
-       par = keep%nodes(num_nodes+1)%parent
+       par = keep%nodes(node)%parent
        !    ! if(par.gt.num_nodes) cycle
        !    print *, "par: ", par
        if (par .gt. 0) then
@@ -829,7 +831,8 @@ contains
              end if
           end if
           n = lzero(leaves+1) ! n is the node that must be replaced
-          ! print *, "n:", n, ", nchild:", keep%nodes(n)%nchild, ", sz:", size(keep%nodes(n)%child) 
+          ! print *, "n:", n, ", nchild:", keep%nodes(n)%nchild, ", sz:", size(keep%nodes(n)%child)
+          ! print *, "children:", keep%nodes(n)%child
           ! append children of n
           do i=1, size(keep%nodes(n)%child) ! keep%nodes(n)%nchild
              c = keep%nodes(n)%child(i)
@@ -860,7 +863,7 @@ contains
     end do godown
 
     ! write(*,*)'nlz: ', nlz
-    ! write(*,*)'final lzero: ', lzero(1:nlz)
+    write(*,*)'final lzero: ', lzero(1:nlz)
 
     ! DEBUG
     ! adata%small = 0
@@ -937,7 +940,7 @@ contains
     end do
     ! write(*,*) 'symbolic totflops: ', adata%weight(nnodes+1)
 
-    print *, "root weight: ", adata%weight(nnodes+1)
+    ! print *, "root weight: ", adata%weight(nnodes+1)
 
     return
   end subroutine spllt_symbolic

@@ -37,7 +37,7 @@ endif()
 set(HSLPACK_DIR $ENV{HSLPACKDIR})
 
 set(HSL_SRC hsl_ma87d.F90
-  ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90 
+  ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
   ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90
   ${HSLPACK_DIR}/hsl_zd11/hsl_zd11d.f90
   ${HSLPACK_DIR}/hsl_mc68/hsl_mc68i.f90
