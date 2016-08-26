@@ -35,7 +35,7 @@ case $HOSTNAME in
         ;;
 esac
 
-build="ma87"
+build="starpustarpu_prune"
 build_dir=`pwd`
 id=`whoami`
 outdir=data
@@ -58,7 +58,7 @@ case $build in
         # make clean
         # make parsec
         ;;
-    starpu)
+    starpu|starpu_prune)
         mkdir -p $outdir/spllt_starpu
         mkdir -p $outdir/spllt_starpu/traces
         ;;
