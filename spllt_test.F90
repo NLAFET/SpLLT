@@ -147,6 +147,8 @@ contains
     write(*,'("[>] perform analysis")')
     control%nb = cntl%nb
     control%nemin = cntl%nemin
+
+    ! goto 9999 ! DEBUG: jump analyis, init, factor, solve and finalize
     
     ! analysis
     call spllt_analyse(adata, fdata, a%n, a%ptr, a%row, order, keep, cntl, info)
@@ -163,6 +165,7 @@ contains
     write(*,'("[>] [analysis] num factor: ", es20.5)') num_factor    
     write(*,'("[>] [analysis] num flops : ", es20.5)') num_flops    
     write(*,'("[>] [analysis] num nodes : ", i10)') adata%nnodes    
+    ! goto 9999 ! DEBUG: jump init, factor, solve and finalize
 
     call spllt_print_atree(adata, keep, cntl)
 
@@ -176,6 +179,7 @@ contains
 !$omp master
 #endif
     ! initialize solver
+    ! goto 9999 ! DEBUG: jump init, factor, solve and finalize
     call spllt_init(cntl)
 
 ! #elif defined(SPLLT_USE_PARSEC)
@@ -185,10 +189,12 @@ contains
 !     ! call dague_init(cntl%ncpu, ctx)
 ! #endif
 
+    ! factorize matrix
+    ! goto 9998 ! DEBUG: jump factor and solve
+    ! goto 9999 ! DEBUG: jump factor, solve and finalize
     write(*,'("[>] factorize")')
     write(*,'("[>] [factorize]    nb: ", i6)') cntl%nb
     write(*,'("[>] [factorize] # cpu: ", i6)') cntl%ncpu
-    ! factorize matrix
     call system_clock(start_t, rate_t)
     ! TODO create factorize method
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
@@ -242,6 +248,9 @@ contains
 !     call parsec_fini(ctx)
 #endif
 
+! goto 9998 ! DEBUG: jump solve
+! goto 9999 ! DEBUG: jump solve and finalize
+
     write(*,'("[>] solve")')
     x = b
     ! solve
@@ -254,6 +263,8 @@ contains
     call spllt_bwerr(a, x, b, resid)
     
     write(*,'("[>] [solve] bwderr ||Ax-b|| / (||A||||x|| + ||b||): ", es10.3)') resid    
+
+9998 continue
 
     call MA87_finalise(keep, control)
 

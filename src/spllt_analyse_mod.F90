@@ -121,7 +121,8 @@ contains
     call mc78_analyse(n, aptr, arow, order, num_nodes, &
          sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
          nflops=adata%num_flops)
-
+    print *, "sz sparent:", size(sparent)
+    
     adata%nnodes = num_nodes
 
     ! perform symbolic factorization
@@ -146,16 +147,16 @@ contains
     ! loop over root nodes
     keep%nodes(:)%nchild = 0
     ! setup nchild and child info
+    ! print *, "sz sparent:", size(sparent)
     do node = 1, num_nodes+1
 
-       ! print *, "node: ", node, ", nchild: ", keep%nodes(node)%nchild  
-       par = sparent(node)
-       keep%nodes(node)%parent = par
-       if(par .gt. 0) then
+       ! print *, "node: ", node, ", nchild: ", keep%nodes(node)%nchild
+       if (node.le.num_nodes) then
+          keep%nodes(node)%parent = sparent(node)
           keep%nodes(par)%nchild = keep%nodes(par)%nchild + 1
        else
-          keep%nodes(node)%parent = -1
-       endif
+          keep%nodes(node)%parent = -1 ! virutal root node: no parent node
+       end if
 
        ! Allocate space to store child nodes
        allocate(keep%nodes(node)%child(keep%nodes(node)%nchild), stat=st)
@@ -168,14 +169,18 @@ contains
     ! Add children list to nodes, use nchild as a counter
     nchild(:) = 0
     do node = 1, num_nodes+1
-       par = sparent(node)
-       ! if(par.gt.num_nodes) cycle
+       ! par = sparent(node)
+       par = keep%nodes(num_nodes+1)%parent
+       !    ! if(par.gt.num_nodes) cycle
+       !    print *, "par: ", par
        if (par .gt. 0) then
           nchild(par) = nchild(par) + 1
+          ! print *, "node:", node, "par:", par, "nchild(par):", nchild(par), "sz child:", size(keep%nodes(par)%child)
+          ! nchild(par) = 0
           keep%nodes(par)%child(nchild(par)) = node
        end if
     end do
-
+    ! goto 9999 ! DEBUG
     ! Setup least descendants, to allow easy walk of subtrees
     do node = -1, num_nodes
        ! initialise least descendat to self
