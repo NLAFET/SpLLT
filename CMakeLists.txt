@@ -5,7 +5,7 @@ project (SpLib C CXX Fortran)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
 
 # Set C flags
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2" )
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2" )
 # set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -ffpe-trap=underflow,denormal" )
 
 # Set Fortran flags
@@ -75,6 +75,76 @@ elseif(${RUNTIME} MATCHES "OMP")
   # Use OMP code
   add_definitions(-DSPLLT_USE_OMP)
 
+elseif(${RUNTIME} MATCHES "Parsec")
+
+  # Set C flags
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mcx16" )
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64 -mcx16" )
+
+  # Parsec lib
+  set(PARSEC_DIR $ENV{PARSECDIR} CACHE PATH "Location of Parsec Library")
+  set(PARSEC_SRC_DIR $ENV{PARSECSRCDIR} CACHE PATH "Location of Parsec sources")
+  include_directories(${PARSEC_SRC_DIR})
+  include_directories(${PARSEC_SRC_DIR}/dague)
+  include_directories(${PARSEC_SRC_DIR}/dague/include)
+  include_directories(${PARSEC_SRC_DIR}/dague/include/dague)
+  include_directories(${PARSEC_DIR}/dague/include)
+  include_directories(${PARSEC_DIR}/dague/fortran)
+  include_directories(${PARSEC_DIR}/data_dist/matrix)
+
+  # find_library(PARSEC_LIBRARY dague_profilef PATHS ${PARSEC_DIR}/dague/fortran)
+  # find_library(PARSEC_LIBRARY daguef PATHS ${PARSEC_DIR}/dague/fortran)
+  # find_library(PARSEC_LIBRARY dague_distribution PATHS ${PARSEC_DIR}/data_dist)
+  # find_library(PARSEC_LIBRARY dague PATHS ${PARSEC_DIR}/dague)
+  # find_library(PARSEC_LIBRARY dague-base PATHS ${PARSEC_DIR}/dague)
+
+
+  # Parsec libraries
+  find_library(PARSEC_FORTRAN_LIBRARY
+    NAMES daguef
+    PATHS ${PARSEC_DIR}/dague/fortran)
+
+  find_library(PARSEC_PROFILEF_LIBRARY
+    NAMES dague_profilef 
+    PATHS ${PARSEC_DIR}/dague/fortran)
+
+  find_library(PARSEC_DIST_LIBRARY
+    NAMES dague_distribution
+    PATHS ${PARSEC_DIR}/data_dist)
+
+  find_library(PARSEC_DIST_MAT_LIBRARY
+    NAMES dague_distribution_matrix
+    PATHS ${PARSEC_DIR}/data_dist/matrix)
+
+  find_library(PARSEC_BASE_LIBRARY
+    NAMES dague-base
+    PATHS ${PARSEC_DIR}/dague)
+
+  find_library(PARSEC_LIB
+    NAMES dague
+    PATHS ${PARSEC_DIR}/dague)
+
+  set (PARSEC_LIBRARY ${PARSEC_PROFILEF_LIBRARY}
+    ${PARSEC_FORTRAN_LIBRARY} ${PARSEC_DIST_MAT_LIBRARY} 
+    ${PARSEC_DIST_LIBRARY} ${PARSEC_LIB} ${PARSEC_BASE_LIBRARY})
+
+  # message(STATUS "Parsec library: ${PARSEC_LIBRARY}")
+
+  # Dague PP
+  set(DAGUEPP_CFLAGS "--noline" CACHE STRING "Additional daguepp precompiling flags" )
+  set(PARSECPP $ENV{DAGUEPP} CACHE PATH "Parsec JDF compiler") 
+  set(daguepp_EXE ${PARSECPP})
+  
+  # message(STATUS "Dague PP: ${daguepp_EXE}")
+
+  # HWLOC
+  set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
+  include_directories(${HWLOC_DIR}/include)  
+  find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
+  
+  # Use Parsec code
+  add_definitions(-DSPLLT_USE_PARSEC)
+
 endif()
 
 if(${USE_GPU} MATCHES ON)
@@ -113,13 +183,19 @@ if(${USE_GPU} MATCHES ON)
 
 endif()
 
+# Set flags for the MA87 test driver
+
 if(MA87_TEST_DRIVER MATCHES ON)
   # TODO find_package omp
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 endif()
 
+# Adds sources files
+
 add_subdirectory(src)
+
+# Generate the MA87 test driver
 
 if(MA87_TEST_DRIVER MATCHES ON)
 
@@ -139,6 +215,15 @@ if(${RUNTIME} MATCHES "StarPU")
   target_link_libraries(spllt_test ${STARPU_LIBRARY})
   # HWLOC
   target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+
+elseif(${RUNTIME} MATCHES "Parsec")
+
+  # Parsec
+  target_link_libraries(spllt_test ${PARSEC_LIBRARY})
+
+  # HWLOC
+  target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+
 endif()
 
 if(${USE_GPU} MATCHES ON)

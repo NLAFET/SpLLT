@@ -35,7 +35,14 @@ case $HOSTNAME in
         ;;
 esac
 
-build="starpustarpu_prune"
+# Choose build
+# - starpu: StarPU version of SpLLT
+# - starpu_prune: StarPU version of SpLLT + tree prunnig strategy
+# - gnu_omp: SpLLT OpenMP version. GNU compiler 
+# - gnu_intel: SpLLT OpenMP version. Intel compiler 
+
+build="starpu_prune"
+
 build_dir=`pwd`
 id=`whoami`
 outdir=data

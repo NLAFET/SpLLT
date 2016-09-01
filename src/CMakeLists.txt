@@ -15,6 +15,34 @@ if(${RUNTIME} MATCHES "StarPU")
 
   set(sources ${sources} ${starpu_sources})
 
+elseif(${RUNTIME} MATCHES "Parsec")
+
+  # adds headers to the include directories
+  include_directories(${CMAKE_SOURCE_DIR}/src/PaRSEC)
+
+  include(${PARSEC_SRC_DIR}/cmake_modules/RulesJDF.cmake)
+
+  jdf_rules(generated_jdf "${CMAKE_SOURCE_DIR}/src/PaRSEC/factorize.jdf")
+
+  # message(STATUS "Generated JDFs: ${generated_jdf}")
+
+  file(
+    GLOB 
+    parsec_sources
+    PaRSEC/*.F90
+    PaRSEC/*.c)
+
+  file(
+    GLOB 
+    to_remove
+    PaRSEC/spllt_parsec_data.c)
+  
+  list(REMOVE_ITEM parsec_sources ${to_remove})
+
+  set(sources ${sources} ${generated_jdf} ${parsec_sources})
+
+  # message(STATUS "Parsec sources: ${sources}")
+
 endif()
 
 if(${USE_GPU} MATCHES ON)
