@@ -40,8 +40,9 @@ esac
 # - starpu_prune: StarPU version of SpLLT + tree prunnig strategy
 # - gnu_omp: SpLLT OpenMP version. GNU compiler 
 # - gnu_intel: SpLLT OpenMP version. Intel compiler 
+# - parsec: PaRSEC version of SpLLT
 
-build="starpu_prune"
+build="parsec"
 
 build_dir=`pwd`
 id=`whoami`

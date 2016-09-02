@@ -96,7 +96,8 @@ init_block(id)
          -> ((upd_count == 0) && (bcol != bcol_sa)) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
          -> (upd_count > 0) ? bc_ij update_between(id, 1) 
 
-   ; (nnodes - snode +1)*4
+   /* ; (nnodes - snode +1)*4 */
+   ; 5
 
 BODY
 {
@@ -141,7 +142,8 @@ factorize_block(diag_idx)
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count) /* blk(id_kk) */
 
-   ; (nnodes - snode +1)*4 + 3
+   /* ; (nnodes - snode +1)*4 + 3 */
+   ; 3
 
    /* RW bc_kk <- (id == blk_sa) ? blk(id) : bc_ij update_block(prev_diag, 1, id, id) */
 
@@ -210,7 +212,8 @@ solve_block(diag_idx, id_ik)
                -> (dep_out_count > 0) ? bc update_between_aux(id_ik, 1..dep_out_count) /* blk(id_ik) */
                /* -> blk(id_ik) */
 
-   ; (nnodes - snode +1)*4 + 2
+   /* ; (nnodes - snode +1)*4 + 2 */
+   ; 2
 
 BODY
 {
@@ -278,7 +281,8 @@ update_block(diag_idx, id_jk, id_ik)
             -> (bcol > bcol_diag+1) ? bc_ij update_block(diag_idx+1, next_id_kk+id_jk_idx-1,next_id_kk+id_ik_idx-1)
    /* -> ( (bcol == bcol_diag+1) && !isDiag_ij) ?  */
 
-   ; (nnodes - snode +1)*4 + 1
+   /* ; (nnodes - snode +1)*4 + 1 */
+        ; 1
 
 BODY
 {
@@ -325,8 +329,8 @@ update_between_aux(id, i)
         -> (flow == 1) ? bc_jk update_between(id_ij, p)
         -> (flow == 2) ? bc_ik update_between(id_ij, p)
 
-   ; (nnodes - snode +1)*4
-      
+   /* ; (nnodes - snode +1)*4 */
+        ; 0
 BODY
 {
    /* printf("[update_between_aux] id: %d, i: %d, id_ij: %d, flow: %d, p: %d\n", id, i, id_ij, flow, p); */
@@ -391,7 +395,8 @@ update_between(id, i)
 
   READ bc_ik <- bc update_between_aux(id_ik, p2)
 
-  ; (nnodes - snode +1)*4
+  /* ; (nnodes - snode +1)*4 */
+  ; 0
 
 BODY
 {
@@ -464,6 +469,10 @@ BODY
       int dcol = bcol-bcol_sa+1;
 
       int src_node = get_blk_node(bcs, id_jk);
+      int dest_node = get_blk_node(bcs, id);
+
+      void *p_snode = get_node(snodes, src_node);
+      void *p_dnode = get_node(snodes, dest_node);
 
       int sbcol = get_bcol(bcs, id_jk);
       int sblk_sa = get_blk_sa(snodes, src_node);
@@ -487,8 +496,11 @@ BODY
       void *blk_ik = get_blk(bcs, id_ik);
 
       spllt_update_between_c(m, n, blk_ij,
-                             dcol, snodes, nnodes, n1, scol, src_node,
-                             dest, src1 + csrc-1, src2 + rsrc-1,
+                             dcol, p_dnode, 
+                             n1, 
+                             scol, p_snode,
+                             dest, 
+                             src1 + csrc-1, src2 + rsrc-1,
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);
 
