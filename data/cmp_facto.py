@@ -44,20 +44,20 @@ for mat in flistmat:
     v = 0.0
 
     # spLLT PaRSEC
-    # spllt_parsec_t_facto = []
-    # spllt_parsec_t_insert = []
-    # for blocksize in blocksizes:
-    #     # print "blocksize: ",blocksize
-    #     datafile = outputdir + '/' + 'spllt_parsec' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
-    #     if os.path.exists(datafile):
-    #         # print datafile
-    #         f = open(datafile)
-    #         v = vextractor.get_value(f, spllt_facto_time)
-    #         f.seek(0)
-    #         # print vi
-    #         f.close()
+    spllt_parsec_t_facto = []
+    spllt_parsec_t_insert = []
+    for blocksize in blocksizes:
+        # print "blocksize: ",blocksize
+        datafile = outputdir + '/' + 'spllt_parsec' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        if os.path.exists(datafile):
+            # print datafile
+            f = open(datafile)
+            v = vextractor.get_value(f, spllt_facto_time)
+            f.seek(0)
+            # print vi
+            f.close()
 
-    #         spllt_parsec_t_facto.append(float(v))
+            spllt_parsec_t_facto.append(float(v))
 
     # OpenMP (gnu)
     spllt_gnu_omp_t_facto = []
@@ -114,14 +114,14 @@ for mat in flistmat:
     # print spllt_t_insert
     # print ma87_t_facto
         
-    # best_spllt_parsec_t_facto_idx = spllt_parsec_t_facto.index(min(spllt_parsec_t_facto))
+    best_spllt_parsec_t_facto_idx = spllt_parsec_t_facto.index(min(spllt_parsec_t_facto))
     best_spllt_gnu_omp_t_facto_idx = spllt_gnu_omp_t_facto.index(min(spllt_gnu_omp_t_facto))
     best_spllt_t_facto_idx = spllt_t_facto.index(min(spllt_t_facto))
     best_ma87_t_facto_idx  = ma87_t_facto.index(min(ma87_t_facto))
 
     # Parsec
-    # best_spllt_parsec_nb       = blocksizes[best_spllt_parsec_t_facto_idx]
-    # best_spllt_parsec_t_facto  = spllt_parsec_t_facto[best_spllt_parsec_t_facto_idx]
+    best_spllt_parsec_nb       = blocksizes[best_spllt_parsec_t_facto_idx]
+    best_spllt_parsec_t_facto  = spllt_parsec_t_facto[best_spllt_parsec_t_facto_idx]
 
     # omp
     best_spllt_gnu_omp_nb       = blocksizes[best_spllt_gnu_omp_t_facto_idx]
@@ -167,10 +167,17 @@ for mat in flistmat:
     # print("%4s %10.3f %10.3f %10.3f" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
 
     # data print (GFlop/s)
-    print("%4s %10.3f %10.3f %10.3f" % (matcount, 
-                                        (best_spllt_flops/best_ma87_t_facto), 
-                                        (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
-                                        (best_spllt_flops/best_spllt_t_facto)))
+    # print("%4s %10.3f %10.3f %10.3f" % (matcount, 
+    #                                     (best_spllt_flops/best_ma87_t_facto), 
+    #                                     (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
+    #                                     (best_spllt_flops/best_spllt_t_facto)))
+
+    # data print (GFlop/s) with Parsec
+    print("%4s %10.3f %10.3f %10.3f %10.3f" % (matcount,
+                                               (best_spllt_flops/best_ma87_t_facto), 
+                                               (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
+                                               (best_spllt_flops/best_spllt_t_facto),
+                                               (best_spllt_flops/best_spllt_parsec_t_facto)))
 
     # data print (factorization times and block sizes)
     # print("%4s %40s %6d %10.3f %6d %10.3f %6d %10.3f" % (matcount, lp.escape(mat), 

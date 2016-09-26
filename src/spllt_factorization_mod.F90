@@ -215,7 +215,7 @@ contains
 
     integer, intent(inout)                          :: root ! node to factorize (spllt)    
     type(spllt_data_type), target, intent(inout)    :: fdata
-    real(wp), dimension(*), intent(in)              :: val ! user's matrix values
+    real(wp), dimension(:), intent(in)              :: val ! user's matrix values
     type(MA87_keep), target, intent(inout)          :: keep 
     type(spllt_cntl), intent(inout)                 :: cntl
     integer, pointer, intent(inout)                 :: map(:)
@@ -230,7 +230,7 @@ contains
     n = keep%nodes(root)%en - keep%nodes(root)%sa + 1
     b_sz = m-n
 
-#if defined(SPLLT_USE_STARPU)   
+#if defined(SPLLT_USE_STARPU)
     
     ! allocate(buf)
     ! allocate(buf%c((m-n)**2))
@@ -243,7 +243,12 @@ contains
          int(b_sz, kind=c_int), int(b_sz, kind=c_int), int(b_sz, kind=c_int), &
          int(wp, kind=c_size_t))
     
+#elif defined(SPLLT_USE_OMP)
+
+    allocate(fdata%nodes(root)%buffer%c(b_sz**2)) ! FIXME deallocate memory after apply
+    
 #else
+    ! FIXME use fdata%nodes(root)%buffer
     if (size(buffer%c).lt.(m-n)**2) then
        deallocate(buffer%c)
        allocate(buffer%c((m-n)**2))
@@ -387,6 +392,9 @@ contains
   ! allocate workspaces: fdata%workspace, fdata%row_list, fdata%col_list 
   subroutine spllt_factorization_init(fdata, map, keep)
     use hsl_ma87_double
+#if defined(SPLLT_USE_OMP)
+!$  use omp_lib
+#endif
     implicit none
 
     type(spllt_data_type), target :: fdata
@@ -395,7 +403,11 @@ contains
 
     integer :: n ! order of the system
     integer :: st ! stat parameter
-    
+#if defined(SPLLT_USE_OMP)
+    integer :: i ! thread index
+    integer :: nt ! num threads
+#endif
+   
     n = keep%n
 
     deallocate (keep%lfact,stat=st)
@@ -431,17 +443,19 @@ contains
 
     nt = 1
 !$  nt = omp_get_num_threads()
-    allocate(fdata%workspace(0:nt-1))
-    allocate(fdata%row_list(0:nt-1))
-    allocate(fdata%col_list(0:nt-1))
+    allocate(fdata%workspace(0:nt-1)) ! workspace
+    allocate(fdata%row_list(0:nt-1)) ! row list workspace 
+    allocate(fdata%col_list(0:nt-1)) ! col list workspace
+    allocate(fdata%map(0:nt-1)) ! map workspace
 
-    do i=0,nt-1
+    do i = 0, nt-1
        allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
        allocate(fdata%row_list(i)%c(keep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
        allocate(fdata%col_list(i)%c(keep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
+       allocate(fdata%map(i)%c(n), stat=st)
     end do
 #else
     allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)

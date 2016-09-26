@@ -11,6 +11,8 @@ contains
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
     use spllt_starpu_factorization_mod
+#elif defined(SPLLT_USE_OMP)
+    !$ use omp_lib
 #endif
     implicit none
 
@@ -26,10 +28,57 @@ contains
     integer :: m, n
     integer :: bsa, ben
 
+#if defined(SPLLT_USE_OMP)
+    type(node_type), pointer :: p_root
+    type(node_type), pointer :: p_anode
+    real(wp), pointer :: buffer_c(:), dest_c(:)
+    integer :: blkn
+#endif
+
 #if defined(SPLLT_USE_STARPU)
 
     call spllt_starpu_insert_subtree_scatter_block_task_c(rptr, rptr2, cptr, cptr2, &
          buffer%hdl, c_loc(root), a_rptr, a_cptr, dest%hdl, c_loc(anode))
+
+#elif defined(SPLLT_USE_OMP)
+
+    ! print *, "spllt_scatter_block_task"
+
+    rm = size(root%index)
+    rn = root%en - root%sa + 1
+    b_sz = rm-rn
+
+    m = rptr2-rptr+1
+    n = cptr2-cptr+1
+
+    bsa = (rptr-rn-1)*b_sz+cptr-rn
+    ben = (rptr2-rn-1)*b_sz+cptr2-rn
+
+    p_root => root 
+
+    buffer_c => buffer%c
+
+    p_anode => anode 
+
+    dest_c => dest%c
+    blkn = dest%blk%blkn
+
+!$omp task firstprivate(m, n, rptr, rptr2, cptr, cptr2, b_sz, blkn) &
+!$omp      & firstprivate(bsa, ben) &
+!$omp      & firstprivate(a_rptr, a_cptr, p_root, p_anode) &
+!$omp      & firstprivate(buffer_c, dest_c) &
+!$omp      & depend(in:buffer_c(1)) &
+!$omp      & depend(inout:dest_c(1))
+
+    call spllt_scatter_block(m, n, & 
+         p_root%index(rptr:rptr2), &
+         p_root%index(cptr:cptr2), &
+         buffer_c(bsa:ben), b_sz, &
+         p_anode%index(a_rptr), &
+         p_anode%index(a_cptr), &
+         dest_c, blkn)
+
+!$omp end task
 
 #else
     rm = size(root%index)
@@ -67,7 +116,7 @@ contains
 
     integer, intent(in) :: root
     type(spllt_data_type), target, intent(inout)  :: fdata
-    real(wp), dimension(*), target, intent(in) :: val ! user's matrix values
+    real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
     type(MA87_keep), target, intent(inout) :: keep
     type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
     ! type(MA87_control), intent(in) :: control
@@ -79,15 +128,16 @@ contains
 #endif
 
 #if defined(SPLLT_USE_OMP)
-    real(wp), pointer :: p_val(:)
-    real(wp), dimension(:), pointer :: buffer_c
+    real(wp), pointer :: p_val(:) => null()
+    real(wp), dimension(:), pointer :: buffer_c => null()
     type(spllt_bc_type), pointer :: p_workspace(:) => null()
     type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
-    real(wp), dimension(:), pointer :: work
-    integer, dimension(:), pointer :: rlst, clst
-#if defined(SPLLT_OMP_TRACE)
-    integer :: th_id
-#endif
+    real(wp), dimension(:), pointer :: work => null()
+    integer, dimension(:), pointer :: rlst => null(), clst => null()
+    integer :: th_id ! thread id
+    type(MA87_keep), pointer :: p_keep => null()
+    type(spllt_cntl), pointer :: p_cntl => null()
+    type(spllt_workspace_i), dimension(:), pointer :: p_map => null()
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -110,7 +160,16 @@ contains
     p_rlst => fdata%row_list
     p_clst => fdata%col_list
 
-!$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst)
+    p_map => fdata%map
+
+    p_keep => keep
+    p_cntl => cntl
+
+!$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
+!$omp & firstprivate(root, p_keep, p_cntl, p_map) &
+!$omp & private(work, rlst, clst) &
+!$omp & private(th_id) &
+!$omp & depend(out:buffer_c(1))
 
     th_id = omp_get_thread_num()
 
@@ -119,6 +178,8 @@ contains
     rlst => p_rlst(th_id)%c
     clst => p_clst(th_id)%c
 
+    call spllt_subtree_factorize(root, p_val, p_keep, buffer_c, p_cntl, p_map(th_id)%c, &
+         & rlst, clst, work)
     
 !$omp end task
 

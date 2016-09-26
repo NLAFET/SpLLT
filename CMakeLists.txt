@@ -6,7 +6,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" 
 
 # Set C flags
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2" )
-# set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -ffpe-trap=underflow,denormal" )
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2 -ffpe-trap=underflow,denormal" )
+
+# Set CXX flags
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2" )
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -ffpe-trap=underflow,denormal" )
 
 # Set Fortran flags
 set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2" )
@@ -27,6 +31,13 @@ MESSAGE( STATUS "Use GPU:         " ${USE_GPU} )
 # Use MPI
 option(USE_MPI "Use MPI" OFF)
 MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )   
+
+# Test driver
+## SpLLT: Cholesky solver
+## SpLDLT: LDLT solver
+# SET(TEST_DRIVER "SpLLT" CACHE STRING "Test driver")
+# set_property(CACHE TEST_DRIVER PROPERTY STRINGS SpLLT SpLDLT)
+# MESSAGE( STATUS "Test driver:         " ${TEST_DRIVER} )
 
 # MA87 test driver
 option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)

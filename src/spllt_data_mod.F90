@@ -143,7 +143,11 @@ module spllt_data_mod
      type(spllt_workspace_i) :: row_list, col_list ! workspaces
 #endif
 
+#if defined(SPLLT_USE_OMP)
+     type(spllt_workspace_i), allocatable :: map(:)
+#else
      type(spllt_workspace_i) :: map ! workspaces
+#endif
   end type spllt_data_type
 
   type spllt_options
