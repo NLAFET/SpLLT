@@ -139,6 +139,8 @@ for mat in flistmat:
     best_spllt_t_facto  = spllt_t_facto[best_spllt_t_facto_idx]
     best_spllt_t_insert = spllt_t_insert[best_spllt_t_facto_idx]
     best_spllt_flops    = spllt_flops[best_spllt_t_facto_idx]
+    # GFlops 
+    best_spllt_flops    = best_spllt_flops/(1024*1024*1024)
 
     # StarPU with tree pruning
     best_spllt_prune_nb       = blocksizes[best_spllt_prune_t_facto_idx]
@@ -154,6 +156,8 @@ for mat in flistmat:
     best_spllt_gnu_omp_prune_nb       = blocksizes[best_spllt_gnu_omp_prune_t_facto_idx]
     best_spllt_gnu_omp_prune_t_facto  = spllt_gnu_omp_prune_t_facto[best_spllt_gnu_omp_prune_t_facto_idx]
 
+    # print("%10.3f" % best_spllt_flops)
+
     # data print (GFlop/s) with Parsec
     print("%4s %10.3f %10.3f %10.3f %10.3f %10.3f" % (matcount,
                                                       (best_spllt_flops/best_ma87_t_facto), 
@@ -161,3 +165,5 @@ for mat in flistmat:
                                                       (best_spllt_flops/best_spllt_gnu_omp_prune_t_facto),
                                                       (best_spllt_flops/best_spllt_t_facto),
                                                       (best_spllt_flops/best_spllt_prune_t_facto)))
+
+    matcount = matcount+1 
