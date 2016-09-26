@@ -42,7 +42,7 @@ esac
 # - gnu_intel: SpLLT OpenMP version. Intel compiler 
 # - parsec: PaRSEC version of SpLLT
 
-build="parsec"
+build="starpu_prune"
 
 build_dir=`pwd`
 id=`whoami`
@@ -74,12 +74,12 @@ case $build in
         mkdir -p $outdir/spllt_starpu_nested_stf
         mkdir -p $outdir/spllt_starpu_nested_stf/traces
         ;;
-    gnu_omp)
+    gnu_omp|gnu_omp_prune)
         mkdir -p $outdir/spllt_omp
         mkdir -p $outdir/spllt_omp/gnu
         mkdir -p $outdir/spllt_omp/gnu/traces
         ;;
-    intel_omp)
+    intel_omp|intel_omp_prune)
         mkdir -p $outdir/spllt_omp
         mkdir -p $outdir/spllt_omp/intel
         mkdir -p $outdir/spllt_omp/intel/traces
@@ -89,7 +89,7 @@ case $build in
         ;;
 esac
 
-ncpu_list=(28)
+ncpu_list=(27)
 nb_list=(256 384 512 768 1024)
 nemin_list=(32)
 
