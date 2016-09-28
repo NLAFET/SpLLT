@@ -14,7 +14,9 @@ set term pdf font "Courier,12"
 
 set key box left top w 1.1 font "Courier,12"
 
-set output "cmp_prune.pdf"
+# set output "cmp_prune.pdf"
+# set output "cmp_prune_stf-starpu.pdf"
+set output "cmp_prune_stf-openmp.pdf"
 
 set title "Factorization GFlop/s - 28 cores"
 
@@ -28,8 +30,12 @@ set boxwidth 1.0 absolute
 
 set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 
+# StarPU (wo/ and w/ pruning ) vs MA87
+# plot 'cn255/data_cmp_prune_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
+#      ''                              using ($0+1):5 ls 2 w lp t 'SpLLT-STF (StarPU)           ', \
+#      ''                              using ($0+1):6 ls 3 w lp t 'SpLLT-STF (StarPU) \w pruning'
+
+# OMP (wo/ and w/ pruning ) vs MA87
 plot 'cn255/data_cmp_prune_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
-     ''                              using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-     ''                              using ($0+1):4 ls 3 w lp t 'SpLLT-STF (OpenMP with tree pruning)', \
-     ''                              using ($0+1):5 ls 4 w lp t 'SpLLT-STF (StarPU)', \
-     ''                              using ($0+1):6 ls 5 w lp t 'SpLLT-STF (StarPU with tree pruning)'     
+     ''                              using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)           ', \
+     ''                              using ($0+1):4 ls 3 w lp t 'SpLLT-STF (OpenMP) \w pruning'

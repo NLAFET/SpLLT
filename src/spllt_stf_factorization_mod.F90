@@ -119,7 +119,7 @@ contains
        prio = 5 ! max priority 
        ! prio = huge(1)
        ! init node
-       if (adata%small(snode) .lt. 0) cycle
+       if ((adata%small(snode) .lt. 0) .or. (adata%small(snode) .eq. 1)) cycle
 
        call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
     end do
