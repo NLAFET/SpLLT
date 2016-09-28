@@ -52,7 +52,7 @@ contains
 
     do snode = 1, num_nodes ! loop over nodes
        ! activate node: allocate factors
-       call spllt_activate_node(snode, keep, fdata)
+       call spllt_activate_node(snode, keep, fdata, adata)
        ! init node 
        ! TODO parallelize node init
        ! call spllt_init_node(snode, val, keep)

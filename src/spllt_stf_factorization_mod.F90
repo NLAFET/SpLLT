@@ -98,7 +98,7 @@ contains
 #endif
 #endif
        ! activate node: allocate factors, register handles
-       call spllt_activate_node(snode, keep, fdata)
+       call spllt_activate_node(snode, keep, fdata, adata)
     end do
 
     call system_clock(stop_setup_t)

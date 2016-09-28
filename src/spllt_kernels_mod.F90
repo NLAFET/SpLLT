@@ -2447,7 +2447,7 @@ contains
     return
   end subroutine spllt_init_blk_c
 
-  subroutine spllt_activate_node(snode, keep, fdata)
+  subroutine spllt_activate_node(snode, keep, fdata, adata)
     use iso_c_binding
     use spllt_data_mod
     use hsl_ma87_double
@@ -2458,6 +2458,7 @@ contains
 
     type(MA87_keep), target, intent(inout) :: keep 
     type(spllt_data_type), intent(inout) :: fdata
+    type(spllt_adata_type), intent(in) :: adata
     integer :: snode
 
     type(node_type), pointer :: node ! node in the atree    
@@ -2497,9 +2498,11 @@ contains
 
           fdata%bc(blk)%blk => keep%blocks(blk)
 #if defined(SPLLT_USE_STARPU)
-          call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
-               & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
-               & int(wp,kind=c_size_t))
+          if (adata%small(snode) .eq. 0) then
+             call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
+                  & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
+                  & int(wp,kind=c_size_t))
+          end if
 #endif
           fdata%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
           ! write(*,'(z16)')c_loc(keep%lfact(nbcol)%lcol(ptr))
