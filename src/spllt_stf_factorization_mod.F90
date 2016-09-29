@@ -119,7 +119,7 @@ contains
        prio = 5 ! max priority 
        ! prio = huge(1)
        ! init node
-       if ((adata%small(snode) .lt. 0) .or. (adata%small(snode) .eq. 1)) cycle
+       if (adata%small(snode) .ne. 0) cycle
 
        call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
     end do
@@ -171,7 +171,7 @@ contains
 #ifndef SPLLT_USE_NESTED_STF
     ! deinit factorization
     ! clean up data structure, unregister data handles
-    call spllt_factorization_fini(fdata, map, keep)
+    call spllt_factorization_fini(fdata, map, keep, adata)
 #endif
 
     call system_clock(stf_stop_t)

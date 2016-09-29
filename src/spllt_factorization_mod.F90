@@ -491,7 +491,7 @@ contains
   ! deinitialize factorization
   ! deallocate map array
   ! deallocate workspaces
-  subroutine spllt_factorization_fini(fdata, map, keep)
+  subroutine spllt_factorization_fini(fdata, map, keep, adata)
     use hsl_ma87_double
     use spllt_factorization_task_mod
     implicit none
@@ -499,6 +499,7 @@ contains
     type(spllt_data_type), target :: fdata
     integer, dimension(:), pointer ::  map
     type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_adata_type), target, intent(in) :: adata
 
     integer :: st ! stat parameter
     
@@ -518,7 +519,7 @@ contains
 
 #ifndef SPLLT_USE_GPU
 
-    call spllt_data_unregister_task(keep, fdata)
+    call spllt_data_unregister_task(keep, fdata, adata)
 #endif
 
     ! do snode = 1, num_nodes

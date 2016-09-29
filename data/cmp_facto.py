@@ -167,10 +167,10 @@ for mat in flistmat:
     # print("%4s %10.3f %10.3f %10.3f" % (matcount, best_ma87_t_facto, best_spllt_gnu_omp_t_facto, best_spllt_t_facto))
 
     # data print (GFlop/s)
-    print("%4s %10.3f %10.3f %10.3f" % (matcount, 
-                                        (best_spllt_flops/best_ma87_t_facto), 
-                                        (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
-                                        (best_spllt_flops/best_spllt_t_facto)))
+    # print("%4s %10.3f %10.3f %10.3f" % (matcount, 
+    #                                     (best_spllt_flops/best_ma87_t_facto), 
+    #                                     (best_spllt_flops/best_spllt_gnu_omp_t_facto), 
+    #                                     (best_spllt_flops/best_spllt_t_facto)))
 
     # data print (GFlop/s) with Parsec
     # print("%4s %10.3f %10.3f %10.3f %10.3f" % (matcount,
@@ -186,9 +186,9 @@ for mat in flistmat:
     #                                                      best_spllt_nb, best_spllt_t_facto))
 
     # Latex print (factorization times and block siezes)    
-    # print("%4s & %40s & %6d & %10.3f & %6d & %10.3f & %6d & %10.3f \\\\" % (matcount, lp.escape(mat), 
-    #                                                                         best_ma87_nb, best_ma87_t_facto, 
-    #                                                                         best_spllt_gnu_omp_nb, best_spllt_gnu_omp_t_facto, 
-    #                                                                         best_spllt_nb, best_spllt_t_facto))
+    print("%4s & %40s & %6d & %10.3f & %6d & %10.3f & %6d & %10.3f \\\\" % (matcount, lp.escape(mat), 
+                                                                            best_ma87_nb, best_ma87_t_facto, 
+                                                                            best_spllt_gnu_omp_nb, best_spllt_gnu_omp_t_facto, 
+                                                                            best_spllt_nb, best_spllt_t_facto))
 
     matcount = matcount+1 

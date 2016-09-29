@@ -223,13 +223,14 @@ contains
 #if defined(SPLLT_USE_STARPU)
   ! deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
-  subroutine spllt_data_unregister_task(keep, pbl)
+  subroutine spllt_data_unregister_task(keep, fdata, adata)
     use hsl_ma87_double
     use  starpu_f_mod
     implicit none
 
     type(MA87_keep), target, intent(inout) :: keep 
-    type(spllt_data_type), intent(inout) :: pbl
+    type(spllt_data_type), intent(inout) :: fdata
+    type(spllt_adata_type), intent(in) :: adata
 
     integer :: i
     integer :: snode, num_nodes
@@ -242,18 +243,22 @@ contains
 
     do snode = 1, num_nodes
 
+       ! if (adata%small(snode) .ne. 0) cycle
+       ! print *, "[data_unregister_task] node", snode, ", small: ", adata%small(snode)
+
        node => keep%nodes(snode)
 
        l_nb = node%nb
        sz = (size(node%index) - 1) / l_nb + 1
        sa = node%sa
        en = node%en
-
+       
        do i = sa, en, l_nb
           dblk = blk
           do blk = dblk, dblk+sz-1
              ! write(*,*) 'unregister blk: ', blk
-             call starpu_f_data_unregister_submit(pbl%bc(blk)%hdl)
+
+             call starpu_f_data_unregister_submit(fdata%bc(blk)%hdl)
           end do
           sz = sz - 1
        end do

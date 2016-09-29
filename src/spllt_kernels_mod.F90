@@ -2469,6 +2469,9 @@ contains
     integer :: st ! stat parameter
     integer :: ptr
 
+
+    print *, "node", snode, ", small: ", adata%small(snode)
+
     node => keep%nodes(snode)
     blk = node%blk_sa
 
@@ -2498,11 +2501,12 @@ contains
 
           fdata%bc(blk)%blk => keep%blocks(blk)
 #if defined(SPLLT_USE_STARPU)
-          if (adata%small(snode) .eq. 0) then
-             call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
-                  & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
-                  & int(wp,kind=c_size_t))
-          end if
+          ! FIXME do not register blocks in subtrees
+          ! if (adata%small(snode) .eq. 0) then
+          call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
+               & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
+               & int(wp,kind=c_size_t))
+          ! end if
 #endif
           fdata%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
           ! write(*,'(z16)')c_loc(keep%lfact(nbcol)%lcol(ptr))
