@@ -47,9 +47,9 @@ do
         # starpu_fxt_tool -c -i $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}.prof -o $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}.trace
         # starpu_fxt_tool -c -i $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}.prof
         starpu_fxt_tool -c -i $trace_dir/$prof_file
-        mv paje.trace $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}.trace
-        mv tasks.rec $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}_tasks.rec
-        mv trace.rec $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}.rec
+        mv paje.trace $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}.trace
+        mv tasks.rec $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}_tasks.rec
+        mv trace.rec $outdir/spllt_starpu/traces/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}.rec
     fi
 
 done

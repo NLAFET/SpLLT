@@ -45,11 +45,18 @@ outsuffix=
 echo "[run_tests] build dir: $build_dir"
 #matrices=(JGD_Trefethen/Trefethen_20000)
 
+trace_dir=/tmp
 prof_file=prof_file_scarf462_0
+
 # for matrix in ${matrices[@]}
 
-declare -a matrices=("matrix:Schmid/thermal2 ncpu:27 nb:1024 nemin:32"
-    "matrix:AMD/G3_circuit ncpu:27 nb:512 nemin:32")
+declare -a matrices=("Rothberg/gearbox ncpu:27 nb:512 nemin:32"
+    "matrix:Boeing/pwtk ncpu:27 nb:768 nemin:32"
+    "matrix:Janna/Fault_639 ncpu:27 nb:768 nemin:32"
+    "matrix:Janna/Hook_1498 ncpu:27 nb:768 nemin:32"
+    "matrix:Janna/Emilia_923 ncpu:27 nb:768 nemin:32"
+    "matrix:Janna/Geo_1438 ncpu:27 nb:1024 nemin:32"
+    "matrix:Janna/Serena ncpu:27 nb:768 nemin:32")
 
 mkdir -p $outdir
 mkdir -p $outdir/ma87

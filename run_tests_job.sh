@@ -42,7 +42,7 @@ esac
 # - gnu_intel: SpLLT OpenMP version. Intel compiler 
 # - parsec: PaRSEC version of SpLLT
 
-build="starpu_prune"
+build="stf"
 
 build_dir=`pwd`
 id=`whoami`

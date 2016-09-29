@@ -35,7 +35,7 @@ do
                         ./builds/ma87/spllt_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/ma87/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}
                         ;;
                     stf)
-                        ./builds/stf/spllt_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_stf/${matname}_NB-${nb}_NEMIN-${nemin}${outsuffix}
+                        ./builds/stf/spllt_test --ncpu 1 --nb ${nb} --nemin ${nemin} > $outdir/spllt_stf/${matname}_NB-${nb}_NEMIN-${nemin}${outsuffix}
                         ;;
                     parsec)
                         ./builds/parsec/spllt_test --ncpu ${ncpu} --nb ${nb} --nemin ${nemin} > $outdir/spllt_parsec/${matname}_NCPU-${ncpu}_NB-${nb}_NEMIN-${nemin}${outsuffix}

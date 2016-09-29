@@ -64,9 +64,9 @@ prof_file=prof_file_scarf462_0
 #     "matrix:Janna/StocF-1465 ncpu:27 nb:768 nemin:32"
 #     "matrix:Janna/Geo_1438 ncpu:27 nb:1024 nemin:32")
 
-declare -a matrices=()
-
 # declare -a matrices=("matrix:GHS_psdef/audikw_1 ncpu:27 nb:768 nemin:32")
+
+declare -a matrices=("matrix:Janna/StocF-1465 ncpu:27 nb:768 nemin:32")
 
 mkdir -p $outdir
 mkdir -p $outdir/ma87
