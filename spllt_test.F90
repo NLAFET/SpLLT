@@ -51,7 +51,7 @@ contains
     character(len=*), intent(in) :: mf
     type(spllt_cntl) :: cntl
 
-    type(rb_reader_options) :: rb_options
+    type(rb_read_options) :: rb_options
     integer :: flag
     integer :: m, n
 

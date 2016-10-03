@@ -81,7 +81,7 @@ case $build in
         # make clean
         # make parsec
         ;;
-    starpu)
+    starpu|starpu_prune)
         mkdir -p $outdir/spllt_starpu
         mkdir -p $outdir/spllt_starpu/traces
         ;;

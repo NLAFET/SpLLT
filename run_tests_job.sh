@@ -6,7 +6,7 @@
 #BSUB -o run.log
 #BSUB -e run.err
 #BSUB -x
-# #BSUB -app no_turbo
+#BSUB -app no_turbo
 
 case $HOSTNAME in
     gauss)
@@ -89,7 +89,7 @@ case $build in
         ;;
 esac
 
-ncpu_list=(27)
+ncpu_list=(1)
 nb_list=(256 384 512 768 1024)
 nemin_list=(32)
 

@@ -252,7 +252,7 @@ target_link_libraries(spllt_test ${METIS_LIBRARY})
 # spral
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
-find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR} ${SPRAL_DIR}/lib)
+find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR} ${SPRAL_DIR})
 target_link_libraries(spllt_test ${SPRAL_LIBRARY})
 
 # BLAS and LAPACK
