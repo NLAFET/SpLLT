@@ -21,7 +21,8 @@ cmake -DRUNTIME=STF <path-to-source>
 
 ## StarPU
 
-A parallel version of the code using the StarPU runtime system can be
+A parallel version of the code using the
+[StarPU](http://starpu.gforge.inria.fr/) runtime system can be
 obtained as following:
 
 ```bash
@@ -31,8 +32,9 @@ cmake -DRUNTIME=StarPU <path-to-source>
 
 ## Parsec
 
-A parallel version of the code using the StarPU runtime system can be
-obtained as following:
+A parallel version of the code using the
+[PaRSEC](https://bitbucket.org/icldistcomp/parsec) runtime system can
+be obtained as following:
 
 ```bash
 cmake -DRUNTIME=Parsec <path-to-source>
