@@ -12,11 +12,6 @@ set style line 102 lc rgb '#999999' lt 0 lw 1
 
 set term pdf font "Courier,12" 
 
-# Style
-# set style data histograms
-# set style histogram clustered gap 1
-# set style fill solid 0.5
-
 set key box left top w 1.1 font "Courier,12"
 
 # set output "cmp_facto_all.pdf"
@@ -56,7 +51,8 @@ set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 # STF (perf GFlop/s)
 plot 'cn255/data_cmp_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
      ''                        using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-     ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)'
+     ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)'     
+
 
 # STF and PTG (perf GFlop/s)
 # plot 'cn255/data_cmp_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \

@@ -2470,7 +2470,7 @@ contains
     integer :: ptr
 
 
-    print *, "node", snode, ", small: ", adata%small(snode)
+    ! print *, "node", snode, ", small: ", adata%small(snode)
 
     node => keep%nodes(snode)
     blk = node%blk_sa

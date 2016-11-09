@@ -422,7 +422,7 @@ contains
 #endif    
 
 #if defined(SPLLT_USE_STARPU)
-    
+
     ! register workspace handle
     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp, kind=c_size_t))

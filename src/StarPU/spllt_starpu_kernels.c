@@ -90,7 +90,7 @@ void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
                                STARPU_PRIORITY, prio,
                                0);
    }
-  STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
+   STARPU_CHECK_RETURN_VALUE(ret, "starpu_task_insert");
 }
 
 // solve block StarPU task insert
