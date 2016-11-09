@@ -19,6 +19,16 @@ cmake -DRUNTIME=STF <path-to-source>
 
 ```
 
+## OMP
+
+A parallel version of the code using the [OpenMP](https://openmp.org/)
+standard with tasking capabilities can be obtained as following:
+
+```bash
+cmake -DRUNTIME=OMP <path-to-source>
+
+```
+
 ## StarPU
 
 A parallel version of the code using the
