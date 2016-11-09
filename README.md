@@ -7,4 +7,35 @@ approach. It currently supports the
 well as the [OpenMP standard](http://openmp.org/) Version 4.0 or
 above.
 
+# Runtime systems
+
+By default the code is compiled in sequential mode but the choice of
+the runtime system can be specified by setting the option
+`-DRUNTIME`. For example, the sequential code can be configured as
+following:
+
+```bash
+cmake -DRUNTIME=STF <path-to-source>
+
+```
+
+## StarPU
+
+A parallel version of the code using the StarPU runtime system can be
+obtained as following:
+
+```bash
+cmake -DRUNTIME=StarPU <path-to-source>
+
+```
+
+## Parsec
+
+A parallel version of the code using the StarPU runtime system can be
+obtained as following:
+
+```bash
+cmake -DRUNTIME=Parsec <path-to-source>
+
+```
 
