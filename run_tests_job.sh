@@ -89,7 +89,7 @@ case $build in
         ;;
 esac
 
-ncpu_list=(1)
+ncpu_list=(27)
 nb_list=(256 384 512 768 1024)
 nemin_list=(32)
 

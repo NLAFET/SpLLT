@@ -68,8 +68,9 @@ elseif(${RUNTIME} MATCHES "StarPU")
   add_definitions(-DSPLLT_USE_STARPU)
 
   # StarPU lib
-  set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU Library")
-  include_directories(${STARPU_DIR}/include/starpu/1.3)
+  set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU directory")
+  set(STARPU_INCLUDE ${STARPU_DIR}/include/starpu/1.3 CACHE PATH "Location of StarPU includes")
+  include_directories(${STARPU_INCLUDE})
   find_library(STARPU_LIBRARY starpu-1.3 PATHS ${STARPU_DIR}/lib)
   
   # HWLOC
