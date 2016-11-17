@@ -3,8 +3,7 @@
 #if defined(SPLLT_USE_GPU)
 #include <starpu_cuda.h>
 #include <magma.h>
-/* #include <magmablas.h> */
-#include <cublas.h>
+/* #include <cublas.h> */
 /* #include <cusolverDn.h> */
 #endif
 /* void spllt_starpu_unpack_args_factorize_block(void *cl_arg, */
@@ -33,16 +32,20 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 
    double *dest = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
+   int worker_id = starpu_worker_get_id();
+   int device_id = starpu_worker_get_devid(worker_id);
    cudaStream_t local_stream = starpu_cuda_get_local_stream();
 
    /* cusolverDnHandle_t cu_hdl; */
    /* cusolverDnCreate(&cu_hdl); */
    /* cusolverDnDestroy(cu_hdl); */
 
-   magmablasSetKernelStream(local_stream);
+   magma_queue_t magma_queue;
+   magma_queue_create_from_cuda(device_id, local_stream, NULL, NULL, &magma_queue);
+   magmablasSetKernelStream(magma_queue);
 
    /* magma_dpotrf_gpu(MagmaUpper, n, dest, n, &info); */
-   magma_dpotf2_gpu(MagmaUpper, n, dest, n, &info);
+   magma_dpotf2_gpu(MagmaUpper, n, dest, n, magma_queue, &info);
 
    if (m > n) {
       /* printf("TET\n"); */
@@ -109,9 +112,13 @@ void spllt_starpu_solve_block_cuda_func(void *buffers[], void *cl_arg) {
    unsigned ld = STARPU_MATRIX_GET_LD(buffers[1]);
    double *bc_ik = (double *)STARPU_MATRIX_GET_PTR(buffers[1]);
 
+   int worker_id = starpu_worker_get_id();
+   int device_id = starpu_worker_get_devid(worker_id);
    cudaStream_t local_stream = starpu_cuda_get_local_stream();
 
-   magmablasSetKernelStream(local_stream);
+   magma_queue_t magma_queue;
+   magma_queue_create_from_cuda(device_id, local_stream, NULL, NULL, &magma_queue);
+   magmablasSetKernelStream(magma_queue);
 
    magma_dtrsm(MagmaLeft, MagmaUpper, MagmaTrans, MagmaNonUnit,
                n, m, 1.0, bc_kk, n, bc_ik, n);
@@ -172,9 +179,13 @@ void spllt_starpu_update_block_cuda_func(void *buffers[], void *cl_arg) {
    unsigned ld = STARPU_MATRIX_GET_LD(buffers[2]);
    double *bc_ij = (double *)STARPU_MATRIX_GET_PTR(buffers[2]);
 
+   int worker_id = starpu_worker_get_id();
+   int device_id = starpu_worker_get_devid(worker_id);
    cudaStream_t local_stream = starpu_cuda_get_local_stream();
 
-   magmablasSetKernelStream(local_stream);
+   magma_queue_t magma_queue;
+   magma_queue_create_from_cuda(device_id, local_stream, NULL, NULL, &magma_queue);
+   magmablasSetKernelStream(magma_queue);
 
    if (diag) {
 
@@ -298,7 +309,6 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    int *col_list, *row_list;
    int cls, rls;
 
-   cudaStream_t local_stream = starpu_cuda_get_local_stream();
    int worker_id = starpu_worker_get_id();
    unsigned worker_node = starpu_worker_get_memory_node(worker_id);
 
@@ -317,7 +327,12 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    /* src2 = (double *)malloc(m2*n1*sizeof(double)); // L_jk */
    /* buff  = (double *)malloc(b_sz*sizeof(double)); // buffer */
 
-   magmablasSetKernelStream(local_stream);
+   int device_id = starpu_worker_get_devid(worker_id);
+   cudaStream_t local_stream = starpu_cuda_get_local_stream();
+
+   magma_queue_t magma_queue;
+   magma_queue_create_from_cuda(device_id, local_stream, NULL, NULL, &magma_queue);
+   magmablasSetKernelStream(magma_queue);
 
    int diag = is_blk_diag(a_blk);
    int ndiag = 0;
