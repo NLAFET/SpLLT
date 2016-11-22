@@ -213,7 +213,7 @@ contains
     use spllt_factorization_task_mod
     implicit none
 
-    integer, intent(inout)                          :: root ! node to factorize (spllt)    
+    integer, intent(in)                             :: root ! node to factorize (spllt)    
     type(spllt_data_type), target, intent(inout)    :: fdata
     real(wp), dimension(:), intent(in)              :: val ! user's matrix values
     type(MA87_keep), target, intent(inout)          :: keep 
