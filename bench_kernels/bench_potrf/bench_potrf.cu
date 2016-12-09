@@ -1,36 +1,44 @@
 #include "common.hpp"
 
 #include "cusolverDn.h"
+#include "magma.h"
 
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
+#define dtype cuComplex
 #define cusolverDnXpotrf_bufferSize cusolverDnCpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnCpotrf
-#define cusolverDnX cuComplex
+#define magma_Xpotf2_gpu magma_cpotf2_gpu
+#define magma_Xpotrf_gpu magma_cpotrf_gpu
 #else // USE_DOUBLE
+#define dtype cuDoubleComplex
 #define cusolverDnXpotrf_bufferSize cusolverDnZpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnZpotrf
-#define cusolverDnX cuDoubleComplex
+#define magma_Xpotf2_gpu magma_zpotf2_gpu
+#define magma_Xpotrf_gpu magma_zpotrf_gpu
 #endif // USE_FLOAT
 #else // USE_REAL
 #ifdef USE_FLOAT
+#define dtype float
 #define cusolverDnXpotrf_bufferSize cusolverDnSpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnSpotrf
-#define cusolverDnX float
+#define magma_Xpotf2_gpu magma_spotf2_gpu
+#define magma_Xpotrf_gpu magma_spotrf_gpu
 #else // USE_DOUBLE
+#define dtype double
 #define cusolverDnXpotrf_bufferSize cusolverDnDpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnDpotrf
-#define cusolverDnX double
+#define magma_Xpotf2_gpu magma_dpotf2_gpu
+#define magma_Xpotrf_gpu magma_dpotrf_gpu
 #endif // USE_FLOAT
 #endif // USE_COMPLEX
 
 static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0;
 static int lda = 0, Lwork = 0;
 
-static cusolverStatus_t status;
 static cusolverDnHandle_t handle;
 
-static cusolverDnX *Agpu = (cusolverDnX*)NULL, *Workspace = (cusolverDnX*)NULL, *Acpu = (cusolverDnX*)NULL, *wrk = (cusolverDnX*)NULL;
+static dtype *Agpu = (dtype*)NULL, *Workspace = (dtype*)NULL, *Acpu = (dtype*)NULL, *wrk = (dtype*)NULL;
 
 static void device_count()
 {
@@ -80,7 +88,7 @@ static void set_device()
 
 static void create_handle()
 {
-  status = cusolverDnCreate(&handle); const int lin = __LINE__;
+  const cusolverStatus_t status = cusolverDnCreate(&handle); const int lin = __LINE__;
   switch (status) {
   case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
@@ -105,7 +113,7 @@ static void create_handle()
 static void alloc_gpu_mtx()
 {
   size_t pitch = 0;
-  const cudaError_t err1 = cudaMallocPitch(&Agpu, &pitch, Nmax * sizeof(cusolverDnX), Nmax); const int lin1 = __LINE__;
+  const cudaError_t err1 = cudaMallocPitch(&Agpu, &pitch, Nmax * sizeof(dtype), Nmax); const int lin1 = __LINE__;
   switch (err1) {
   case cudaSuccess:
 #ifndef NDEBUG
@@ -119,7 +127,7 @@ static void alloc_gpu_mtx()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, err1);
     exit(err1);
   }
-  lda = int(pitch / sizeof(cusolverDnX));
+  lda = int(pitch / sizeof(dtype));
 #ifndef NDEBUG
   (void)fprintf(stdout, "lda = %d\n", lda);
 #endif // !NDEBUG
@@ -148,8 +156,8 @@ static void find_lwork()
   int LworkU = -1, maxLworkU = 0;
 
   for (int n = Nmin; n <= Nmax; n += Nstep) {
-    status = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_LOWER, n, Agpu, lda, &LworkL); const int lin1 = __LINE__;
-    switch (status) {
+    const cusolverStatus_t stat1 = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_LOWER, n, Agpu, lda, &LworkL); const int lin1 = __LINE__;
+    switch (stat1) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
       (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin1);
@@ -157,24 +165,24 @@ static void find_lwork()
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
       (void)fprintf(stderr, "[%s@%s:%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin1);
-      exit(status);
+      exit(stat1);
     case CUSOLVER_STATUS_INVALID_VALUE:
       (void)fprintf(stderr, "[%s@%s:%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin1);
-      exit(status);
+      exit(stat1);
     case CUSOLVER_STATUS_ARCH_MISMATCH:
       (void)fprintf(stderr, "[%s@%s:%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin1);
-      exit(status);
+      exit(stat1);
     case CUSOLVER_STATUS_INTERNAL_ERROR:
       (void)fprintf(stderr, "[%s@%s:%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin1);
-      exit(status);
+      exit(stat1);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, status);
-      exit(status);
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, stat1);
+      exit(stat1);
     }
     if (LworkL > maxLworkL)
       maxLworkL = LworkL;
-    status = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_UPPER, n, Agpu, lda, &LworkU); const int lin2 = __LINE__;
-    switch (status) {
+    const cusolverStatus_t stat2 = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_UPPER, n, Agpu, lda, &LworkU); const int lin2 = __LINE__;
+    switch (stat2) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
       (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin2);
@@ -182,19 +190,19 @@ static void find_lwork()
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
       (void)fprintf(stderr, "[%s@%s:%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin2);
-      exit(status);
+      exit(stat2);
     case CUSOLVER_STATUS_INVALID_VALUE:
       (void)fprintf(stderr, "[%s@%s:%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin2);
-      exit(status);
+      exit(stat2);
     case CUSOLVER_STATUS_ARCH_MISMATCH:
       (void)fprintf(stderr, "[%s@%s:%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin2);
-      exit(status);
+      exit(stat2);
     case CUSOLVER_STATUS_INTERNAL_ERROR:
       (void)fprintf(stderr, "[%s@%s:%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin2);
-      exit(status);
+      exit(stat2);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, status);
-      exit(status);
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, stat2);
+      exit(stat2);
     }
     if (LworkU > maxLworkU)
       maxLworkU = LworkU;
@@ -209,7 +217,7 @@ static void find_lwork()
 static void alloc_gpu_wrk()
 {
   if (Lwork > 0) {
-    const cudaError_t err1 = cudaMalloc(&Workspace, (Lwork + 1) * sizeof(cusolverDnX)); const int lin1 = __LINE__;
+    const cudaError_t err1 = cudaMalloc(&Workspace, (Lwork + 1) * sizeof(dtype)); const int lin1 = __LINE__;
     switch (err1) {
     case cudaSuccess:
 #ifndef NDEBUG
@@ -223,7 +231,7 @@ static void alloc_gpu_wrk()
       (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, err1);
       exit(err1);
     }
-    const cudaError_t err2 = cudaMemset(Workspace, 0, (Lwork + 1) * sizeof(cusolverDnX)); const int lin2 = __LINE__;
+    const cudaError_t err2 = cudaMemset(Workspace, 0, (Lwork + 1) * sizeof(dtype)); const int lin2 = __LINE__;
     switch (err2) {
     case cudaSuccess:
 #ifndef NDEBUG
@@ -245,7 +253,7 @@ static void alloc_gpu_wrk()
 
 static void alloc_cpu_mtx()
 {
-  const size_t size = size_t(lda) * Nmax * sizeof(cusolverDnX);
+  const size_t size = size_t(lda) * Nmax * sizeof(dtype);
   if (size > 0) {
     const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin1 = __LINE__;
     switch (error) {
@@ -262,7 +270,7 @@ static void alloc_cpu_mtx()
       exit(error);
     }
     (void)memset(Acpu, 0, size);
-    wrk = (cusolverDnX*)calloc(3 * Nmax, sizeof(cusolverDnX)); const int lin2 = __LINE__;
+    wrk = (dtype*)calloc(3 * Nmax, sizeof(dtype)); const int lin2 = __LINE__;
     if (!wrk) {
       (void)fprintf(stderr, "[%s@%s:%d] ", __FUNCTION__, __FILE__, lin2);
       perror((const char*)NULL);
@@ -300,8 +308,8 @@ static double copy_mtx_cpu2gpu(const int n)
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
       exit(n);
     }
-    const size_t pitch = lda * sizeof(cusolverDnX);
-    const cudaError_t error = cudaMemcpy2D(Agpu, pitch, Acpu, pitch, n * sizeof(cusolverDnX), n, cudaMemcpyHostToDevice); const int lin1 = __LINE__;
+    const size_t pitch = lda * sizeof(dtype);
+    const cudaError_t error = cudaMemcpy2D(Agpu, pitch, Acpu, pitch, n * sizeof(dtype), n, cudaMemcpyHostToDevice); const int lin1 = __LINE__;
     switch (error) {
     case cudaSuccess:
 #ifndef NDEBUG
@@ -343,7 +351,7 @@ static double potrf_gpu(const bool upper, const int n)
       exit(n);
     }
     const cublasFillMode_t uplo = (upper ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER);
-    status = cusolverDnXpotrf(handle, uplo, n, Agpu, lda, Workspace, Lwork, (int*)(Workspace + Lwork)); const int lin1 = __LINE__;
+    const cusolverStatus_t status = cusolverDnXpotrf(handle, uplo, n, Agpu, lda, Workspace, Lwork, (int*)(Workspace + Lwork)); const int lin1 = __LINE__;
     int devInfo = 0;
     (void)cudaDeviceSynchronize();
     const cudaError_t error = cudaMemcpy(&devInfo, Workspace + Lwork, sizeof(int), cudaMemcpyDeviceToHost); const int lin2 = __LINE__;
@@ -418,7 +426,7 @@ static void free_cpu_mtx()
       (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
       exit(error);
     }
-    Acpu = (cusolverDnX*)NULL;
+    Acpu = (dtype*)NULL;
   }
 }
 
@@ -442,7 +450,7 @@ static void free_gpu_wrk()
       (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
       exit(error);
     }
-    Workspace = (cusolverDnX*)NULL;
+    Workspace = (dtype*)NULL;
   }
 }
 
@@ -465,12 +473,12 @@ static void free_gpu_mtx()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
     exit(error);
   }
-  Agpu = (cusolverDnX*)NULL;
+  Agpu = (dtype*)NULL;
 }
 
 static void destroy_handle()
 {
-  status = cusolverDnDestroy(handle); const int lin = __LINE__;
+  const cusolverStatus_t status = cusolverDnDestroy(handle); const int lin = __LINE__;
   switch (status) {
   case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
