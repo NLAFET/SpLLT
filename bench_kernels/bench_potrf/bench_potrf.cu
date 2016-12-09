@@ -105,24 +105,41 @@ static void create_handle()
 static void alloc_gpu_mtx()
 {
   size_t pitch = 0;
-  const cudaError_t error = cudaMallocPitch(&Agpu, &pitch, Nmax * sizeof(cusolverDnX), Nmax); const int lin = __LINE__;
-  switch (error) {
+  const cudaError_t err1 = cudaMallocPitch(&Agpu, &pitch, Nmax * sizeof(cusolverDnX), Nmax); const int lin1 = __LINE__;
+  switch (err1) {
   case cudaSuccess:
 #ifndef NDEBUG
-    (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
+    (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin1);
 #endif // !NDEBUG
     break;
   case cudaErrorMemoryAllocation:
-    (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
-    exit(error);
+    (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin1);
+    exit(err1);
   default:
-    (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
-    exit(error);
+    (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, err1);
+    exit(err1);
   }
   lda = int(pitch / sizeof(cusolverDnX));
 #ifndef NDEBUG
   (void)fprintf(stdout, "lda = %d\n", lda);
 #endif // !NDEBUG
+  const cudaError_t err2 = cudaMemset2D(Agpu, pitch, 0, pitch, Nmax); const int lin2 = __LINE__;
+  switch (err2) {
+  case cudaSuccess:
+#ifndef NDEBUG
+    (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin2);
+#endif // !NDEBUG
+    break;
+  case cudaErrorInvalidValue:
+    (void)fprintf(stderr, "[%s@%s:%d] InvalidValue\n", __FUNCTION__, __FILE__, lin2);
+    exit(err2);
+  case cudaErrorInvalidDevicePointer:
+    (void)fprintf(stderr, "[%s@%s:%d] InvalidDevicePointer\n", __FUNCTION__, __FILE__, lin2);
+    exit(err2);
+  default:
+    (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, err2);
+    exit(err2);
+  }
 }
 
 static void find_lwork()
@@ -226,7 +243,8 @@ static void alloc_cpu_mtx()
     default:
       (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, error);
       exit(error);
-    }   (void)memset(Acpu, 0, size);
+    }
+    (void)memset(Acpu, 0, size);
     wrk = (cusolverDnX*)calloc(3 * Nmax, sizeof(cusolverDnX)); const int lin2 = __LINE__;
     if (!wrk) {
       (void)fprintf(stderr, "[%s@%s:%d] ", __FUNCTION__, __FILE__, lin2);
@@ -257,10 +275,45 @@ static double init_cpu_mtx()
   return (omp_get_wtime() - go);
 }
 
-static double copy_mtx_cpu2gpu()
+static double copy_mtx_cpu2gpu(const int n)
 {
   const double go = omp_get_wtime();
-  // TODO: cudaMemcpy2D
+  if (n >= Nmin) {
+    if (n > Nmax) {
+      (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
+      exit(n);
+    }
+    const size_t pitch = lda * sizeof(cusolverDnX);
+    const cudaError_t error = cudaMemcpy2D(Agpu, pitch, Acpu, pitch, n * sizeof(cusolverDnX), n, cudaMemcpyHostToDevice); const int lin1 = __LINE__;
+    switch (error) {
+    case cudaSuccess:
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin1);
+#endif // !NDEBUG
+      break;
+    case cudaErrorInvalidValue:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidValue\n", __FUNCTION__, __FILE__, lin1);
+      exit(error);
+    case cudaErrorInvalidPitchValue:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidPitchValue\n", __FUNCTION__, __FILE__, lin1);
+      exit(error);
+    case cudaErrorInvalidDevicePointer:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidDevicePointer\n", __FUNCTION__, __FILE__, lin1);
+      exit(error);
+    case cudaErrorInvalidMemcpyDirection:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidMemcpyDirection\n", __FUNCTION__, __FILE__, lin1);
+      exit(error);
+    default:
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, error);
+      exit(error);
+    }
+    // just to be sure...
+    (void)cudaDeviceSynchronize();
+  }
+  else {
+    (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
+    exit(n);
+  }
   return (omp_get_wtime() - go);
 }
 
@@ -406,10 +459,12 @@ int main(int argc, char* argv[])
 #ifndef NDEBUG
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
 #endif // !NDEBUG
-  const double copy_time = copy_mtx_cpu2gpu();
+  for (int n = Nmin; n <= Nmax; n += Nstep) {
+    const double copy_time = copy_mtx_cpu2gpu(n);
 #ifndef NDEBUG
-  (void)fprintf(stdout, "[copy_mtx_cpu2gpu] %#.17E s\n", copy_time);
+    (void)fprintf(stdout, "[copy_mtx_cpu2gpu(%d)] %#.17E s\n", n, copy_time);
 #endif // !NDEBUG
+  }
   free_cpu_mtx();
   free_gpu_wrk();
   free_gpu_mtx();
