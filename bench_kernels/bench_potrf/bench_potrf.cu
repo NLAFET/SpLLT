@@ -348,23 +348,23 @@ static double potrf_gpu(const bool upper, const int n)
     switch (status) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stdout, "[%s@%s:%d,%d] SUCCESS\n", __FUNCTION__, __FILE__, lin, devInfo);
 #endif // !NDEBUG
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
-      (void)fprintf(stderr, "[%s@%s:%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin, devInfo);
       exit(status);
     case CUSOLVER_STATUS_INVALID_VALUE:
-      (void)fprintf(stderr, "[%s@%s:%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin, devInfo);
       exit(status);
     case CUSOLVER_STATUS_ARCH_MISMATCH:
-      (void)fprintf(stderr, "[%s@%s:%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin, devInfo);
       exit(status);
     case CUSOLVER_STATUS_INTERNAL_ERROR:
-      (void)fprintf(stderr, "[%s@%s:%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin, devInfo);
       exit(status);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, status);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, devInfo, status);
       exit(status);
     }
     if (devInfo) {
