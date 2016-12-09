@@ -209,7 +209,7 @@ static void find_lwork()
 static void alloc_gpu_wrk()
 {
   if (Lwork > 0) {
-    const cudaError_t err1 = cudaMalloc(&Workspace, Lwork * sizeof(cusolverDnX)); const int lin1 = __LINE__;
+    const cudaError_t err1 = cudaMalloc(&Workspace, (Lwork + 1) * sizeof(cusolverDnX)); const int lin1 = __LINE__;
     switch (err1) {
     case cudaSuccess:
 #ifndef NDEBUG
@@ -223,7 +223,7 @@ static void alloc_gpu_wrk()
       (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, err1);
       exit(err1);
     }
-    const cudaError_t err2 = cudaMemset(Workspace, 0, Lwork * sizeof(cusolverDnX)); const int lin2 = __LINE__;
+    const cudaError_t err2 = cudaMemset(Workspace, 0, (Lwork + 1) * sizeof(cusolverDnX)); const int lin2 = __LINE__;
     switch (err2) {
     case cudaSuccess:
 #ifndef NDEBUG
@@ -343,32 +343,54 @@ static double potrf_gpu(const bool upper, const int n)
       exit(n);
     }
     const cublasFillMode_t uplo = (upper ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER);
+    status = cusolverDnXpotrf(handle, uplo, n, Agpu, lda, Workspace, Lwork, (int*)(Workspace + Lwork)); const int lin1 = __LINE__;
     int devInfo = 0;
-    status = cusolverDnXpotrf(handle, uplo, n, Agpu, lda, Workspace, Lwork, &devInfo); const int lin = __LINE__;
+    (void)cudaDeviceSynchronize();
+    const cudaError_t error = cudaMemcpy(&devInfo, Workspace + Lwork, sizeof(int), cudaMemcpyDeviceToHost); const int lin2 = __LINE__;
+    (void)cudaDeviceSynchronize();
+    switch (error) {
+    case cudaSuccess:
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin2);
+#endif // !NDEBUG
+      break;
+    case cudaErrorInvalidValue:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidValue\n", __FUNCTION__, __FILE__, lin2);
+      exit(error);
+    case cudaErrorInvalidDevicePointer:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidDevicePointer\n", __FUNCTION__, __FILE__, lin2);
+      exit(error);
+    case cudaErrorInvalidMemcpyDirection:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidMemcpyDirection\n", __FUNCTION__, __FILE__, lin2);
+      exit(error);
+    default:
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, error);
+      exit(error);      
+    }
     switch (status) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d,%d] SUCCESS\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stdout, "[%s@%s:%d,%d] SUCCESS\n", __FUNCTION__, __FILE__, lin1, devInfo);
 #endif // !NDEBUG
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin1, devInfo);
       exit(status);
     case CUSOLVER_STATUS_INVALID_VALUE:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin1, devInfo);
       exit(status);
     case CUSOLVER_STATUS_ARCH_MISMATCH:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin1, devInfo);
       exit(status);
     case CUSOLVER_STATUS_INTERNAL_ERROR:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin1, devInfo);
       exit(status);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, devInfo, status);
+      (void)fprintf(stderr, "[%s@%s:%d,%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, devInfo, status);
       exit(status);
     }
     if (devInfo) {
-      (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, devInfo);
+      (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin1, devInfo);
       exit(devInfo);
     }
   }
@@ -522,6 +544,7 @@ int main(int argc, char* argv[])
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
 #endif // !NDEBUG
 
+  (void)fprintf(stdout, "\"N\",\"COPY_H2D_MIN_s\",\"COPY_H2D_AVG_s\",\"COPY_H2D_MAX_s\",\"LPOTRF_MIN_s\",\"LPOTRF_AVG_s\",\"LPOTRF_MAX_s\",\"UPOTRF_MIN_s\",\"UPOTRF_AVG_s\",\"UPOTRF_MAX_s\"\n");
   for (int n = Nmin; n <= Nmax; n += Nstep) {
     double Lcopy_times_min = INFINITY;
     double Lcopy_times_max = -0.0;
@@ -585,7 +608,7 @@ int main(int argc, char* argv[])
     const double copy_times_max = ((Lcopy_times_max >= Ucopy_times_max) ? Lcopy_times_max : Ucopy_times_max);
     const double copy_times_avg = (Lcopy_times_avg + Ucopy_times_avg) / 2;
 
-    (void)fprintf(stdout, "%d, %#.17E,%#.17E,%#.17E, %#.17E,%#.17E,%#.17E, %#.17E,%#.17E,%#.17E\n", n,
+    (void)fprintf(stdout, "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n", n,
                   copy_times_min, copy_times_avg, copy_times_max,
                   Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
                   Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
