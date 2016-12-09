@@ -152,7 +152,7 @@ static void find_lwork()
     switch (status) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
-      // (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin1);
+      (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin1);
 #endif // !NDEBUG
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
@@ -177,7 +177,7 @@ static void find_lwork()
     switch (status) {
     case CUSOLVER_STATUS_SUCCESS:
 #ifndef NDEBUG
-      // (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin2);
+      (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin2);
 #endif // !NDEBUG
       break;
     case CUSOLVER_STATUS_NOT_INITIALIZED:
@@ -209,19 +209,36 @@ static void find_lwork()
 static void alloc_gpu_wrk()
 {
   if (Lwork > 0) {
-    const cudaError_t error = cudaMalloc(&Workspace, Lwork * sizeof(cusolverDnX)); const int lin = __LINE__;
-    switch (error) {
+    const cudaError_t err1 = cudaMalloc(&Workspace, Lwork * sizeof(cusolverDnX)); const int lin1 = __LINE__;
+    switch (err1) {
     case cudaSuccess:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin1);
 #endif // !NDEBUG
       break;
     case cudaErrorMemoryAllocation:
-      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
-      exit(error);
+      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin1);
+      exit(err1);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
-      exit(error);
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, err1);
+      exit(err1);
+    }
+    const cudaError_t err2 = cudaMemset(Workspace, 0, Lwork * sizeof(cusolverDnX)); const int lin2 = __LINE__;
+    switch (err2) {
+    case cudaSuccess:
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin2);
+#endif // !NDEBUG
+      break;
+    case cudaErrorInvalidValue:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidValue\n", __FUNCTION__, __FILE__, lin2);
+      exit(err2);
+    case cudaErrorInvalidDevicePointer:
+      (void)fprintf(stderr, "[%s@%s:%d] InvalidDevicePointer\n", __FUNCTION__, __FILE__, lin2);
+      exit(err2);
+    default:
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, err2);
+      exit(err2);
     }
   }
 }
@@ -309,6 +326,51 @@ static double copy_mtx_cpu2gpu(const int n)
     }
     // just to be sure...
     (void)cudaDeviceSynchronize();
+  }
+  else {
+    (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
+    exit(n);
+  }
+  return (omp_get_wtime() - go);
+}
+
+static double potrf_gpu(const bool upper, const int n)
+{
+  const double go = omp_get_wtime();
+  if (n >= Nmin) {
+    if (n > Nmax) {
+      (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
+      exit(n);
+    }
+    const cublasFillMode_t uplo = (upper ? CUBLAS_FILL_MODE_UPPER : CUBLAS_FILL_MODE_LOWER);
+    int devInfo = 0;
+    status = cusolverDnXpotrf(handle, uplo, n, Agpu, lda, Workspace, Lwork, &devInfo); const int lin = __LINE__;
+    switch (status) {
+    case CUSOLVER_STATUS_SUCCESS:
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[%s@%s:%d] SUCCESS\n", __FUNCTION__, __FILE__, lin);
+#endif // !NDEBUG
+      break;
+    case CUSOLVER_STATUS_NOT_INITIALIZED:
+      (void)fprintf(stderr, "[%s@%s:%d] NOT_INITIALIZED\n", __FUNCTION__, __FILE__, lin);
+      exit(status);
+    case CUSOLVER_STATUS_INVALID_VALUE:
+      (void)fprintf(stderr, "[%s@%s:%d] INVALID_VALUE\n", __FUNCTION__, __FILE__, lin);
+      exit(status);
+    case CUSOLVER_STATUS_ARCH_MISMATCH:
+      (void)fprintf(stderr, "[%s@%s:%d] ARCH_MISMATCH\n", __FUNCTION__, __FILE__, lin);
+      exit(status);
+    case CUSOLVER_STATUS_INTERNAL_ERROR:
+      (void)fprintf(stderr, "[%s@%s:%d] INTERNAL_ERROR\n", __FUNCTION__, __FILE__, lin);
+      exit(status);
+    default:
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, status);
+      exit(status);
+    }
+    if (devInfo) {
+      (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, devInfo);
+      exit(devInfo);
+    }
   }
   else {
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
@@ -459,11 +521,74 @@ int main(int argc, char* argv[])
 #ifndef NDEBUG
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
 #endif // !NDEBUG
+
   for (int n = Nmin; n <= Nmax; n += Nstep) {
-    const double copy_time = copy_mtx_cpu2gpu(n);
+    double Lcopy_times_min = INFINITY;
+    double Lcopy_times_max = -0.0;
+    double Lcopy_times_avg = -0.0;
+
+    double Ucopy_times_min = INFINITY;
+    double Ucopy_times_max = -0.0;
+    double Ucopy_times_avg = -0.0;
+
+    double Lpotrf_times_min = INFINITY;
+    double Lpotrf_times_max = -0.0;
+    double Lpotrf_times_avg = -0.0;
+
+    double Upotrf_times_min = INFINITY;
+    double Upotrf_times_max = -0.0;
+    double Upotrf_times_avg = -0.0;
+
+    for (int sample = 0; sample < _samples; ++sample) {
+      const double Lcopy_time = copy_mtx_cpu2gpu(n);
 #ifndef NDEBUG
-    (void)fprintf(stdout, "[copy_mtx_cpu2gpu(%d)] %#.17E s\n", n, copy_time);
+      (void)fprintf(stdout, "[copy_mtx_cpu2gpu(%d),%d,L] %#.17E s\n", n, sample, Lcopy_time);
 #endif // !NDEBUG
+      if (Lcopy_time < Lcopy_times_min)
+        Lcopy_times_min = Lcopy_time;
+      if (Lcopy_time > Lcopy_times_max)
+        Lcopy_times_max = Lcopy_time;
+      Lcopy_times_avg += Lcopy_time / _samples;
+
+      const double Lpotrf_time = potrf_gpu(false, n);
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[potrf_gpu(%d),%d,L] %#.17E s\n", n, sample, Lpotrf_time);
+#endif // !NDEBUG
+      if (Lpotrf_time < Lpotrf_times_min)
+        Lpotrf_times_min = Lpotrf_time;
+      if (Lpotrf_time > Lpotrf_times_max)
+        Lpotrf_times_max = Lpotrf_time;
+      Lpotrf_times_avg += Lpotrf_time / _samples;
+
+      const double Ucopy_time = copy_mtx_cpu2gpu(n);
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[copy_mtx_cpu2gpu(%d),%d,U] %#.17E s\n", n, sample, Ucopy_time);
+#endif // !NDEBUG
+      if (Ucopy_time < Ucopy_times_min)
+        Ucopy_times_min = Ucopy_time;
+      if (Ucopy_time > Ucopy_times_max)
+        Ucopy_times_max = Ucopy_time;
+      Ucopy_times_avg += Ucopy_time / _samples;
+
+      const double Upotrf_time = potrf_gpu(true, n);
+#ifndef NDEBUG
+      (void)fprintf(stdout, "[potrf_gpu(%d),%d,U] %#.17E s\n", n, sample, Upotrf_time);
+#endif // !NDEBUG
+      if (Upotrf_time < Upotrf_times_min)
+        Upotrf_times_min = Upotrf_time;
+      if (Upotrf_time > Upotrf_times_max)
+        Upotrf_times_max = Upotrf_time;
+      Upotrf_times_avg += Upotrf_time / _samples;
+    }
+
+    const double copy_times_min = ((Lcopy_times_min <= Ucopy_times_min) ? Lcopy_times_min : Ucopy_times_min);
+    const double copy_times_max = ((Lcopy_times_max >= Ucopy_times_max) ? Lcopy_times_max : Ucopy_times_max);
+    const double copy_times_avg = (Lcopy_times_avg + Ucopy_times_avg) / 2;
+
+    (void)fprintf(stdout, "%d, %#.17E,%#.17E,%#.17E, %#.17E,%#.17E,%#.17E, %#.17E,%#.17E,%#.17E\n", n,
+                  copy_times_min, copy_times_avg, copy_times_max,
+                  Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
+                  Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
   }
   free_cpu_mtx();
   free_gpu_wrk();
