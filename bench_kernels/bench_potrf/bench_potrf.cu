@@ -30,7 +30,7 @@ static int lda = 0, Lwork = 0;
 static cusolverStatus_t status;
 static cusolverDnHandle_t handle;
 
-static cusolverDnX *Agpu = (cusolverDnX*)NULL, *Workspace = (cusolverDnX*)NULL, *Acpu = (cusolverDnX*)NULL;
+static cusolverDnX *Agpu = (cusolverDnX*)NULL, *Workspace = (cusolverDnX*)NULL, *Acpu = (cusolverDnX*)NULL, *wrk = (cusolverDnX*)NULL;
 
 static void device_count()
 {
@@ -213,22 +213,55 @@ static void alloc_cpu_mtx()
 {
   const size_t size = size_t(lda) * Nmax * sizeof(cusolverDnX);
   if (size > 0) {
-    const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin = __LINE__;
+    const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin1 = __LINE__;
     switch (error) {
     case cudaSuccess:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin1);
 #endif // !NDEBUG
       break;
     case cudaErrorMemoryAllocation:
-      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
+      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin1);
       exit(error);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, error);
       exit(error);
+    }   (void)memset(Acpu, 0, size);
+    wrk = (cusolverDnX*)calloc(3 * Nmax, sizeof(cusolverDnX)); const int lin2 = __LINE__;
+    if (!wrk) {
+      (void)fprintf(stderr, "[%s@%s:%d] ", __FUNCTION__, __FILE__, lin2);
+      perror((const char*)NULL);
+      exit(errno);
     }
-    (void)memset(Acpu, 0, size);
   }
+}
+
+static double init_cpu_mtx()
+{
+  static const int idist = 1;
+  int iseed[4] = { 0, 1, 2, 3 };
+  const int k = Nmax - 1;
+  int info = 0;
+
+  const double go = omp_get_wtime();
+
+  // diagonal
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
+  // A
+  REAL_LAPACK(lagsy)(&Nmax, &k, wrk, Acpu, &lda, iseed, wrk + Nmax, &info); const int lin = __LINE__;
+  if (info) {
+    (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, info);
+    exit(info);
+  }
+
+  return (omp_get_wtime() - go);
+}
+
+static double copy_mtx_cpu2gpu()
+{
+  const double go = omp_get_wtime();
+  // TODO: cudaMemcpy2D
+  return (omp_get_wtime() - go);
 }
 
 static void free_cpu_mtx()
@@ -353,6 +386,10 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+#ifndef NDEBUG
+  (void)fprintf(stdout, "[omp_get_wtick] %#.17E s\n", omp_get_wtick());
+#endif // !NDEBUG
+
   device_count();
   if (device_ > _devices) {
     (void)fprintf(stderr, "device# == %d > #devices == %d\n", device_, _devices);
@@ -365,6 +402,14 @@ int main(int argc, char* argv[])
   find_lwork();
   alloc_gpu_wrk();
   alloc_cpu_mtx();
+  const double init_time = init_cpu_mtx();
+#ifndef NDEBUG
+  (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
+#endif // !NDEBUG
+  const double copy_time = copy_mtx_cpu2gpu();
+#ifndef NDEBUG
+  (void)fprintf(stdout, "[copy_mtx_cpu2gpu] %#.17E s\n", copy_time);
+#endif // !NDEBUG
   free_cpu_mtx();
   free_gpu_wrk();
   free_gpu_mtx();

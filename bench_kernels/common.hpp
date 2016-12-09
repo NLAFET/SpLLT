@@ -7,6 +7,7 @@
 #define MKL_Complex16 std::complex<double>
 #endif // USE_COMPLEX
 
+#include <cerrno>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -14,6 +15,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+
+#include <omp.h>
 
 #include "mkl.h"
 
