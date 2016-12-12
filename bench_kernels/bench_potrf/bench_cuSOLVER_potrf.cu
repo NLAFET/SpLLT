@@ -29,7 +29,7 @@ static int lda = 0, Lwork = 0;
 
 static cusolverDnHandle_t handle;
 
-static dtype *Agpu = (dtype*)NULL, *Workspace = (dtype*)NULL, *Acpu = (dtype*)NULL, *wrk = (dtype*)NULL;
+static dtype *Agpu = (dtype*)NULL, *Workspace = (dtype*)NULL, *Acpu = (dtype*)NULL;
 
 static void device_count()
 {
@@ -246,30 +246,25 @@ static void alloc_cpu_mtx()
 {
   const size_t size = size_t(lda) * Nmax * sizeof(dtype);
   if (size > 0) {
-    const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin1 = __LINE__;
+    const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin = __LINE__;
     switch (error) {
     case cudaSuccess:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin1);
+      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
 #endif // !NDEBUG
       break;
     case cudaErrorMemoryAllocation:
-      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin1);
+      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
       exit(error);
     default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin1, error);
+      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
       exit(error);
     }
     (void)memset(Acpu, 0, size);
-    wrk = (dtype*)calloc(3 * Nmax, sizeof(dtype)); const int lin2 = __LINE__;
-    if (!wrk) {
-      (void)fprintf(stderr, "[%s@%s:%d] ", __FUNCTION__, __FILE__, lin2);
-      perror((const char*)NULL);
-      exit(errno);
-    }
   }
 }
 
+// TODO: fix for COMPLEX
 static double init_cpu_mtx()
 {
   static const int idist = 1;
@@ -279,15 +274,23 @@ static double init_cpu_mtx()
 
   const double go = omp_get_wtime();
 
+  dtype *const wrk = (dtype*)calloc(3 * Nmax, sizeof(dtype)); const int lin1 = __LINE__;
+  if (!wrk) {
+    (void)fprintf(stderr, "[%s@%s:%d,%d] ", __FUNCTION__, __FILE__, lin1, errno);
+    perror("calloc");
+    exit(errno);
+  }
+
   // diagonal
   REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
   // A
-  REAL_LAPACK(lagsy)(&Nmax, &k, wrk, Acpu, &lda, iseed, wrk + Nmax, &info); const int lin = __LINE__;
+  REAL_LAPACK(lagsy)(&Nmax, &k, wrk, Acpu, &lda, iseed, wrk + Nmax, &info); const int lin2 = __LINE__;
   if (info) {
-    (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, info);
+    (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin2, info);
     exit(info);
   }
 
+  free(wrk);
   return (omp_get_wtime() - go);
 }
 
