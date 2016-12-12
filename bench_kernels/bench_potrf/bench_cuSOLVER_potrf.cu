@@ -1,35 +1,26 @@
 #include "common.hpp"
 
 #include "cusolverDn.h"
-#include "magma.h"
 
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
 #define dtype cuComplex
 #define cusolverDnXpotrf_bufferSize cusolverDnCpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnCpotrf
-#define magma_Xpotf2_gpu magma_cpotf2_gpu
-#define magma_Xpotrf_gpu magma_cpotrf_gpu
 #else // USE_DOUBLE
 #define dtype cuDoubleComplex
 #define cusolverDnXpotrf_bufferSize cusolverDnZpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnZpotrf
-#define magma_Xpotf2_gpu magma_zpotf2_gpu
-#define magma_Xpotrf_gpu magma_zpotrf_gpu
 #endif // USE_FLOAT
 #else // USE_REAL
 #ifdef USE_FLOAT
 #define dtype float
 #define cusolverDnXpotrf_bufferSize cusolverDnSpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnSpotrf
-#define magma_Xpotf2_gpu magma_spotf2_gpu
-#define magma_Xpotrf_gpu magma_spotrf_gpu
 #else // USE_DOUBLE
 #define dtype double
 #define cusolverDnXpotrf_bufferSize cusolverDnDpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnDpotrf
-#define magma_Xpotf2_gpu magma_dpotf2_gpu
-#define magma_Xpotrf_gpu magma_dpotrf_gpu
 #endif // USE_FLOAT
 #endif // USE_COMPLEX
 

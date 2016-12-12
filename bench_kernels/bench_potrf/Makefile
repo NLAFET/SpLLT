@@ -2,10 +2,14 @@ include ../make.inc
 
 DEPS = Makefile ../make.inc ../common.hpp
 
-all: bench_potrf.exe
+all: bench_cuSOLVER_potrf.exe bench_MAGMA_potrf_gpu.exe
 
-bench_potrf.exe: bench_potrf.cu $(DEPS)
-	$(NVCC) $(CPPFLAGS) $(CXXFLAGS) bench_potrf.cu -o $@ $(LDFLAGS) $(LIBS)
+bench_cuSOLVER_potrf.exe: bench_cuSOLVER_potrf.cu $(DEPS)
+	$(NVCC) -I$(CUDADIR_INC) $(CPPFLAGS) $(CXXFLAGS) bench_cuSOLVER_potrf.cu -o $@ -L$(CUDADIR_LIB) -Xlinker="-rpath=$(CUDADIR_LIB)" $(LDFLAGS) -lcusolver $(CUDA_LIBS) $(LIBS)
+
+bench_MAGMA_potrf_gpu.exe: bench_MAGMA_potrf_gpu.cu $(DEPS)
+	$(NVCC) -DADD_ -I$(MAGMADIR_INC) -I$(CUDADIR_INC) $(CPPFLAGS) $(CXXFLAGS) bench_MAGMA_potrf_gpu.cu -o $@ -L$(MAGMADIR_LIB) -Xlinker="-rpath=$(MAGMADIR_LIB)" -L$(CUDADIR_LIB) -Xlinker="-rpath=$(CUDADIR_LIB)" $(LDFLAGS) $(MAGMA_LIBS) -lcusparse $(CUDA_LIBS) $(LIBS)
 
 clean:
-	-rm -f bench_potrf.exe
+	-rm -f bench_MAGMA_potrf_gpu.exe
+	-rm -f bench_cuSOLVER_potrf.exe
