@@ -3,9 +3,11 @@
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
 #define dtype MKL_Complex8
+#define btype float
 #define Xpotrf CMPLX_LAPACK(potrf)
 #else // USE_DOUBLE
 #define dtype MKL_Complex16
+#define btype double
 #define Xpotrf CMPLX_LAPACK(potrf)
 #endif // USE_FLOAT
 #else // USE_REAL
@@ -48,7 +50,6 @@ static void alloc_cpu_mtx()
   }
 }
 
-// TODO: fix for COMPLEX
 static double init_cpu_mtx()
 {
   static const int idist = 1;
@@ -65,10 +66,17 @@ static double init_cpu_mtx()
     exit(errno);
   }
 
-  // diagonal
+#ifdef USE_COMPLEX
+  // Diagonal
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, (btype*)wrk);
+  // A
+  CMPLX_LAPACK(laghe)(&Nmax, &k, (btype*)wrk, A, &lda, iseed, wrk + Nmax, &info); const int lin2 = __LINE__;
+#else // USE_REAL
+  // Diagonal
   REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
   // A
   REAL_LAPACK(lagsy)(&Nmax, &k, wrk, A, &lda, iseed, wrk + Nmax, &info); const int lin2 = __LINE__;
+#endif // USE_COMPLEX
   if (info) {
     (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin2, info);
     exit(info);

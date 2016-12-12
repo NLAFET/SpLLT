@@ -5,6 +5,11 @@
 #include <complex>
 #define MKL_Complex8 std::complex<float>
 #define MKL_Complex16 std::complex<double>
+#ifdef USE_FLOAT
+#define MKL_Complex MKL_Complex8
+#else // USE_DOUBLE
+#define MKL_Complex MKL_Complex16
+#endif // USE_FLOAT
 #endif // USE_COMPLEX
 
 #include <cerrno>

@@ -5,9 +5,11 @@
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
 #define dtype magmaFloatComplex
+#define btype float
 #define magma_Xpotrf_gpu magma_cpotrf_gpu
 #else // USE_DOUBLE
 #define dtype magmaDoubleComplex
+#define btype double
 #define magma_Xpotrf_gpu magma_zpotrf_gpu
 #endif // USE_FLOAT
 #else // USE_REAL
@@ -106,7 +108,6 @@ static void alloc_cpu_mtx()
   }
 }
 
-// TODO: fix for COMPLEX
 static double init_cpu_mtx()
 {
   static const int idist = 1;
@@ -123,10 +124,17 @@ static double init_cpu_mtx()
     exit(errno);
   }
 
-  // diagonal
+#ifdef USE_COMPLEX
+  // Diagonal
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, (btype*)wrk);
+  // Acpu
+  CMPLX_LAPACK(laghe)(&Nmax, &k, (btype*)wrk, (MKL_Complex*)Acpu, &lda, iseed, (MKL_Complex*)(wrk + Nmax), &info); const int lin2 = __LINE__;
+#else // USE_REAL
+  // Diagonal
   REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
-  // A
+  // Acpu
   REAL_LAPACK(lagsy)(&Nmax, &k, wrk, Acpu, &lda, iseed, wrk + Nmax, &info); const int lin2 = __LINE__;
+#endif // USE_COMPLEX
   if (info) {
     (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin2, info);
     exit(info);
