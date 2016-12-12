@@ -105,7 +105,7 @@ static double potrf_cpu(const bool upper, const int n)
       exit(n);
     }
     int info = 0;
-    Xpotrf((upper ? "U" : "L"), &n, A, &lda, &info); const int lin = __LINE__;
+    Xpotrf((upper ? "U" : "L"), &n, B, &lda, &info); const int lin = __LINE__;
     if (info) {
       (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, info);
       exit(info);
