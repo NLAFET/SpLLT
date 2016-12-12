@@ -5,23 +5,24 @@
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
 #define dtype magmaFloatComplex
-#define magma_Xpotrf_gpu magma_cpotrf_gpu
+#define magma_Xpotf2_gpu magma_cpotf2_gpu
 #else // USE_DOUBLE
 #define dtype magmaDoubleComplex
-#define magma_Xpotrf_gpu magma_zpotrf_gpu
+#define magma_Xpotf2_gpu magma_zpotf2_gpu
 #endif // USE_FLOAT
 #else // USE_REAL
 #ifdef USE_FLOAT
 #define dtype float
-#define magma_Xpotrf_gpu magma_spotrf_gpu
+#define magma_Xpotf2_gpu magma_spotf2_gpu
 #else // USE_DOUBLE
 #define dtype double
-#define magma_Xpotrf_gpu magma_dpotrf_gpu
+#define magma_Xpotf2_gpu magma_dpotf2_gpu
 #endif // USE_FLOAT
 #endif // USE_COMPLEX
 
 static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0, lda = 0;
 static dtype *Agpu = (dtype*)NULL, *Acpu = (dtype*)NULL, *wrk = (dtype*)NULL;
+static magma_queue_t queue;
 
 static void device_count()
 {
@@ -185,7 +186,7 @@ static double potrf_gpu(const bool upper, const int n)
     }
     const magma_uplo_t uplo = (upper ? MagmaUpper : MagmaLower);
     magma_int_t info = 0;
-    const magma_int_t err = magma_Xpotrf_gpu(uplo, n, Agpu, lda, &info); const int lin = __LINE__;
+    const magma_int_t err = magma_Xpotf2_gpu(uplo, n, Agpu, lda, queue, &info); const int lin = __LINE__;
     (void)cudaDeviceSynchronize();
     switch (err) {
     case MAGMA_SUCCESS:
@@ -317,6 +318,7 @@ int main(int argc, char* argv[])
     return err;
   }
   magma_setdevice(device_);
+  magma_queue_create_from_cuda(device_, (cudaStream_t)NULL, (cublasHandle_t)NULL, (cusparseHandle_t)NULL, &queue);
 
   alloc_gpu_mtx();
   alloc_cpu_mtx();
