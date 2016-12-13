@@ -244,6 +244,7 @@ static double copy_mtx_cpu2gpu(const int n)
 static double potrf_gpu(const bool upper, const int n)
 {
   const double go = omp_get_wtime();
+
   if (n >= Nmin) {
     if (n > Nmax) {
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
@@ -272,6 +273,7 @@ static double potrf_gpu(const bool upper, const int n)
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
     exit(n);
   }
+
   return (omp_get_wtime() - go);
 }
 

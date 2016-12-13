@@ -1,5 +1,7 @@
 #include "common.hpp"
 
+// #include "mkl.h"
+
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
 #define dtype MKL_Complex8
@@ -27,6 +29,8 @@ static const int CACHE_LINE_ELEMS = int(CACHE_LINE_BYTES / sizeof(dtype));
 
 static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, lda = 0;
 static dtype *A = (dtype*)NULL, *B = (dtype*)NULL;
+
+//
 
 static double alloc_cpu_mtx()
 {

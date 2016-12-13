@@ -163,10 +163,10 @@ static double alloc_gpu_mtx()
 
 static double find_lwork()
 {
+  const double go = omp_get_wtime();
+
   int LworkL = -1, maxLworkL = 0;
   int LworkU = -1, maxLworkU = 0;
-
-  const double go = omp_get_wtime();
 
   for (int n = Nmin; n <= Nmax; n += Nstep) {
     const cusolverStatus_t stat1 = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_LOWER, n, Agpu, lda, &LworkL); const int lin1 = __LINE__;
