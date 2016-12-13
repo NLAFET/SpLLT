@@ -26,15 +26,17 @@
 #endif // USE_FLOAT
 #endif // USE_COMPLEX
 
-static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0;
-static int lda = 0, Lwork = 0;
+static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n";
+
+static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0, lda = 0, Lwork = 0;
+static dtype *Agpu = (dtype*)NULL, *Workspace = (dtype*)NULL, *Acpu = (dtype*)NULL;
 
 static cusolverDnHandle_t handle;
 
-static dtype *Agpu = (dtype*)NULL, *Workspace = (dtype*)NULL, *Acpu = (dtype*)NULL;
-
-static void device_count()
+static double device_count()
 {
+  const double go = omp_get_wtime();
+
   const cudaError_t error = cudaGetDeviceCount(&_devices); const int lin = __LINE__;
   switch (error) {
   case cudaSuccess:
@@ -52,10 +54,14 @@ static void device_count()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
     exit(error);
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void set_device()
+static double set_device()
 {
+  const double go = omp_get_wtime();
+
   int device = 0;
   (void)cudaGetDevice(&device);
   if (device != device_) {
@@ -77,10 +83,14 @@ static void set_device()
       exit(error);
     }
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void create_handle()
+static double create_handle()
 {
+  const double go = omp_get_wtime();
+
   const cusolverStatus_t status = cusolverDnCreate(&handle); const int lin = __LINE__;
   switch (status) {
   case CUSOLVER_STATUS_SUCCESS:
@@ -101,10 +111,14 @@ static void create_handle()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, status);
     exit(status);
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void alloc_gpu_mtx()
+static double alloc_gpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   size_t pitch = 0;
   const cudaError_t err1 = cudaMallocPitch(&Agpu, &pitch, Nmax * sizeof(dtype), Nmax); const int lin1 = __LINE__;
   switch (err1) {
@@ -124,6 +138,8 @@ static void alloc_gpu_mtx()
 #ifndef NDEBUG
   (void)fprintf(stdout, "lda = %d\n", lda);
 #endif // !NDEBUG
+  const double end = (omp_get_wtime() - go);
+  // don't time clearing the memory
   const cudaError_t err2 = cudaMemset2D(Agpu, pitch, 0, pitch, Nmax); const int lin2 = __LINE__;
   switch (err2) {
   case cudaSuccess:
@@ -141,12 +157,16 @@ static void alloc_gpu_mtx()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin2, err2);
     exit(err2);
   }
+
+  return end;
 }
 
-static void find_lwork()
+static double find_lwork()
 {
   int LworkL = -1, maxLworkL = 0;
   int LworkU = -1, maxLworkU = 0;
+
+  const double go = omp_get_wtime();
 
   for (int n = Nmin; n <= Nmax; n += Nstep) {
     const cusolverStatus_t stat1 = cusolverDnXpotrf_bufferSize(handle, CUBLAS_FILL_MODE_LOWER, n, Agpu, lda, &LworkL); const int lin1 = __LINE__;
@@ -205,10 +225,14 @@ static void find_lwork()
 #ifndef NDEBUG
   (void)fprintf(stdout, "Lwork = %d, LworkL = %d, LworkU = %d\n", Lwork, maxLworkL, maxLworkU);
 #endif // !NDEBUG
+
+  return (omp_get_wtime() - go);
 }
 
-static void alloc_gpu_wrk()
+static double alloc_gpu_wrk()
 {
+  const double go = omp_get_wtime();
+
   if (Lwork > 0) {
     const cudaError_t err1 = cudaMalloc(&Workspace, (Lwork + 1) * sizeof(dtype)); const int lin1 = __LINE__;
     switch (err1) {
@@ -242,38 +266,44 @@ static void alloc_gpu_wrk()
       exit(err2);
     }
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void alloc_cpu_mtx()
+static double alloc_cpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   const size_t size = size_t(lda) * Nmax * sizeof(dtype);
-  if (size > 0) {
-    const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin = __LINE__;
-    switch (error) {
-    case cudaSuccess:
+  const cudaError_t error = cudaMallocHost(&Acpu, size); const int lin = __LINE__;
+  switch (error) {
+  case cudaSuccess:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
+    (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
 #endif // !NDEBUG
-      break;
-    case cudaErrorMemoryAllocation:
-      (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
-      exit(error);
-    default:
-      (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
-      exit(error);
-    }
-    (void)memset(Acpu, 0, size);
+    break;
+  case cudaErrorMemoryAllocation:
+    (void)fprintf(stderr, "[%s@%s:%d] MemoryAllocation\n", __FUNCTION__, __FILE__, lin);
+    exit(error);
+  default:
+    (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, error);
+    exit(error);
   }
+  const double end = (omp_get_wtime() - go);
+  // don't time clearing the memory
+  (void)memset(Acpu, 0, size);
+
+  return end;
 }
 
 static double init_cpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   static const int idist = 1;
   int iseed[4] = { 0, 1, 2, 3 };
   const int k = Nmax - 1;
   int info = 0;
-
-  const double go = omp_get_wtime();
 
   dtype *const wrk = (dtype*)calloc(3 * Nmax, sizeof(dtype)); const int lin1 = __LINE__;
   if (!wrk) {
@@ -305,6 +335,7 @@ static double init_cpu_mtx()
 static double copy_mtx_cpu2gpu(const int n)
 {
   const double go = omp_get_wtime();
+
   if (n >= Nmin) {
     if (n > Nmax) {
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
@@ -341,12 +372,14 @@ static double copy_mtx_cpu2gpu(const int n)
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
     exit(n);
   }
+
   return (omp_get_wtime() - go);
 }
 
 static double potrf_gpu(const bool upper, const int n)
 {
   const double go = omp_get_wtime();
+
   if (n >= Nmin) {
     if (n > Nmax) {
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
@@ -408,11 +441,14 @@ static double potrf_gpu(const bool upper, const int n)
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
     exit(n);
   }
+
   return (omp_get_wtime() - go);
 }
 
-static void free_cpu_mtx()
+static double free_cpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   if (Acpu) {
     const cudaError_t error = cudaFreeHost(Acpu); const int lin = __LINE__;
     switch (error) {
@@ -430,10 +466,14 @@ static void free_cpu_mtx()
     }
     Acpu = (dtype*)NULL;
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void free_gpu_wrk()
+static double free_gpu_wrk()
 {
+  const double go = omp_get_wtime();
+
   if (Workspace) {
     const cudaError_t error = cudaFree(Workspace); const int lin = __LINE__;
     switch (error) {
@@ -454,10 +494,14 @@ static void free_gpu_wrk()
     }
     Workspace = (dtype*)NULL;
   }
+
+  return (omp_get_wtime() - go);
 }
 
-static void free_gpu_mtx()
+static double free_gpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   const cudaError_t error = cudaFree(Agpu); const int lin = __LINE__;
   switch (error) {
   case cudaSuccess:
@@ -476,10 +520,14 @@ static void free_gpu_mtx()
     exit(error);
   }
   Agpu = (dtype*)NULL;
+
+  return (omp_get_wtime() - go);
 }
 
-static void destroy_handle()
+static double destroy_handle()
 {
+  const double go = omp_get_wtime();
+
   const cusolverStatus_t status = cusolverDnDestroy(handle); const int lin = __LINE__;
   switch (status) {
   case CUSOLVER_STATUS_SUCCESS:
@@ -494,6 +542,8 @@ static void destroy_handle()
     (void)fprintf(stderr, "[%s@%s:%d] unknown error %d\n", __FUNCTION__, __FILE__, lin, status);
     exit(status);
   }
+
+  return (omp_get_wtime() - go);
 }
 
 int main(int argc, char* argv[])
@@ -533,22 +583,40 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+  const char *const env_nthr = getenv("MKL_NUM_THREADS");
+  if (!env_nthr) {
+    (void)fprintf(stderr, "MKL_NUM_THREADS environment variable not set\n");
+    return EXIT_FAILURE;
+  }
+  const int mkl_nthr = atoi(env_nthr);
+  if (mkl_nthr <= 0) {
+    (void)fprintf(stderr, "MKL_NUM_THREADS = %d <= 0\n", mkl_nthr);
+    return EXIT_FAILURE;
+  }
+
+  const double resol = omp_get_wtick();
 #ifndef NDEBUG
-  (void)fprintf(stdout, "[omp_get_wtick] %#.17E s\n", omp_get_wtick());
+  (void)fprintf(stdout, "[omp_get_wtick] %#.17E s\n", resol);
 #endif // !NDEBUG
 
-  device_count();
+  (void)device_count();
   if (device_ > _devices) {
     (void)fprintf(stderr, "device# == %d > #devices == %d\n", device_, _devices);
     return EXIT_FAILURE;
   }
-  set_device();
+  (void)set_device();
 
-  create_handle();
-  alloc_gpu_mtx();
-  find_lwork();
-  alloc_gpu_wrk();
-  alloc_cpu_mtx();
+  (void)create_handle();
+  const double agpu_time = alloc_gpu_mtx();
+  const double lwrk_time = find_lwork();
+  double awrk_time = alloc_gpu_wrk();
+  // number of tests
+  int ntst = (Nmax - Nmin) + 1;
+  // at least one test
+  ntst = ((ntst < Nstep) ? 1 : (ntst / Nstep));
+  // add the average time to find Lwork
+  awrk_time += lwrk_time / (2 * ntst);
+  const double acpu_time = alloc_cpu_mtx();
   const double init_time = init_cpu_mtx();
 #ifndef NDEBUG
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
@@ -618,15 +686,20 @@ int main(int argc, char* argv[])
     const double copy_times_max = ((Lcopy_times_max >= Ucopy_times_max) ? Lcopy_times_max : Ucopy_times_max);
     const double copy_times_avg = (Lcopy_times_avg + Ucopy_times_avg) / 2;
 
-    (void)fprintf(stdout, "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n", n,
+    (void)fprintf(stdout, lin_fmt, n,
                   copy_times_min, copy_times_avg, copy_times_max,
                   Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
                   Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
   }
-  free_cpu_mtx();
-  free_gpu_wrk();
-  free_gpu_mtx();
-  destroy_handle();
+  const double fcpu_time = free_cpu_mtx();
+  const double fgpu_time = free_gpu_wrk();
+  const double fwrk_time = free_gpu_mtx();
+  (void)destroy_handle();
+
+  (void)fprintf(stdout, lin_fmt, -_samples,
+                resol, double(mkl_nthr), init_time,
+                acpu_time, agpu_time, awrk_time,
+                fcpu_time, fgpu_time, fwrk_time);
 
   return EXIT_SUCCESS;
 }

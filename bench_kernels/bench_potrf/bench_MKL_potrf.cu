@@ -20,44 +20,48 @@
 #endif // USE_FLOAT
 #endif // USE_COMPLEX
 
+static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n";
+
 static const int CACHE_LINE_BYTES = 64;
 static const int CACHE_LINE_ELEMS = int(CACHE_LINE_BYTES / sizeof(dtype));
 
 static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, lda = 0;
 static dtype *A = (dtype*)NULL, *B = (dtype*)NULL;
 
-static void alloc_cpu_mtx()
+static double alloc_cpu_mtx()
 {
+  const double go = omp_get_wtime();
   const int rem = Nmax % CACHE_LINE_ELEMS;
   lda = (rem ? (Nmax + (CACHE_LINE_ELEMS - rem)) : Nmax);
   const size_t siz1 = size_t(lda) * Nmax;
   const size_t size = 2 * siz1 * sizeof(dtype);
-  if (size > 0) {
-    errno = posix_memalign((void**)&A, CACHE_LINE_BYTES, size); const int lin = __LINE__;
-    switch (errno) {
-    case 0:
+  errno = posix_memalign((void**)&A, CACHE_LINE_BYTES, size); const int lin = __LINE__;
+  switch (errno) {
+  case 0:
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
+    (void)fprintf(stdout, "[%s@%s:%d] Success\n", __FUNCTION__, __FILE__, lin);
 #endif // !NDEBUG
-      break;
-    default:
-      (void)fprintf(stderr, "[%s@%s:%d,%d] ", __FUNCTION__, __FILE__, lin, errno);
-      perror("posix_memalign");
-      exit(errno);
-    }
-    (void)memset(A, 0, size);
-    B = A + siz1;
+    break;
+  default:
+    (void)fprintf(stderr, "[%s@%s:%d,%d] ", __FUNCTION__, __FILE__, lin, errno);
+    perror("posix_memalign");
+    exit(errno);
   }
+  B = A + siz1;
+  const double end = (omp_get_wtime() - go);
+  // don't time clearing the memory
+  (void)memset(A, 0, size);
+  return end;
 }
 
 static double init_cpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   static const int idist = 1;
   int iseed[4] = { 0, 1, 2, 3 };
   const int k = Nmax - 1;
   int info = 0;
-
-  const double go = omp_get_wtime();
 
   dtype *const wrk = (dtype*)calloc(3 * Nmax, sizeof(dtype)); const int lin1 = __LINE__;
   if (!wrk) {
@@ -107,6 +111,7 @@ static double copy_mtx_cpu2cpu(const bool upper, const int n)
 static double potrf_cpu(const bool upper, const int n)
 {
   const double go = omp_get_wtime();
+
   if (n >= Nmin) {
     if (n > Nmax) {
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
@@ -123,15 +128,20 @@ static double potrf_cpu(const bool upper, const int n)
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
     exit(n);
   }
+
   return (omp_get_wtime() - go);
 }
 
-static void free_cpu_mtx()
+static double free_cpu_mtx()
 {
+  const double go = omp_get_wtime();
+
   if (A) {
     free(A);
     A = (dtype*)NULL;
   }
+
+  return (omp_get_wtime() - go);
 }
 
 int main(int argc, char* argv[])
@@ -166,11 +176,23 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
+  const char *const env_nthr = getenv("MKL_NUM_THREADS");
+  if (!env_nthr) {
+    (void)fprintf(stderr, "MKL_NUM_THREADS environment variable not set\n");
+    return EXIT_FAILURE;
+  }
+  const int mkl_nthr = atoi(env_nthr);
+  if (mkl_nthr <= 0) {
+    (void)fprintf(stderr, "MKL_NUM_THREADS = %d <= 0\n", mkl_nthr);
+    return EXIT_FAILURE;
+  }
+
+  const double resol = omp_get_wtick();
 #ifndef NDEBUG
-  (void)fprintf(stdout, "[omp_get_wtick] %#.17E s\n", omp_get_wtick());
+  (void)fprintf(stdout, "[omp_get_wtick] %#.17E s\n", resol);
 #endif // !NDEBUG
 
-  alloc_cpu_mtx();
+  const double acpu_time = alloc_cpu_mtx();
   const double init_time = init_cpu_mtx();
 #ifndef NDEBUG
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
@@ -240,12 +262,21 @@ int main(int argc, char* argv[])
     const double copy_times_max = ((Lcopy_times_max >= Ucopy_times_max) ? Lcopy_times_max : Ucopy_times_max);
     const double copy_times_avg = (Lcopy_times_avg + Ucopy_times_avg) / 2;
 
-    (void)fprintf(stdout, "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n", n,
+    (void)fprintf(stdout, lin_fmt, n,
                   copy_times_min, copy_times_avg, copy_times_max,
                   Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
                   Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
   }
-  free_cpu_mtx();
+  const double fcpu_time = free_cpu_mtx();
+  const double agpu_time = -0.0;
+  const double awrk_time = -0.0;
+  const double fwrk_time = -0.0;
+  const double fgpu_time = -0.0;
+
+  (void)fprintf(stdout, lin_fmt, -_samples,
+                resol, double(mkl_nthr), init_time,
+                acpu_time, agpu_time, awrk_time,
+                fcpu_time, fgpu_time, fwrk_time);
 
   return EXIT_SUCCESS;
 }
