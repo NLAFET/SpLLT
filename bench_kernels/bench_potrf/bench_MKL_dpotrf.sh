@@ -7,7 +7,7 @@ export OMP_PLACES="{16,18,20,22,24,26,28,30}" # CPU0,THR1
 export OMP_PROC_BIND=spread
 echo "OMP_PLACES=$OMP_PLACES"
 echo "OMP_PROC_BIND=$OMP_PROC_BIND"
-for ((I=1; I<=8; ++I))
+for ((I=$5; I<=$6; ++I))
 do
 	export MKL_NUM_THREADS=$I
 	echo "MKL_NUM_THREADS=$MKL_NUM_THREADS"
