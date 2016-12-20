@@ -203,6 +203,8 @@ int main(int argc, char* argv[])
 #endif // !NDEBUG
 
   (void)fprintf(stdout, "\"N\",\"COPY_H2H_MIN_s\",\"COPY_H2H_AVG_s\",\"COPY_H2H_MAX_s\",\"LPOTRF_MIN_s\",\"LPOTRF_AVG_s\",\"LPOTRF_MAX_s\",\"UPOTRF_MIN_s\",\"UPOTRF_AVG_s\",\"UPOTRF_MAX_s\"\n");
+  (void)fflush(stdout);
+
   for (int n = Nmin; n <= Nmax; n += Nstep) {
     double Lcopy_times_min = INFINITY;
     double Lcopy_times_max = -0.0;
@@ -270,6 +272,7 @@ int main(int argc, char* argv[])
                   copy_times_min, copy_times_avg, copy_times_max,
                   Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
                   Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
+    (void)fflush(stdout);
   }
   const double fcpu_time = free_cpu_mtx();
   const double agpu_time = -0.0;
@@ -281,6 +284,7 @@ int main(int argc, char* argv[])
                 resol, double(mkl_nthr), init_time,
                 acpu_time, agpu_time, awrk_time,
                 fcpu_time, fgpu_time, fwrk_time);
+  (void)fflush(stdout);
 
   return EXIT_SUCCESS;
 }
