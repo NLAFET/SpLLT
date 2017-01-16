@@ -2,7 +2,7 @@ include ../make.inc
 
 DEPS = Makefile ../make.inc ../common.hpp
 
-all: bench_MKL_trsm.exe # bench_cuBLAS_trsm.exe
+all: bench_MKL_trsm.exe bench_cuBLAS_trsm.exe
 
 bench_MKL_trsm.exe: bench_MKL_trsm.cu $(DEPS)
 	$(NVCC) $(CPPFLAGS) $(CXXFLAGS) bench_MKL_trsm.cu -o $@ $(LDFLAGS) $(LIBS)
