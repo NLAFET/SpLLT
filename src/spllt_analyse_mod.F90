@@ -5,10 +5,12 @@ module spllt_analyse_mod
 contains
 
   ! analysis phase
-  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
+  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, akeep, keep, cntl, info)
     use hsl_mc78_integer
     use hsl_mc34_double
     use hsl_ma87_double
+    use spral_ssids_akeep, only: ssids_akeep
+    use spral_ssids_anal, only : expand_pattern
     implicit none
 
     type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
@@ -19,12 +21,13 @@ contains
     integer, intent(inout), dimension(:) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
+    type(ssids_akeep), intent(in) :: akeep ! analyse information from ssids
     type(MA87_keep), target, intent(out) :: keep
     type(spllt_cntl), intent(in) :: cntl
     type(MA87_info), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
-    integer, allocatable :: aptr(:) ! column pointers of expanded matrix
+    integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
     integer, allocatable :: arow(:) ! row pointers of expanded matrix
     integer, allocatable :: iw(:) ! work array
     integer, allocatable :: perm(:) ! inverse permutation.
@@ -33,11 +36,13 @@ contains
     integer, allocatable :: map(:) ! Allocated to have size n.
     ! used in computing dependency counts. For each row k in 
     ! j-th block column of a node, map(k1) is set to j
+    integer(long), allocatable :: ptr64(:)
     
     integer :: num_nodes ! number of nodes in tree
     integer :: node ! a node in tree
     integer :: l_nb ! set to block size of snode (keep%nodes(snode)%nb)
     integer :: ne ! set to ptr(n+1) - 1
+    integer(long) :: nz
     integer :: nemin ! min. number of eliminations
     integer :: st ! stat parameter
     integer :: i, j, k, jj, k1 ! temporary variable
@@ -60,8 +65,8 @@ contains
     type(mc78_control) :: control78
     integer :: par
     integer :: info78
-    integer, dimension(:), allocatable :: sptr, sparent, rlist
-    integer(long), dimension(:), allocatable :: rptr
+    ! integer, dimension(:), allocatable :: sptr, sparent, rlist
+    ! integer(long), dimension(:), allocatable :: rptr
     integer, dimension(:), allocatable :: nchild ! pointer on the nth child in the current node
 
     ! initialise
@@ -75,58 +80,66 @@ contains
     keep%n = n
     adata%n = n
     ne = ptr(n+1) - 1
+    nz = ptr(n+1) - 1
+    num_nodes = akeep%nnodes
 
     ! immediate return if n = 0
     if (n == 0) return
 
-    ! expand the matrix
+    ! ! expand the matrix
     
     ! allocate space for expanded matrix (held in aptr,arow)
-    allocate (arow(2*ne-n),aptr(n+3),iw(n+1),amap(ptr(n+1)-1),stat=st)
+    ! allocate (arow(2*ne-n),aptr(n+3),iw(n+1),amap(ptr(n+1)-1),stat=st)
+    allocate(arow(2*nz), aptr(n+3), amap(ptr(n+1)-1), stat=st)
     if (st /= 0) go to 9999
 
-    arow(1:ne) = row(1:ne)
-    aptr(1:n+1) = ptr(1:n+1)
-    call mc34_expand(n, arow, aptr, iw)
-    deallocate(iw,stat=st)
+    allocate(ptr64(size(ptr,1)))
+    ptr64 = ptr
 
-    nemin = cntl%nemin
-    ! Check nemin (a node is merged with its parent if both involve
-    ! fewer than nemin eliminations). If out of range, use the default
-    if (nemin < 1) nemin = spllt_nemin_default
+    call expand_pattern(n, nz, ptr64, row, aptr, arow)
 
-    ! Check the user-supplied array order and set the inverse in perm.
-    if (size(order).lt.n) then
-       go to 9999
-    end if
+    ! arow(1:ne) = row(1:ne)
+    ! aptr(1:n+1) = ptr(1:n+1)
+    ! call mc34_expand(n, arow, aptr, iw)
+    ! deallocate(iw,stat=st)
 
-    deallocate (perm,stat=st)
-    allocate (perm(n),stat=st)
-    if (st /= 0) go to 9999
-    perm(:) = 0
-    k1 = 0
-    do i = 1, n
-       jj = order(i)
-       if (jj < 1 .or. jj > n) exit
-       if (perm(jj) /= 0) exit ! Duplicate found
-       perm(jj) = i
-    end do
-    if (i-1 /= n) then
-       go to 9999
-    end if
+    ! nemin = cntl%nemin
+    ! ! Check nemin (a node is merged with its parent if both involve
+    ! ! fewer than nemin eliminations). If out of range, use the default
+    ! if (nemin < 1) nemin = spllt_nemin_default
+
+    ! ! Check the user-supplied array order and set the inverse in perm.
+    ! if (size(order).lt.n) then
+    !    go to 9999
+    ! end if
+
+    ! deallocate (perm,stat=st)
+    ! allocate (perm(n),stat=st)
+    ! if (st /= 0) go to 9999
+    ! perm(:) = 0
+    ! k1 = 0
+    ! do i = 1, n
+    !    jj = order(i)
+    !    if (jj < 1 .or. jj > n) exit
+    !    if (perm(jj) /= 0) exit ! Duplicate found
+    !    perm(jj) = i
+    ! end do
+    ! if (i-1 /= n) then
+    !    go to 9999
+    ! end if
     
-    control78%nemin = nemin
-    control78%sort = .true.
-    control78%lopt = .true.
-    call mc78_analyse(n, aptr, arow, order, num_nodes, &
-         sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
-         nflops=adata%num_flops)
-    ! print *, "sz sparent:", size(sparent)
+    ! control78%nemin = nemin
+    ! control78%sort = .true.
+    ! control78%lopt = .true.
+    ! call mc78_analyse(n, aptr, arow, order, num_nodes, &
+    !      sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
+    !      nflops=adata%num_flops)
+    ! ! print *, "sz sparent:", size(sparent)
     
     adata%nnodes = num_nodes
 
     ! perform symbolic factorization
-    call spllt_symbolic(adata, num_nodes, sptr, sparent, rptr)
+    call spllt_symbolic(adata, num_nodes, akeep%sptr, akeep%sparent, akeep%rptr)
 
     info%num_nodes = num_nodes
     !**************************************
@@ -147,12 +160,13 @@ contains
     ! loop over root nodes
     keep%nodes(:)%nchild = 0
     ! setup nchild and child info
-    ! print *, "sz sparent:", size(sparent)
+    ! print *, "sz sparent:", size(akeep%sparent)
+    ! print *, "num_nodes:", num_nodes
     do node = 1, num_nodes+1
 
        ! print *, "node: ", node, ", nchild: ", keep%nodes(node)%nchild
        if (node.le.num_nodes) then
-          par = sparent(node)
+          par = akeep%sparent(node)
           keep%nodes(node)%parent = par 
           keep%nodes(par)%nchild = keep%nodes(par)%nchild + 1
        else
@@ -182,6 +196,7 @@ contains
           keep%nodes(par)%child(nchild(par)) = node
        end if
     end do
+
     ! goto 9999 ! DEBUG
     ! Setup least descendants, to allow easy walk of subtrees
     do node = -1, num_nodes
@@ -202,7 +217,7 @@ contains
     if (st /= 0) go to 9999
     adata%small = 0
     if (cntl%prune_tree) then
-       call spllt_prune_tree(adata, sparent, cntl%ncpu, keep)
+       call spllt_prune_tree(adata, akeep%sparent, cntl%ncpu, keep)
        ! call spllt_prune_tree(adata, sparent, 1, keep) ! TESTS sequential
        ! call spllt_prune_tree(adata, sparent, 2, keep) ! TESTS
        ! call spllt_prune_tree(adata, sparent, 4, keep) ! TESTS
@@ -211,8 +226,8 @@ contains
 
     ! set up blocking info
     do node = 1, num_nodes
-       keep%nodes(node)%sa = sptr(node)
-       keep%nodes(node)%en = sptr(node+1)-1
+       keep%nodes(node)%sa = akeep%sptr(node)
+       keep%nodes(node)%en = akeep%sptr(node+1)-1
        ! set node id 
        fdata%nodes(node)%node => keep%nodes(node)
        fdata%nodes(node)%num = node
@@ -235,17 +250,17 @@ contains
        keep%nodes(node)%nb = l_nb
 
        ! Copy row list into keep%nodes
-       allocate(keep%nodes(node)%index(rptr(node+1)-rptr(node)),stat=st)
+       allocate(keep%nodes(node)%index(akeep%rptr(node+1)-akeep%rptr(node)),stat=st)
        if (st /= 0) go to 9999
        j = 1
-       do ii = rptr(node), rptr(node+1)-1
-          keep%nodes(node)%index(j) = rlist(ii)
+       do ii = akeep%rptr(node), akeep%rptr(node+1)-1
+          keep%nodes(node)%index(j) = akeep%rlist(ii)
           j = j + 1
        end do
 
        ! Calculate number j of blocks in node and set
        ! keep%nodes(node)%blk_en
-       sz = int(rptr(node+1)-rptr(node) - 1) / l_nb + 1
+       sz = int(akeep%rptr(node+1)-akeep%rptr(node) - 1) / l_nb + 1
        j = 0
        do i = keep%nodes(node)%sa, keep%nodes(node)%en, l_nb
           j = j + sz
@@ -470,8 +485,8 @@ contains
     ! above, but have been left as is to ease maintenance
     allocate(keep%lmap(keep%nbcol),stat=st)
     if(st.ne.0) go to 9999
-    call make_map(n, order, ptr, row, aptr, arow, amap)
-    call lcol_map(aptr, arow, num_nodes, keep%nodes, keep%blocks, &
+    call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
+    call spllt_lcol_map(aptr, arow, num_nodes, keep%nodes, keep%blocks, &
          keep%lmap, map, amap, st)
     if(st.ne.0) goto 9999
 
@@ -487,6 +502,7 @@ contains
     keep%info%maxdepth     = info%maxdepth
     keep%info%stat         = info%stat
 
+    deallocate (ptr64,stat=st)
     deallocate (arow,stat=st)
     deallocate (aptr,stat=st)
     deallocate (amap,stat=st)
@@ -726,7 +742,7 @@ contains
     implicit none
     
     type(spllt_adata_type), intent(inout) :: adata
-    integer, dimension(:), intent(inout) :: sparent ! atree
+    integer, dimension(:), intent(in) :: sparent ! atree
     integer :: nth ! number of workers
     type(MA87_keep), target, intent(in) :: keep
 
@@ -944,5 +960,144 @@ contains
 
     return
   end subroutine spllt_symbolic
+
+  ! Make a map from original A to reordered half matrix A
+  ! The reordered half matrix's pattern is returned in nptr and nrow
+  subroutine spllt_make_map(n, perm, optr, orow, nptr, nrow, map)
+    use hsl_ma87_double
+    implicit none
+
+    integer, intent(in) :: n
+    integer, dimension(n), intent(in) :: perm
+    integer(long), dimension(n+1), intent(in) :: optr
+    integer, dimension(optr(n+1)-1), intent(in) :: orow
+    integer(long), dimension(n+3), intent(out) :: nptr ! extra space used for tricks
+    integer, dimension(optr(n+1)-1), intent(out) :: nrow
+    integer, dimension(optr(n+1)-1), intent(out) :: map
+
+    integer :: i, k, l
+    integer(long) :: j
+
+    nptr(:) = 0
+
+    ! Count number of entries in each column of new matrix (at offset 2)
+    do i = 1, n
+       l = perm(i)
+       do j = optr(i), optr(i+1)-1
+          k = perm(orow(j))
+          if(k<l) then
+             nptr(k+2) = nptr(k+2) + 1
+          else
+             nptr(l+2) = nptr(l+2) + 1
+          endif
+       end do
+    end do
+
+    ! Calculate column starts (at offset 1)
+    nptr(1:2) = 1
+    do i = 2, n
+       nptr(i+1) = nptr(i) + nptr(i+1)
+    end do
+
+    ! Now build map
+    do i = 1, n
+       l = perm(i)
+       do j = optr(i), optr(i+1)-1
+          k = perm(orow(j))
+          if(k<l) then
+             map(nptr(k+1)) = j
+             nrow(nptr(k+1)) = l
+             nptr(k+1) = nptr(k+1) + 1
+          else
+             map(nptr(l+1)) = j
+             nrow(nptr(l+1)) = k
+             nptr(l+1) = nptr(l+1) + 1
+          endif
+       end do
+    end do
+  end subroutine spllt_make_map
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
+  ! Build mapping on per block column basis from user's val to block col's lcol
+  ! This routine uses the reordered half matrix and map from the make_map routine
+  subroutine spllt_lcol_map(aptr, arow, num_nodes, nodes, blocks, lmap, map, amap, st)
+    use hsl_ma87_double
+    implicit none
+
+    ! Reordered lower triangle of reordered matrix held using aptr and arow
+    integer(long), dimension(:), intent(in) :: aptr
+    integer, dimension(:), intent(in) :: arow
+    integer, intent(in) :: num_nodes
+    type(node_type), dimension(-1:), intent(in) :: nodes ! Node info
+    type(block_type), dimension(:), intent(in) :: blocks ! block info
+    type(lmap_type), dimension(:), intent(out) :: lmap ! output lcol map
+    integer, dimension(:), intent(out) :: map ! work array
+    integer, dimension(:), intent(in) :: amap ! map set up by make_map
+    integer, intent(out) :: st
+
+    ! Local scalars
+    integer :: bcol ! block column
+    integer :: cb ! Temporary variable
+    integer :: col ! do loop index
+    integer(long) :: dblk ! set to keep%nodes(snode)%blk_sa (first block
+    ! in snode which is, of course, a diagonal block)
+    integer :: en ! set keep%nodes(snode)%en
+    integer(long) :: i ! Temporary variable. global row index
+    integer(long) :: j ! Temporary variable
+    integer :: l_nb ! set to keep%nodes(snode)%nb
+    integer(long) :: offset
+    integer :: sa ! set keep%nodes(snode)%sa
+    integer :: snode ! node
+    integer :: swidth ! set to keep%blocks(dblk)%blkn (number of columns
+    ! in block column to which dblk belongs)
+
+    integer :: k
+
+    st = 0
+
+    do snode = 1, num_nodes ! loop over nodes
+       ! Build a map from global to local indices
+       do j = 1, size(nodes(snode)%index)
+          i = nodes(snode)%index(j)
+          map(i) = j - 1
+       end do
+
+       ! Fill in lfact by block columns
+       dblk = nodes(snode)%blk_sa
+
+       l_nb = nodes(snode)%nb
+       sa = nodes(snode)%sa
+       en = nodes(snode)%en
+
+       do cb = sa, en, l_nb
+          bcol = blocks(dblk)%bcol
+
+          offset = blocks(dblk)%sa - (cb-sa)*blocks(dblk)%blkn
+          swidth = blocks(dblk)%blkn
+
+          k = 1
+          lmap(bcol)%len_map = aptr(min(cb+l_nb-1,en)+1) - aptr(cb)
+          allocate(lmap(bcol)%map(2,lmap(bcol)%len_map), stat=st)
+          if(st.ne.0) return
+
+          ! Loop over columns in the block column bcol
+          do col = cb, min(cb+l_nb-1, en)
+             ! loop over rows in column col
+             do j = aptr(col), aptr(col+1)-1
+                i = arow(j)
+                i = map(i)
+                i = offset + i*swidth
+                lmap(bcol)%map(1,k) = i ! destination in lfact(:)%lcol
+                lmap(bcol)%map(2,k) = amap(j) ! source
+                k = k + 1
+             end do
+             offset = offset + 1
+          end do
+          ! move to next block column in snode
+          dblk = blocks(dblk)%last_blk + 1
+       end do
+    end do
+  end subroutine spllt_lcol_map
 
 end module spllt_analyse_mod

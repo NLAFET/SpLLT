@@ -56,7 +56,7 @@ contains
     integer :: m, n
 
     type(spllt_options) :: options
-    character(len=200) :: matfile    
+    character(len=200) :: matfile
     type(zd11_type) :: a
     integer :: nrhs
     integer, dimension(:), allocatable :: order

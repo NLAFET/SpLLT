@@ -42,8 +42,11 @@ MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )
 # MA87 test driver
 option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
 
-# add spLLT test driver
+# spral
+set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
+include_directories(${SPRAL_DIR})
 
+# add spLLT test driver
 if (${RUNTIME} MATCHES "STF")
 
   # Use STF code
@@ -215,7 +218,8 @@ if(MA87_TEST_DRIVER MATCHES ON)
 
   add_executable(spllt_test run_ma87.f90)
 else()
-  add_executable(spllt_test spllt_test.F90)
+  # add_executable(spllt_test spllt_test.F90)
+  add_executable(spllt_test drivers/spllt_test.F90)
 endif()
 
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
@@ -245,16 +249,23 @@ if(${USE_GPU} MATCHES ON)
   target_link_libraries(spllt_test spllt_cuda)
 endif()
 
+# spral
+target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
+find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR})
+target_link_libraries(spllt_test ${SPRAL_LIBRARY})
+# MESSAGE( STATUS "spral dir:         " ${SPRAL_DIR})
+# MESSAGE( STATUS "spral lib:         " ${SPRAL_LIBRARY})
+
 # Metis
 set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
 find_library(METIS_LIBRARY metis PATHS ${METIS_DIR})
 target_link_libraries(spllt_test ${METIS_LIBRARY})
 
-# spral
-set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
-target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
-find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR} ${SPRAL_DIR})
-target_link_libraries(spllt_test ${SPRAL_LIBRARY})
+## HWLOC
+set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
+include_directories(${HWLOC_DIR}/include)  
+find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
+target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
 # BLAS and LAPACK
 set(MKL_LIBS $ENV{MKL_LIBS})
@@ -272,3 +283,6 @@ target_link_libraries(spllt_test ${MKL_LIBRARIES})
 
 # pthread
 target_link_libraries(spllt_test pthread)
+
+## std C++ (needed for linking with ssids)
+target_link_libraries(spllt_test stdc++)
