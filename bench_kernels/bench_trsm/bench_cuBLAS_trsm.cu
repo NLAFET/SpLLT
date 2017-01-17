@@ -37,7 +37,7 @@ static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E
 __constant__ dtype one_gpu = 1.0;
 static const dtype *alpha = (const dtype*)NULL;
 
-static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0, lda = 0, Lwork = 0;
+static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, device_ = 0, _devices = 0, lda = 0;
 static dtype *Agpu = (dtype*)NULL, *Xgpu = (dtype*)NULL, *Acpu = (dtype*)NULL, *Bcpu = (dtype*)NULL;
 
 static cublasHandle_t handle;
@@ -620,7 +620,7 @@ int main(int argc, char* argv[])
     (void)fflush(stdout);
   }
   const double fcpu_time = free_cpu_mtx();
-  const double fgpu_time = free_gpu_wrk();
+  const double fgpu_time = free_gpu_mtx();
   (void)destroy_handle();
   const double awrk_time = -0.0;
   const double fwrk_time = -0.0;
