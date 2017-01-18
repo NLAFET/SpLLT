@@ -94,7 +94,7 @@ init_block(id)
          -> ((upd_count == 0) && (bcol == bcol_sa) &&  isDiag) ? bc_kk factorize_block(diag_idx)
          -> ((upd_count == 0) && (bcol == bcol_sa) && !isDiag) ? bc_ik solve_block(diag_idx, id)
          -> ((upd_count == 0) && (bcol != bcol_sa)) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
-         -> (upd_count > 0) ? bc_ij update_between(id, 1) 
+         -> (upd_count > 0) ? bc_ij update_between(id, 1)
 
    /* ; (nnodes - snode +1)*4 */
    ; 5
@@ -112,14 +112,13 @@ BODY
 END
 
 // factorize block
-
 factorize_block(diag_idx)
 
    diag_idx = 0..(ndiag-1)
    /* id = 1 */
-   id_kk = %{ return diags[diag_idx]; %}   
+   id_kk = %{ return diags[diag_idx]; %}
    /* current node */
-   snode = %{ return get_blk_node(bcs, id_kk); %}   
+   snode = %{ return get_blk_node(bcs, id_kk); %}
    /* get first (diag) block id in current node */
    blk_sa =  %{ return get_blk_sa(snodes, snode); %}
    
@@ -137,7 +136,8 @@ factorize_block(diag_idx)
    : blk(id_kk)
 
    RW bc_kk <- (id_kk == blk_sa && upd_count == 0) ? bc init_block(id_kk)
-            <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count) /* blk(id_kk) */ 
+            /* -> blk(id_kk) */
+            <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count) /* blk(id_kk) */
             <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1) /* blk(id_kk) */
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count) /* blk(id_kk) */
@@ -346,7 +346,7 @@ update_between(id, i)
   snode = %{ return get_blk_node(bcs, id); %}
   /* number of update on blk id */
   upd_count =  %{ return get_upd_count(bcs, id); %}
-  /* update index */  
+  /* update index */
   i = 1..upd_count
   
   bcol =  %{ return get_bcol(bcs, id); %}
@@ -379,7 +379,7 @@ update_between(id, i)
   /* row index of current block in node */
   id_ik_idx = id - id_kk
 
-  : blk(id) 
+  : blk(id)
 
   /* RW bc_ij <- blk(id) */
   /*          -> blk(id) */
@@ -496,10 +496,10 @@ BODY
       void *blk_ik = get_blk(bcs, id_ik);
 
       spllt_update_between_c(m, n, blk_ij,
-                             dcol, p_dnode, 
-                             n1, 
+                             dcol, p_dnode,
+                             n1,
                              scol, p_snode,
-                             dest, 
+                             dest,
                              src1 + csrc-1, src2 + rsrc-1,
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);
@@ -512,7 +512,6 @@ BODY
 
 }
 END
-
 
 extern "C" %{
    
@@ -527,13 +526,14 @@ extern "C" %{
 
       printf("[factorize] number of blocks: %d\n", nbc);
       printf("[factorize] number of diag blocks / block columns: %d\n", ndiag);
+      printf("[factorize] nnodes: %d\n", nnodes);
             
-      fac_hdl = dague_factorize_new(blk_desc, 
-                                    snodes, nnodes, 
-                                    bcs, nbc, 
+      fac_hdl = dague_factorize_new(blk_desc,
+                                    snodes, nnodes,
+                                    bcs, nbc,
                                     diags, ndiag,
                                     min_width_blas, maxmn,
-                                    val, nval, keep, 
+                                    val, nval, keep,
                                     NULL);
 
       assert( NULL != fac_hdl );

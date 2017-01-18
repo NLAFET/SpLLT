@@ -162,6 +162,7 @@ elseif(${RUNTIME} MATCHES "Parsec")
 
 endif()
 
+## GPU
 if(${USE_GPU} MATCHES ON)
 
   # Use GPU
@@ -195,8 +196,21 @@ if(${USE_GPU} MATCHES ON)
   include_directories(${MAGMA_DIR}/include)
   include_directories(${MAGMA_SRCDIR}/control)     
   find_library(MAGMA_LIBRARY magma PATHS ${MAGMA_DIR}/lib)
+endif()
+
+## MPI
+if(${USE_MPI} MATCHES ON)
+
+  # Use GPU
+  add_definitions(-DSPLLT_USE_MPI)
+
+  set(MPI_DIR $ENV{MPIDIR} CACHE PATH "Location of MPI Library")
+
+  include_directories(${MPI_DIR}/include)
+  find_library(MPI_LIBRARY mpi PATHS ${MPI_DIR}/lib)
 
 endif()
+
 
 # Set flags for the MA87 test driver
 
@@ -218,8 +232,8 @@ if(MA87_TEST_DRIVER MATCHES ON)
 
   add_executable(spllt_test run_ma87.f90)
 else()
-  # add_executable(spllt_test spllt_test.F90)
-  add_executable(spllt_test drivers/spllt_test.F90)
+  add_executable(spllt_test spllt_test.F90)
+  # add_executable(spllt_test drivers/spllt_test.F90)
 endif()
 
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
@@ -242,11 +256,17 @@ elseif(${RUNTIME} MATCHES "Parsec")
 
 endif()
 
+## GPU
 if(${USE_GPU} MATCHES ON)
   # MAGMA
   target_link_libraries(spllt_test ${MAGMA_LIBRARY})
 
   target_link_libraries(spllt_test spllt_cuda)
+endif()
+
+## MPI
+if(${USE_MPI} MATCHES ON)
+  target_link_libraries(spllt_test ${MPI_LIBRARY})
 endif()
 
 # spral

@@ -195,9 +195,9 @@ contains
     ! factorize matrix
     ! goto 9998 ! DEBUG: jump factor and solve
     ! goto 9999 ! DEBUG: jump factor, solve and finalize
-    write(*,'("[>] Factorize...")')
-    write(*,'("[>]    nb: ", i6)') cntl%nb
-    write(*,'("[>] # cpu: ", i6)') cntl%ncpu
+    write(*,'("Factorize...")')
+    write(*,'("   nb: ", i6)') cntl%nb
+    write(*,'("# cpu: ", i6)') cntl%ncpu
     call system_clock(start_t, rate_t)
     ! TODO create factorize method
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
