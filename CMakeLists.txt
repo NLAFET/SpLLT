@@ -232,8 +232,8 @@ if(MA87_TEST_DRIVER MATCHES ON)
 
   add_executable(spllt_test run_ma87.f90)
 else()
-  add_executable(spllt_test spllt_test.F90)
-  # add_executable(spllt_test drivers/spllt_test.F90)
+  # add_executable(spllt_test spllt_test.F90)
+  add_executable(spllt_test drivers/spllt_test.F90)
 endif()
 
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)

@@ -106,14 +106,14 @@ contains
     implicit none
 
     type(c_ptr), value, target :: nodes_c, bcs_c
-    integer(c_int)             :: nnodes
+    integer(c_int), value      :: nnodes
     integer(long), value       :: id
     integer(long)              :: get_nc
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
     type(node_type), pointer :: node, nodes(:)
     integer :: sa, en, numcol, s_nb
-    
+
     call c_f_pointer(nodes_c, nodes, (/nnodes/))    
     call c_f_pointer(bcs_c, bc,(/id/))    
 

@@ -5,8 +5,8 @@ module spllt_analyse_mod
 contains
 
   ! analysis phase
-  ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, akeep, keep, cntl, info)
-  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
+  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, akeep, keep, cntl, info)
+  ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
     use hsl_mc78_integer
     use hsl_mc34_double
     use hsl_ma87_double
@@ -22,14 +22,14 @@ contains
     integer, intent(inout), dimension(:) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
-    ! type(ssids_akeep), target, intent(in) :: akeep ! analyse information from ssids
+    type(ssids_akeep), target, intent(in) :: akeep ! analyse information from ssids
     type(MA87_keep), target, intent(out) :: keep
     type(spllt_cntl), intent(in) :: cntl
     type(MA87_info), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
-    ! integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
-    integer, allocatable :: aptr(:) ! column pointers of expanded matrix
+    integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
+    ! integer, allocatable :: aptr(:) ! column pointers of expanded matrix
     integer, allocatable :: arow(:) ! row pointers of expanded matrix
     integer, allocatable :: iw(:) ! work array
     integer, allocatable :: perm(:) ! inverse permutation.
@@ -67,10 +67,10 @@ contains
     type(mc78_control) :: control78
     integer :: par
     integer :: info78
-    ! integer, dimension(:), pointer :: sptr, sparent, rlist
-    ! integer(long), dimension(:), pointer :: rptr
-    integer, dimension(:), allocatable :: sptr, sparent, rlist
-    integer(long), dimension(:), allocatable :: rptr
+    integer, dimension(:), pointer :: sptr, sparent, rlist
+    integer(long), dimension(:), pointer :: rptr
+    ! integer, dimension(:), allocatable :: sptr, sparent, rlist
+    ! integer(long), dimension(:), allocatable :: rptr
     integer, dimension(:), allocatable :: nchild ! pointer on the nth child in the current node
 
     ! initialise
@@ -85,65 +85,65 @@ contains
     adata%n = n
     ne = ptr(n+1) - 1
     nz = ptr(n+1) - 1
-    ! num_nodes = akeep%nnodes
+    num_nodes = akeep%nnodes
 
     ! immediate return if n = 0
     if (n == 0) return
 
-    ! sptr => akeep%sptr
-    ! sparent => akeep%sparent
-    ! rlist => akeep%rlist 
-    ! rptr => akeep%rptr
+    sptr => akeep%sptr
+    sparent => akeep%sparent
+    rlist => akeep%rlist 
+    rptr => akeep%rptr
     
     ! expand the matrix
     
     ! allocate space for expanded matrix (held in aptr,arow)
-    ! allocate(arow(2*nz), aptr(n+3), amap(ptr(n+1)-1), stat=st)
-    ! if (st /= 0) go to 9999
-
-    ! allocate(ptr64(size(ptr,1)))
-    ! ptr64 = ptr
-
-    ! call expand_pattern(n, nz, ptr64, row, aptr, arow)
-
-    allocate (arow(2*ne-n),aptr(n+3),iw(n+1),amap(ptr(n+1)-1),stat=st)
-    arow(1:ne) = row(1:ne)
-    aptr(1:n+1) = ptr(1:n+1)
-    call mc34_expand(n, arow, aptr, iw)
-    deallocate(iw,stat=st)
-
-    nemin = cntl%nemin
-    ! Check nemin (a node is merged with its parent if both involve
-    ! fewer than nemin eliminations). If out of range, use the default
-    if (nemin < 1) nemin = spllt_nemin_default
-
-    ! Check the user-supplied array order and set the inverse in perm.
-    if (size(order).lt.n) then
-       go to 9999
-    end if
-
-    deallocate (perm,stat=st)
-    allocate (perm(n),stat=st)
+    allocate(arow(2*nz), aptr(n+3), amap(ptr(n+1)-1), stat=st)
     if (st /= 0) go to 9999
-    perm(:) = 0
-    k1 = 0
-    do i = 1, n
-       jj = order(i)
-       if (jj < 1 .or. jj > n) exit
-       if (perm(jj) /= 0) exit ! Duplicate found
-       perm(jj) = i
-    end do
-    if (i-1 /= n) then
-       go to 9999
-    end if
+
+    allocate(ptr64(size(ptr,1)))
+    ptr64 = ptr
+
+    call expand_pattern(n, nz, ptr64, row, aptr, arow)
+
+    ! allocate (arow(2*ne-n),aptr(n+3),iw(n+1),amap(ptr(n+1)-1),stat=st)
+    ! arow(1:ne) = row(1:ne)
+    ! aptr(1:n+1) = ptr(1:n+1)
+    ! call mc34_expand(n, arow, aptr, iw)
+    ! deallocate(iw,stat=st)
+
+    ! nemin = cntl%nemin
+    ! ! Check nemin (a node is merged with its parent if both involve
+    ! ! fewer than nemin eliminations). If out of range, use the default
+    ! if (nemin < 1) nemin = spllt_nemin_default
+
+    ! ! Check the user-supplied array order and set the inverse in perm.
+    ! if (size(order).lt.n) then
+    !    go to 9999
+    ! end if
+
+    ! deallocate (perm,stat=st)
+    ! allocate (perm(n),stat=st)
+    ! if (st /= 0) go to 9999
+    ! perm(:) = 0
+    ! k1 = 0
+    ! do i = 1, n
+    !    jj = order(i)
+    !    if (jj < 1 .or. jj > n) exit
+    !    if (perm(jj) /= 0) exit ! Duplicate found
+    !    perm(jj) = i
+    ! end do
+    ! if (i-1 /= n) then
+    !    go to 9999
+    ! end if
     
-    control78%nemin = nemin
-    control78%sort = .true.
-    control78%lopt = .true.
-    call mc78_analyse(n, aptr, arow, order, num_nodes, &
-         sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
-         nflops=adata%num_flops)
-    ! print *, "sz sparent:", size(sparent)
+    ! control78%nemin = nemin
+    ! control78%sort = .true.
+    ! control78%lopt = .true.
+    ! call mc78_analyse(n, aptr, arow, order, num_nodes, &
+    !      sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
+    !      nflops=adata%num_flops)
+    ! ! print *, "sz sparent:", size(sparent)
     
     adata%nnodes = num_nodes
 
@@ -494,8 +494,8 @@ contains
     ! above, but have been left as is to ease maintenance
     allocate(keep%lmap(keep%nbcol),stat=st)
     if(st.ne.0) go to 9999
-    ! call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
-    call spllt_make_map(n, order, ptr, row, aptr, arow, amap)
+    call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
+    ! call spllt_make_map(n, order, ptr, row, aptr, arow, amap)
     call spllt_lcol_map(aptr, arow, num_nodes, keep%nodes, keep%blocks, &
          keep%lmap, map, amap, st)
     if(st.ne.0) goto 9999
@@ -512,7 +512,7 @@ contains
     keep%info%maxdepth     = info%maxdepth
     keep%info%stat         = info%stat
 
-    ! deallocate (ptr64,stat=st)
+    deallocate (ptr64,stat=st)
     deallocate (arow,stat=st)
     deallocate (aptr,stat=st)
     deallocate (amap,stat=st)
@@ -981,11 +981,11 @@ contains
 
     integer, intent(in) :: n
     integer, dimension(n), intent(in) :: perm
-    ! integer(long), dimension(n+1), intent(in) :: optr
-    integer, dimension(n+1), intent(in) :: optr
+    integer(long), dimension(n+1), intent(in) :: optr
+    ! integer, dimension(n+1), intent(in) :: optr
     integer, dimension(optr(n+1)-1), intent(in) :: orow
-    ! integer(long), dimension(n+3), intent(out) :: nptr ! extra space used for tricks
-    integer, dimension(n+3), intent(out) :: nptr ! extra space used for tricks
+    integer(long), dimension(n+3), intent(out) :: nptr ! extra space used for tricks
+    ! integer, dimension(n+3), intent(out) :: nptr ! extra space used for tricks
     integer, dimension(optr(n+1)-1), intent(out) :: nrow
     integer, dimension(optr(n+1)-1), intent(out) :: map
 
@@ -1040,8 +1040,8 @@ contains
     implicit none
 
     ! Reordered lower triangle of reordered matrix held using aptr and arow
-    ! integer(long), dimension(:), intent(in) :: aptr
-    integer, dimension(:), intent(in) :: aptr
+    integer(long), dimension(:), intent(in) :: aptr
+    ! integer, dimension(:), intent(in) :: aptr
     integer, dimension(:), intent(in) :: arow
     integer, intent(in) :: num_nodes
     type(node_type), dimension(-1:), intent(in) :: nodes ! Node info
