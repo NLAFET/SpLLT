@@ -2506,6 +2506,10 @@ contains
           call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
                & c_loc(keep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
                & int(wp,kind=c_size_t))
+          ! print *, "TET"
+          ! call starpu_matrix_data_register(fdata%bc(blk)%hdl2, 0, &
+          !      & c_loc(keep%lfact(nbcol)%lcol(ptr)), 1, 1, blkn, &
+          !      & int(wp,kind=c_size_t))
           ! end if
 #endif
           fdata%bc(blk)%c => keep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)

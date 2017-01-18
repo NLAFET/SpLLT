@@ -931,7 +931,7 @@ contains
     integer(c_int) :: ljk_m, ljk_n, lik_m
     integer(long) :: blk
     type(c_ptr), dimension(:), allocatable :: lik_handles, ljk_handles
-    type(c_ptr) :: ljk_hdl, lik_hdl
+    type(c_ptr) :: ljk_hdl = c_null_ptr, lik_hdl = c_null_ptr
     type(c_ptr) :: snode_c, anode_c, a_bc_c
 #endif
 
@@ -993,13 +993,16 @@ contains
        ljk_m = ljk_m + bcs(blk)%blk%blkm
     end do
     ljk_n = dbc%blk%blkn
-
+    ! write(*,*) "ljk_hdl: ", ljk_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
 #if defined(SPLLT_USE_GPU)
     ! create temporary handle for gathering blocks in Ljk factor
+    ! DEBUG
     call starpu_matrix_data_register(ljk_hdl, fdata%bc(blk_sa)%mem_node, &
          & c_loc(fdata%bc(blk_sa)%c(1)), ljk_m, ljk_m, ljk_n, &
          & int(wp,kind=c_size_t))
+    ! call starpu_f_data_unregister_submit(ljk_hdl)
 #endif
+    ! return
 
     ! lik
     blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
@@ -1015,12 +1018,18 @@ contains
        lik_m = lik_m + bcs(blk)%blk%blkm
     end do
 
+    ! write(*,*) "lik_m: ", lik_m
+
 #if defined(SPLLT_USE_GPU)
     ! create temporary handle for gathering blocks in Ljk factor
     call starpu_matrix_data_register(lik_hdl, fdata%bc(blk_sa)%mem_node, &
          & c_loc(fdata%bc(blk_sa)%c(1)), lik_m, lik_m, ljk_n, &
          & int(wp,kind=c_size_t))
+    ! call starpu_f_data_unregister_submit(lik_hdl)
 #endif
+    write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl
+    ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
+    return
     
     csrc  = 1 + (mod(cptr-1, s_nb))*n1
     csrc2 = (cptr2 - cptr + 1)*n1

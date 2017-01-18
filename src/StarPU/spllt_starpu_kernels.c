@@ -29,7 +29,8 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
    unsigned m = STARPU_MATRIX_GET_NX(buffers[0]);
    unsigned n = STARPU_MATRIX_GET_NY(buffers[0]);
    unsigned ld = STARPU_MATRIX_GET_LD(buffers[0]);
-
+   /* printf("[factorize_block_cuda_func] m: %d, ld: %d\n", m, ld); */
+   /* printf("[factorize_block_cuda_func] n: %d\n", n); */
    double *dest = (double *)STARPU_MATRIX_GET_PTR(buffers[0]);
 
    int worker_id = starpu_worker_get_id();

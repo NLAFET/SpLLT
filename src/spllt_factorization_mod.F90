@@ -684,7 +684,7 @@ contains
 
     ! perform blocked cholesky factorizaton on node
     call spllt_factorize_node(snode, fdata, keep)
-
+    ! return
     ! update between
     node => snode%node
 

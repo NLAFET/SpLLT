@@ -77,6 +77,7 @@ module spllt_data_mod
      real(wp), pointer :: c(:)
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
+     type(c_ptr)    :: hdl2  ! DEBUG
 #endif
      integer :: mem_node = 0 ! memory node where the block is allocated
      
