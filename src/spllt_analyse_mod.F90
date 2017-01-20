@@ -7,8 +7,8 @@ contains
   ! analysis phase
   subroutine spllt_analyse(adata, fdata, n, ptr, row, order, akeep, keep, cntl, info)
   ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
-    use hsl_mc78_integer
-    use hsl_mc34_double
+    ! use hsl_mc78_integer
+    ! use hsl_mc34_double
     use hsl_ma87_double
     use spral_ssids_akeep, only: ssids_akeep
     use spral_ssids_anal, only : expand_pattern
@@ -64,9 +64,9 @@ contains
     integer :: ci ! do loop variable. current block col.
     integer :: root_node
 
-    type(mc78_control) :: control78
+    ! type(mc78_control) :: control78
     integer :: par
-    integer :: info78
+    ! integer :: info78
     integer, dimension(:), pointer :: sptr, sparent, rlist
     integer(long), dimension(:), pointer :: rptr
     ! integer, dimension(:), allocatable :: sptr, sparent, rlist

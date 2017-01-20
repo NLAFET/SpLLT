@@ -6,7 +6,7 @@ module spllt_data_mod
   use dague_f08_interfaces
 #endif
   use hsl_ma87_double, only: block_type, node_type 
-  use hsl_zd11_double
+  ! use hsl_zd11_double
   implicit none
 
   integer, parameter :: wp = kind(0d0)

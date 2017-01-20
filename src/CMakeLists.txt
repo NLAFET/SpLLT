@@ -64,27 +64,31 @@ endif()
 
 set(HSLPACK_DIR $ENV{HSLPACKDIR})
 
+# set(HSL_SRC hsl_ma87d.F90
+#   ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
+#   ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90
+#   ${HSLPACK_DIR}/hsl_zd11/hsl_zd11d.f90
+#   ${HSLPACK_DIR}/hsl_mc68/hsl_mc68i.f90
+#   ${HSLPACK_DIR}/hsl_zb01/hsl_zb01i.f90
+#   ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90
+#   ${HSLPACK_DIR}/hsl_mc56/hsl_mc56d.f90
+#   ${HSLPACK_DIR}/hsl_fa14/hsl_fa14d.f90
+#   ${HSLPACK_DIR}/archive/hsl_zd13d.f90
+#   ${HSLPACK_DIR}/hsl_mc69/hsl_mc69d.f90
+#   ${HSLPACK_DIR}/fa14/fa14d.f
+#   ${HSLPACK_DIR}/mc34/mc34d.f
+#   ${HSLPACK_DIR}/mc47/mc47d.f
+#   ${HSLPACK_DIR}/ym11/ym11d.f
+#   ${HSLPACK_DIR}/mc59/mc59d.f
+#   ${HSLPACK_DIR}/mc54/mc54d.f
+#   ${HSLPACK_DIR}/mc56/mc56d.f
+#   ${HSLPACK_DIR}/mc56/mc56i.f
+#   ${HSLPACK_DIR}/fa14/fa14d.f
+#   )
+
 set(HSL_SRC hsl_ma87d.F90
   ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
-  ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90
-  ${HSLPACK_DIR}/hsl_zd11/hsl_zd11d.f90
-  ${HSLPACK_DIR}/hsl_mc68/hsl_mc68i.f90
-  ${HSLPACK_DIR}/hsl_zb01/hsl_zb01i.f90
-  ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90
-  ${HSLPACK_DIR}/hsl_mc56/hsl_mc56d.f90
-  ${HSLPACK_DIR}/hsl_fa14/hsl_fa14d.f90
-  ${HSLPACK_DIR}/archive/hsl_zd13d.f90
-  ${HSLPACK_DIR}/hsl_mc69/hsl_mc69d.f90
-  ${HSLPACK_DIR}/fa14/fa14d.f
-  ${HSLPACK_DIR}/mc34/mc34d.f
-  ${HSLPACK_DIR}/mc47/mc47d.f
-  ${HSLPACK_DIR}/ym11/ym11d.f
-  ${HSLPACK_DIR}/mc59/mc59d.f
-  ${HSLPACK_DIR}/mc54/mc54d.f
-  ${HSLPACK_DIR}/mc56/mc56d.f
-  ${HSLPACK_DIR}/mc56/mc56i.f
-  ${HSLPACK_DIR}/fa14/fa14d.f
-  )
+  ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90)
 
 # MESSAGE( STATUS "source files:         " ${HSLSRC} )
 
