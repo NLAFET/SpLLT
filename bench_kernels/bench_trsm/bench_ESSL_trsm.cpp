@@ -38,7 +38,7 @@ extern "C"
 {
   void REAL_LAPACK(larnv)(const int *const IDIST, int *const ISEED, const int *const N, btype *const X);
   void REAL_LAPACK(lagsy)(const int *const N, const int *const K, const dtype *const D, dtype *const A, const int *const LDA, int *const ISEED, dtype *const WORK, int *const INFO);
-  void COMPLEX_LAPACK(laghe)(const int *const N, const int *const K, const btype *const D, dtype *const A, const int *const LDA, int *const ISEED, dtype *const WORK, int *const INFO);
+  void CMPLX_LAPACK(laghe)(const int *const N, const int *const K, const btype *const D, dtype *const A, const int *const LDA, int *const ISEED, dtype *const WORK, int *const INFO);
   void REAL_LAPACK(lacpy)(const char *const UPLO, const int *const M, const int *const N, const dtype *const A, const int *const LDA, dtype *const B, const int *const LDB);
 }
 
@@ -113,14 +113,14 @@ static double init_cpu_mtx()
 
 #ifdef USE_COMPLEX
   // Diagonal
-  dlarnv(&idist, iseed, &Nmax, (btype*)wrk);
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, (btype*)wrk);
   // A
-  zlaghe(&Nmax, &k, (btype*)wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
+  CMPLX_LAPACK(laghe)(&Nmax, &k, (btype*)wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
 #else // USE_REAL
   // Diagonal
-  dlarnv(&idist, iseed, &Nmax, wrk);
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
   // A
-  dlagsy(&Nmax, &k, wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
+  REAL_LAPACK(lagsy)(&Nmax, &k, wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
 #endif // USE_COMPLEX
   if (info) {
     (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin3, info);
@@ -135,9 +135,9 @@ static double copy_mtx_cpu2cpu(const bool upper, const int n)
 {
   const double go = omp_get_wtime();
 #ifdef USE_COMPLEX
-  zlacpy
+  CMPLX_LAPACK(lacpy)
 #else // USE_REAL
-  dlacpy
+  REAL_LAPACK(lacpy)
 #endif // USE_COMPLEX
     (
 #ifdef LACPY_ALL

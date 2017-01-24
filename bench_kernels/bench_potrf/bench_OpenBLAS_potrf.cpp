@@ -1,6 +1,6 @@
-#ifndef USE_ESSL
-#define USE_ESSL
-#endif // !USE_ESSL
+#ifndef USE_OPENBLAS
+#define USE_OPENBLAS
+#endif // !USE_OPENBLAS
 #include "common.hpp"
 
 #ifdef USE_COMPLEX
@@ -132,7 +132,7 @@ static double potrf_cpu(const bool upper, const int n)
       exit(n);
     }
     int info = 0;
-    Xpotrf((upper ? "U" : "L"), n, B, lda, info); const int lin = __LINE__;
+    Xpotrf((char*)(upper ? "U" : "L"), (int*)&n, B, (int*)&lda, &info); const int lin = __LINE__;
     if (info) {
       (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, info);
       exit(info);
