@@ -1,3 +1,6 @@
+#ifndef USE_MKL
+#define USE_MKL
+#endif // USE_MKL
 #include "common.hpp"
 
 #include "cusolverDn.h"
@@ -24,6 +27,7 @@
 #define cusolverDnXpotrf_bufferSize cusolverDnDpotrf_bufferSize
 #define cusolverDnXpotrf cusolverDnDpotrf
 #endif // USE_FLOAT
+#define btype dtype
 #endif // USE_COMPLEX
 
 static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n";

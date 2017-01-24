@@ -1,15 +1,7 @@
 #ifndef USE_ESSL
 #define USE_ESSL
 #endif // !USE_ESSL
-
 #include "common.hpp"
-
-extern "C"
-{
-  void dlarnv(const int *const IDIST, int *const ISEED, const int *const N, double *const X);
-  void dlagsy(const int *const N, const int *const K, const double *const D, double *const A, const int *const LDA, int *const ISEED, double *const WORK, int *const INFO);
-  void dlacpy(const char *const UPLO, const int *const M, const int *const N, const double *const A, const int *const LDA, double *const B, const int *const LDB);
-}
 
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
@@ -29,7 +21,16 @@ extern "C"
 #define dtype double
 #define Xpotrf REAL_LAPACK(potrf)
 #endif // USE_FLOAT
+#define btype dtype
 #endif // USE_COMPLEX
+
+extern "C"
+{
+  void REAL_LAPACK(larnv)(const int *const IDIST, int *const ISEED, const int *const N, btype *const X);
+  void REAL_LAPACK(lagsy)(const int *const N, const int *const K, const dtype *const D, dtype *const A, const int *const LDA, int *const ISEED, dtype *const WORK, int *const INFO);
+  void COMPLEX_LAPACK(laghe)(const int *const N, const int *const K, const btype *const D, dtype *const A, const int *const LDA, int *const ISEED, dtype *const WORK, int *const INFO);
+  void REAL_LAPACK(lacpy)(const char *const UPLO, const int *const M, const int *const N, const dtype *const A, const int *const LDA, dtype *const B, const int *const LDB);
+}
 
 static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n";
 

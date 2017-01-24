@@ -1,6 +1,7 @@
+#ifndef USE_MKL
+#define USE_MKL
+#endif // USE_MKL
 #include "common.hpp"
-
-// #include "mkl.h"
 
 #ifdef USE_COMPLEX
 #ifdef USE_FLOAT
@@ -20,6 +21,7 @@
 #define dtype double
 #define Xpotrf REAL_LAPACK(potrf)
 #endif // USE_FLOAT
+#define btype dtype
 #endif // USE_COMPLEX
 
 static const char *const lin_fmt = "%d,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E,%#.17E\n";
