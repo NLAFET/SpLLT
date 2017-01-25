@@ -1,3 +1,13 @@
+/* xTRSM
+ * SIDE   = L/R
+ * UPLO   = L
+ * TRANSA = N
+ * DIAG   = N
+ * ALPHA  = 1.0
+ * M   == N
+ * LDA == LDB
+ */
+
 #ifndef USE_OPENBLAS
 #define USE_OPENBLAS
 #endif // !USE_OPENBLAS
@@ -7,19 +17,19 @@
 #ifdef USE_FLOAT
 #define dtype MKL_Complex8
 #define btype float
-#define Xpotrf CMPLX_LAPACK(potrf)
+#define Xtrsm CMPLX_BLAS(trsm)
 #else // USE_DOUBLE
 #define dtype MKL_Complex16
 #define btype double
-#define Xpotrf CMPLX_LAPACK(potrf)
+#define Xtrsm CMPLX_BLAS(trsm)
 #endif // USE_FLOAT
 #else // USE_REAL
 #ifdef USE_FLOAT
 #define dtype float
-#define Xpotrf REAL_LAPACK(potrf)
+#define Xtrsm REAL_BLAS(trsm)
 #else // USE_DOUBLE
 #define dtype double
-#define Xpotrf REAL_LAPACK(potrf)
+#define Xtrsm REAL_BLAS(trsm)
 #endif // USE_FLOAT
 #define btype dtype
 #endif // USE_COMPLEX
@@ -38,7 +48,7 @@ static const int CACHE_LINE_BYTES = 64;
 static const int CACHE_LINE_ELEMS = int(CACHE_LINE_BYTES / sizeof(dtype));
 
 static int Nmin = 0, Nmax = 0, Nstep = 0, _samples = 0, lda = 0;
-static dtype *A = (dtype*)NULL, *B = (dtype*)NULL;
+static dtype *A = (dtype*)NULL, *B = (dtype*)NULL, *X = (dtype*)NULL;
 
 //
 
@@ -48,7 +58,7 @@ static double alloc_cpu_mtx()
   const int rem = Nmax % CACHE_LINE_ELEMS;
   lda = (rem ? (Nmax + (CACHE_LINE_ELEMS - rem)) : Nmax);
   const size_t siz1 = size_t(lda) * Nmax;
-  const size_t size = 2 * siz1 * sizeof(dtype);
+  const size_t size = 3 * siz1 * sizeof(dtype);
   errno = posix_memalign((void**)&A, CACHE_LINE_BYTES, size); const int lin = __LINE__;
   switch (errno) {
   case 0:
@@ -62,6 +72,7 @@ static double alloc_cpu_mtx()
     exit(errno);
   }
   B = A + siz1;
+  X = B + siz1;
   const double end = (omp_get_wtime() - go);
   // don't time clearing the memory
   (void)memset(A, 0, size);
@@ -100,6 +111,22 @@ static double init_cpu_mtx()
     exit(info);
   }
 
+#ifdef USE_COMPLEX
+  // Diagonal
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, (btype*)wrk);
+  // A
+  CMPLX_LAPACK(laghe)(&Nmax, &k, (btype*)wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
+#else // USE_REAL
+  // Diagonal
+  REAL_LAPACK(larnv)(&idist, iseed, &Nmax, wrk);
+  // A
+  REAL_LAPACK(lagsy)(&Nmax, &k, wrk, B, &lda, iseed, wrk + Nmax, &info); const int lin3 = __LINE__;
+#endif // USE_COMPLEX
+  if (info) {
+    (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin3, info);
+    exit(info);
+  }
+
   free(wrk);
   return (omp_get_wtime() - go);
 }
@@ -118,12 +145,13 @@ static double copy_mtx_cpu2cpu(const bool upper, const int n)
 #else // U/L
      (upper ? "U" : "L")
 #endif // LACPY_ALL
-     , &n, &n, A, &lda, B, &lda);
+     , &n, &n, B, &lda, X, &lda);
   return (omp_get_wtime() - go);
 }
 
-static double potrf_cpu(const bool upper, const int n)
+static double trsm_cpu(const bool right, const int n)
 {
+  const dtype one = dtype(1.0);
   const double go = omp_get_wtime();
 
   if (n >= Nmin) {
@@ -131,12 +159,7 @@ static double potrf_cpu(const bool upper, const int n)
       (void)fprintf(stderr, "[%s@%s] n == %d > Nmax == %d\n", __FUNCTION__, __FILE__, n, Nmax);
       exit(n);
     }
-    int info = 0;
-    Xpotrf((char*)(upper ? "U" : "L"), (int*)&n, B, &lda, &info); const int lin = __LINE__;
-    if (info) {
-      (void)fprintf(stderr, "[%s@%s:%d] INFO = %d\n", __FUNCTION__, __FILE__, lin, info);
-      exit(info);
-    }
+    Xtrsm((char*)(right ? "R" : "L"), (char*)"L", (char*)"N", (char*)"N", (int*)&n, (int*)&n, (dtype*)&one, A, &lda, X, &lda);
   }
   else {
     (void)fprintf(stderr, "[%s@%s] n == %d < Nmin == %d\n", __FUNCTION__, __FILE__, n, Nmin);
@@ -212,7 +235,7 @@ int main(int argc, char* argv[])
   (void)fprintf(stdout, "[init_cpu_mtx] %#.17E s\n", init_time);
 #endif // !NDEBUG
 
-  (void)fprintf(stdout, "\"N\",\"COPY_H2H_MIN_s\",\"COPY_H2H_AVG_s\",\"COPY_H2H_MAX_s\",\"LPOTRF_MIN_s\",\"LPOTRF_AVG_s\",\"LPOTRF_MAX_s\",\"UPOTRF_MIN_s\",\"UPOTRF_AVG_s\",\"UPOTRF_MAX_s\"\n");
+  (void)fprintf(stdout, "\"N\",\"COPY_H2H_MIN_s\",\"COPY_H2H_AVG_s\",\"COPY_H2H_MAX_s\",\"LTRSM_MIN_s\",\"LTRSM_AVG_s\",\"LTRSM_MAX_s\",\"RTRSM_MIN_s\",\"RTRSM_AVG_s\",\"RTRSM_MAX_s\"\n");
   (void)fflush(stdout);
 
   for (int n = Nmin; n <= Nmax; n += Nstep) {
@@ -220,17 +243,17 @@ int main(int argc, char* argv[])
     double Lcopy_times_max = -0.0;
     double Lcopy_times_avg = -0.0;
 
-    double Ucopy_times_min = INFINITY;
-    double Ucopy_times_max = -0.0;
-    double Ucopy_times_avg = -0.0;
+    double Rcopy_times_min = INFINITY;
+    double Rcopy_times_max = -0.0;
+    double Rcopy_times_avg = -0.0;
 
-    double Lpotrf_times_min = INFINITY;
-    double Lpotrf_times_max = -0.0;
-    double Lpotrf_times_avg = -0.0;
+    double Ltrsm_times_min = INFINITY;
+    double Ltrsm_times_max = -0.0;
+    double Ltrsm_times_avg = -0.0;
 
-    double Upotrf_times_min = INFINITY;
-    double Upotrf_times_max = -0.0;
-    double Upotrf_times_avg = -0.0;
+    double Rtrsm_times_min = INFINITY;
+    double Rtrsm_times_max = -0.0;
+    double Rtrsm_times_avg = -0.0;
 
     for (int sample = 0; sample < _samples; ++sample) {
       const double Lcopy_time = copy_mtx_cpu2cpu(false, n);
@@ -243,45 +266,45 @@ int main(int argc, char* argv[])
         Lcopy_times_max = Lcopy_time;
       Lcopy_times_avg += Lcopy_time / _samples;
 
-      const double Lpotrf_time = potrf_cpu(false, n);
+      const double Ltrsm_time = trsm_cpu(false, n);
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[potrf_cpu(%d),%d,L] %#.17E s\n", n, sample, Lpotrf_time);
+      (void)fprintf(stdout, "[trsm_cpu(%d),%d,L] %#.17E s\n", n, sample, Ltrsm_time);
 #endif // !NDEBUG
-      if (Lpotrf_time < Lpotrf_times_min)
-        Lpotrf_times_min = Lpotrf_time;
-      if (Lpotrf_time > Lpotrf_times_max)
-        Lpotrf_times_max = Lpotrf_time;
-      Lpotrf_times_avg += Lpotrf_time / _samples;
+      if (Ltrsm_time < Ltrsm_times_min)
+        Ltrsm_times_min = Ltrsm_time;
+      if (Ltrsm_time > Ltrsm_times_max)
+        Ltrsm_times_max = Ltrsm_time;
+      Ltrsm_times_avg += Ltrsm_time / _samples;
 
-      const double Ucopy_time = copy_mtx_cpu2cpu(true, n);
+      const double Rcopy_time = copy_mtx_cpu2cpu(true, n);
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[copy_mtx_cpu2cpu(%d),%d,U] %#.17E s\n", n, sample, Ucopy_time);
+      (void)fprintf(stdout, "[copy_mtx_cpu2cpu(%d),%d,R] %#.17E s\n", n, sample, Rcopy_time);
 #endif // !NDEBUG
-      if (Ucopy_time < Ucopy_times_min)
-        Ucopy_times_min = Ucopy_time;
-      if (Ucopy_time > Ucopy_times_max)
-        Ucopy_times_max = Ucopy_time;
-      Ucopy_times_avg += Ucopy_time / _samples;
+      if (Rcopy_time < Rcopy_times_min)
+        Rcopy_times_min = Rcopy_time;
+      if (Rcopy_time > Rcopy_times_max)
+        Rcopy_times_max = Rcopy_time;
+      Rcopy_times_avg += Rcopy_time / _samples;
 
-      const double Upotrf_time = potrf_cpu(true, n);
+      const double Rtrsm_time = trsm_cpu(true, n);
 #ifndef NDEBUG
-      (void)fprintf(stdout, "[potrf_cpu(%d),%d,U] %#.17E s\n", n, sample, Upotrf_time);
+      (void)fprintf(stdout, "[trsm_cpu(%d),%d,R] %#.17E s\n", n, sample, Rtrsm_time);
 #endif // !NDEBUG
-      if (Upotrf_time < Upotrf_times_min)
-        Upotrf_times_min = Upotrf_time;
-      if (Upotrf_time > Upotrf_times_max)
-        Upotrf_times_max = Upotrf_time;
-      Upotrf_times_avg += Upotrf_time / _samples;
+      if (Rtrsm_time < Rtrsm_times_min)
+        Rtrsm_times_min = Rtrsm_time;
+      if (Rtrsm_time > Rtrsm_times_max)
+        Rtrsm_times_max = Rtrsm_time;
+      Rtrsm_times_avg += Rtrsm_time / _samples;
     }
 
-    const double copy_times_min = ((Lcopy_times_min <= Ucopy_times_min) ? Lcopy_times_min : Ucopy_times_min);
-    const double copy_times_max = ((Lcopy_times_max >= Ucopy_times_max) ? Lcopy_times_max : Ucopy_times_max);
-    const double copy_times_avg = (Lcopy_times_avg + Ucopy_times_avg) / 2;
+    const double copy_times_min = ((Lcopy_times_min <= Rcopy_times_min) ? Lcopy_times_min : Rcopy_times_min);
+    const double copy_times_max = ((Lcopy_times_max >= Rcopy_times_max) ? Lcopy_times_max : Rcopy_times_max);
+    const double copy_times_avg = (Lcopy_times_avg + Rcopy_times_avg) / 2;
 
     (void)fprintf(stdout, lin_fmt, n,
                   copy_times_min, copy_times_avg, copy_times_max,
-                  Lpotrf_times_min, Lpotrf_times_avg, Lpotrf_times_max,
-                  Upotrf_times_min, Upotrf_times_avg, Upotrf_times_max);
+                  Ltrsm_times_min, Ltrsm_times_avg, Ltrsm_times_max,
+                  Rtrsm_times_min, Rtrsm_times_avg, Rtrsm_times_max);
     (void)fflush(stdout);
   }
   const double fcpu_time = free_cpu_mtx();
