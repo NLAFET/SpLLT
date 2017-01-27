@@ -1,0 +1,33 @@
+#BSUB -J bench_D
+#BSUB -e bench_D.err
+#BSUB -o bench_D.out
+#BSUB -q panther
+#BSUB -n 1
+#BSUB -x
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Cgemm_bench-essl.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Cgemm_bench-essl_smp.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Dgemm_bench-essl.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Dgemm_bench-essl_smp.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Sgemm_bench-essl.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Sgemm_bench-essl_smp.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Zgemm_bench-essl.exe
+#BSUB -data /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Zgemm_bench-essl_smp.exe
+
+mkdir -p -v -m 700 gemm_bench
+cd gemm_bench
+bstage in -all
+
+for ((N=1024; N<=16384; N+=1024))
+do
+#	OMP_NUM_THREADS=1 OMP_PROC_BIND=close OMP_PLACES=cores /usr/bin/numactl -m 0 -N 0 ./Dgemm_bench-essl.exe 10 N N $N $N $N 1.0 1.0 >> Dgemm_bench-essl.csv
+	for ((T=1; T<=8; ++T))
+	do
+		OMP_NUM_THREADS=$T OMP_PROC_BIND=close OMP_PLACES=cores /usr/bin/numactl -m 0 -N 0 ./Dgemm_bench-essl_smp.exe 10 N N $N $N $N 1.0 1.0 >> Dgemm_bench-essl_smp_"$T".csv
+	done
+done
+
+#bstage out -src Dgemm_bench-essl.csv -dst /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Dgemm_bench-essl.csv
+for ((T=1; T<=8; ++T))
+do
+	bstage out -src Dgemm_bench-essl_smp_"$T".csv -dst /gpfs/cds/local/SCD/jpf02/vxn61-jpf02/ppc64le/gemm_bench/Dgemm_bench-essl_smp_"$T".csv
+done
