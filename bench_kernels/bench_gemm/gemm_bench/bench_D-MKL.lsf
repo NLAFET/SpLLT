@@ -1,0 +1,35 @@
+#BSUB -J bench_D-MKL
+#BSUB -n 1
+#BSUB -e bench_D-MKL.err
+#BSUB -o bench_D-MKL.out
+#BSUB -W 23:59
+#BSUB -q numanlys-gpu
+#BSUB -x
+#
+#ENV#
+#
+module load binutils/2.25
+module load gcc/5.3.0
+module load cuda/8.0.44
+module load intel/17.0
+#
+export DATA_DIR=../../../../ralna/TR-SpLLT_GPU/data/`hostname`
+echo "DATA_DIR=$DATA_DIR"
+#export OMP_PLACES="0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30" # CPU0
+#export OMP_PLACES="0,2,4,6,8,10,12,14" # CPU0,THR0
+export OMP_PLACES="{16,18,20,22,24,26,28,30}" # CPU0,THR1
+export OMP_PROC_BIND=close
+echo "OMP_PLACES=$OMP_PLACES"
+echo "OMP_PROC_BIND=$OMP_PROC_BIND"
+for ((N=1024; N<=16384; N+=1024))
+do
+	for ((T=1; T<=8; ++T))
+	do
+		export OMP_NUM_THREADS=$T
+		export MKL_NUM_THREADS=$T
+		echo "OMP/MKL_NUM_THREADS=$MKL_NUM_THREADS"
+		export OUT_CSV=Dgemm_bench-mkl_par_"$T".csv
+		echo "OUT_CSV=$OUT_CSV"
+		/usr/bin/numactl -m 0 -N 0 ./Dgemm_bench-mkl_par.exe 10 N N $N $N $N 1.0 1.0 >> $DATA_DIR/$OUT_CSV
+	done
+done

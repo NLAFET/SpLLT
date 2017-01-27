@@ -1,6 +1,6 @@
-#BSUB -J bench_D
-#BSUB -e bench_D.err
-#BSUB -o bench_D.out
+#BSUB -J bench_D-ESSL
+#BSUB -e bench_D-ESSL.err
+#BSUB -o bench_D-ESSL.out
 #BSUB -q panther
 #BSUB -n 1
 #BSUB -x
