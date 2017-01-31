@@ -4,7 +4,7 @@ program gemm_bench
 
   implicit none
 
-  integer, parameter :: al = 16, seed(2) = (/ 0, 1072693248 /)
+  integer, parameter :: al = 16
 
 #ifdef INT_64
   integer, parameter :: ip = 8
@@ -46,6 +46,7 @@ program gemm_bench
   external :: ZGEMM
 #endif
 
+  integer, allocatable :: seed(:)
   character :: tranA, tranB
   integer(ip) :: m, n, k, rA, kA, rB, kB, ldA, ldB, ldC, i, j
   integer :: argc, runs, length, status
@@ -61,7 +62,14 @@ program gemm_bench
   if ((argc .lt. 6) .or. (argc .gt. 8)) stop 'gemm_bench.exe #runs tranA tranB m n k [ alpha beta ]'
 
   call random_seed(size=length)
-  if (length .ne. size(seed)) stop 'random_seed(size) <> size(seed)'
+  if (length .le. 0) then
+     stop 'random_seed(size) <= 0'
+  else
+     allocate(seed(length))
+     if (length .ge. 1) seed(1) = 0
+     if (length .ge. 2) seed(2) = 1072693248
+     if (length .ge. 3) seed(3:length) = 0
+  end if
   call random_seed(put=seed)
 
   call get_command_argument(1, argv, length, status)
@@ -269,6 +277,7 @@ program gemm_bench
 
   write (*,9) routine, tranA, tranB, m, n, k, times(1), times(2), times(3), times(4)
 
+  deallocate(seed)
   if (runs .gt. 1) deallocate(D)
   deallocate(C)
   deallocate(B)
