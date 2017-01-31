@@ -2,5 +2,11 @@ Please, take a look at Dgemm_bench.sh for an example of ESSL usage with GNU Fort
 
 TODO: Is GNU OpenMP library ABI compatible with IBM OpenMP?
 Can a program with OpenMP directives be:
-- Compiled with GNU and linked to libxlsmp?
-- Compiled with XL and linked to libgomp?
+a) Compiled with GNU and linked to libxlsmp?
+b) Compiled with XL and linked to libgomp?
+
+Ad a):
+Given "foo.f" that contains OpenMP directives,
+gfortran -fopenmp foo.f -c
+gfortran foo.o -Wl,-rpath=/gpfs/panther/local/apps/ibm/lib -L/gpfs/panther/local/apps/ibm/xlsmp/4.1.5/lib -lxlsmp
+Should compile it with GNU Fortran and link it with IBM XL OpenMP library.
