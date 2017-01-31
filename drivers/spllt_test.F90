@@ -91,7 +91,7 @@ contains
     ! Set nrhs
     nrhs = 1
     
-    call splllt_parse_args(options)
+    call spllt_parse_args(options)
 
     cntl%nb   = options%nb
     cntl%ncpu = options%ncpu
