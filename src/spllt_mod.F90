@@ -537,7 +537,7 @@ contains
 
   ! end subroutine amd_order
 
-  subroutine splllt_parse_args(options)
+  subroutine spllt_parse_args(options)
     implicit none
 
     type(spllt_options), intent(inout) :: options
@@ -574,6 +574,8 @@ contains
        end select
     end do
 
-  end subroutine splllt_parse_args
+  end subroutine spllt_parse_args
+
+  
 
 end module spllt_mod

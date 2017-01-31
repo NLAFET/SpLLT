@@ -99,10 +99,16 @@ for mat in flistmat:
     # MA87
     # best_ma87_nb       = blocksizes[best_ma87_t_facto_idx]
     # best_ma87_t_facto  = ma87_t_facto[best_ma87_t_facto_idx]
-    
+
+    # OMP and StarPU task insert
+    # print("%4s & %40s & %10s & %10s \\\\" % (matcount, lp.escape(mat),
+    #                                          lp.print_float(best_spllt_gnu_omp_t_insert),
+    #                                          lp.print_float(best_spllt_t_insert)))
+
+    # OMP task insert and facto
     print("%4s & %40s & %10s & %10s \\\\" % (matcount, lp.escape(mat),
-                                             lp.print_float(best_spllt_gnu_omp_t_insert),
-                                             lp.print_float(best_spllt_t_insert)))
+                                             lp.print_float(best_spllt_gnu_omp_t_facto),
+                                             lp.print_float(best_spllt_gnu_omp_t_insert)))
 
     # print("%40s & %10s & %10s & %10s \\\\" % (lp.escape(mat), 
     #                                           lp.print_float(best_spllt_t_insert),
