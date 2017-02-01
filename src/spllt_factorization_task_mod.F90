@@ -1027,7 +1027,7 @@ contains
          & int(wp,kind=c_size_t))
     ! call starpu_f_data_unregister_submit(lik_hdl)
 #endif
-    write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl
+    ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl
     ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
     return
     

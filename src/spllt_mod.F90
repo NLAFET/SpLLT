@@ -18,6 +18,16 @@ module spllt_mod
   !    module procedure spllt_bwerr_1d
   ! end interface spllt_bwerr
 
+  ! Read matrix in Matrix Market foramt  
+  interface mm_read
+     module procedure mm_double_read 
+  end interface mm_read
+
+  ! convert matrix from COO to CSC format
+  interface coo_to_csc
+     module procedure coo_to_csc_double
+  end interface coo_to_csc
+
 contains
 
   ! initialize solver
@@ -560,6 +570,8 @@ contains
           argnum = argnum + 1
           read( argval, * ) options%ncpu
        case("--mat")
+          ! input matrix in Rutherford Boeing format
+          options%fmt = 'csc'
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%mat
@@ -569,13 +581,147 @@ contains
           read( argval, * ) options%nemin
        case("--prune-tree")
           options%prune_tree = .true.
+       case("--mm")
+          ! input matrix in Matrix Market format
+          options%fmt = 'coo'
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%mat
        case default
-          write(*,'("Unrecognised command line argument: ", a20)'), argval
+          write(*,'("Unrecognised command line argument: ", a20)') argval
        end select
     end do
 
   end subroutine spllt_parse_args
 
+  ! Read matrix in Matrix Market foramt
+  subroutine mm_double_read(matfile, m, n, nnz, indx, jndx, val, info)
+    use spral_random, only : random_state, random_real
+    implicit none
+    
+    character(len=*), intent(in)   :: matfile ! matrix file name
+    integer, intent(out) :: m
+    integer, intent(out) :: n
+    integer, intent(out) :: nnz
+    integer, dimension(:), allocatable, intent(out) :: indx ! row index array
+    integer, dimension(:), allocatable, intent(out) :: jndx ! column index array
+    real(wp), dimension(:), allocatable, intent(out) :: val ! entry array
+    integer, intent(out) :: info
+
+    integer :: i
+    character(len=20) :: rep ! Representation e.g. Coordinate
+    character(len=20) :: field, symm, typ, fmt
+    logical :: values ! values provided
+    type(random_state) :: state  
+    integer :: err ! error code
+
+    info = 0
+
+    ! initialize matrix description
+    rep   = ''
+    field = ''
+    symm  = ''
+    typ   = ''
+    fmt   = ''
   
+    open(4,file=matfile, status='OLD', action='READ', iostat=err)
+    if (err.gt.0) then
+       goto 100
+    end if
+
+    read(4,*)rep,typ,fmt,field,symm
+
+    read(4,*)rep
+    do
+       if(rep(1:1) .ne. '%') exit
+       read(4,*)rep
+    end do
+
+    backspace(4)
+
+    read(4,*)m,n,nnz
+
+    values = field .ne. 'pattern'
+    ! print *, values
+    allocate(indx(nnz), jndx(nnz), val(nnz))
+
+    if(values) then
+       do i=1, nnz
+          read(4,*)indx(i), jndx(i), val(i)
+       end do
+    else
+       ! make up values
+       do i=1, nnz
+          read(4,*)indx(i), jndx(i)
+          val(i) = random_real(state, .false.)
+       end do
+    end if
+
+    close(4)
+
+100 continue
+
+    info = err
+    return
+
+  end subroutine mm_double_read
+
+  ! convert matrix from COO to CSC format
+  subroutine coo_to_csc_double(m, n, nnz, indx_in, jndx, val_in, & 
+       indx_out, val_out, ptr, info)
+    implicit none
+
+    integer, intent(in) :: m ! number of rows
+    integer, intent(in) :: n ! number of columns
+    integer, intent(in) :: nnz ! number of entries
+    integer, dimension(nnz), intent(in) :: indx_in ! row index in COO format
+    integer, dimension(nnz), intent(in) :: jndx ! row index in COO format
+    real(wp), dimension(nnz), intent(in) :: val_in ! entry array in COO format
+    integer, dimension(:), allocatable, intent(out) :: indx_out ! row index in CSC format
+    real(wp), dimension(:), allocatable, intent(out) :: val_out ! entry array in CSC format
+    integer, dimension(:), allocatable, intent(out) :: ptr ! pointer array in CSC format
+    integer, intent(out) :: info ! status
+
+    integer, dimension(:), allocatable :: work ! counter
+    integer :: i, j, k
+
+    info = 0 ! init to success
+
+    ! allocate ptr 
+    allocate(ptr(n+1))
+    ! allocate temporary array
+    allocate(work(n))
+     
+    work = 0 ! init
+
+    ! count number of entries per columns
+    do k = 1, nnz
+       i = indx_in(k)
+       j = jndx(k)
+       work(j) = work(j)+1 
+    end do
+
+    ! create ptr array, such that row indexe for column j are in
+    ! indx(ptr(i):ptr(i+1)-1) and entries in val(ptr(i):ptr(i+1)-1)
+    ptr(1) = 1
+    do k = 2, n+1
+       ptr(k) = ptr(k-1) + work(k-1)
+    end do
+
+    ! create new indx and val array
+    allocate(indx_out(nnz), val_out(nnz))
+    work = 0
+    do k = 1, nnz
+       i = indx_in(k)
+       j = jndx(k)
+       indx_out(ptr(j)+work(j)) = i
+       val_out(ptr(j)+work(j)) = val_in(k)
+       work(j) = work(j)+1       
+    end do
+
+    ! deallocate temporary array
+    deallocate(work)
+
+  end subroutine coo_to_csc_double
 
 end module spllt_mod

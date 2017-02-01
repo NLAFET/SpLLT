@@ -41,15 +41,22 @@ contains
     character(len=*), intent(in) :: mf ! matrix file
     type(spllt_cntl) :: cntl
 
-    ! matrix reader options
+    ! matrix reader options (Rutherford Boeing)
     type(rb_read_options) :: rb_options
     integer :: rb_flag
-    
-    ! Matrix description
+    ! Matrix description (Rutherford Boeing)
     character(len=200) :: matfile = ''
     integer :: m, n
     integer, dimension(:), allocatable :: ptr, row
     real(wp), dimension(:), allocatable :: val
+
+    ! matrix reader options (Matrix Market)
+    integer :: mm_flag
+    integer :: nnz
+    ! Matrix description (Rutherford Boeing)
+    integer, dimension(:), allocatable :: indx, jndx
+    real(wp), dimension(:), allocatable :: val_in
+
 
     ! right-hand side and solution
     integer :: nrhs
@@ -100,6 +107,7 @@ contains
     if (options%mat.ne.'') then
        matfile = options%mat
     else
+       options%fmt = 'csc'
        matfile = mf
     end if
 
@@ -113,14 +121,44 @@ contains
     
     ! Read in a matrix
     write(*, "(a)") "Reading..."
-    ! DEBUG ensure matrix is diag dominant
-    rb_options%values = 3 ! Force diagonal dominance
-    call rb_read(matfile, m, n, ptr, row, val, rb_options, rb_flag)
-    if(rb_flag.ne.0) then
-       print *, "Rutherford-Boeing read failed with error ", rb_flag
-       stop
-    endif
+    if (options%fmt .eq. 'csc') then
+       ! Rutherford boeing format
+
+       ! DEBUG ensure matrix is diag dominant
+       rb_options%values = 3 ! Force diagonal dominance
+       call rb_read(matfile, m, n, ptr, row, val, rb_options, rb_flag)
+       if(rb_flag.ne.0) then
+          print *, "Rutherford-Boeing read failed with error ", rb_flag
+          stop
+       endif
+
+    else if (options%fmt .eq. 'coo') then
+       ! Matrix Market format
+
+       ! read matrix
+       call mm_read(matfile, m, n, nnz, indx, jndx, val_in, mm_flag)
+       if(mm_flag.ne.0) then
+          print *, "Matrix Market read failed with error ", mm_flag
+          stop
+       endif
+       
+       ! convert to csc format
+       call coo_to_csc_double(m, n, nnz, indx, jndx, val_in, & 
+            row, val, ptr, mm_flag)
+       if(mm_flag.ne.0) then
+          print *, "COO to CSC convertion failed with error ", mm_flag
+          stop
+       endif
+
+       deallocate(indx, jndx, val_in)
+
+       ! print *, "m,n,nnz: ", m,n,nnz
+       ! print *, "size ptr: ", size(ptr)
+       ! print *, "size ptr: ", size(val)
+       ! print *, "mm_flag: ", mm_flag
+    end if
     write(*, "(a)") "ok"
+    ! stop
 
     ! Make up a rhs associated with the solution x = 1.0
     allocate(rhs(n, nrhs), soln(n, nrhs))
