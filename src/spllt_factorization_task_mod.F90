@@ -964,6 +964,8 @@ contains
        p = 0
     end if
 
+    ! print *, 'update_between_task'
+
     s_nb = snode%nb    ! block size in source node
     n1  = dbc%blk%blkn ! width of column
 
@@ -1029,7 +1031,7 @@ contains
 #endif
     ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl
     ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
-    return
+    ! return
     
     csrc  = 1 + (mod(cptr-1, s_nb))*n1
     csrc2 = (cptr2 - cptr + 1)*n1

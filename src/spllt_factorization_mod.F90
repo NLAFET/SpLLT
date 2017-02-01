@@ -679,6 +679,7 @@ contains
     integer :: k
     integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
 
+    ! print *, 'factorize_apply_node' 
     ! write(*,*) "---------- node ----------"
     ! write(*,*) 'snode: ', snode 
 
@@ -704,7 +705,7 @@ contains
     !  Initialize cptr to correspond to the first row of the rectangular part of 
     !  the snode matrix.
     cptr = 1 + numcol
-    ! write(*,*)"numrow: ", numrow
+    ! write(*,*)"numrow: ", numrow 
     do while(a_num.gt.0)
        anode => keep%nodes(a_num) 
        a_node => fdata%nodes(a_num)

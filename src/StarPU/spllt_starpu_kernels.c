@@ -524,6 +524,8 @@ void spllt_starpu_insert_update_between_c(starpu_data_handle_t *lik_handles, int
    int ret, i, nh;
    struct starpu_data_descr *descrs;
 
+   /* printf("[spllt_starpu_insert_update_between_c]\n"); */
+
    nh = 0;
    descrs = malloc((nhlik+nhljk+5) * sizeof(struct starpu_data_descr));
 
