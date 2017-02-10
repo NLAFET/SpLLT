@@ -80,7 +80,7 @@ program run_prob
 
    control%nb   = options%nb
    ! control%ncpu = options%ncpu
-   cntl%ncpu = options%ncpu
+   ! cntl%ncpu = options%ncpu
 
    if (options%mat .ne. '') then
       matfile = options%mat
