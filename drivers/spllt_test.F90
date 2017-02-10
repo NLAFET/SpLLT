@@ -104,6 +104,7 @@ contains
    control%nb   = options%nb
    ! control%ncpu = options%ncpu
    cntl%nb = options%nb
+   cntl%ncpu = options%ncpu
 
    if (options%mat .ne. '') then
       matfile = options%mat
