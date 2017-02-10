@@ -230,7 +230,7 @@ if(MA87_TEST_DRIVER MATCHES ON)
 
   MESSAGE( STATUS "MA87 test driver:         " ${MA87_TEST_DRIVER} )
 
-  add_executable(spllt_test run_ma87.f90)
+  add_executable(spllt_test drivers/run_ma87.f90)
 else()
   # add_executable(spllt_test spllt_test.F90)
   add_executable(spllt_test drivers/spllt_test.F90)

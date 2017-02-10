@@ -44,6 +44,7 @@ contains
     ! matrix reader options (Rutherford Boeing)
     type(rb_read_options) :: rb_options
     integer :: rb_flag
+
     ! Matrix description (Rutherford Boeing)
     character(len=200) :: matfile = ''
     integer :: m, n
@@ -97,33 +98,32 @@ contains
 
     ! Set nrhs
     nrhs = 1
-    
-    call spllt_parse_args(options)
 
-    cntl%nb   = options%nb
-    cntl%ncpu = options%ncpu
+   call spllt_parse_args(options)
 
-    ! Set matrix file
-    if (options%mat.ne.'') then
-       matfile = options%mat
-    else
-       options%fmt = 'csc'
-       matfile = mf
-    end if
+   control%nb   = options%nb
+   ! control%ncpu = options%ncpu
 
-    ! Set nemin
+   if (options%mat .ne. '') then
+      matfile = options%mat
+   else
+      matfile = 'matrix.rb'
+   end if
+
     if (options%nemin .gt. 0) then
-       cntl%nemin = options%nemin
+       control%nemin = options%nemin
     end if
 
-    ! Tree pruning
-    if (options%prune_tree) cntl%prune_tree = .true.
+    write(*,*) '  mat: ', matfile
+    write(*,*) '   nb: ', control%nb    
+    write(*,*) ' ncpu: ', options%ncpu
+    write(*,*) 'nemin: ', control%nemin
     
     ! Read in a matrix
     write(*, "(a)") "Reading..."
     if (options%fmt .eq. 'csc') then
        ! Rutherford boeing format
-
+       print *, "TETETET"
        ! DEBUG ensure matrix is diag dominant
        rb_options%values = 3 ! Force diagonal dominance
        call rb_read(matfile, m, n, ptr, row, val, rb_options, rb_flag)
@@ -156,9 +156,13 @@ contains
        ! print *, "size ptr: ", size(ptr)
        ! print *, "size ptr: ", size(val)
        ! print *, "mm_flag: ", mm_flag
+    else
+       write(*, "(a)") "Matrix format not suported"
+       stop
     end if
     write(*, "(a)") "ok"
-    ! stop
+
+    print *, "n = ", n
 
     ! Make up a rhs associated with the solution x = 1.0
     allocate(rhs(n, nrhs), soln(n, nrhs))

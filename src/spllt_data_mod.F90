@@ -157,7 +157,7 @@ module spllt_data_mod
      character(len=100) :: mat = ''
      integer :: nemin = -1            ! nemin parameter for analysis
      logical :: prune_tree = .false.  ! use tree pruning
-     character(len=3) :: fmt='rb'
+     character(len=3) :: fmt='csc'
   end type spllt_options
 
 end module spllt_data_mod
