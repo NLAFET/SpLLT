@@ -116,6 +116,8 @@ contains
        control%nemin = options%nemin
     end if
 
+    if (options%prune_tree) cntl%prune_tree = .true. 
+
     write(*,*) '  mat: ', matfile
     write(*,*) '   nb: ', options%nb    
     write(*,*) ' ncpu: ', options%ncpu
