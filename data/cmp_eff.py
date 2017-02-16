@@ -95,7 +95,7 @@ for mat in flistmat:
     best_spllt_t_insert = spllt_t_insert[best_spllt_t_facto_idx]
     best_spllt_flops    = spllt_flops[best_spllt_t_facto_idx]
     # GFlops 
-    best_spllt_flops    = best_spllt_flops/(1024*1024*1024)
+    best_spllt_flops    = best_spllt_flops/1e9
     # print best_spllt_t_facto
 
     # STF
