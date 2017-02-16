@@ -103,6 +103,8 @@ contains
 
    control%nb   = options%nb
    ! control%ncpu = options%ncpu
+   cntl%nb = options%nb
+   cntl%ncpu = options%ncpu
 
    if (options%mat .ne. '') then
       matfile = options%mat
@@ -114,8 +116,10 @@ contains
        control%nemin = options%nemin
     end if
 
+    if (options%prune_tree) cntl%prune_tree = .true. 
+
     write(*,*) '  mat: ', matfile
-    write(*,*) '   nb: ', control%nb    
+    write(*,*) '   nb: ', options%nb    
     write(*,*) ' ncpu: ', options%ncpu
     write(*,*) 'nemin: ', control%nemin
     
@@ -123,7 +127,7 @@ contains
     write(*, "(a)") "Reading..."
     if (options%fmt .eq. 'csc') then
        ! Rutherford boeing format
-       print *, "TETETET"
+
        ! DEBUG ensure matrix is diag dominant
        rb_options%values = 3 ! Force diagonal dominance
        call rb_read(matfile, m, n, ptr, row, val, rb_options, rb_flag)
