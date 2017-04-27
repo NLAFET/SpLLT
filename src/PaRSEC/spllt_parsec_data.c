@@ -1,12 +1,12 @@
-#include <dague.h>
-#include "dague_internal.h"
-#include <dague/constants.h>
+#include "parsec.h"
+#include "parsec_internal.h"
+#include "parsec/constants.h"
 
 #include "spllt_parsec_data.h"
 
-static inline dague_data_t* get_or_create_data(spllt_parsec_data_t* dat, int snode) {
+static inline parsec_data_t* get_or_create_data(spllt_parsec_data_t* dat, int snode) {
 
-   dague_data_t* data = dat->data;
+   parsec_data_t* data = dat->data;
 
    /* if (data == NULL) { */
       
@@ -24,11 +24,11 @@ static inline dague_data_t* get_or_create_data(spllt_parsec_data_t* dat, int sno
 
    /* } */
     
-   return dague_data_create(&data, &(dat->super), 
-                            0, NULL, 0);
+   return parsec_data_create(&data, &(dat->super), 
+                             0, NULL, 0);
 }
 
-static dague_data_t* factorize_data_of(dague_ddesc_t *desc, ...) {
+static parsec_data_t* factorize_data_of(parsec_ddesc_t *desc, ...) {
 
   spllt_parsec_data_t* dat = (spllt_parsec_data_t*)desc;
   va_list ap;
@@ -47,7 +47,7 @@ spllt_parsec_data_t* spllt_parsec_data_create(int num_nodes) {
 
    data->num_nodes = num_nodes;
    data->data = NULL;
-   memcpy(&(data->super), &dague_static_local_data_ddesc, sizeof(dague_ddesc_t));
+   memcpy(&(data->super), &parsec_static_local_data_ddesc, sizeof(parsec_ddesc_t));
    data->super.data_of = factorize_data_of;
 
    return data;

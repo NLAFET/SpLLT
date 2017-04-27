@@ -6,7 +6,7 @@
 #BSUB -o run.log
 #BSUB -e run.err
 #BSUB -x
-#BSUB -app no_turbo
+# #BSUB -app no_turbo
 
 module purge
 module load use.own
@@ -19,7 +19,7 @@ module load metis/4.0.3
 module load hsl/latest
 module load spral/master-gnu-6.1.0
 
-build="starpu_prune"
+build="ma87"
 
 build_dir=`pwd`
 id=`whoami`
@@ -34,31 +34,39 @@ mkdir -p $outdir
 
 case $build in
     stf)
-        mkdir -p $outdir/spllt_stf
+        mkdir -p $outdir/stf
         ;;
     parsec)
-        mkdir -p $outdir/spllt_parsec
-        mkdir -p $outdir/spllt_parsec/traces
+        mkdir -p $outdir/parsec
+        mkdir -p $outdir/parsec/traces
         # make clean
         # make parsec
         ;;
     starpu|starpu_prune)
-        mkdir -p $outdir/spllt_starpu
-        mkdir -p $outdir/spllt_starpu/traces
+        mkdir -p $outdir/starpu
+        ;;
+    starpu_trace)
+        mkdir -p $outdir/starpu/traces
+        module unload starpu/trunk
+        module load starpu/trunk-fxt
+
+        trace_dir=/tmp
+        prof_file=prof_file_scarf462_0
+
         ;;
     starpu_nested_stf)
-        mkdir -p $outdir/spllt_starpu_nested_stf
-        mkdir -p $outdir/spllt_starpu_nested_stf/traces
+        mkdir -p $outdir/starpu_nested_stf
+        mkdir -p $outdir/starpu_nested_stf/traces
         ;;
     gnu_omp|gnu_omp_prune)
-        mkdir -p $outdir/spllt_omp
-        mkdir -p $outdir/spllt_omp/gnu
-        mkdir -p $outdir/spllt_omp/gnu/traces
+        mkdir -p $outdir/omp
+        mkdir -p $outdir/omp/gnu
+        mkdir -p $outdir/omp/gnu/traces
         ;;
     intel_omp|intel_omp_prune)
-        mkdir -p $outdir/spllt_omp
-        mkdir -p $outdir/spllt_omp/intel
-        mkdir -p $outdir/spllt_omp/intel/traces
+        mkdir -p $outdir/omp
+        mkdir -p $outdir/omp/intel
+        mkdir -p $outdir/omp/intel/traces
         ;;
     ma87)
         mkdir -p $outdir/ma87
@@ -66,14 +74,22 @@ case $build in
 esac
 
 # Poisson 3D
-# msz_list=(32 64 96 128 160)
+msz_list=(20 60 80 100 120 140 160)
+# msz_list=(64)
 
 # Poisson 2D
-msz_list=(32 64 96 128 256 512 1024)
+# msz_list=(32 64 96 128 256 512 1024)
+
+# Biharmonic 2D
+# msz_list=(32 64 128 256 512)
+
 nb_list=(256 384 512 768 1024)
 nemin_list=(32)
 
-ncpu_list=(27)
+# ncpu_list=(7 14 21)
+ncpu_list=(28)
 
+. ./run_tests_helmholtz3d.sh
 # . ./run_tests_poisson3d.sh
-. ./run_tests_poisson2d.sh
+# . ./run_tests_poisson2d.sh
+# . ./run_tests_biharmonic2d.sh

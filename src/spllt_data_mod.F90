@@ -3,7 +3,7 @@ module spllt_data_mod
   use iso_c_binding
   use starpu_f_mod
 #elif defined(SPLLT_USE_PARSEC)
-  use dague_f08_interfaces
+  use parsec_f08_interfaces
 #endif
   use hsl_ma87_double, only: block_type, node_type 
   ! use hsl_zd11_double
@@ -35,7 +35,7 @@ module spllt_data_mod
 #endif
 
 #if defined(SPLLT_USE_PARSEC)
-  type(dague_context_t) :: ctx
+  type(parsec_context_t) :: ctx
   integer(c_int)        :: nds
   integer(c_int)        :: rank
 #endif

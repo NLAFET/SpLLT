@@ -1,9 +1,9 @@
 extern "C" %{
 
-#include "dague.h"
+#include "parsec.h"
 
-#include "dague_internal.h"
-#include "dague/private_mempool.h"
+#include "parsec_internal.h"
+#include "parsec/private_mempool.h"
    //#include "data_dist/matrix/two_dim_rectangle_cyclic.h"
 #include "data_dist/matrix/matrix.h"
 #include "data_dist/matrix/two_dim_tabular.h"
@@ -31,7 +31,7 @@ maxmn          [type = int]
 val            [type = "void *"]
 nval           [type = int]
 keep           [type = "void *"]
-p_work         [type = "dague_memory_pool_t *" size = "(sizeof(double)*maxmn*maxmn)"]
+p_work         [type = "parsec_memory_pool_t *" size = "(sizeof(double)*maxmn*maxmn)"]
 
 
 /* init_node(snode) */
@@ -434,7 +434,7 @@ BODY
  
    /* printf("csrc: %d, rsrc: %d\n", csrc, rsrc);  */
 
-   void *buffer = dague_private_memory_pop( p_work );
+   void *buffer = parsec_private_memory_pop( p_work );
       
    /* if (!sync) { */
    spllt_update_between_block_c(m, n, bc_ij, n1, bc_jk, bc_ik, dcol, scol,
@@ -442,7 +442,7 @@ BODY
                                 min_width_blas, buffer);
    /* } */
 
-   dague_private_memory_push( p_work, buffer );
+   parsec_private_memory_push( p_work, buffer );
 
 #else
    // in a shared memory environement it is possible to exploit the
@@ -490,7 +490,7 @@ BODY
       int csrc = get_dep_in_csrc(bcs, id, i);
       int rsrc = get_dep_in_rsrc(bcs, id, i);
 
-      void *buffer = dague_private_memory_pop( p_work );
+      void *buffer = parsec_private_memory_pop( p_work );
 
       void *blk_jk = get_blk(bcs, id_jk);
       void *blk_ik = get_blk(bcs, id_ik);
@@ -504,7 +504,7 @@ BODY
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);
 
-      dague_private_memory_push( p_work, buffer );
+      parsec_private_memory_push( p_work, buffer );
 
    }
 #endif
@@ -515,49 +515,49 @@ END
 
 extern "C" %{
    
-   dague_handle_t* spllt_parsec_factorize(blk_desc_t *blk_desc, void *snodes, int nnodes, 
-                                          void *bcs, int nbc, 
+   parsec_handle_t* spllt_parsec_factorize(blk_desc_t *blk_desc, void *snodes, int nnodes, 
+                                          void *bcs, int nbc,
                                           long int *diags, int ndiag,
                                           int min_width_blas, int maxmn,
                                           void *val, int nval, void *keep) {
 
-      dague_factorize_handle_t* fac_hdl;
+      parsec_factorize_handle_t* fac_hdl;
 
 
       printf("[factorize] number of blocks: %d\n", nbc);
       printf("[factorize] number of diag blocks / block columns: %d\n", ndiag);
       printf("[factorize] nnodes: %d\n", nnodes);
             
-      fac_hdl = dague_factorize_new(blk_desc,
-                                    snodes, nnodes,
-                                    bcs, nbc,
-                                    diags, ndiag,
-                                    min_width_blas, maxmn,
-                                    val, nval, keep,
-                                    NULL);
+      fac_hdl = parsec_factorize_new(blk_desc,
+                                     snodes, nnodes,
+                                     bcs, nbc,
+                                     diags, ndiag,
+                                     min_width_blas, maxmn,
+                                     val, nval, keep,
+                                     NULL);
 
       assert( NULL != fac_hdl );
 
-      fac_hdl->p_work = ( dague_memory_pool_t* ) malloc(sizeof(dague_memory_pool_t));
-      dague_private_memory_init( fac_hdl->p_work, maxmn * maxmn * sizeof(double) );
+      fac_hdl->_g_p_work = ( parsec_memory_pool_t* ) malloc(sizeof(parsec_memory_pool_t));
+      parsec_private_memory_init( fac_hdl->_g_p_work, maxmn * maxmn * sizeof(double) );
 
-      dague_matrix_add2arena( fac_hdl->arenas[DAGUE_factorize_DEFAULT_ARENA], dague_datatype_double_t,
-                              matrix_UpperLower, 1,
-                              maxmn, maxmn, maxmn,
-                              DAGUE_ARENA_ALIGNMENT_SSE, -1 );
+      parsec_matrix_add2arena( fac_hdl->arenas[PARSEC_factorize_DEFAULT_ARENA], parsec_datatype_double_t,
+                               matrix_UpperLower, 1,
+                               maxmn, maxmn, maxmn,
+                               PARSEC_ARENA_ALIGNMENT_SSE, -1 );
       
       return &fac_hdl->super;    
    }
 
-   void spllt_parsec_factorize_finalize( dague_handle_t *handle ) {
+   void spllt_parsec_factorize_finalize( parsec_handle_t *handle ) {
       
-      dague_factorize_handle_t *fac_hdl = (dague_factorize_handle_t *) handle;
+      parsec_factorize_handle_t *fac_hdl = (parsec_factorize_handle_t *) handle;
 
       printf("[factorize] finalize\n");
       
-      dague_private_memory_fini(fac_hdl->p_work);
-      free(fac_hdl->p_work);
+      parsec_private_memory_fini(fac_hdl->_g_p_work);
+      free(fac_hdl->_g_p_work);
 
-      dague_handle_free(handle);
+      parsec_handle_free(handle);
    }
 %}

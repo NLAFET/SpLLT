@@ -6,7 +6,7 @@ module spllt_mod
   use iso_c_binding
   use starpu_f_mod
 #elif defined(SPLLT_USE_PARSEC)
-  use dague_f08_interfaces
+  use parsec_f08_interfaces
 #endif
   implicit none
   
@@ -41,7 +41,7 @@ contains
     use trace_mod
 #endif
 #elif defined(SPLLT_USE_PARSEC)
-    use dague_f08_interfaces
+    use parsec_f08_interfaces
     use spllt_parsec_mod
 #endif
 
@@ -81,7 +81,7 @@ contains
 
 #elif defined(SPLLT_USE_PARSEC)
 
-    ctx = parsec_init(cntl%ncpu, nds, rank)
+    ctx = spllt_parsec_init(cntl%ncpu, nds, rank)
     write(*,'("Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
     ! call dague_init(cntl%ncpu, ctx)
 #endif
@@ -103,7 +103,7 @@ contains
     use trace_mod
 #endif
 #elif defined(SPLLT_USE_PARSEC)
-    use dague_f08_interfaces
+    use parsec_f08_interfaces
     use spllt_parsec_mod
 #endif
     ! use spllt_factorization_task_mod 
@@ -132,7 +132,7 @@ contains
 #elif defined(SPLLT_USE_PARSEC)
 
     ! call dague_fini(ctx)
-    call parsec_fini(ctx)
+    call spllt_parsec_fini(ctx)
 
 #endif
     return

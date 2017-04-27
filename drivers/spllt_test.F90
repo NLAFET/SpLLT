@@ -32,7 +32,7 @@ contains
     use trace_mod
 #endif
 #elif defined(SPLLT_USE_PARSEC)
-    use dague_f08_interfaces
+    use parsec_f08_interfaces
     use spllt_parsec_mod
     use spllt_ptg_mod
 #endif
@@ -273,7 +273,7 @@ contains
     !$omp taskwait
 #elif (SPLLT_USE_PARSEC)
     ! write(*,'("[>] Parsec wait rank: ", i6)') rank
-    call dague_context_wait(ctx)
+    call parsec_context_wait(ctx)
 #endif
 
     if(info%flag .lt. spllt_success) then

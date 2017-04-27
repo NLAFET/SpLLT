@@ -42,11 +42,11 @@ esac
 # - gnu_intel: SpLLT OpenMP version. Intel compiler 
 # - parsec: PaRSEC version of SpLLT
 
-build="stf"
+build="gnu_omp"
 
 build_dir=`pwd`
 id=`whoami`
-outdir=data
+outdir=../data
 #outsuffix="_NOSUB"
 outsuffix=
 
@@ -58,39 +58,39 @@ mkdir -p $outdir/ma87
 
 case $build in
     stf)
-        mkdir -p $outdir/spllt_stf
+        mkdir -p $outdir/stf
         ;;
     parsec)
-        mkdir -p $outdir/spllt_parsec
-        mkdir -p $outdir/spllt_parsec/traces
+        mkdir -p $outdir/parsec
+        mkdir -p $outdir/parsec/traces
         # make clean
         # make parsec
         ;;
     starpu|starpu_prune)
-        mkdir -p $outdir/spllt_starpu
-        mkdir -p $outdir/spllt_starpu/traces
+        mkdir -p $outdir/starpu
+        mkdir -p $outdir/starpu/traces
         ;;
     starpu_nested_stf)
-        mkdir -p $outdir/spllt_starpu_nested_stf
-        mkdir -p $outdir/spllt_starpu_nested_stf/traces
+        mkdir -p $outdir/starpu_nested_stf
+        mkdir -p $outdir/starpu_nested_stf/traces
         ;;
     gnu_omp|gnu_omp_prune)
-        mkdir -p $outdir/spllt_omp
-        mkdir -p $outdir/spllt_omp/gnu
-        mkdir -p $outdir/spllt_omp/gnu/traces
+        mkdir -p $outdir/omp
+        mkdir -p $outdir/omp/gnu
+        mkdir -p $outdir/omp/gnu/traces
         ;;
     intel_omp|intel_omp_prune)
-        mkdir -p $outdir/spllt_omp
-        mkdir -p $outdir/spllt_omp/intel
-        mkdir -p $outdir/spllt_omp/intel/traces
+        mkdir -p $outdir/omp
+        mkdir -p $outdir/omp/intel
+        mkdir -p $outdir/omp/intel/traces
         ;;
     ma87)
         mkdir -p $outdir/ma87
         ;;
 esac
 
-ncpu_list=(27)
-nb_list=(256 384 512 768 1024)
+ncpu_list=(28)
+nb_list=(256 384 512 768 1024 1536)
 nemin_list=(32)
 
 . ./run_tests_loop.sh

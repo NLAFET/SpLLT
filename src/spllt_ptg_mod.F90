@@ -10,7 +10,7 @@ contains
 !    use spllt_factorization_mod
 #if defined(SPLLT_USE_PARSEC)
     use iso_c_binding
-    use dague_f08_interfaces
+    use parsec_f08_interfaces
     use spllt_parsec_mod
     use spllt_parsec_factorization_mod
 #endif
@@ -30,7 +30,7 @@ contains
 
 #if defined(SPLLT_USE_PARSEC)
     ! PaRSEC 
-    type(dague_handle_t)            :: fac_hdl
+    type(parsec_handle_t)            :: fac_hdl
     type(c_ptr)                     :: bc_c, nodes_c, diags_c, keep_c, val_c
     integer(c_int)                  :: nbc, nval
     integer                         :: start_setup_t, stop_setup_t, rate_setup_t
@@ -85,12 +85,12 @@ contains
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
     
     ! add factorization DAG to PaRSEC
-    call dague_enqueue(ctx, fac_hdl)
+    call parsec_enqueue(ctx, fac_hdl)
     call system_clock(stop_setup_t)
     write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
     ! start factorization
-    call dague_context_start(ctx)
+    call parsec_context_start(ctx)
 #endif
 
 10  if(st.ne.0) then

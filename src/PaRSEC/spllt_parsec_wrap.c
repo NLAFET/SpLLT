@@ -1,11 +1,11 @@
-#include "dague.h"
-#include "dague_internal.h"
+#include "parsec.h"
+#include "parsec_internal.h"
 
-dague_context_t* parsec_init( int nb_cores, int *nodes, int *rank) {
+parsec_context_t* spllt_parsec_init( int nb_cores, int *nodes, int *rank) {
 
-   dague_context_t* context;
+   parsec_context_t* context;
 
-#if defined(DAGUE_HAVE_MPI)
+#if defined(PARSEC_HAVE_MPI)
     {
         int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
@@ -17,18 +17,18 @@ dague_context_t* parsec_init( int nb_cores, int *nodes, int *rank) {
     *rank = 0;
 #endif
 
-   context = dague_init(nb_cores, NULL, NULL);
+   context = parsec_init(nb_cores, NULL, NULL);
 
    return context;
 }
 
-void parsec_fini(dague_context_t **ctx) {
+void spllt_parsec_fini(parsec_context_t **ctx) {
 
    printf("[parsec fini]\n");
    
-   dague_fini(ctx);
+   parsec_fini(ctx);
 
-#ifdef DAGUE_HAVE_MPI
+#ifdef PARSEC_HAVE_MPI
    MPI_Finalize();
 #endif
 

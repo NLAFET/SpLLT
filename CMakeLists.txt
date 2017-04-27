@@ -100,13 +100,16 @@ elseif(${RUNTIME} MATCHES "Parsec")
   set(PARSEC_DIR $ENV{PARSECDIR} CACHE PATH "Location of Parsec Library")
   set(PARSEC_SRC_DIR $ENV{PARSECSRCDIR} CACHE PATH "Location of Parsec sources")
   include_directories(${PARSEC_SRC_DIR})
-  include_directories(${PARSEC_SRC_DIR}/dague)
-  include_directories(${PARSEC_SRC_DIR}/dague/include)
-  include_directories(${PARSEC_SRC_DIR}/dague/include/dague)
-  include_directories(${PARSEC_DIR}/dague/include)
-  include_directories(${PARSEC_DIR}/dague/fortran)
+  include_directories(${PARSEC_SRC_DIR}/parsec)
+  include_directories(${PARSEC_SRC_DIR}/parsec/include)
+  include_directories(${PARSEC_SRC_DIR}/parsec/include/dague)
+  include_directories(${PARSEC_DIR}/parsec/include)
+  include_directories(${PARSEC_DIR}/parsec/fortran)
   include_directories(${PARSEC_DIR}/data_dist/matrix)
 
+  MESSAGE( STATUS "Parsec directory ENV: " $ENV{PARSECDIR} )
+  MESSAGE( STATUS "Parsec directory: " ${PARSEC_SRC_DIR} )
+  
   # find_library(PARSEC_LIBRARY dague_profilef PATHS ${PARSEC_DIR}/dague/fortran)
   # find_library(PARSEC_LIBRARY daguef PATHS ${PARSEC_DIR}/dague/fortran)
   # find_library(PARSEC_LIBRARY dague_distribution PATHS ${PARSEC_DIR}/data_dist)
@@ -116,28 +119,28 @@ elseif(${RUNTIME} MATCHES "Parsec")
 
   # Parsec libraries
   find_library(PARSEC_FORTRAN_LIBRARY
-    NAMES daguef
-    PATHS ${PARSEC_DIR}/dague/fortran)
+    NAMES parsecf
+    PATHS ${PARSEC_DIR}/parsec/fortran)
 
   find_library(PARSEC_PROFILEF_LIBRARY
-    NAMES dague_profilef 
-    PATHS ${PARSEC_DIR}/dague/fortran)
+    NAMES parsec_profilef 
+    PATHS ${PARSEC_DIR}/parsec/fortran)
 
   find_library(PARSEC_DIST_LIBRARY
-    NAMES dague_distribution
+    NAMES parsec_distribution
     PATHS ${PARSEC_DIR}/data_dist)
 
   find_library(PARSEC_DIST_MAT_LIBRARY
-    NAMES dague_distribution_matrix
+    NAMES parsec_distribution_matrix
     PATHS ${PARSEC_DIR}/data_dist/matrix)
 
   find_library(PARSEC_BASE_LIBRARY
-    NAMES dague-base
-    PATHS ${PARSEC_DIR}/dague)
+    NAMES parsec-base
+    PATHS ${PARSEC_DIR}/parsec)
 
   find_library(PARSEC_LIB
-    NAMES dague
-    PATHS ${PARSEC_DIR}/dague)
+    NAMES parsec
+    PATHS ${PARSEC_DIR}/parsec)
 
   set (PARSEC_LIBRARY ${PARSEC_PROFILEF_LIBRARY}
     ${PARSEC_FORTRAN_LIBRARY} ${PARSEC_DIST_MAT_LIBRARY} 
@@ -146,9 +149,14 @@ elseif(${RUNTIME} MATCHES "Parsec")
   # message(STATUS "Parsec library: ${PARSEC_LIBRARY}")
 
   # Dague PP
-  set(DAGUEPP_CFLAGS "--noline" CACHE STRING "Additional daguepp precompiling flags" )
-  set(PARSECPP $ENV{DAGUEPP} CACHE PATH "Parsec JDF compiler") 
-  set(daguepp_EXE ${PARSECPP})
+  # set(DAGUEPP_CFLAGS "--noline" CACHE STRING "Additional daguepp precompiling flags" )
+  # set(PARSECPP $ENV{DAGUEPP} CACHE PATH "Parsec JDF compiler") 
+  # set(daguepp_EXE ${PARSECPP})
+
+  # Parsec PTG PP
+  set(PARSEC_PTGPP_CFLAGS "--noline" CACHE STRING "Additional daguepp precompiling flags")
+  set(PARSEC_PTGPP $ENV{PARSECPP} CACHE PATH "Parsec JDF compiler") 
+  set(parsec_ptgpp_EXE ${PARSEC_PTGPP})
   
   # message(STATUS "Dague PP: ${daguepp_EXE}")
 
@@ -306,3 +314,5 @@ target_link_libraries(spllt_test pthread)
 
 ## std C++ (needed for linking with ssids)
 target_link_libraries(spllt_test stdc++)
+
+target_link_libraries(spllt_test rt)

@@ -5,18 +5,18 @@ module spllt_parsec_factorization_mod
           & bcs, nbc, diags, ndiag, &
           & min_width_blas, maxmn, val, nval, keep) bind(C)
        use iso_c_binding
-       use dague_f08_interfaces
+       use parsec_f08_interfaces
        type(c_ptr), value      :: blk_desc
        type(c_ptr), value      :: nodes, bcs, diags, val, keep
        integer(c_int), value   :: num_nodes, nbc, ndiag, nval
        integer(c_int), value   :: min_width_blas, maxmn
-       type(dague_handle_t)    :: spllt_parsec_factorize
+       type(parsec_handle_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
 
      subroutine spllt_parsec_factorize_finalize(handle) bind(C)
        use iso_c_binding
-       use dague_f08_interfaces
-       type(dague_handle_t), value    :: handle
+       use parsec_f08_interfaces
+       type(parsec_handle_t), value    :: handle
      end subroutine spllt_parsec_factorize_finalize
 
   end interface

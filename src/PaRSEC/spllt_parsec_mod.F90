@@ -1,25 +1,25 @@
 module spllt_parsec_mod
   use iso_c_binding
-  use dague_f08_interfaces
+  use parsec_f08_interfaces
   
   ! C binding funtions
   ! general Parsec function
   interface
      ! initialize Parsec
-     function parsec_init(nb_cores, nodes, rank) bind(C)
+     function spllt_parsec_init(nb_cores, nodes, rank) bind(C)
        use iso_c_binding
-       use dague_f08_interfaces
+       use parsec_f08_interfaces
        integer(c_int), value   :: nb_cores ! number of threads
        integer(c_int)          :: nodes ! number of nodes involved in the execution
        integer(c_int)          :: rank ! rank of the current process
-       type(dague_context_t)   :: parsec_init ! Parsec context i.e. context of execution 
-     end function parsec_init
+       type(parsec_context_t)   :: spllt_parsec_init ! Parsec context i.e. context of execution 
+     end function spllt_parsec_init
      ! finilize Parsec
-     subroutine parsec_fini(ctx) bind(C)
+     subroutine spllt_parsec_fini(ctx) bind(C)
        use iso_c_binding
-       use dague_f08_interfaces
-       type(dague_context_t)   :: ctx ! Parsec context i.e. context of execution 
-     end subroutine parsec_fini
+       use parsec_f08_interfaces
+       type(parsec_context_t)   :: ctx ! Parsec context i.e. context of execution 
+     end subroutine spllt_parsec_fini
   end interface
 
   ! C binding funtion
