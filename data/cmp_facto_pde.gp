@@ -25,6 +25,7 @@ set term pdf dashed font "Courier,12"
 set key box bottom right w 1.1 font "Courier,12"
 
 # Output
+# set output "cmp_perf_helmholtz3d.pdf"
 set output "cmp_perf_poisson3d.pdf"
 
 # Title
@@ -35,7 +36,7 @@ set xlabel "Mesh size"
 set ylabel "GFlop/s"
 
 # Axis
-set xrange [20:180]
+set xrange [0:180]
 
 # Set grid
 set grid ytics lc rgbcolor "#000000" lt 0 lw 1
@@ -47,8 +48,16 @@ set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 
 # Plot
 # With pruning
-plot 'cn255/data_cmp_perf_pde.dat' using 1:2 ls 1 w lp t 'MA87', \
-     ''                            using 1:3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-     ''                            using 1:5 ls 20 w lp t 'SpLLT-STF w/ pruning (OpenMP)', \
-     ''                            using 1:4 ls 3 w lp t 'SpLLT-STF (StarPU)', \
-     ''                            using 1:6 ls 30 w lp t 'SpLLT-STF w/ pruning (StarPU)',
+plot 'cn255/data_cmp_perf_poisson3d.dat' using 1:2 ls 1 w lp t 'MA87', \
+     ''                                  using 1:4 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
+     ''                                  using 1:8 ls 20 w lp t 'SpLLT-STF w/ pruning (OpenMP)', \
+     ''                                  using 1:6 ls 3 w lp t 'SpLLT-STF (StarPU)', \
+     ''                                  using 1:10 ls 30 w lp t 'SpLLT-STF w/ pruning (StarPU)',
+
+# plot Helmholtz 3D
+# With pruning
+# plot 'cn255/data_cmp_perf_helmholtz3d.dat' using 1:2 ls 1 w lp t 'MA87', \
+#      ''                                    using 1:4 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
+#      ''                                    using 1:8 ls 20 w lp t 'SpLLT-STF w/ pruning (OpenMP)', \
+#      ''                                    using 1:6 ls 3 w lp t 'SpLLT-STF (StarPU)', \
+#      ''                                    using 1:10 ls 30 w lp t 'SpLLT-STF w/ pruning (StarPU)',

@@ -12,7 +12,8 @@ import vextractor
 import latexprint as lp
 from datafile import Datafile
 
-spllt_facto_time = '\[>\] \[factorize\] time:'
+# spllt_facto_time = '\[>\] \[factorize\] time:'
+spllt_facto_time = 'Factor took'
 ma87_facto_time  = 'Factor took'
 spllt_task_insert_time = '\[>\] \[spllt_stf_factorize\] task insert time:'
 spllt_flops_str = '\[>\] \[analysis\] num flops :'

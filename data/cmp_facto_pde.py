@@ -16,7 +16,7 @@ from datafile import Datafile
 blocksizes = [256, 384, 512, 768, 1024]
 
 # List of mesh sizes
-msh_sizes = [32, 64, 96, 128, 160]
+msh_sizes = [20, 60, 80, 100, 120, 140, 160]
 
 # Directory containing the outputs
 outputdir = sys.argv[1]
@@ -31,7 +31,8 @@ spllt_flops_str =  'Predict nflop =' # '\[>\] \[analysis\] num flops :'
 
 for msh_size in msh_sizes:
 
-    pbl = 'poisson3d_' + str(msh_size) + 'x' + str(msh_size) + 'x'  + str(msh_size)
+    # pbl = 'poisson3d_' + str(msh_size) + 'x' + str(msh_size) + 'x'  + str(msh_size)
+    pbl = 'helmholtz3d_' + str(msh_size) + 'x' + str(msh_size) + 'x'  + str(msh_size) + '_50'
     # print(pbl)
 
     # Flop count
@@ -42,7 +43,7 @@ for msh_size in msh_sizes:
     starpu_t_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         # print(datafile)
         # Create data structure
         df = Datafile(datafile)
@@ -63,7 +64,7 @@ for msh_size in msh_sizes:
     starpu_prune_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '_prune/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '_prune/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         # print(datafile)
         # Create data structure
         df = Datafile(datafile)
@@ -83,7 +84,7 @@ for msh_size in msh_sizes:
     # OpenMP (gnu)
     gnu_omp_t = []
     for blocksize in blocksizes:
-        datafile = outputdir + '/' + 'spllt_omp' + '/' + 'gnu' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'omp' + '/' + 'gnu' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)
@@ -95,7 +96,7 @@ for msh_size in msh_sizes:
     # OpenMP (gnu) with pruning
     gnu_omp_prune_t = []
     for blocksize in blocksizes:
-        datafile = outputdir + '/' + 'spllt_omp' + '/' + 'gnu_prune' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'omp' + '/' + 'gnu_prune' + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)
@@ -139,7 +140,7 @@ for msh_size in msh_sizes:
     # best_spllt_t_insert = spllt_t_insert[best_spllt_t_facto_idx]
     best_flops    = flops[starpu_idx]
     # # GFlops 
-    best_gflops    = best_flops/1e9
+    best_gflops    = best_flops/(1e9)
 
     # StarPU with pruning
     starpu_prune_nb = blocksizes[starpu_prune_idx]
@@ -166,9 +167,9 @@ for msh_size in msh_sizes:
 
     # data print (Timing) with prunning
     print("%4s %10.3f %4d %10.3f %4d %10.3f %4d %10.3f %4d %10.3f %4d" % (msh_size,
-                                                                          best_ma87_t, ma87_nb,
-                                                                          best_gnu_omp_t, gnu_omp_prune_nb,
-                                                                          best_starpu_t, starpu_nb,
-                                                                          best_gnu_omp_prune_t, gnu_omp_prune_nb,
-                                                                          best_starpu_prune_t, starpu_prune_nb))
+                                                                          best_gflops/best_ma87_t, ma87_nb,
+                                                                          best_gflops/best_gnu_omp_t, gnu_omp_prune_nb,
+                                                                          best_gflops/best_starpu_t, starpu_nb,
+                                                                          best_gflops/best_gnu_omp_prune_t, gnu_omp_prune_nb,
+                                                                          best_gflops/best_starpu_prune_t, starpu_prune_nb))
 

@@ -16,8 +16,8 @@ from datafile import Datafile
 blocksizes = [256, 384, 512, 768, 1024]
 
 # List of mesh sizes
-# msh_sizes = [32, 64, 96, 128, 160]
-msh_sizes = [32, 64, 96]
+msh_sizes = [32, 64, 96, 128, 160]
+# msh_sizes = [96]
 
 # Directory containing the outputs
 outputdir = sys.argv[1]
@@ -46,7 +46,7 @@ for msh_size in msh_sizes:
     starpu_t_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         # print(datafile)
         # Create data structure
         df = Datafile(datafile)
@@ -67,7 +67,7 @@ for msh_size in msh_sizes:
     starpu_prune_insert = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '_prune/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '_prune/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         # print(datafile)
         # Create data structure
         df = Datafile(datafile)
@@ -111,18 +111,26 @@ for msh_size in msh_sizes:
     # best_t_stf_idx = t_stf.index(min(t_stf))
     best_t_stf = min(t_stf)
     # print best_t_stf
+
+    cvsfile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '/traces/' + pbl + '_NCPU-27' + '_NB-' + str(best_starpu_nb) + '_NEMIN-32.csv'
     
-    tracefile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_sched + '/traces/' + pbl + '_NCPU-27' + '_NB-' + str(best_starpu_nb) + '_NEMIN-32.rec'
-    cmd = "starpu_trace_state_stats.py -te -s %f %s" % (best_t_stf*1000, tracefile)
+    # If the CSV file dosn't exists, we use the StarPU script for
+    # retreiving the information from the traces.
+    if not os.path.exists(cvsfile):
+
+        tracefile = outputdir + '/' + 'starpu' + '/' + starpu_sched + '/traces/' + pbl + '_NCPU-27' + '_NB-' + str(best_starpu_nb) + '_NEMIN-32.rec'
+        cmd = "starpu_trace_state_stats.py -te -s %f %s" % (best_t_stf*1000, tracefile)
     
-    output = subprocess.check_output(cmd.split()) 
+        output = subprocess.check_output(cmd.split()) 
+
+        cvsfile = 'times.csv'
 
     tt = 0.0
     tr = 0.0
     ti = 0.0
     ts = 0.0
 
-    with open('times.csv', 'rb') as csvfile:
+    with open(cvsfile, 'rb') as csvfile:
         reader = csv.reader(csvfile)
 
         for row in reader:
@@ -160,7 +168,7 @@ for msh_size in msh_sizes:
     e = et * eo * ep
 
     # print("%f %f" % (best_t_stf, best_spllt_t_facto))
-    print("%d %f %f %f %f" % (msh_size, e, et, eo, ep))    
+    print("%d %f %f %f %f" % (msh_size, e, et, eo, ep))
 
     matcount = matcount+1 
 
