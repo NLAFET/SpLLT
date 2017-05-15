@@ -120,9 +120,11 @@ program run_prob
    ! endif
    if (options%fmt .eq. 'csc') then
       ! Rutherford boeing format
-
       ! DEBUG ensure matrix is diag dominant
+      ! rb_options%values = 0 ! As per file
       rb_options%values = 3 ! Force diagonal dominance
+      ! rb_options%values = VALUES_DIAG_DOM
+      ! print *, "values: ", rb_options%values
       call rb_read(matfile, m, n, ptr, row, val, rb_options, rb_flag)
       if(rb_flag.ne.0) then
          print *, "Rutherford-Boeing read failed with error ", rb_flag
