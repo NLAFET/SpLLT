@@ -39,7 +39,7 @@ for mat in flistmat:
 
     v = 0.0
 
-    # SpLLT PaRSEC
+    # SpLLT Parsec
     parsec_t_facto = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
@@ -53,6 +53,17 @@ for mat in flistmat:
         # Get flops
         vf = df.get_value(flops_str)
         flops.append(float(vf))
+
+    # SpLLT OpenMP (gnu)
+    omp_t_facto = []
+    for blocksize in blocksizes:
+        # print "blocksize: ",blocksize
+        datafile = outputdir + '/' + 'omp' + '/' + 'gnu' + '/' + pbl + '_NCPU-28' + '_NB-' + str(blocksize) + '_NEMIN-32'
+
+        df = Datafile(datafile)
+        # Get factor time
+        v = df.get_value(t_facto_str)
+        omp_t_facto.append(float(v))
 
 
     # MA87
@@ -71,7 +82,8 @@ for mat in flistmat:
     # print ma87_t_facto
         
     parsec_t_facto_idx = parsec_t_facto.index(min(parsec_t_facto))
-    ma87_t_facto_idx  = ma87_t_facto.index(min(ma87_t_facto))
+    ma87_t_facto_idx = ma87_t_facto.index(min(ma87_t_facto))
+    omp_t_idx = omp_t_facto.index(min(omp_t_facto))
 
     best_parsec_nb       = blocksizes[parsec_t_facto_idx]
     best_parsec_t  = parsec_t_facto[parsec_t_facto_idx]
@@ -82,14 +94,52 @@ for mat in flistmat:
 
     best_ma87_nb       = blocksizes[ma87_t_facto_idx]
     best_ma87_t    = ma87_t_facto[ma87_t_facto_idx]
-    
-    # Parsec and MA87, nb:time (txt)
-    print("%4s %10s %10s %10s %10s" % (matcount,
-                                       best_parsec_nb,
-                                       best_parsec_t,
-                                       best_ma87_nb,
-                                       best_ma87_t))
 
+    best_omp_nb = blocksizes[omp_t_idx]
+    best_omp_t = omp_t_facto[omp_t_idx]
+
+    # Parsec and MA87, nb:time (txt)
+    # print("%4s %10s %10s %10s %10s" % (matcount,
+    #                                    best_parsec_nb,
+    #                                    best_parsec_t,
+    #                                    best_ma87_nb,
+    #                                    best_ma87_t))
+
+    # MA87, Parsec and OpenMP, nb:gflops (txt)
+    print("%4s %10s %10.3f %10s %10.3f %10s %10.3f" % (matcount,
+                                                       best_ma87_nb,
+                                                       best_gflops/best_ma87_t,
+                                                       best_parsec_nb,
+                                                       best_gflops/best_parsec_t,
+                                                       best_omp_nb,
+                                                       best_gflops/best_omp_t))
+
+    # MA87, Parsec and OpenMP, nb:time (txt)
+    # print("%4s %10s %10s %10s %10s %10s %10s" % (matcount,
+    #                                              best_ma87_nb,
+    #                                              best_ma87_t,
+    #                                              best_parsec_nb,
+    #                                              best_parsec_t,
+    #                                              best_omp_nb,
+    #                                              best_omp_t))
+
+    # Parsec, OpenMP and MA87 nb:time (Latex)
+    # print("%4s & %40s & %5s & %10.3f & %5s & %10.3f & %5s & %10.3f \\\\" % (matcount, lp.escape(mat),
+    #                                                                         best_parsec_nb,
+    #                                                                         best_parsec_t,
+    #                                                                         best_omp_nb,
+    #                                                                         best_omp_t,
+    #                                                                         best_ma87_nb,
+    #                                                                         best_ma87_t))
+    
+    # Parsec and MA87, nb:time (Latex)
+    # print("%40s & %10s & %10s & %10s & %10s \\\\" % (lp.escape(mat),
+    #                                                  best_spllt_nb,
+    #                                                  lp.print_float(best_spllt_t_facto, 
+    #                                                                 (best_spllt_t_facto<best_ma87_t_facto)),
+    #                                                  best_ma87_nb,
+    #                                                  lp.print_float(best_ma87_t_facto,
+    #                                                                 (best_ma87_t_facto<best_spllt_t_facto))))
 
     # Parsec and MA87, nb:time (Latex)
     # print("%40s & %10s & %10s & %10s & %10s \\\\" % (lp.escape(mat),

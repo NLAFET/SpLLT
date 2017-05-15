@@ -164,7 +164,11 @@ elseif(${RUNTIME} MATCHES "Parsec")
   set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
   include_directories(${HWLOC_DIR}/include)  
   find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
-  
+
+  # PAPI
+  find_library(PAPI_LIBRARY papi)
+  MESSAGE( STATUS "PAPI:         " ${PAPI_LIBRARY} )
+
   # Use Parsec code
   add_definitions(-DSPLLT_USE_PARSEC)
 
@@ -261,6 +265,9 @@ elseif(${RUNTIME} MATCHES "Parsec")
 
   # HWLOC
   target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+
+  # PAPI
+  target_link_libraries(spllt_test ${PAPI_LIBRARY})
 
 endif()
 

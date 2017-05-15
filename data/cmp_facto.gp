@@ -22,7 +22,7 @@ set key box left top w 1.1 font "Courier,12"
 # set output "cmp_perf_stf.pdf"
 # set output "cmp_facto_rel_stf.pdf"
 
-# set output "cmp_perf_stf_ptg.pdf"
+set output "cmp_perf_stf_ptg.pdf"
 
 # set output "cmp_perf_stf_small.pdf"
 # set output "cmp_perf_stf_small1.pdf"
@@ -32,7 +32,7 @@ set key box left top w 1.1 font "Courier,12"
 # set output "cmp_perf_stf_big1.pdf"
 # set output "cmp_perf_stf_big2.pdf"
 
-set output "cmp_perf_stf_ptg_small.pdf"
+# set output "cmp_perf_stf_ptg_small.pdf"
 # set output "cmp_perf_stf_ptg_small1.pdf"
 
 # set output "cmp_perf_stf_ptg_big.pdf"
@@ -50,8 +50,9 @@ set ylabel "GFlop/s"
 # set yrange [0:1.5]
 # set logscale y 10
 
+set xrange [1:37]
 # set xrange [1:38]
-set xrange [1:25]
+# set xrange [1:25]
 # set xrange [26:38]
 # set xtics 1
 # set ytics 0.2
@@ -84,16 +85,16 @@ set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 
 
 # STF and PTG (perf GFlop/s)
-# plot 'cn255/data_cmp_perf.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
-#      ''                        using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-#      ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)', \
-#      ''                        using ($0+1):5 ls 4 w lp t 'SpLLT-STF (PaRSEC)'     
+plot 'cn255/data_cmp_perf.dat' using ($0+1):3 ls 1 w lp t 'MA87', \
+     ''                        using ($0+1):5 ls 2 w lp t 'SpLLT-PTG (PaRSEC)', \
+     ''                        using ($0+1):7 ls 3 w lp t 'SpLLT-STF (OpenMP)'
+# ''                        using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)', \
 
 # STF and PTG (perf GFlop/s) small
-plot 'cn255/data_cmp_perf_small.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
-     ''                              using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
-     ''                              using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)', \
-     ''                              using ($0+1):5 ls 4 w lp t 'SpLLT-PTG (PaRSEC)'     
+# plot 'cn255/data_cmp_perf_small.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
+#      ''                              using ($0+1):3 ls 2 w lp t 'SpLLT-STF (OpenMP)', \
+#      ''                              using ($0+1):4 ls 3 w lp t 'SpLLT-STF (StarPU)', \
+#      ''                              using ($0+1):5 ls 4 w lp t 'SpLLT-PTG (PaRSEC)'     
 
 # STF and PTG (perf GFlop/s) big
 # plot 'cn255/data_cmp_perf_big.dat' using ($0+26):2 ls 1 w lp t 'MA87', \
@@ -104,5 +105,9 @@ plot 'cn255/data_cmp_perf_small.dat' using ($0+1):2 ls 1 w lp t 'MA87', \
 # STF perf/times relative to MA87
 # plot 'cn255/data_cmp_perf.dat' using ($0+1):($3/$2) ls 2 w lp t 'SpLLT-STF (OpenMP)', \
 #      ''                        using ($0+1):($4/$2) ls 3 w lp t 'SpLLT-STF (StarPU)'
+
+# PTG (perf GFlop/s)
+# plot 'cn255/data_cmp_perf_ptg.dat' using ($0+1):3 ls 1 w lp t 'MA87', \
+#      ''                            using ($0+1):5 ls 2 w lp t 'SpLLT-PTG (PaRSEC)'     
 
 set output
