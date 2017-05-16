@@ -38,13 +38,13 @@ contains
 
     integer(long) :: id
 
-    write(*,'("[spllt_ptg_factorize]")')
+    ! write(*,'("[spllt_ptg_factorize]")')
 
     num_nodes = adata%nnodes
     n = adata%n
 
-    write(*,'("[spllt_ptg_factorize] num_nodes: ", i8)')num_nodes
-    write(*,'("[spllt_ptg_factorize]         n: ", i8)')n
+    ! write(*,'("[spllt_ptg_factorize] num_nodes: ", i8)')num_nodes
+    ! write(*,'("[spllt_ptg_factorize]         n: ", i8)')n
 
     deallocate (keep%lfact,stat=st)
     allocate (keep%lfact(keep%nbcol),stat=st)
@@ -87,7 +87,7 @@ contains
     ! add factorization DAG to PaRSEC
     call parsec_enqueue(ctx, fac_hdl)
     call system_clock(stop_setup_t)
-    write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
+    ! write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
     ! start factorization
     call parsec_context_start(ctx)

@@ -11,6 +11,11 @@ extern "C" %{
 /* #include "spllt_parsec_data.h" */
 
 #include "spllt_parsec_blk_data.h"
+#include "parsec/arena.h"
+
+#if defined(SPLLT_USE_MPI)
+#include <mpi.h>
+#endif  /* defined(SPLLT_USE_MPI) */
 
 /* #if defined(DAGUE_HAVE_MPI) */
 /* #include <mpi.h> */
@@ -101,7 +106,12 @@ init_block(id)
 
 BODY
 {
+
+   int rank;
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    /* printf("[init_blk] blk: %d\n", id); */
+   printf("[init_blk] blk: %d, rank: %d\n", id, rank);
+   /* printf("[init_blk] upd_count: %d, bcol: %d\n", upd_count, bcol); */
    
    spllt_init_blk_c(id, val, nval, keep);
 
@@ -132,15 +142,14 @@ factorize_block(diag_idx)
    /* Number of update_bet task depending on this task */
    dep_out_count = %{ return get_dep_out_count(bcs, id_kk); %}
 
-
    : blk(id_kk)
 
    RW bc_kk <- (id_kk == blk_sa && upd_count == 0) ? bc init_block(id_kk)
-            /* -> blk(id_kk) */
             <- (id_kk == blk_sa && upd_count > 0) ? bc_ij update_between(id_kk, upd_count) /* blk(id_kk) */
             <- (id_kk != blk_sa) ? bc_ij update_block(diag_idx-1, prev_id_kk+1, prev_id_kk+1) /* blk(id_kk) */
             -> (id_kk == last_blk) ? blk(id_kk) : bc_kk solve_block(diag_idx, (id_kk+1)..last_blk)
             -> (dep_out_count > 0) ? bc update_between_aux(id_kk, 1..dep_out_count) /* blk(id_kk) */
+            /* -> blk(id_kk) */
 
    /* ; (nnodes - snode +1)*4 + 3 */
    ; 3
@@ -149,7 +158,13 @@ factorize_block(diag_idx)
 
 BODY
 {
+
+   int rank;
+   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+   printf("[factorize_block] rank: %d\n", rank);
+
    /* printf("[factorize_block] bc_kk: %p\n", bc_kk); */
+   /* printf("[factorize_block] id_kk: %d\n", id_kk); */
 
    int m = get_blk_m(bcs, id_kk);
    int n = get_blk_n(bcs, id_kk);
@@ -217,7 +232,7 @@ solve_block(diag_idx, id_ik)
 
 BODY
 {
-   /* printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik); */
+   printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik);
 
    int m = get_blk_m(bcs, id_ik);
    int n = get_blk_n(bcs, id_ik);
@@ -232,19 +247,19 @@ update_block(diag_idx, id_jk, id_ik)
 
    diag_idx = 0..(ndiag-1)
    /* id of current diag block */
-   id_kk  =  %{ return diags[diag_idx]; %}
+   id_kk = %{ return diags[diag_idx]; %}
    /* current node */
    snode = %{ return get_blk_node(bcs, id_kk); %}
    /* get last block id in current block column */
    last_blk =  %{ return get_last_blk(bcs, id_kk); %}
    /* get number of block column in current node */
-   ncol =   %{ return get_nc(snodes, nnodes, bcs, id_kk); %}
+   ncol = %{ return get_nc(snodes, nnodes, bcs, id_kk); %}
    /* get column number of diag block */
-   bcol_diag =   %{ return get_bcol(bcs, id_kk); %}
+   bcol_diag = %{ return get_bcol(bcs, id_kk); %}
    /* get first (diag) block id in current node */
-   blk_sa =   %{ return get_blk_sa(snodes, snode); %}
+   blk_sa = %{ return get_blk_sa(snodes, snode); %}
    /* get column number of first block in node */
-   bcol_sa =   %{ return get_bcol(bcs, blk_sa); %}
+   bcol_sa = %{ return get_bcol(bcs, blk_sa); %}
 
    /* number of column to be updated */
    ncol_upd = ncol-(bcol_diag-bcol_sa+1)
@@ -253,19 +268,18 @@ update_block(diag_idx, id_jk, id_ik)
 
    id_ik = id_jk..last_blk
 
-   id_ij =  %{ return get_dest_blk_id(bcs, nbc, id_jk, id_ik); %}
+   id_ij = %{ return get_dest_blk_id(bcs, nbc, id_jk, id_ik); %}
    /* get column number of updated block */
-   bcol =   %{ return get_bcol(bcs, id_ij); %}
+   bcol = %{ return get_bcol(bcs, id_ij); %}
 
    id_jk_idx = id_jk - id_kk
    id_ik_idx = id_ik - id_kk
    /* id of prev diag block */
-   next_id_kk =  %{ if (diag_idx < ndiag) {return diags[diag_idx+1];} else {return -1;} %}
+   next_id_kk = %{ if (diag_idx < ndiag) {return diags[diag_idx+1];} else {return -1;} %}
    /* id of prev diag block */
-   prev_id_kk =  %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
+   prev_id_kk = %{ if (diag_idx > 0) {return diags[diag_idx-1];} else {return -1;} %}
 
-   upd_count =  %{ return get_upd_count(bcs, id_ij); %}
-
+   upd_count = %{ return get_upd_count(bcs, id_ij); %}
 
    : blk(id_ij)
 
@@ -286,7 +300,7 @@ update_block(diag_idx, id_jk, id_ik)
 
 BODY
 {
-   /* printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij); */
+   printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij);
 
    int m = get_blk_m(bcs, id_ij);
    int n = get_blk_n(bcs, id_ij);
@@ -524,9 +538,9 @@ extern "C" %{
       parsec_factorize_handle_t* fac_hdl;
 
 
-      printf("[factorize] number of blocks: %d\n", nbc);
-      printf("[factorize] number of diag blocks / block columns: %d\n", ndiag);
-      printf("[factorize] nnodes: %d\n", nnodes);
+      /* printf("[factorize] number of blocks: %d\n", nbc); */
+      /* printf("[factorize] number of diag blocks / block columns: %d\n", ndiag); */
+      /* printf("[factorize] nnodes: %d\n", nnodes); */
             
       fac_hdl = parsec_factorize_new(blk_desc,
                                      snodes, nnodes,
@@ -540,7 +554,7 @@ extern "C" %{
 
       fac_hdl->_g_p_work = ( parsec_memory_pool_t* ) malloc(sizeof(parsec_memory_pool_t));
       parsec_private_memory_init( fac_hdl->_g_p_work, maxmn * maxmn * sizeof(double) );
-
+      /* printf("[factorize] maxmn: %d\n", maxmn); */
       parsec_matrix_add2arena( fac_hdl->arenas[PARSEC_factorize_DEFAULT_ARENA], parsec_datatype_double_t,
                                matrix_UpperLower, 1,
                                maxmn, maxmn, maxmn,

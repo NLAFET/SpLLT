@@ -272,7 +272,7 @@ contains
 #elif defined(SPLLT_USE_OMP)
     !$omp taskwait
 #elif (SPLLT_USE_PARSEC)
-    ! write(*,'("[>] Parsec wait rank: ", i6)') rank
+    write(*,'("[>] Parsec wait rank: ", i6)') rank
     call parsec_context_wait(ctx)
 #endif
 

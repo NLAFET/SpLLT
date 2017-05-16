@@ -27,21 +27,61 @@ static uint32_t blk_data_key(parsec_ddesc_t *desc, ... ) {
 }
 
 static uint32_t blk_rank_of(parsec_ddesc_t *desc, ... ) {
-    (void)desc;
-    return 0;
+
+    /* (void)desc; */
+    /* return 0; */
+
+    /* printf("[blk_rank_of]\n"); */
+
+    int nodes = desc->nodes;
+
+    /* printf("[blk_rank_of] nodes: %d\n", nodes); */
+
+    va_list ap;
+    int id;
+
+    va_start(ap, desc);
+    id = va_arg(ap, int);
+    va_end(ap);
+
+    blk_desc_t *blk_desc = (blk_desc_t*)desc;
+    void *bcs = blk_desc->bcs;
+    int bcol = get_bcol(bcs, id);
+    /* printf("[blk_rank_of] bcol: %d\n", bcol); */
+
+    /* printf("[blk_rank_of] id: %d\n", id); */
+    int res = (bcol-1) % nodes;
+    /* int res = id % nodes; */
+
+    /* printf("[blk_rank_of] rank_of: %d\n", res); */
+
+    return res;
 }
 
 static uint32_t blk_rank_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
-(void)desc; (void)key;
-return 0;
+
+   (void)desc; (void)key;
+   return 0;
+
+   /* int id = (int) key+1; */
+   /* printf("[blk_rank_of_key] id: %d\n"); */
+   /* return 0;    */
 }
 
 static int32_t blk_vpid_of(parsec_ddesc_t *desc, ... ) {
-    (void)desc;
-    return 0;
+   
+   /* printf("[blk_vpid_of] TETETETETETETETE\n"); */
+   /* int nvp = vpmap_get_nb_vp(); */
+   /* printf("[blk_vpid_of] nvp: %d\n", nvp); */
+   
+   (void)desc;
+   return 0;
 }
 
 static int32_t blk_vpid_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
+
+   /* printf("[blk_vpid_of_key] TETETETETETETETE\n"); */
+
     (void)desc; (void)key;
     return 0;
 }
@@ -68,6 +108,7 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
     /* bc  = NULL; */
 
     key  = blk_key(id);
+    /* key  = 0; */
     pos  = key;
     size = get_blk_sze(bcs, id);
 
@@ -78,6 +119,13 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
     return parsec_data_create(blk_desc->data_map + pos, desc, key, bc, size);
 }
 
+static parsec_data_t *blk_data_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
+    /* printf("[blk_data_of_key] TETETETETETE\n"); */
+    (void)desc; (void)key;
+    return 0;   
+}
+
+
 void spllt_parsec_blk_data_init(blk_desc_t *desc,
                                 void *bcs, int nbc,
                                 int nodes, int myrank) {
@@ -87,8 +135,10 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
     /* printf("[spllt_parsec_blk_data_init] myrank: %d\n", myrank); */
     
     /* Super setup */
-    o->nodes     = nodes;
-    o->myrank    = myrank;
+    parsec_ddesc_init( o, nodes, myrank );
+
+    /* o->nodes     = nodes; */
+    /* o->myrank    = myrank; */
 
     o->data_key      = blk_data_key;
 /* #if defined(DAGUE_PROF_TRACE) */
@@ -100,7 +150,7 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
     o->vpid_of     = blk_vpid_of;
     o->vpid_of_key = blk_vpid_of_key;
     o->data_of     = blk_data_of;
-    /* o->data_of_key = blk_data_of_key; */
+    o->data_of_key = blk_data_of_key;
 
     /* desc->typesize  = typesize; */
     desc->bcs       = bcs;
