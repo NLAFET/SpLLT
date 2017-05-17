@@ -23,6 +23,7 @@ elseif(${RUNTIME} MATCHES "Parsec")
   include(${PARSEC_SRC_DIR}/cmake_modules/RulesJDF.cmake)
 
   jdf_rules(generated_jdf "${CMAKE_SOURCE_DIR}/src/PaRSEC/factorize.jdf")
+  jdf_rules(generated_jdf "${CMAKE_SOURCE_DIR}/src/PaRSEC/gather.jdf")
 
   # message(STATUS "Generated JDFs: ${generated_jdf}")
 

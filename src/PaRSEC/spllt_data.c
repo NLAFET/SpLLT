@@ -2,7 +2,7 @@
 #include <parsec/data.h>
 #include <parsec/data_distribution.h>
 
-#include "data.h"
+#include "spllt_data.h"
 
 static inline uint32_t key(int id) {
 

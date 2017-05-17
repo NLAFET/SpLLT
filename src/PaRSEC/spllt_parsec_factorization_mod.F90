@@ -1,6 +1,7 @@
 module spllt_parsec_factorization_mod
 
   interface
+     ! Factorize
      function spllt_parsec_factorize(blk_desc, nodes, num_nodes, &
           & bcs, nbc, diags, ndiag, &
           & min_width_blas, maxmn, val, nval, keep) bind(C)
@@ -12,12 +13,22 @@ module spllt_parsec_factorization_mod
        integer(c_int), value   :: min_width_blas, maxmn
        type(parsec_handle_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
-
+     
+     ! Finalize factorization
      subroutine spllt_parsec_factorize_finalize(handle) bind(C)
        use iso_c_binding
        use parsec_f08_interfaces
        type(parsec_handle_t), value    :: handle
      end subroutine spllt_parsec_factorize_finalize
+
+     ! Gather 
+     function gather(blk_desc, base_desc, nbc, maxmn) bind(C)
+       use iso_c_binding
+       use parsec_f08_interfaces
+       type(c_ptr), value :: blk_desc, base_desc
+       integer(c_int), value :: nbc, maxmn
+       type(parsec_handle_t) :: gather
+     end function gather
 
   end interface
 

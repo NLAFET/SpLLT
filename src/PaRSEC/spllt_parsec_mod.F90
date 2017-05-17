@@ -39,6 +39,23 @@ module spllt_parsec_mod
        integer(c_int), value   :: nodes ! number of nodes involved in the execution
        integer(c_int), value   :: myrank ! rank of the current process
      end subroutine spllt_parsec_blk_data_init
+
+     ! allocate base data descriptor
+     function alloc_desc() bind(C)
+       use iso_c_binding
+       type(c_ptr) :: alloc_desc
+     end function alloc_desc
+
+     ! Initialize base data descriptor
+     subroutine data_init(desc, bcs, nbc, nodes, myrank) bind(C)
+       use iso_c_binding
+       type(c_ptr), value      :: desc ! data descriptor
+       type(c_ptr), value      :: bcs ! blocks
+       integer(c_int), value   :: nbc ! number of blocks
+       integer(c_int), value   :: nodes ! number of nodes involved in the execution
+       integer(c_int), value   :: myrank ! rank of the current process
+     end subroutine data_init
+
   end interface
 
   ! C binding funtion

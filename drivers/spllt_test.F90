@@ -34,6 +34,7 @@ contains
 #elif defined(SPLLT_USE_PARSEC)
     use parsec_f08_interfaces
     use spllt_parsec_mod
+    use spllt_parsec_factorization_mod
     use spllt_ptg_mod
 #endif
     implicit none
@@ -75,7 +76,7 @@ contains
 
     ! SpLLT
     type(spllt_adata_type) :: adata
-    type(spllt_data_type)  :: fdata
+    type(spllt_data_type), target  :: fdata
     integer, dimension(:), allocatable :: order
 
     ! timing
@@ -95,6 +96,13 @@ contains
 
     ! stats
     real :: smanal, smfact, smaflop, smafact
+
+#if defined(SPLLT_USE_PARSEC) && defined(SPLLT_USE_MPI)
+    type(parsec_handle_t) :: gat_hdl
+    type(c_ptr) :: base_desc
+    integer(c_int) :: nbc
+    type(c_ptr) :: bc_c
+#endif
 
     ! Set nrhs
     nrhs = 1
@@ -271,7 +279,7 @@ contains
     call starpu_f_fxt_stop_profiling()
 #elif defined(SPLLT_USE_OMP)
     !$omp taskwait
-#elif (SPLLT_USE_PARSEC)
+#elif defined(SPLLT_USE_PARSEC)
     write(*,'("[>] Parsec wait rank: ", i6)') rank
     call parsec_context_wait(ctx)
 #endif
@@ -282,6 +290,25 @@ contains
     call system_clock(stop_t)
     write(*, "(a)") "ok"
     print *, "Factor took ", (stop_t - start_t)/real(rate_t)
+
+#if defined(SPLLT_USE_PARSEC) && defined(SPLLT_USE_MPI)
+
+    write(*,*) "[spllt_test] gather blocks for solve"
+    base_desc = alloc_desc()
+
+    nbc = size(fdata%bc,1)
+    bc_c = c_loc(fdata%bc(1))
+
+    call data_init(base_desc, bc_c, nbc, nds, rank)
+
+    gat_hdl = gather(fdata%ddesc, base_desc, size(fdata%bc,1), keep%maxmn)
+
+    call parsec_enqueue(ctx, gat_hdl)
+    call parsec_context_start(ctx)
+
+    call parsec_context_wait(ctx)
+
+#endif
 
     call spllt_finalize()
     ! #if defined(SPLLT_USE_STARPU)

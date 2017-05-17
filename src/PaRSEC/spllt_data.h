@@ -1,5 +1,5 @@
-#ifndef __DATA_H__
-#define __DATA_H__
+#ifndef __SPLLT_DATA_H__
+#define __SPLLT_DATA_H__
 
 typedef struct base_desc {
    parsec_ddesc_t super;
