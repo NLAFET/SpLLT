@@ -38,14 +38,11 @@ aux(id)
          -> bc gather_block(id)
 BODY
 {
-   int rank;
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-   printf("aux, id: %d, rank: %d\n", id, rank);
+   /* int rank; */
+   /* MPI_Comm_rank(MPI_COMM_WORLD, &rank); */
+   /* printf("aux, id: %d, rank: %d\n", id, rank); */
 }
 END
-
-
 
 gather_block(id)
 
@@ -53,14 +50,14 @@ gather_block(id)
 
    : base(id)
 
-   RW bc <- bc aux(id)
+   RW bc <- bc aux(id) /* blk(id) */
          -> base(id)
+
 BODY
 {
-   int rank;
-   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-   printf("gather_block, id: %d, rank: %d\n", id, rank);
+   /* int rank; */
+   /* MPI_Comm_rank(MPI_COMM_WORLD, &rank); */
+   /* printf("gather_block, id: %d, rank: %d\n", id, rank); */
 }
 END
 
@@ -76,13 +73,26 @@ extern "C" %{
       gat_hdl = parsec_gather_new(blk_desc, base_desc, nbc);
 
       assert(NULL != gat_hdl);
+
+      /* parsec_matrix_add2arena_tile(gat_hdl->arenas[PARSEC_gather_DEFAULT_ARENA], */
+      /*                              parsec_datatype_double_t, */
+      /*                              maxmn); */
       
-      parsec_matrix_add2arena(gat_hdl->arenas[PARSEC_gather_DEFAULT_ARENA], 
+      parsec_matrix_add2arena(gat_hdl->arenas[PARSEC_gather_DEFAULT_ARENA],
                               parsec_datatype_double_t,
                               matrix_UpperLower, 1,
+                              /* 1, maxmn*maxmn, 1, */
                               maxmn, maxmn, maxmn,
-                              PARSEC_ARENA_ALIGNMENT_SSE, -1);
+                              PARSEC_ARENA_ALIGNMENT_SSE,
+                              -1
+            );
 
+      /* parsec_arena_construct(gat_hdl->arenas[PARSEC_gather_DEFAULT_ARENA], */
+      /*                        maxmn*maxmn*parsec_datadist_getsizeoftype(matrix_RealDouble), */
+      /*                        /\* maxmn*maxmn*sizeof(double), *\/ */
+      /*                        PARSEC_ARENA_ALIGNMENT_SSE, */
+      /*                        parsec_datatype_double_t); */
+      
       return &gat_hdl->super;
    }
 %}

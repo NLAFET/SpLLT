@@ -50,8 +50,9 @@ static uint32_t blk_rank_of(parsec_ddesc_t *desc, ... ) {
     /* printf("[blk_rank_of] bcol: %d\n", bcol); */
 
     /* printf("[blk_rank_of] id: %d\n", id); */
-    int res = (bcol-1) % nodes;
+    /* int res = (bcol-1) % nodes; */
     /* int res = id % nodes; */
+    int res = 1;
 
     /* printf("[blk_rank_of] rank_of: %d\n", res); */
 
@@ -104,7 +105,7 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
 
     /* nbcol = blk_desc->nbcol; */
     bcs = blk_desc->bcs;
-    bc  = (void *) get_blk_ptr(bcs, id);
+    bc  = (void *)get_blk_ptr(bcs, id);
     /* bc  = NULL; */
 
     key  = blk_key(id);
@@ -120,7 +121,7 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
 }
 
 static parsec_data_t *blk_data_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
-    /* printf("[blk_data_of_key] TETETETETETE\n"); */
+   /* printf("[blk_data_of_key] TETETETETETE\n"); */
     (void)desc; (void)key;
     return 0;   
 }
@@ -152,7 +153,7 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
     o->data_of     = blk_data_of;
     o->data_of_key = blk_data_of_key;
 
-    /* desc->typesize  = typesize; */
+    /* desc->typesize  = sizeof(parsec_datatype_double_t); */
     desc->bcs       = bcs;
     desc->nbc       = nbc;
     desc->data_map  = (parsec_data_t**)calloc( nbc, sizeof(parsec_data_t*) );

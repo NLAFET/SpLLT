@@ -4,7 +4,7 @@
 
 #include "spllt_data.h"
 
-static inline uint32_t key(int id) {
+static inline uint32_t get_key(int id) {
 
    uint32_t key;
 
@@ -23,7 +23,7 @@ static uint32_t data_key(parsec_ddesc_t *desc, ... ) {
     id = va_arg(ap, int);
     va_end(ap);
 
-    return key(id);
+    return get_key(id);
 }
 
 static uint32_t rank_of(parsec_ddesc_t *desc, ... ) {
@@ -61,7 +61,7 @@ static parsec_data_t *data_of(parsec_ddesc_t *desc, ... ) {
 
     va_list ap;
     int id;
-    parsec_data_key_t k;
+    parsec_data_key_t key;
     int pos;
     size_t size;
     void *bcs; // bloc list
@@ -76,22 +76,22 @@ static parsec_data_t *data_of(parsec_ddesc_t *desc, ... ) {
     bc  = (void *) get_blk_ptr(bcs, id);
     /* bc  = NULL; */
 
-    k  = key(id);
+    key  = get_key(id);
     /* key  = 0; */
-    pos  = k;
+    pos  = key;
     size = get_blk_sze(bcs, id);
 
-    /* printf("[blk_data_of] id: %d, key: %zu\n", id, key); */
-    /* printf("[blk_data_of] key: %d, bc: %p, size: %zu\n", key, bc, size); */
+    /* printf("[data_of] id: %d, key: %zu\n", id, key); */
+    printf("[data_of] key: %d, bc: %p, size: %zu\n", key, bc, size);
     /* size = sizeof(double); */
 
-    return parsec_data_create(base_desc->data_map + pos, desc, k, bc, size);
+    return parsec_data_create(base_desc->data_map + pos, desc, key, bc, size);
 }
 
 static parsec_data_t *data_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
-    /* printf("[blk_data_of_key] TETETETETETE\n"); */
-    (void)desc; (void)key;
-    return 0;   
+   /* printf("[data_of_key] TETETETETETE\n"); */
+   (void)desc; (void)key;
+   return 0;   
 }
 
 
@@ -104,14 +104,11 @@ void data_init(base_desc_t *desc,
     /* printf("[spllt_parsec_blk_data_init] myrank: %d\n", myrank); */
     
     /* Super setup */
-    parsec_ddesc_init( o, nodes, myrank );
-
-    /* o->nodes     = nodes; */
-    /* o->myrank    = myrank; */
+    parsec_ddesc_init(o, nodes, myrank);
 
     o->data_key      = data_key;
 /* #if defined(DAGUE_PROF_TRACE) */
-/*     o->key_to_string = sparse_matrix_key_to_string; */
+/*     o->key_to_string = key_to_string; */
 /* #endif */
 
     o->rank_of     = rank_of;
@@ -121,10 +118,10 @@ void data_init(base_desc_t *desc,
     o->data_of     = data_of;
     o->data_of_key = data_of_key;
 
-    /* desc->typesize  = typesize; */
+    /* desc->typesize  = sizeof(double); */
     desc->bcs       = bcs;
     desc->nbc       = nbc;
-    desc->data_map  = (parsec_data_t**)calloc( nbc, sizeof(parsec_data_t*) );
+    desc->data_map  = (parsec_data_t**) calloc(nbc, sizeof(parsec_data_t*));
 }
 
 base_desc_t *alloc_desc() {

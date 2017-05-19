@@ -556,7 +556,7 @@ extern "C" %{
       parsec_private_memory_init( fac_hdl->_g_p_work, maxmn * maxmn * sizeof(double) );
       /* printf("[factorize] maxmn: %d\n", maxmn); */
       parsec_matrix_add2arena( fac_hdl->arenas[PARSEC_factorize_DEFAULT_ARENA], parsec_datatype_double_t,
-                               matrix_UpperLower, 1,
+                               matrix_UpperLower, 0,
                                maxmn, maxmn, maxmn,
                                PARSEC_ARENA_ALIGNMENT_SSE, -1 );
       
