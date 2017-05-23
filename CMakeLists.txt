@@ -45,6 +45,7 @@ option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
 # spral
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 include_directories(${SPRAL_DIR})
+MESSAGE( STATUS "SPRAL Directory: " ${SPRAL_DIR} )   
 
 # add spLLT test driver
 if (${RUNTIME} MATCHES "STF")
@@ -304,15 +305,19 @@ target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
 # BLAS and LAPACK
 set(MKL_LIBS $ENV{MKL_LIBS})
-set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
+# set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
 set(MKL_DIR $ENV{MKLROOT})
 
-find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
+find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
 # find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
 find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
 find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
 # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
 set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+
+MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
+MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
+MESSAGE( STATUS "MKL Libraries: " ${MKL_LIBRARIES} )
 
 target_link_libraries(spllt_test ${MKL_LIBRARIES})
 

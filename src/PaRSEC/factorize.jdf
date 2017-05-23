@@ -106,13 +106,13 @@ init_block(id)
 
 BODY
 {
-
+#if defined(SPLLT_USE_MPI)
    int rank;
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    /* printf("[init_blk] blk: %d\n", id); */
    printf("[init_blk] blk: %d, rank: %d\n", id, rank);
    /* printf("[init_blk] upd_count: %d, bcol: %d\n", upd_count, bcol); */
-   
+#endif   
    spllt_init_blk_c(id, val, nval, keep);
 
    /* if (id == blk_sa) { */
@@ -158,11 +158,11 @@ factorize_block(diag_idx)
 
 BODY
 {
-
+#if defined(SPLLT_USE_MPI)
    int rank;
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
    printf("[factorize_block] rank: %d\n", rank);
-
+#endif
    /* printf("[factorize_block] bc_kk: %p\n", bc_kk); */
    /* printf("[factorize_block] id_kk: %d\n", id_kk); */
 
