@@ -64,12 +64,12 @@ size_t factorize_block_size_base(struct starpu_task *task, unsigned nimpl) {
 
    starpu_data_handle_t dest_hdl = STARPU_TASK_GET_HANDLE(task, 0);
 
-   unsigned m = starpu_matrix_get_nx(dest_handle);
-   unsigned n = starpu_matrix_get_ny(dest_handle);
+   unsigned m = starpu_matrix_get_nx(dest_hdl);
+   unsigned n = starpu_matrix_get_ny(dest_hdl);
    
    size_t flops_task = 0;
 
-   flops_task = (n**3)/3;
+   flops_task = (n*n*n)/3;
 
    if (m > n) {
       flops_task += n*m*m;
