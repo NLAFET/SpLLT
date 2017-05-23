@@ -58,6 +58,12 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 }
 #endif
 
+#if defined(SPLLT_USE_GPU)
+struct starpu_perfmodel factorize_block_model = {
+   .type = STARPU_HISTORY_BASED,
+   .symbol = "factorize_block_model",
+}
+#endif
 
 // factorize block task codelet
 struct starpu_codelet cl_factorize_block = {
@@ -72,6 +78,9 @@ struct starpu_codelet cl_factorize_block = {
   .cpu_funcs = {spllt_starpu_factorize_block_cpu_func, NULL},
   .nbuffers = STARPU_VARIABLE_NBUFFERS,
   .name = "FACTO_BLK"
+#if defined(SPLLT_USE_GPU)
+  .model = &factorize_block_model
+#endif
 };
 
 void spllt_starpu_insert_factorize_block_c(starpu_data_handle_t l_handle,
