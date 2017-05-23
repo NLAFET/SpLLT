@@ -59,9 +59,42 @@ void spllt_starpu_factorize_block_cuda_func(void *buffers[], void *cl_arg) {
 #endif
 
 #if defined(SPLLT_USE_GPU)
+
+size_t factorize_block_size_base(struct starpu_task *task, unsigned nimpl) {
+
+   starpu_data_handle_t dest_hdl = STARPU_TASK_GET_HANDLE(task, 0);
+
+   unsigned m = starpu_matrix_get_nx(dest_handle);
+   unsigned n = starpu_matrix_get_ny(dest_handle);
+   
+   size_t flops_task = 0;
+
+   flops_task = (n**3)/3;
+
+   if (m > n) {
+      flops_task += n*m*m;
+   }
+   
+   return flops_task;
+}
+
+uint32_t factorize_block_footprint(struct starpu_task *task) {
+
+   uint32_t footprint = 0;
+   size_t flops;
+
+   flops = factorize_block_size_base(task, 0);
+
+   footprint = starpu_hash_crc32c_be_n(&flops, sizeof(flops), footprint);
+
+   return footprint;
+}
+
 struct starpu_perfmodel factorize_block_model = {
    .type = STARPU_HISTORY_BASED,
    .symbol = "factorize_block_model",
+   .size_base = factorize_block_size_base,
+   .footprint = factorize_block_footprint
 };
 #endif
 
