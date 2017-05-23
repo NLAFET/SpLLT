@@ -232,7 +232,7 @@ solve_block(diag_idx, id_ik)
 
 BODY
 {
-   printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik);
+   /* printf("[solve_block] id_kk: %d, id_ik: %d\n", id_kk, id_ik); */
 
    int m = get_blk_m(bcs, id_ik);
    int n = get_blk_n(bcs, id_ik);
@@ -300,7 +300,7 @@ update_block(diag_idx, id_jk, id_ik)
 
 BODY
 {
-   printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij);
+   /* printf("[update_block] id_kk: %d, id_jk: %d, id_ik: %d, id_ij: %d\n", id_kk, id_jk, id_ik, id_ij); */
 
    int m = get_blk_m(bcs, id_ij);
    int n = get_blk_n(bcs, id_ij);
