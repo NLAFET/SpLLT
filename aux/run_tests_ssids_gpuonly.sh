@@ -1,5 +1,5 @@
 #BSUB -q numanlys-gpu
-#BSUB -n 32
+#BSUB -n 1
 #BUSB -W 02:00
 # #BSUB -o %J.log
 # #BSUB -e %J.err
@@ -29,8 +29,4 @@ outdir=../data
 mkdir -p $outdir
 mkdir -p $outdir/ssids-gpuonly
 
-for matrix in `cat list.matrix`
-do
-
-    ~/builds/spral-gpuonly/spral_ssids --pos
-done
+. ./run_tests_ssids_gpuonly_aux.sh
