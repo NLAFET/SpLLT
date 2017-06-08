@@ -1153,7 +1153,7 @@ contains
     type(c_ptr), value    :: bc_kk_c ! holds destination block
     type(c_ptr), value    :: bc_ik_c ! block
     
-    real(wp), pointer :: bc_kk(:), bc_ik(:) 
+    real(wp), pointer :: bc_kk(:) => null(), bc_ik(:) => null() 
     
     call c_f_pointer(bc_kk_c, bc_kk, (/n*n/))
     call c_f_pointer(bc_ik_c, bc_ik, (/m*n/))
@@ -1219,7 +1219,7 @@ contains
     type(c_ptr), value :: src1_c ! holds block in L
     type(c_ptr), value :: src2_c ! holds block in L
 
-    real(wp), pointer :: dest(:), src1(:), src2(:) 
+    real(wp), pointer :: dest(:) => null(), src1(:) => null(), src2(:) => null() 
     logical :: diag
     
     diag = .true.
@@ -1471,12 +1471,12 @@ contains
     integer(c_int), value  :: min_width_blas
     type(c_ptr), value     :: buffer_c
     
-    real(wp), pointer, dimension(:) :: dest, csrc, rsrc
+    real(wp), pointer, dimension(:) :: dest => null(), csrc => null(), rsrc => null()
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
-    type(node_type), pointer :: dnode, snode
-    type(block_type), pointer :: blk_dest, blk_csrc, blk_rsrc
-    real(wp), pointer, dimension(:) :: buffer
+    type(node_type), pointer :: dnode => null(), snode => null()
+    type(block_type), pointer :: blk_dest => null(), blk_csrc => null(), blk_rsrc => null()
+    real(wp), pointer, dimension(:) :: buffer => null()
     
     call c_f_pointer(dest_c, dest, (/m*n/))
     call c_f_pointer(csrc_c, csrc, (/n*n1/))
@@ -1502,6 +1502,22 @@ contains
 
     return
   end subroutine spllt_update_between_block_c
+
+  ! Compute mapping between blocks for updating
+  subroutine spllt_update_between_compute_map2(&
+       ! blk, dcol, dnode, scol, snode, &
+       ! row_list, col_list, row_list_sz, col_list_sz, &
+       ! s1sa, s1en, s2sa, s2en &
+       )
+    use iso_c_binding
+    implicit none
+
+    integer :: i
+    ! write(*,*) "spllt_update_between_compute_map2"
+    
+    i = 0
+    
+  end subroutine spllt_update_between_compute_map2
 
   ! Compute mapping between blocks for updating
   subroutine spllt_update_between_compute_map(blk, dcol, dnode, scol, snode, &
@@ -1644,11 +1660,11 @@ contains
     integer(c_int), intent(inout) :: s2sa, s2en ! point to the first and last rows of
     ! the block rsrc within scol
 
-    type(block_type), pointer :: blk ! destination block
-    type(node_type), pointer  :: dnode ! destination node
-    type(node_type), pointer  :: snode ! source node
-    integer(c_int), dimension(:), pointer :: row_list ! reallocated to min size m
-    integer(c_int), dimension(:), pointer :: col_list ! reallocated to min size n
+    type(block_type), pointer :: blk => null() ! destination block
+    type(node_type), pointer  :: dnode => null() ! destination node
+    type(node_type), pointer  :: snode => null() ! source node
+    integer(c_int), dimension(:), pointer :: row_list => null() ! reallocated to min size m
+    integer(c_int), dimension(:), pointer :: col_list => null() ! reallocated to min size n
     integer :: m, n
         
     call c_f_pointer(blk_c, blk)
@@ -1657,13 +1673,15 @@ contains
 
     m = blk%blkm
     n = blk%blkn
-
+    ! write(*,*) "m: ", m, "n: ", n
     call c_f_pointer(row_list_c, row_list, (/m/))
     call c_f_pointer(col_list_c, col_list, (/n/))
 
     call spllt_update_between_compute_map(blk, dcol, dnode, scol, snode, &
          & row_list, col_list, row_list_sz, col_list_sz, &
          & s1sa, s1en, s2sa, s2en)
+
+    ! call spllt_update_between_compute_map2()
 
   end subroutine spllt_update_between_compute_map_c
 
@@ -1738,7 +1756,7 @@ contains
 
     ! TODO error managment
     integer :: st
-    
+
     ! set diag to true if blk is block on diagonal
     diag = (blk%dblk.eq.blk%id)
     ! diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
@@ -1968,10 +1986,10 @@ contains
     integer(c_int), value :: ndiag ! Number of triangular rows of update
     type(c_ptr), value    :: buffer_c
 
-    real(wp), dimension(:), pointer :: a ! holds L    
-    integer(c_int), dimension(:), pointer :: row_list ! holds L    
-    integer(c_int), dimension(:), pointer :: col_list ! holds L    
-    real(wp), dimension(:), pointer :: buffer ! holds L    
+    real(wp), dimension(:), pointer :: a => null()! holds L
+    integer(c_int), dimension(:), pointer :: row_list => null()
+    integer(c_int), dimension(:), pointer :: col_list => null()
+    real(wp), dimension(:), pointer :: buffer => null()
 
     call c_f_pointer(a_c, a, (/blkm*blkn/))
     call c_f_pointer(row_list_c, row_list, (/rls/))
@@ -2073,7 +2091,7 @@ contains
 
     ! TODO error managment
     integer :: st
-    
+
     ! set diag to true if blk is block on diagonal
     diag = (blk%dblk.eq.blk%id)
     ! diag = (blocks(blk)%dblk.eq.blocks(blk)%id)
@@ -2188,6 +2206,7 @@ contains
 
        ! FIXME We probably dont need this as size(buffer) is equal to
        ! maxmn*maxmn which always more than row_list_sz*col_list_sz
+       ! write(*,*)'row_list_sz: ', row_list_sz, ', col_list_sz: ', col_list_sz
        if(size(buffer).lt.row_list_sz*col_list_sz) then
           deallocate(buffer, stat=st)
           allocate(buffer(row_list_sz*col_list_sz), stat=st)
@@ -2263,14 +2282,14 @@ contains
     type(c_ptr), value :: buffer_c
     integer(c_int), value :: min_width_blas
 
-    real(wp), pointer, dimension(:) :: dest, src1, src2
-    integer, dimension(:), pointer :: row_list ! reallocated to min size m
-    integer, dimension(:), pointer :: col_list ! reallocated to min size n
-    real(wp), pointer :: buffer(:)
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
-    type(node_type), pointer :: dnode ! destination node
-    type(node_type), pointer :: snode ! source node
-    type(block_type), pointer :: blk
+    real(wp), pointer, dimension(:) :: dest => null(), src1 => null(), src2 => null()
+    integer, dimension(:), pointer :: row_list => null() ! reallocated to min size m
+    integer, dimension(:), pointer :: col_list => null() ! reallocated to min size n
+    real(wp), pointer :: buffer(:) => null()
+    ! type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(node_type), pointer :: dnode => null() ! destination node
+    type(node_type), pointer :: snode => null() ! source node
+    type(block_type), pointer :: blk => null()
 
     call c_f_pointer(dnode_c, dnode)
     call c_f_pointer(snode_c, snode)
@@ -2281,8 +2300,9 @@ contains
     call c_f_pointer(src2_c, src2, (/m*n1/))    
     
     call c_f_pointer(buffer_c, buffer, (/m*n/))    
-    ! allocate(work(m*n))
+    ! allocate(buffer(m*n))
     allocate(row_list(1), col_list(1))
+    ! allocate(row_list(m), col_list(n))
 
     ! write(*,*)"node: ", blk%node
     ! write(*,*)"snode: ", snode
@@ -2292,7 +2312,9 @@ contains
     call spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
          & src1, src2, row_list, col_list, buffer, min_width_blas)
 
-    ! deallocate(work)
+    ! write(*,*)'m: ', m, ', n: ', n
+
+    ! deallocate(buffer)
     deallocate(row_list, col_list)
 
     return

@@ -464,7 +464,7 @@ BODY
 
    int sync = get_dep_in_sync(bcs, id, i);
 
-   /* printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync);    */
+   /* printf("[update_between] id_ij: %d, id_jk: %d, id_ik: %d, sync: %d\n", id, id_jk, id_ik, sync); */
    /* printf("[update_between] bcol: %d, bcol_sa: %d\n", bcol, bcol_sa);    */
 
    
@@ -485,15 +485,15 @@ BODY
       int src_node = get_blk_node(bcs, id_jk);
       int dest_node = get_blk_node(bcs, id);
 
-      void *p_snode = get_node(snodes, src_node);
-      void *p_dnode = get_node(snodes, dest_node);
+      void *p_snode = (void *)get_node(snodes, src_node);
+      void *p_dnode = (void *)get_node(snodes, dest_node);
 
       int sbcol = get_bcol(bcs, id_jk);
       int sblk_sa = get_blk_sa(snodes, src_node);
       int sbcol_sa = get_bcol(bcs, sblk_sa);
       int scol = sbcol - sbcol_sa + 1;
 
-      void *blk_ij = get_blk(bcs, id);
+      void *blk_ij = (void *)get_blk(bcs, id);
 
       int n1 = get_blk_n(bcs, id_jk);
 
@@ -505,19 +505,50 @@ BODY
       int rsrc = get_dep_in_rsrc(bcs, id, i);
 
       void *buffer = parsec_private_memory_pop( p_work );
+      /* void *buffer = (void *)malloc(maxmn*maxmn*sizeof(double)); */
 
-      void *blk_jk = get_blk(bcs, id_jk);
-      void *blk_ik = get_blk(bcs, id_ik);
+      /* void *blk_jk = (void *)get_blk(bcs, id_jk); */
+      /* void *blk_ik = (void *)get_blk(bcs, id_ik); */
 
+      /* printf("[update_between] m: %d, n: %d\n", m, n); */
+      /* printf("[update_between] csrc: %d, rsrc: %d\n", csrc, rsrc); */
+
+      /* printf("[update_between] blk_ij: %p\n", blk_ij); */
+      /* printf("[update_between] p_dnode: %p\n", p_dnode); */
+      /* printf("[update_between] p_snode: %p\n", p_snode); */
+      /* printf("[update_between] dest: %p\n", dest); */
+      /* printf("[update_between] src1: %p\n", src1); */
+      /* printf("[update_between] src2: %p\n", src2); */
+
+      int *col_list, *row_list;
+      int cls, rls;
+      int s1sa, s1en, s2sa, s2en;
+
+      /* row_list = (int *) malloc(m*sizeof(int)); */
+      /* col_list = (int *) malloc(n*sizeof(int)); */
+
+      /* spllt_update_between_compute_map_c(blk_ij, dcol, p_dnode, scol, p_snode, */
+      /*                                    row_list, col_list, &rls, &cls, */
+      /*                                    &s1sa, &s1en, &s2sa, &s2en); */
+
+      /* free(row_list); */
+      /* free(col_list); */
+      
       spllt_update_between_c(m, n, blk_ij,
                              dcol, p_dnode,
                              n1,
                              scol, p_snode,
                              dest,
+                             /* src1, src2, */
                              src1 + csrc-1, src2 + rsrc-1,
                              /* bc_ij, bc_jk, bc_ik, */
                              buffer, min_width_blas);
 
+      /* spllt_update_between_block_c(m, n, bc_ij, n1, bc_jk, bc_ik, dcol, scol, */
+      /*                              blk_ij, p_dnode, blk_jk, blk_ik, snode, */
+      /*                              min_width_blas, buffer); */
+
+      /* free(buffer); */
       parsec_private_memory_push( p_work, buffer );
 
    }
