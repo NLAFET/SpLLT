@@ -32,6 +32,10 @@ MESSAGE( STATUS "Use GPU:         " ${USE_GPU} )
 option(USE_MPI "Use MPI" OFF)
 MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )   
 
+# Use KNL
+option(USE_KNL "Use KNL" OFF)
+MESSAGE( STATUS "Use KNL:         " ${USE_KNL} )
+
 # Test driver
 ## SpLLT: Cholesky solver
 ## SpLDLT: LDLT solver
@@ -85,7 +89,8 @@ elseif(${RUNTIME} MATCHES "StarPU")
 elseif(${RUNTIME} MATCHES "OMP")
 
   # TODO find_package omp
-  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 
   # Use OMP code
@@ -308,12 +313,29 @@ set(MKL_LIBS $ENV{MKL_LIBS})
 # set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
 set(MKL_DIR $ENV{MKLROOT})
 
-find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
-# find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
 find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
 find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
 # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
-set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+
+if(${USE_KNL} MATCHES ON)
+
+  find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+  find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
+  
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
+
+  target_link_libraries(spllt_test iomp5)
+
+  set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+else()
+
+  find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+  find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
+
+  set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+endif()
 
 MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
 MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
