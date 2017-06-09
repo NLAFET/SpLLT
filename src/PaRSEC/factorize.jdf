@@ -91,12 +91,15 @@ init_block(id)
    /* row index of current block in node */
    id_ik_idx = id - id_kk
 
+   /* m = %{ return  get_blk_m(bcs, id_kk); %} */
+   /* n = %{ return get_blk_n(bcs, id_kk); %} */
+
    : blk(id)
 
    /* CTL ctl <- ctl init_node(snode)  */
 
    RW bc <- blk(id)
-         -> ((upd_count == 0) && (bcol == bcol_sa) &&  isDiag) ? bc_kk factorize_block(diag_idx)
+         -> ((upd_count == 0) && (bcol == bcol_sa) &&  isDiag) ? bc_kk factorize_block(diag_idx) /* [ type= DEFAULT layout= MPI_DOUBLE count= %{ return m*n %}] */
          -> ((upd_count == 0) && (bcol == bcol_sa) && !isDiag) ? bc_ik solve_block(diag_idx, id)
          -> ((upd_count == 0) && (bcol != bcol_sa)) ? bc_ij update_block(diag_idx_sa, id_kk_sa+id_jk_idx, id_kk_sa+id_jk_idx+id_ik_idx)
          -> (upd_count > 0) ? bc_ij update_between(id, 1)

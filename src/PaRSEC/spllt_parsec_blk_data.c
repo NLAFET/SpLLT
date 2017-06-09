@@ -112,6 +112,7 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
     /* key  = 0; */
     pos  = key;
     size = get_blk_sze(bcs, id);
+    /* size = 1; */
 
     /* printf("[blk_data_of] id: %d, key: %zu\n", id, key); */
     /* printf("[blk_data_of] key: %d, bc: %p, size: %zu\n", key, bc, size); */

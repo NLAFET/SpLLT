@@ -80,9 +80,10 @@ static parsec_data_t *data_of(parsec_ddesc_t *desc, ... ) {
     /* key  = 0; */
     pos  = key;
     size = get_blk_sze(bcs, id);
+    /* size = 1; */
 
     /* printf("[data_of] id: %d, key: %zu\n", id, key); */
-    /* printf("[data_of] key: %d, bc: %p, size: %zu\n", key, bc, size); */
+    printf("[data_of] key: %d, bc: %p, size: %zu\n", key, bc, size);
     /* size = sizeof(double); */
 
     return parsec_data_create(base_desc->data_map + pos, desc, key, bc, size);

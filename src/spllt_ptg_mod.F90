@@ -79,9 +79,12 @@ contains
 
     fdata%ddesc = spllt_alloc_blk_desc()
 
+#if defined(SPLLT_USE_MPI)
+    call spllt_parsec_blk_data_init(fdata%ddesc, bc_c, nbc, nds, rank)
+#else
     call data_init(fdata%ddesc, bc_c, nbc, nds, rank)
-    ! call spllt_parsec_blk_data_init(fdata%ddesc, bc_c, nbc, nds, rank) 
-    
+#endif    
+
     fac_hdl = spllt_parsec_factorize(fdata%ddesc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
     

@@ -610,6 +610,7 @@ contains
     n = bc(id)%blk%blkn
 
     get_blk_sze = m*n * wp
+    ! get_blk_sze = 1
     
   end function get_blk_sze
 

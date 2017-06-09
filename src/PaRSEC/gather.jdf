@@ -32,6 +32,9 @@ aux(id)
 
    id = 1..nbc
 
+   /* m = %{ return  get_blk_m(bcs, id_kk); %} */
+   /* n = %{ return get_blk_n(bcs, id_kk); %} */
+
    : blk(id)
 
    RW bc <- blk(id)
@@ -87,11 +90,19 @@ extern "C" %{
                               -1
             );
 
+      /* parsec_matrix_add2arena(gat_hdl->arenas[PARSEC_gather_BLK_ARENA], */
+      /*                         parsec_datatype_double_t, */
+      /*                         matrix_UpperLower, 1, */
+      /*                         maxmn*maxmn, 1, 1, */
+      /*                         /\* maxmn, maxmn, maxmn, *\/ */
+      /*                         PARSEC_ARENA_ALIGNMENT_SSE, */
+      /*                         -1 */
+      /*       ); */
+
       /* parsec_arena_construct(gat_hdl->arenas[PARSEC_gather_DEFAULT_ARENA], */
-      /*                        maxmn*maxmn*parsec_datadist_getsizeoftype(matrix_RealDouble), */
-      /*                        /\* maxmn*maxmn*sizeof(double), *\/ */
+      /*                        maxmn*maxmn*sizeof(double), */
       /*                        PARSEC_ARENA_ALIGNMENT_SSE, */
-      /*                        parsec_datatype_double_t); */
+      /*                        MPI_DOUBLE); */
       
       return &gat_hdl->super;
    }
