@@ -361,6 +361,22 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    row_list = (int *) malloc(m*sizeof(int));
    col_list = (int *) malloc(n*sizeof(int));
 
+   extern void spllt_update_between_compute_map_c
+     ( /* see src/spllt_kernels_mod.F90 */
+      void *blk_c,
+      int dcol,
+      void *dnode_c,
+      int scol,
+      void *snode_c,
+      void *row_list_c,
+      void *col_list_c,
+      int *row_list_sz,
+      int *col_list_sz,
+      int *s1sa,
+      int *s1en,
+      int *s2sa,
+      int *s2en
+      );
    spllt_update_between_compute_map_c(a_blk, dcol, anode, scol, snode,
                                       row_list, col_list, &rls, &cls,
                                       &s1sa, &s1en, &s2sa, &s2en);
@@ -377,6 +393,10 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    magma_queue_create_from_cuda(device_id, local_stream, NULL, NULL, &magma_queue);
    magmablasSetKernelStream(magma_queue);
 
+   extern int is_blk_diag
+     ( /* see src/spllt_c_interface.F90 */
+      void *blk_c
+      );
    int diag = is_blk_diag(a_blk);
    int ndiag = 0;
 
@@ -444,6 +464,12 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
 
    /* cudaStreamSynchronize(local_stream); */
 
+   extern void spllt_cu_expand_buffer
+     ( /* see src/StarPU/expand_buffer_kernels.cu */
+      int n, double *a, double *buffer,
+      int *row_list, int rls, int *col_list, int cls,
+      int ndiag, const cudaStream_t stream
+      );
    spllt_cu_expand_buffer(n, d_bc_ij, d_buffer,
                           d_row_list, rls, d_col_list, cls,
                           ndiag,
