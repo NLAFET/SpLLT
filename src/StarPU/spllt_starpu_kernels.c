@@ -358,8 +358,11 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    
    double *src1, *src2, *a, *buff;
 
-   row_list = (int *) malloc(m*sizeof(int));
-   col_list = (int *) malloc(n*sizeof(int));
+   /* row_list = (int*)malloc(m*sizeof(int)); */
+   /* col_list = (int*)malloc(n*sizeof(int)); */
+
+   row_list = (int*)malloc((m+n)*sizeof(int));
+   col_list = row_list + m;
 
    extern void spllt_update_between_compute_map_c
      ( /* see src/spllt_kernels_mod.F90 */
@@ -462,7 +465,8 @@ void spllt_starpu_update_between_cuda_func(void *buffers[], void *cl_arg) {
    starpu_cuda_copy_async_sync(row_list, 0, d_row_list, worker_node, rls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
    starpu_cuda_copy_async_sync(col_list, 0, d_col_list, worker_node, cls*sizeof(int), local_stream, cudaMemcpyHostToDevice);
 
-   /* cudaStreamSynchronize(local_stream); */
+   cudaStreamSynchronize(local_stream);
+   free(row_list);
 
    extern void spllt_cu_expand_buffer
      ( /* see src/StarPU/expand_buffer_kernels.cu */
