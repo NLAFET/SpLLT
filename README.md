@@ -3,7 +3,7 @@
 SpLLT is a sparse direct solver for computing the solution of
 [symmetric positive
 definite](https://en.wikipedia.org/wiki/Positive-definite_matrix)
-linear systems. The factorization phase is based on a task-based
+linear systems. The factorization phase, which is the most computationally intensive part, is based on a task-based
 Cholesky algorithm and the parallel code is implemented using a
 runtime system. The code supports three different runtime systems:
 [StarPU](http://starpu.gforge.inria.fr/) developed at INRIA Bordeaux
