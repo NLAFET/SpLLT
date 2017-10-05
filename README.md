@@ -1,12 +1,14 @@
 # SpLLT
 
 SpLLT is a sparse direct solver for computing the solution of
-positive-definite systems. The factorization phase is based on a
-task-based Cholesky algorithm and the parallel code is implemented
-using a runtime system. The code supports three different runtime
-systems: [StarPU](http://starpu.gforge.inria.fr/) developed at INRIA
-Bordeaux Sud-ouest, [PaRSEC](https://bitbucket.org/icldistcomp/parsec)
-from ICL, University of Tennessee and the [OpenMP
+[symmetric positive
+definite](https://en.wikipedia.org/wiki/Positive-definite_matrix)
+linear systems. The factorization phase is based on a task-based
+Cholesky algorithm and the parallel code is implemented using a
+runtime system. The code supports three different runtime systems:
+[StarPU](http://starpu.gforge.inria.fr/) developed at INRIA Bordeaux
+Sud-ouest, [PaRSEC](https://bitbucket.org/icldistcomp/parsec) from
+ICL, University of Tennessee and the [OpenMP
 standard](http://openmp.org/) Version 4.0 or above.
 
 The compilation is handled by [CMake](https://cmake.org/) tools and
