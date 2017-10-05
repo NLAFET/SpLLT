@@ -1,5 +1,9 @@
 # SpLLT
 
+|OpenMP|
+|------|
+|[![Build Status](https://travis-ci.com/NLAFET/SpLLT.svg?token=UwhpFb953M8N7PyHRDWG&branch=master)](https://travis-ci.com/NLAFET/SpLLT)|
+
 SpLLT is a sparse direct solver for computing the solution of
 [symmetric positive
 definite](https://en.wikipedia.org/wiki/Positive-definite_matrix)
