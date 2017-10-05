@@ -47,7 +47,7 @@ cmake -DRUNTIME=StarPU <path-to-source>
 
 ```
 
-## Parsec
+## PaRSEC
 
 A parallel version of the code using the
 [PaRSEC](https://bitbucket.org/icldistcomp/parsec) runtime system can
