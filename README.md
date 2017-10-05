@@ -1,23 +1,27 @@
 # SpLLT
 
-This is a DAG-based sparse Cholesky solver which uses a runtime-based
-approach. It currently supports the
-[StarPU](http://starpu.gforge.inria.fr/) and
-[PaRSEC](https://bitbucket.org/icldistcomp/parsec) runtime systems as
-well as the [OpenMP standard](http://openmp.org/) Version 4.0 or
-above.
+SpLLT is a sparse direct solver for computing the solution of
+positive-definite systems. The factorization phase is based on a
+task-based Cholesky algorithm and the parallel code is implemented
+using a runtime system. The code supports three different runtime
+systems: [StarPU](http://starpu.gforge.inria.fr/) developed at INRIA
+Bordeaux Sud-ouest, [PaRSEC](https://bitbucket.org/icldistcomp/parsec)
+from ICL, University of Tennessee and the [OpenMP
+standard](http://openmp.org/) Version 4.0 or above.
 
-# Runtime systems
-
-By default the code is compiled in sequential mode but the choice of
-the runtime system can be specified by setting the option
-`-DRUNTIME`. For example, the sequential code can be configured as
-following:
+The compilation is handled by [CMake](https://cmake.org/) tools and
+the solver can be built as following instructions:
 
 ```bash
-cmake -DRUNTIME=STF <path-to-source>
-
+mkdir build # create build directory
+cd build 
+cmake <path-to-source>
 ```
+
+This will build the sequential version of the code by default. In
+order to build the parallel code you need to select a runtime system
+using the option `-DRUNTIME` when running the cmake `cmake
+<path-to-source>` command.
 
 ## OMP
 
