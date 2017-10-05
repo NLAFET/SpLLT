@@ -1,0 +1,24 @@
+language: fortran
+sudo: required
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gfortran-6
+      - gcc-6
+      - g++-6
+      - libmetis-dev
+      - libblas-dev
+      - liblapack-dev
+      - libhwloc-dev
+
+before_script:
+  - chmod +x makebuild.sh
+  - export CC=gcc-6
+  - export CXX=g++-6
+  - export FC=gfortran-6
+
+script:
+  - ./makebuild.sh
