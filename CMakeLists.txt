@@ -46,6 +46,11 @@ MESSAGE( STATUS "Use KNL:         " ${USE_KNL} )
 # MA87 test driver
 option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
 
+## Set BLAS and LAPACK libraries to use for linking
+SET(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
+set_property(CACHE BLAS_LAPACK PROPERTY STRINGS Ref MKL)
+MESSAGE( STATUS "BLAS/LAPACK:         " ${BLAS_LAPACK} )
+
 # spral
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 include_directories(${SPRAL_DIR})
@@ -309,39 +314,76 @@ find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
 target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
 # BLAS and LAPACK
-set(MKL_LIBS $ENV{MKL_LIBS})
-# set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
-set(MKL_DIR $ENV{MKLROOT})
+if (${BLAS_LAPACK} MATCHES "MKL")
 
-find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
-find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
-# set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+  # MKL library
 
-if(${USE_KNL} MATCHES ON)
+  if(${USE_KNL} MATCHES ON)
 
-  find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
-  find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
-  
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
+    find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+    find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
+    
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
 
-  target_link_libraries(spllt_test iomp5)
+    target_link_libraries(spllt_test iomp5)
 
-  set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+  else()
+
+    set(MKL_LIBS $ENV{MKL_LIBS})
+    set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
+    set(MKL_DIR $ENV{MKLROOT})
+
+    find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
+    # find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
+    find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
+    find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
+    # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+
+    MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
+    MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
+    MESSAGE( STATUS "MKL Libraries: " ${MKL_LIBRARIES} )
+
+  endif()
+
+  set(BLAS_LAPACK_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+
 else()
 
-  find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
-  find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
+  # Reference BLAS libraries
 
-  set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+  find_library(BLAS_LIBRARY blas)
+  find_library(LAPACK_LIBRARY lapack)
+  set(BLAS_LAPACK_LIBRARIES ${BLAS_LIBRARY} ${LAPACK_LIBRARY})
+
 endif()
 
-MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
-MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
-MESSAGE( STATUS "MKL Libraries: " ${MKL_LIBRARIES} )
 
-target_link_libraries(spllt_test ${MKL_LIBRARIES})
+# if(${USE_KNL} MATCHES ON)
+
+#   find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+#   find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
+  
+#   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+#   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+#   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
+
+#   target_link_libraries(spllt_test iomp5)
+
+#   set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+# else()
+
+#   find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+#   find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
+
+#   set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+# endif()
+
+
+# target_link_libraries(spllt_test ${MKL_LIBRARIES})
+
+target_link_libraries(spldlt_test ${BLAS_LAPACK_LIBRARIES})
 
 # pthread
 target_link_libraries(spllt_test pthread)
