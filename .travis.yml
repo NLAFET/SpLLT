@@ -19,6 +19,8 @@ before_script:
   - export CC=gcc-6
   - export CXX=g++-6
   - export FC=gfortran-6
+  - ./installspral.sh
+  - 
 
 script:
   - ./makebuild.sh
