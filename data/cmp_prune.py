@@ -57,7 +57,7 @@ for mat in flistmat:
     spllt_flops = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_dir + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_dir + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)
@@ -81,7 +81,7 @@ for mat in flistmat:
     spllt_prune_flops = []
     for blocksize in blocksizes:
         # print "blocksize: ",blocksize
-        datafile = outputdir + '/' + 'spllt_starpu' + '/' + starpu_prune_dir + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
+        datafile = outputdir + '/' + 'starpu' + '/' + starpu_prune_dir + '/' + pbl + '_NCPU-27' + '_NB-' + str(blocksize) + '_NEMIN-32'
         if os.path.exists(datafile):
             # print datafile
             f = open(datafile)

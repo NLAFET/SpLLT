@@ -87,10 +87,12 @@ set(HSLPACK_DIR $ENV{HSLPACKDIR})
 #   ${HSLPACK_DIR}/fa14/fa14d.f
 #   )
 
-set(HSL_SRC hsl_ma87d.F90
-  ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
-  ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90)
 
+if(MA87_TEST_DRIVER MATCHES ON)
+  set(HSL_SRC hsl_ma87d.F90
+    ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
+    ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90)
+endif()
 # MESSAGE( STATUS "source files:         " ${HSLSRC} )
 
 # add_library(spllt ${sources} ${HSL_SRC})
