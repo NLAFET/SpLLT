@@ -6,4 +6,4 @@ cd spral
 cd ..
 mkdir spral-build
 cd spral-build
-../spral/configure --disable-gpu --disable-openmp
+../spral/configure FC=gfotran-6 CC=gcc-6 CXX=g++-6 --disable-gpu --disable-openmp
