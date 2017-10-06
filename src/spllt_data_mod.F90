@@ -62,8 +62,6 @@ module spllt_data_mod
      ! Non-static info
      integer :: dep  ! dependency countdown/marker. Once factor or solve done,
      ! value is -2.
-     !$    integer(omp_lock_kind) :: lock   ! Lock for altering dep
-     !$    integer(omp_lock_kind) :: alock  ! Lock for altering values in keep%lfact 
      ! for this block.
      ! Note: locks initialised in ma87_analyse and destroyed
      !       in ma87_finalise
