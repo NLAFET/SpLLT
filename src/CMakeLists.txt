@@ -93,8 +93,6 @@ if(MA87_TEST_DRIVER MATCHES ON)
     ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90
     ${HSLPACK_DIR}/hsl_mc34/hsl_mc34d.f90)
 
-  add_library(spllt ${sources} ${HSL_SRC})
-
 endif()
 # MESSAGE( STATUS "source files:         " ${HSLSRC} )
 
@@ -104,3 +102,10 @@ if(${USE_GPU} MATCHES ON)
   cuda_add_library(spllt_cuda ${cuda_sources})
 endif()
 
+if(MA87_TEST_DRIVER MATCHES ON)
+
+  add_library(spllt ${sources} ${HSL_SRC})
+else()
+
+  add_library(spllt ${sources})
+endif()
