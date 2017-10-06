@@ -6,4 +6,4 @@ cd spral
 cd ..
 mkdir spral-build
 cd spral-build
-~/spral/configure --disable-gpu --disable-openmp
+../spral/configure --disable-gpu --disable-openmp
