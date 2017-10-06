@@ -5,7 +5,6 @@ module spllt_data_mod
 #elif defined(SPLLT_USE_PARSEC)
   use parsec_f08_interfaces
 #endif
-  use hsl_ma87_double, only: block_type, node_type 
   ! use hsl_zd11_double
   implicit none
 
@@ -39,6 +38,66 @@ module spllt_data_mod
   integer(c_int)        :: nds
   integer(c_int)        :: rank
 #endif
+
+  !*************************************************
+  
+  ! Data type for storing information for each block (BLK)
+  ! The blocks are numbered 1,2,..., keep%final_blk
+  type block_type
+     ! Static info, which is set in ma87_analayse
+     integer :: bcol            ! block column that blk belongs to
+     integer :: blkm            ! height of block (number of rows in blk)
+     integer :: blkn            ! width of block (number of columns in blk)
+     integer(long) :: dblk      ! id of the block on the diagonal within the 
+     ! block column to which blk belongs
+     integer :: dep_initial     ! initial dependency count for block,
+     integer(long) :: id        ! The block identitifier (ie, its number blk)
+     integer(long) :: last_blk  ! id of the last block within the
+     ! block column to which blk belongs
+     integer :: node            ! node to which blk belongs
+     integer :: sa              ! posn of the first entry of the
+     ! block blk within the array that holds the block column of L
+     ! that blk belongs to.
+
+     ! Non-static info
+     integer :: dep  ! dependency countdown/marker. Once factor or solve done,
+     ! value is -2.
+     !$    integer(omp_lock_kind) :: lock   ! Lock for altering dep
+     !$    integer(omp_lock_kind) :: alock  ! Lock for altering values in keep%lfact 
+     ! for this block.
+     ! Note: locks initialised in ma87_analyse and destroyed
+     !       in ma87_finalise
+  end type block_type
+
+  !*************************************************
+
+  ! Derived type for holding data for each node.
+  ! This information is set up by ma87_analyse once the assembly tree
+  ! has been constructed.
+  type node_type
+     integer(long) :: blk_sa ! identifier of the first block in node
+     integer(long) :: blk_en ! identifier of the last block in node
+
+     integer :: nb ! Block size for nodal matrix
+     ! If number of cols nc in nodal matrix is less than control%nb but 
+     ! number of rows is large, the block size for the node is taken as 
+     ! control%nb**2/nc, rounded up to a multiple of 8. The aim is for
+     ! the numbers of entries in the blocks to be similar to those in the 
+     ! normal case. 
+
+     integer :: sa ! index (in pivotal order) of the first column of the node
+     integer :: en ! index (in pivotal order) of the last column of the node
+
+     integer, allocatable :: index(:) ! holds the permuted variable
+     ! list for node. They are sorted into increasing order.
+     ! index is set up by ma87_analyse
+
+     integer :: nchild ! number of children node has in assembly tree
+     integer, allocatable :: child(:) ! holds children of node
+     integer :: parent ! Parent of node in assembly tree
+     integer :: least_desc ! Least descendant in assembly tree
+
+  end type node_type
 
   ! user control
   type spllt_cntl
