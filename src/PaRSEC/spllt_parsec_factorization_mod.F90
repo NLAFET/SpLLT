@@ -39,7 +39,7 @@ contains
   function get_node(nodes_c, snode) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: nodes_c
@@ -57,7 +57,7 @@ contains
   function get_blk_node(bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: bcs_c
@@ -75,7 +75,7 @@ contains
   function get_blk_sa(nodes_c, snode) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: nodes_c
@@ -94,7 +94,7 @@ contains
   function get_blk_en(nodes_c, snode) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: nodes_c
@@ -113,7 +113,7 @@ contains
   function get_nc(nodes_c, nnodes, bcs_c, id) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: nodes_c, bcs_c
@@ -140,7 +140,7 @@ contains
   function get_dest_blk_id(bcs_c, nbc, id_jk, id_ik) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), value, target :: bcs_c
@@ -159,7 +159,7 @@ contains
   ! get number of internode updates to be performed on block id 
   function get_dep_out_count(bcs_c, id) bind(C)
     use iso_c_binding
-    use spllt_mod
+    ! use spllt_mod
     implicit none
 
     type(c_ptr), value, target :: bcs_c
@@ -616,7 +616,7 @@ contains
 
   function get_lcol_ptr(lfact_c, bcol) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), target :: lfact_c
@@ -634,7 +634,7 @@ contains
   function get_lcol_sze(lfact_c, bcol) bind(C)
     use iso_c_binding
     use spllt_mod
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     implicit none
 
     type(c_ptr), target :: lfact_c

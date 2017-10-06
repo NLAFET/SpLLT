@@ -1,6 +1,6 @@
 module spllt_mod
   use spllt_data_mod
-  use hsl_ma87_double, only: block_type, node_type 
+  ! use hsl_ma87_double, only: block_type, node_type 
   ! use hsl_zd11_double
 #if defined(SPLLT_USE_STARPU)
   use iso_c_binding
