@@ -383,7 +383,7 @@ endif()
 
 # target_link_libraries(spllt_test ${MKL_LIBRARIES})
 
-target_link_libraries(spldlt_test ${BLAS_LAPACK_LIBRARIES})
+target_link_libraries(spllt_test ${BLAS_LAPACK_LIBRARIES})
 
 # pthread
 target_link_libraries(spllt_test pthread)
