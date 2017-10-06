@@ -45,6 +45,7 @@ MESSAGE( STATUS "Use KNL:         " ${USE_KNL} )
 
 # MA87 test driver
 option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
+MESSAGE( STATUS "Use MA87 test driver:         " ${MA87_TEST_DRIVER} )
 
 ## Set BLAS and LAPACK libraries to use for linking
 SET(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
