@@ -2,7 +2,7 @@
 
 git clone https://github.com/ralna/spral.git
 cd spral
-source autogen.sh
+./autogen.sh
 cd ..
 mkdir spral-build
 cd spral-build
