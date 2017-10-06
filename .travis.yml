@@ -1,6 +1,5 @@
 language: fortran
 sudo: required
-dist: trusty
 
 addons:
   apt:
@@ -13,6 +12,7 @@ addons:
       - libmetis-dev
       - libblas-dev
       - liblapack-dev
+      - libnuma-dev
       - libhwloc-dev
 
 before_script:
