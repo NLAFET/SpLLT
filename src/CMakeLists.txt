@@ -1,9 +1,18 @@
 # get source files
+
 file(
   GLOB 
   sources 
   *.F90
   *.c)
+
+file(
+  GLOB 
+  to_remove
+  hsl_ma87d.F90)
+
+list(REMOVE_ITEM sources ${to_remove})
+
 
 if(${RUNTIME} MATCHES "StarPU")
 
