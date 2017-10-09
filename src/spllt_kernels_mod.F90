@@ -3,10 +3,95 @@ module spllt_kernels_mod
 
 contains
 
+  !*************************************************
+  !  
+  ! Performs an update_between task directly rather than via a buffer.
+  
+  subroutine spllt_update_direct(n, dest, n1, csrc, rsrc,  &
+       row_list, rls, col_list, cls, ndiag)
+    use spllt_data_mod
+    implicit none
+
+    integer, intent(in) :: n ! number of columns in dest
+    real(wp), dimension(*), intent(inout) :: dest ! holds destination block
+    integer, intent(in) :: n1 ! number of columns in source blocks
+    real(wp), dimension(*), intent(in) :: csrc, rsrc ! source blocks
+    integer, intent(in) :: rls  ! size of row_list
+    integer, intent(in) :: row_list(rls) ! local row indices for
+    ! rows in rsrc (= local row indices for dest)
+    integer, intent(in) :: cls  ! size of col_list
+    integer, intent(in) :: col_list(cls) ! local row indices for
+    ! rows in csrc (= local column indices for dest)
+    integer, intent(in) :: ndiag ! Number of triangular rows of update
+
+    integer :: cptr
+    integer :: i
+    integer :: j
+    integer :: k1, k2, k3, k4, l
+    integer :: rptr
+    real(wp) :: work1, work2, work3, work4
+
+    ! Note: ndiag is either equal to 0 or, if dest is a diagonal block, it
+    ! is equal to the number of cols cls in dest (and this is
+    ! equal to the number of rows rls in dest).
+    ! first treat the case when dest is on the diagonal.
+    ! loop over the rows of dest
+    do j = 1, ndiag
+       cptr = (row_list(j)-1)*n
+       rptr = 1 + (j-1)*n1
+       do i = 1, j
+          k1 = 1 + (i-1)*n1
+          work1 = zero
+          do l = rptr, rptr + n1 - 1
+             work1 = work1 + csrc(k1)*rsrc(l)
+             k1 = k1 + 1
+          end do
+          k1 = cptr + col_list(i)
+          dest(k1) = dest(k1) - work1
+       end do
+    end do
+
+    ! Now consider the case when dest is not a diagonal block
+    do j = ndiag+1, rls
+       cptr = (row_list(j)-1)*n
+       rptr = 1 + (j-1)*n1
+       i = 4*int(cls/4)
+       do i = 1, i, 4
+          k1 = 1 + (i+0-1) * n1
+          k2 = 1 + (i+1-1) * n1
+          k3 = 1 + (i+2-1) * n1
+          k4 = 1 + (i+3-1) * n1
+          work1 = zero; work2 = zero; work3 = zero; work4 = zero
+          do l = rptr, rptr + n1 - 1
+             work1 = work1 + csrc(k1)*rsrc(l); k1 = k1 + 1
+             work2 = work2 + csrc(k2)*rsrc(l); k2 = k2 + 1
+             work3 = work3 + csrc(k3)*rsrc(l); k3 = k3 + 1
+             work4 = work4 + csrc(k4)*rsrc(l); k4 = k4 + 1
+          end do
+          k1 = cptr + col_list(i+0); dest(k1) = dest(k1) - work1
+          k2 = cptr + col_list(i+1); dest(k2) = dest(k2) - work2
+          k3 = cptr + col_list(i+2); dest(k3) = dest(k3) - work3
+          k4 = cptr + col_list(i+3); dest(k4) = dest(k4) - work4
+       end do
+       i = 4*int(cls/4) + 1
+       do i = i, cls
+          k1 = 1 + (i-1)*n1
+          work1 = zero
+          do l = rptr, rptr + n1 - 1
+             work1 = work1 + csrc(k1)*rsrc(l)
+             k1 = k1 + 1
+          end do
+          k1 = cptr + col_list(i)
+          dest(k1) = dest(k1) - work1
+       end do
+    end do
+
+  end subroutine spllt_update_direct
+  
+
   ! kernel for the factorization of a node within a subtree
   subroutine spllt_subtree_factorize_node(node, blocks, lfact)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     ! type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
@@ -137,7 +222,6 @@ contains
        & rptr, rptr2, row_list, &
        & node, am, an, root, m, workspace, buffer)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     logical, intent(in) :: is_diag
@@ -240,7 +324,6 @@ contains
   subroutine spllt_subtree_apply_node(node, root, nodes, blocks, lfact, buffer, &
        & map, row_list, col_list, workspace, cntl)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     type(node_type), intent(in) :: node 
@@ -695,12 +778,11 @@ contains
   subroutine spllt_subtree_factorize(root, val, keep, buffer, &
        & cntl, map, row_list, col_list, workspace)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
     
     integer, intent(in) :: root ! root of subtree
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
+    type(spllt_keep), target, intent(inout) :: keep ! on exit, matrix a copied
     real(wp), dimension(:), pointer, intent(inout) :: buffer
     ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), intent(in)     :: cntl
@@ -739,7 +821,6 @@ contains
   
   subroutine spllt_factor_subtree(root, nodes, blocks, lfact, buffer)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
     
     integer, intent(in) :: root ! root of subtree
@@ -872,7 +953,6 @@ contains
   ! NB: This is basically an immediate acting variant of add_between_updates()
   subroutine spllt_apply_subtree(root, buffer, nodes, blocks, lfact, map)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: root ! root of subtree
@@ -1037,7 +1117,6 @@ contains
   subroutine spllt_scatter_block(m, n, rsrc_index, csrc_index, src, lds, &
        rdest_index, cdest_index, dest, ldd)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: m ! number of rows in source buffer
@@ -1240,7 +1319,6 @@ contains
        & blk_dest, dnode, blk_csrc, blk_rsrc, snode, &
        & min_width_blas, row_list, col_list, buffer)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: m  ! number of rows in destination block
@@ -1425,7 +1503,7 @@ contains
        !    
 
        ! ndiag = min(ndiag, row_list_sz)
-       call expand_buffer(dest, n, row_list, row_list_sz, &
+       call spllt_expand_buffer(dest, n, row_list, row_list_sz, &
             col_list, col_list_sz, ndiag, buffer)
 
     else
@@ -1435,7 +1513,7 @@ contains
        if(diag) ndiag = int(s1en-s1sa+1)
 
 
-       call update_direct(n, dest, n1, csrc(bcptr), rsrc(brptr), row_list, row_list_sz, &
+       call spllt_update_direct(n, dest, n1, csrc(bcptr), rsrc(brptr), row_list, row_list_sz, &
             col_list, col_list_sz, ndiag)
 
     endif
@@ -1452,7 +1530,6 @@ contains
        & min_width_blas, buffer_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer(c_int), value  :: m ! number of rows in dest
@@ -1524,7 +1601,7 @@ contains
        & row_list, col_list, row_list_sz, col_list_sz, &
        & s1sa, s1en, s2sa, s2en)
     use iso_c_binding
-    use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     type(block_type), intent(in) :: blk ! destination block
@@ -1643,7 +1720,7 @@ contains
        & row_list_c, col_list_c, row_list_sz, col_list_sz, &
        & s1sa, s1en, s2sa, s2en) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     type(c_ptr), value, intent(in) :: blk_c ! destination block C ptr
@@ -1690,7 +1767,6 @@ contains
   subroutine spllt_cuda_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
        & csrc, rsrc, row_list, col_list, buffer, min_width_blas)
     use spllt_data_mod
-    use hsl_ma87_double
     use magma
     implicit none
 
@@ -2026,7 +2102,6 @@ contains
   subroutine spllt_update_between(m, n, blk, dcol, dnode, n1, scol, snode, dest, & 
        & csrc, rsrc, row_list, col_list, buffer, min_width_blas)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: m  ! number of rows in destination block
@@ -2252,7 +2327,7 @@ contains
        if(diag) ndiag = int(s1en-s1sa+1)
 
 
-       call update_direct(n, dest, n1, csrc, rsrc, row_list, row_list_sz, &
+       call spllt_update_direct(n, dest, n1, csrc, rsrc, row_list, row_list_sz, &
             col_list, col_list_sz, ndiag)
 
     endif
@@ -2266,7 +2341,6 @@ contains
        & src1_c, src2_c, buffer_c, min_width_blas) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer(c_int), value :: m ! number of rows in dest
@@ -2324,7 +2398,6 @@ contains
   ! copy matrix coefficients into lfact array within snode
   subroutine spllt_init_node(snode, val, keep)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer, intent(in) :: snode
@@ -2336,7 +2409,7 @@ contains
 ! #endif
     ! so that, if variable (row) i is involved in node,
     ! map(i) is set to its local row index
-    type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
+    type(spllt_keep), intent(inout) :: keep ! on exit, matrix a copied
     ! into relevant part of keep%lfact
 
     integer(long) :: i, j ! Temporary variable   
@@ -2392,7 +2465,6 @@ contains
   subroutine spllt_init_node_c(snode, val_c, nval, keep_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer(c_int), value  :: snode
@@ -2401,7 +2473,7 @@ contains
     type(c_ptr), value     :: keep_c
     
     real(wp), pointer :: val(:) ! user's matrix values
-    type(MA87_keep), pointer :: keep 
+    type(spllt_keep), pointer :: keep 
 
     call c_f_pointer(val_c, val, (/nval/))
     call c_f_pointer(keep_c, keep)    
@@ -2415,12 +2487,11 @@ contains
   ! copy matrix coefficicents into blk
   subroutine spllt_init_blk(id, val, keep)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer(long) :: id
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
 
     type(block_type), pointer :: blk
     integer :: sa
@@ -2450,7 +2521,6 @@ contains
   subroutine spllt_init_blk_c(id, val_c, nval, keep_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none
 
     integer(long), value  :: id
@@ -2459,7 +2529,7 @@ contains
     type(c_ptr), value    :: keep_c
 
     real(wp), pointer :: val(:) ! user's matrix values
-    type(MA87_keep), pointer :: keep 
+    type(spllt_keep), pointer :: keep 
 
     call c_f_pointer(val_c, val, (/nval/))
     call c_f_pointer(keep_c, keep)
@@ -2472,13 +2542,12 @@ contains
   subroutine spllt_activate_node(snode, keep, fdata, adata)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
 #if defined(SPLLT_USE_STARPU)
     use  starpu_f_mod
 #endif
     implicit none
 
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_data_type), intent(inout) :: fdata
     type(spllt_adata_type), intent(in) :: adata
     integer :: snode
@@ -2546,7 +2615,7 @@ contains
 
   ! Build a map of node's blocks
   subroutine spllt_build_rowmap(node, rowmap)
-    use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     type(node_type), intent(in) :: node  ! current node in the atree

@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (SpLib C CXX Fortran)
+project (SpLib Fortran C CXX)
 
 # Include our own cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
@@ -22,19 +22,19 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" 
 
 SET(RUNTIME "STF" CACHE STRING "Runtime system")
 set_property(CACHE RUNTIME PROPERTY STRINGS STF StarPU OMP Parsec)
-MESSAGE( STATUS "Runtime:         " ${RUNTIME} )
+MESSAGE( STATUS "Runtime: " ${RUNTIME} )
 
 # Use GPU
 option(USE_GPU "Use GPU" OFF)
-MESSAGE( STATUS "Use GPU:         " ${USE_GPU} )   
+MESSAGE( STATUS "Use GPU: " ${USE_GPU} )   
 
 # Use MPI
 option(USE_MPI "Use MPI" OFF)
-MESSAGE( STATUS "Use MPI:         " ${USE_MPI} )   
+MESSAGE( STATUS "Use MPI: " ${USE_MPI} )   
 
 # Use KNL
 option(USE_KNL "Use KNL" OFF)
-MESSAGE( STATUS "Use KNL:         " ${USE_KNL} )
+MESSAGE( STATUS "Use KNL: " ${USE_KNL} )
 
 # Test driver
 ## SpLLT: Cholesky solver
@@ -344,11 +344,11 @@ if (${BLAS_LAPACK} MATCHES "MKL")
 
     MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
     MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
-    MESSAGE( STATUS "MKL Libraries: " ${MKL_LIBRARIES} )
 
   endif()
 
   set(BLAS_LAPACK_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+  MESSAGE( STATUS "BLAS and LAPACK Libraries: " ${BLAS_LAPACK_LIBRARIES} )
 
 else()
 

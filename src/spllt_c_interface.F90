@@ -5,7 +5,7 @@ contains
 
   function is_blk_diag(blk_c) bind(C)
     use iso_c_binding
-    use hsl_ma87_double, only: block_type
+    use spllt_data_mod, only: block_type
     implicit none
 
     type(c_ptr), value, target :: blk_c

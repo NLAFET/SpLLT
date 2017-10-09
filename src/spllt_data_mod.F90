@@ -40,7 +40,7 @@ module spllt_data_mod
 #endif
 
   !*************************************************
-  
+  !  
   ! Data type for storing information for each block (BLK)
   ! The blocks are numbered 1,2,..., keep%final_blk
   type block_type
@@ -167,7 +167,9 @@ module spllt_data_mod
 #endif
   end type spllt_workspace_i
 
-  ! problem data (analyis)
+  !*************************************************
+  !
+  ! Data associated with input matrix know after analysis phase
   type spllt_adata_type
      integer :: nnodes
      integer :: n
@@ -216,5 +218,128 @@ module spllt_data_mod
      logical :: prune_tree = .false.  ! use tree pruning
      character(len=3) :: fmt='csc'
   end type spllt_options
+
+  !*************************************************
+  !
+  ! data type for returning information to user.
+  type spllt_info 
+     integer :: flag = 0               ! Error return flag (0 on success)
+     integer :: maxdepth = 0           ! Maximum depth of the tree.
+     integer(long) :: num_factor = 0_long ! Number of entries in the factor.
+     integer(long) :: num_flops = 0_long  ! Number of flops for factor.
+     integer :: num_nodes = 0          ! Number of nodes
+     integer :: stat = 0               ! STAT value on error return -1.
+  end type Spllt_info
+
+
+  !*************************************************  
+  !
+  ! Data type that represents a single block column in L
+  ! (allocated by ma87_analyse)
+  type lfactor
+     real(wp), dimension(:), allocatable :: lcol ! holds block column
+  end type lfactor
+
+  !*************************************************  
+  ! Data type for storing mapping from user's matrix values into
+  ! block columns of L
+  type lmap_type
+     integer(long) :: len_map ! length of map
+     integer(long), allocatable :: map(:,:) ! holds map from user's val
+     ! array into lfact(:)%lcol values as follows:
+     ! lcol( map(1,i) ) += val( map(2,i) )     i = 1:lmap
+     ! map is set at end of analyse phase using subroutines make_map
+     ! and lcol_map, and is used in factorization phase by blk_col_add_a
+  end type lmap_type
+
+  !*************************************************  
+  ! Data type for communication between threads and routines
+  type spllt_keep
+     !     private
+     type(block_type), dimension(:), allocatable :: blocks ! block info
+     integer, dimension(:), allocatable :: flag_array ! allocated to
+     ! have size equal to the number of threads. For each thread, holds
+     ! error flag
+     integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
+     ! locks in finalise
+     type(spllt_info) :: info ! Holds copy of info
+     integer :: maxmn ! holds largest block dimension
+     integer :: n  ! Order of the system.
+     type(node_type), dimension(:), allocatable :: nodes ! nodal info
+     integer :: nbcol = 0 ! number of block columns in L
+     type(lfactor), dimension(:), allocatable :: lfact
+     ! holds block cols of L
+     type(lmap_type), dimension(:), allocatable :: lmap
+     ! holds mapping from matrix values into lfact
+  end type spllt_keep
+
+  !*************************************************
+  !  
+!   ! Data type for user controls
+!   type spllt_control
+
+!      integer :: diagnostics_level = 0      ! Controls diagnostic printing.
+!      ! Possible values are:
+!      !  < 0: no printing.
+!      !    0: error and warning messages only.
+!      !    1: as 0 plus basic diagnostic printing.
+!      !    2: as 1 plus some more detailed diagnostic messages.
+!      !    3: as 2 plus all entries of user-supplied arrays.
+!      integer :: nb    = spllt_nb_default ! Controls the size of the
+!      ! blocks used within each node (used to set nb within node_type)
+!      integer :: nemin = spllt_nemin_default    
+!      ! Node amalgamation parameter. A child node is merged with its parent 
+!      ! if they both involve fewer than nemin eliminations.
+!      integer :: unit_diagnostics = 6    ! unit for diagnostic messages
+!      ! Printing is suppressed if unit_diagnostics  <  0.
+!      integer :: unit_error       = 6    ! unit for error messages
+!      ! Printing is suppressed if unit_error  <  0.
+!      integer :: unit_warning     = 6    ! unit for warning messages
+!      ! Printing is suppressed if unit_warning  <  0.
+
+
+! !!!! Undocumented
+!      !**   integer :: time_out        = -1     ! If >= 0 some internal timings
+!      !**      are printed on unit time_out. For HSL 2011 these are commented
+!      !**      using comments !** so easy to search and uncomment
+!      !%%%  integer :: unit_log        = -1     ! For profiling log output
+!      !%%%     commented out for HSL 2011 using !%%%
+!      !%%%  integer :: log_level       = 1      ! Level of profiling information
+! !!! Note: commenting out use of time_out and unit_log means
+!      !%%%     commented out for HSL 2011 using !%%%
+
+!      integer :: min_width_blas  = 8      ! Minimum width of source block
+!      ! before we use an indirect update_between
+
+!   end type spllt_control
+
+contains
+
+  !*************************************************  
+  !
+  ! Returns the destination block of an internal update task.
+  ! Called by add_updates.
+  
+  integer(long) function get_dest_block(src1, src2)
+
+    type(block_type), intent(in) :: src1
+    type(block_type), intent(in) :: src2
+
+    integer(long) :: i
+    integer :: sz
+
+    ! Move to diagonal block of target column
+    ! sz is the number of (row) blocks in src1
+    sz = src1%last_blk - src1%dblk + 1 
+    get_dest_block = src1%dblk
+    do i = src1%dblk+1, src1%id
+       get_dest_block = get_dest_block + sz
+       sz = sz - 1
+    end do
+
+    ! Move to relevant row block in target col.
+    get_dest_block = get_dest_block + src2%id - src1%id
+
+  end function get_dest_block
 
 end module spllt_data_mod

@@ -17,7 +17,6 @@ contains
     use spral_rutherford_boeing
     use spral_matrix_util, only : cscl_verify, SPRAL_MATRIX_REAL_SYM_PSDEF
     use spral_ssids
-    use hsl_ma87_double
     use spllt_analyse_mod, only : spllt_analyse
     use spllt_stf_factorization_mod 
 #if defined(SPLLT_USE_STARPU)
@@ -37,6 +36,7 @@ contains
     use spllt_parsec_factorization_mod
     use spllt_ptg_mod
 #endif
+    use spllt_solve_mod
     implicit none
     
     character(len=*), intent(in) :: mf ! matrix file
@@ -69,10 +69,8 @@ contains
     integer :: r, i, j
     integer :: k
 
-    ! ma87
-    type(ma87_keep) :: keep
-    type(ma87_control) :: control
-    type(ma87_info) :: info
+    type(spllt_keep) :: keep
+    type(spllt_info) :: info
 
     ! SpLLT
     type(spllt_adata_type) :: adata
@@ -109,8 +107,6 @@ contains
 
    call spllt_parse_args(options)
 
-   control%nb   = options%nb
-   ! control%ncpu = options%ncpu
    cntl%nb = options%nb
    cntl%ncpu = options%ncpu
 
@@ -121,7 +117,7 @@ contains
    end if
 
     if (options%nemin .gt. 0) then
-       control%nemin = options%nemin
+       cntl%nemin = options%nemin
     end if
 
     if (options%prune_tree) cntl%prune_tree = .true. 
@@ -129,7 +125,7 @@ contains
     write(*,*) '  mat: ', matfile
     write(*,*) '   nb: ', options%nb    
     write(*,*) ' ncpu: ', options%ncpu
-    write(*,*) 'nemin: ', control%nemin
+    write(*,*) 'nemin: ', cntl%nemin
     
     ! Read in a matrix
     write(*, "(a)") "Reading..."
@@ -258,10 +254,10 @@ contains
 
 #if defined(SPLLT_STF_LL)
     ! Unroll the DAG using a Left-Looking strategy
-    call spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
+    call spllt_stf_ll_factorize(n, ptr, row, val, order, keep, info, fdata, cntl)
 
 #else
-    call spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, adata, fdata, cntl)
+    call spllt_stf_factorize(n, ptr, row, val, order, keep, info, adata, fdata, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #endif
 
@@ -328,11 +324,12 @@ contains
     write(*,'("Solve...")')
     soln = rhs ! init solution with RHS
     ! solve
-    call MA87_solve(nrhs, n, soln, order, keep, control, info)
-    if(info%flag .lt. spllt_success) then
-       write(*, "(a,i4)") " fail on 1d solve", &
-            info%flag
-    endif
+    ! call MA87_solve(nrhs, n, soln, order, keep, control, info)
+    call spllt_solve(soln(:,1), order, keep, cntl, info)
+    ! if(info%flag .lt. spllt_success) then
+    !    write(*, "(a,i4)") " fail on 1d solve", &
+    !         info%flag
+    ! endif
 
     ! call spllt_bwerr(a, x, b, resid)
 
@@ -346,7 +343,7 @@ contains
 
 9998 continue
 
-    call MA87_finalise(keep, control)
+    ! call MA87_finalise(keep, control)
     
   end subroutine spllt_test_mat
 

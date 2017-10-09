@@ -9,7 +9,7 @@ contains
   ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
     ! use hsl_mc78_integer
     ! use hsl_mc34_double
-    use hsl_ma87_double
+    use spllt_data_mod
     use spral_ssids_akeep, only: ssids_akeep
     use spral_ssids_anal, only : expand_pattern
     implicit none
@@ -23,9 +23,9 @@ contains
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     type(ssids_akeep), target, intent(in) :: akeep ! analyse information from ssids
-    type(MA87_keep), target, intent(out) :: keep
+    type(spllt_keep), target, intent(out) :: keep
     type(spllt_cntl), intent(in) :: cntl
-    type(MA87_info), intent(inout) :: info
+    type(spllt_info), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
     integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
@@ -401,9 +401,6 @@ contains
              ! store identity of block column that blk belongs to
              keep%blocks(blk)%bcol     = keep%nbcol
 
-             !$          call omp_init_lock(keep%blocks(blk)%lock)
-             !$          call omp_init_lock(keep%blocks(blk)%alock)
-
              ! increment k by number of entries in block
              k = k + keep%blocks(blk)%blkm * keep%blocks(blk)%blkn
 
@@ -531,12 +528,12 @@ contains
 
 #if defined(SPLLT_USE_PARSEC)
   subroutine spllt_compute_upd_bet_add(fdata, keep, node, cptr, cptr2, rptr, rptr2, dest_blk)
-    use hsl_ma87_double
+    use spllt_data_mod
     use spllt_mod
     implicit none
 
     type(spllt_data_type), target, intent(inout) :: fdata ! data related to the factorization
-    type(MA87_keep), target, intent(in) :: keep
+    type(spllt_keep), target, intent(in) :: keep
     type(node_type)     :: node
     integer :: cptr, cptr2, rptr, rptr2
     integer(long)     :: dest_blk
@@ -622,13 +619,13 @@ contains
   end subroutine spllt_compute_upd_bet_add
 
   subroutine spllt_compute_dep(adata, fdata, keep, map)
-    use hsl_ma87_double
+    use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
     type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
     type(spllt_data_type), target, intent(inout) :: fdata ! data related to the factorization
-    type(MA87_keep), target, intent(in) :: keep
+    type(spllt_keep), target, intent(in) :: keep
     integer, allocatable :: map(:)
 
     type(node_type), pointer     :: node, anode ! node in the atree
@@ -749,14 +746,14 @@ contains
   ! tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree
   subroutine spllt_prune_tree(adata, sparent, nth, keep)
+    use spllt_data_mod
     use spllt_utils_mod
-    use hsl_ma87_double
     implicit none
     
     type(spllt_adata_type), intent(inout) :: adata
     integer, dimension(:), intent(in) :: sparent ! atree
     integer :: nth ! number of workers
-    type(MA87_keep), target, intent(in) :: keep
+    type(spllt_keep), target, intent(in) :: keep
 
     integer                         :: i, j
     integer                         :: c
@@ -976,7 +973,7 @@ contains
   ! Make a map from original A to reordered half matrix A
   ! The reordered half matrix's pattern is returned in nptr and nrow
   subroutine spllt_make_map(n, perm, optr, orow, nptr, nrow, map)
-    use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     integer, intent(in) :: n
@@ -1036,7 +1033,7 @@ contains
   ! Build mapping on per block column basis from user's val to block col's lcol
   ! This routine uses the reordered half matrix and map from the make_map routine
   subroutine spllt_lcol_map(aptr, arow, num_nodes, nodes, blocks, lmap, map, amap, st)
-    use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     ! Reordered lower triangle of reordered matrix held using aptr and arow

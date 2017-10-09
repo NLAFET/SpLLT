@@ -34,7 +34,6 @@ contains
   subroutine spllt_subtree_apply_buffer(root, buffer, nodes, blocks, lfact, map, &
        fdata)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_factorization_task_mod
     implicit none
 
@@ -208,18 +207,17 @@ contains
 
   subroutine spllt_subtree_factorize_apply(root, fdata, val, keep, cntl, map, buffer)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    integer, intent(in)                             :: root ! node to factorize (spllt)    
-    type(spllt_data_type), target, intent(inout)    :: fdata
-    real(wp), dimension(:), intent(in)              :: val ! user's matrix values
-    type(MA87_keep), target, intent(inout)          :: keep 
-    type(spllt_cntl), intent(inout)                 :: cntl
-    integer, pointer, intent(inout)                 :: map(:)
-    type(spllt_bc_type), target, intent(inout)      :: buffer ! update_buffer workspace
+    integer, intent(in) :: root ! Index of root node     
+    type(spllt_data_type), target, intent(inout) :: fdata ! Factorize data
+    real(wp), dimension(:), intent(in) :: val ! User's matrix values
+    type(spllt_keep), target, intent(inout) :: keep 
+    type(spllt_cntl), intent(inout) :: cntl
+    integer, pointer, intent(inout) :: map(:)
+    type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
 
     type(node_type), pointer :: node ! node in the atree    
     integer :: m, n, b_sz
@@ -292,33 +290,33 @@ contains
   end subroutine spllt_subtree_factorize_apply
 
 #if defined(SPLLT_USE_STARPU)
-  subroutine spllt_factorize_apply_node_task(snode, fdata, keep, control, prio)
+  subroutine spllt_factorize_apply_node_task(snode, fdata, keep, cntl, prio)
     use iso_c_binding
-    use hsl_ma87_double
+    use spllt_data_mod
     use starpu_f_mod
     use spllt_starpu_factorization_mod
     implicit none
 
-    type(spllt_node_type), target, intent(inout)      :: snode ! node to factorize (spllt)    
-    type(spllt_data_type), target, intent(inout)      :: fdata
-    type(MA87_keep), target, intent(inout)            :: keep 
-    type(MA87_control), target, intent(in)            :: control 
-    integer, intent(in)                               :: prio
+    type(spllt_node_type), target, intent(inout) :: snode ! node to factorize (spllt)
+    type(spllt_data_type), target, intent(inout) :: fdata
+    type(spllt_keep), target, intent(inout) :: keep
+    type(spllt_cntl), target, intent(in) :: cntl
+    integer, intent(in) :: prio
 
     type(c_ptr) :: snode_c
     type(c_ptr) :: fdata_c
     type(c_ptr) :: keep_c
-    type(c_ptr) :: control_c
+    type(c_ptr) :: cntl_c
 
-    type(node_type), pointer        :: node
-    type(spllt_node_type), pointer  :: cnode 
+    type(node_type), pointer :: node
+    type(spllt_node_type), pointer :: cnode 
     integer :: nchild, i, c
     type(c_ptr), allocatable, target :: cnode_handles(:)
 
     snode_c = c_loc(snode)
     fdata_c = c_loc(fdata)
     keep_c = c_loc(keep)
-    control_c = c_loc(control)
+    cntl_c = c_loc(cntl)
 
     node => snode%node
     nchild = node%nchild
@@ -331,7 +329,7 @@ contains
     end do
 
     call spllt_insert_factorize_node_task_c(snode%hdl2, cnode_handles, &
-         & int(nchild, kind=c_int), fdata%map%hdl, snode_c, fdata_c, keep_c, control_c, &
+         & int(nchild, kind=c_int), fdata%map%hdl, snode_c, fdata_c, keep_c, cntl_c, &
          & prio)
 
     deallocate(cnode_handles)
@@ -342,30 +340,29 @@ contains
   subroutine spllt_starpu_factorize_node_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
     implicit none
 
     type(c_ptr), value        :: cl_arg
     type(c_ptr), value        :: buffers
 
-    type(c_ptr), target            :: snode_c, fdata_c, keep_c, control_c
-    type(c_ptr), target            :: map_c
-    type(spllt_node_type),pointer  :: snode
+    type(c_ptr), target:: snode_c, fdata_c, keep_c, cntl_c
+    type(c_ptr), target :: map_c
+    type(spllt_node_type),pointer :: snode
     type(spllt_data_type), pointer :: fdata
-    type(ma87_keep), pointer       :: keep    
-    type(MA87_control), pointer    :: control 
-    integer, pointer               :: map(:)
+    type(spllt_keep), pointer :: keep    
+    type(spllt_cntl), pointer :: cntl 
+    integer, pointer :: map(:)
     integer, target :: n
 
     call spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
          & c_loc(snode_c), c_loc(fdata_c), &
-         & c_loc(keep_c), c_loc(control_c)) 
+         & c_loc(keep_c), c_loc(cntl_c)) 
 
     call c_f_pointer(snode_c, snode)    
     call c_f_pointer(fdata_c, fdata)    
     call c_f_pointer(keep_c, keep)    
-    call c_f_pointer(control_c, control)    
+    call c_f_pointer(cntl_c, cntl)
 
     call starpu_f_get_buffer(buffers, 0, c_loc(map_c), c_loc(n))
     call c_f_pointer(map_c, map, (/n/))
@@ -374,7 +371,7 @@ contains
 
     ! write(*,*)"num", snode%num
 
-    call spllt_factorize_apply_node(snode, map, fdata, keep, control)
+    call spllt_factorize_apply_node(snode, map, fdata, keep, cntl)
 
     ! deallocate(map)
 
@@ -382,7 +379,7 @@ contains
     ! write(*,*)"n :", n
     ! write(*,*)"n :", keep%n
     ! write(*,*)"final_blk :", keep%final_blk
-    ! write(*,*)"min_width_blas", control%min_width_blas
+    ! write(*,*)"min_width_blas", cntl%min_width_blas
 
   end subroutine spllt_starpu_factorize_node_cpu_func
 #endif
@@ -391,7 +388,7 @@ contains
   ! allocate map array
   ! allocate workspaces: fdata%workspace, fdata%row_list, fdata%col_list 
   subroutine spllt_factorization_init(fdata, map, keep)
-    use hsl_ma87_double
+    use spllt_data_mod
 #if defined(SPLLT_USE_OMP)
 !$  use omp_lib
 #endif
@@ -399,7 +396,7 @@ contains
 
     type(spllt_data_type), target :: fdata
     integer, dimension(:), pointer ::  map
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
 
     integer :: n ! order of the system
     integer :: st ! stat parameter
@@ -492,13 +489,13 @@ contains
   ! deallocate map array
   ! deallocate workspaces
   subroutine spllt_factorization_fini(fdata, map, keep, adata)
-    use hsl_ma87_double
+    use spllt_data_mod
     use spllt_factorization_task_mod
     implicit none
 
     type(spllt_data_type), target :: fdata
     integer, dimension(:), pointer ::  map
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_adata_type), target, intent(in) :: adata
 
     integer :: st ! stat parameter
@@ -539,13 +536,12 @@ contains
 
   subroutine spllt_factorize_node(snode, fdata, keep)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_factorization_task_mod
     implicit none
 
     type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
     type(spllt_data_type), target, intent(inout)        :: fdata
-    type(MA87_keep), target, intent(inout)              :: keep 
+    type(spllt_keep), target, intent(inout)              :: keep 
 
     type(node_type), pointer :: node ! node to factorize (hsl_ma87)
     integer :: prio ! task priority
@@ -632,18 +628,17 @@ contains
 
   ! node factorization
   ! Submit the DAG for the factorization of a node
-  subroutine spllt_factorize_apply_node(snode, map, fdata, keep, control)
+  subroutine spllt_factorize_apply_node(snode, map, fdata, keep, cntl)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
-    integer, dimension(:), pointer, intent(inout)       :: map
-    type(spllt_data_type), target, intent(inout)        :: fdata
-    type(MA87_keep), target, intent(inout)              :: keep 
-    type(MA87_control), intent(in)                      :: control 
+    type(spllt_node_type), target, intent(inout) :: snode ! node to factorize (spllt)    
+    integer, dimension(:), pointer, intent(inout) :: map
+    type(spllt_data_type), target, intent(inout) :: fdata
+    type(spllt_keep), target, intent(inout) :: keep 
+    type(spllt_cntl), intent(in) :: cntl
 
     type(node_type), pointer :: node ! node to factorize (hsl_ma87)
     integer :: num_nodes ! number of nodes in etree
@@ -782,7 +777,7 @@ contains
                         & cptr, cptr2, ilast, i-1, &
                         & fdata%row_list, fdata%col_list, fdata%workspace, &
                         & keep%lfact, keep%blocks, fdata%bc, &
-                        & control, prio)
+                        & cntl%min_width_blas, prio)
 
                    dblk = keep%blocks(dblk)%last_blk + 1
                 end do
@@ -817,7 +812,7 @@ contains
                   & cptr, cptr2, ilast, i-1, &
                   & fdata%row_list, fdata%col_list, fdata%workspace, &
                   & keep%lfact, keep%blocks, fdata%bc, &
-                  & control, prio)
+                  & cntl%min_width_blas, prio)
 
              dblk = keep%blocks(dblk)%last_blk + 1
           end do

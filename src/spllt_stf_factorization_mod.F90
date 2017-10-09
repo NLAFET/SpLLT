@@ -2,12 +2,13 @@ module spllt_stf_factorization_mod
 
 contains
 
+  !*************************************************
+  !
   ! STF-based Cholesky factorization
   ! right-looking variant for the task submission 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, control, info, adata, fdata, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, info, adata, fdata, cntl)
     use spllt_data_mod
     use spllt_error_mod
-    use hsl_ma87_double
     use spllt_factorization_task_mod
 #if defined(SPLLT_USE_STARPU) 
     use iso_c_binding
@@ -26,9 +27,8 @@ contains
     integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
     ! since the analyse phase)
 
-    type(MA87_keep), target, intent(inout) :: keep 
-    type(MA87_control), intent(in) :: control 
-    type(MA87_info), intent(out) :: info 
+    type(spllt_keep), target, intent(inout) :: keep 
+    type(spllt_info), intent(out) :: info 
 
     type(spllt_adata_type), target :: adata
     type(spllt_data_type), target :: fdata
@@ -154,9 +154,9 @@ contains
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, keep, control, prio)          
+          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, keep, cntl, prio)
 #else
-          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, keep, control)          
+          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, keep, cntl)
 #endif
 
        end if

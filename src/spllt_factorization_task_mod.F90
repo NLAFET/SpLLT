@@ -6,7 +6,7 @@ contains
 
   subroutine spllt_scatter_block_task(rptr, rptr2, cptr, cptr2,  buffer, root, &
        & a_rptr, a_cptr, dest, anode)
-    use hsl_ma87_double
+    use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
@@ -104,7 +104,6 @@ contains
   end subroutine spllt_scatter_block_task
 
   subroutine spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -117,9 +116,8 @@ contains
     integer, intent(in) :: root
     type(spllt_data_type), target, intent(inout)  :: fdata
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
-    type(MA87_keep), target, intent(inout) :: keep
+    type(spllt_keep), target, intent(inout) :: keep
     type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
-    ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
@@ -135,7 +133,7 @@ contains
     real(wp), dimension(:), pointer :: work => null()
     integer, dimension(:), pointer :: rlst => null(), clst => null()
     integer :: th_id ! thread id
-    type(MA87_keep), pointer :: p_keep => null()
+    type(spllt_keep), pointer :: p_keep => null()
     type(spllt_cntl), pointer :: p_cntl => null()
     type(spllt_workspace_i), dimension(:), pointer :: p_map => null()
 #endif
@@ -193,12 +191,12 @@ contains
   end subroutine spllt_subtree_factorize_task
 
   subroutine spllt_factor_subtree_task(root, keep, buffer)
-    use hsl_ma87_double
+    use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
     integer, intent(in) :: root
-    type(MA87_keep), target, intent(inout) :: keep
+    type(spllt_keep), target, intent(inout) :: keep
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
     type(node_type), pointer :: node ! node in the atree    
@@ -224,11 +222,11 @@ contains
   ! deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
   subroutine spllt_data_unregister_task(keep, fdata, adata)
-    use hsl_ma87_double
+    use spllt_data_mod
     use  starpu_f_mod
     implicit none
 
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_data_type), intent(inout) :: fdata
     type(spllt_adata_type), intent(in) :: adata
 
@@ -267,11 +265,11 @@ contains
   end subroutine spllt_data_unregister_task
 
   subroutine spllt_data_unregister(keep, pbl)
-    use hsl_ma87_double
-    use  starpu_f_mod
+    use spllt_data_mod
+    use starpu_f_mod
     implicit none
 
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_data_type), intent(inout) :: pbl
 
     integer :: i
@@ -309,7 +307,6 @@ contains
   ! _potrf
   subroutine spllt_factorize_block_task(fdata, node, bc, lfact, prio)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -441,7 +438,6 @@ contains
   ! _trsm
   subroutine spllt_solve_block_task(fdata, bc_kk, bc_ik, lfact, prio)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -608,7 +604,6 @@ contains
   ! A_ij <- A_ij - A_ik A_jk^T
   subroutine spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, lfact, prio)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -854,9 +849,8 @@ contains
        & cptr, cptr2, rptr, rptr2, &
        & row_list, col_list, workspace, &
        & lfact, blocks, bcs, &
-       & control, prio)
+       & min_width_blas, prio)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -907,7 +901,7 @@ contains
 #else
     type(lfactor), allocatable, intent(inout)          :: lfact(:)
 #endif
-    type(MA87_control), intent(in) :: control     
+    integer :: min_width_blas
     ! integer, intent(out) :: st ! TODO error managment
     integer, optional :: prio 
 
@@ -950,7 +944,6 @@ contains
     ! real(wp), dimension(:), allocatable :: work
     real(wp), dimension(:), pointer :: work
     integer, dimension(:), pointer :: rlst, clst
-    integer :: min_width_blas
     type(node_type), pointer                :: p_snode ! src node
     type(spllt_node_type), pointer          :: p_anode ! dest node
     integer(long) :: id_ik_sa, id_ik_en, id_jk_sa, id_jk_en, id_ij
@@ -1056,7 +1049,7 @@ contains
          & snode_c, scol, &
          & anode_c, a_bc_c, dcol, &
          & csrc, csrc2, rsrc, rsrc2, &
-         & control%min_width_blas, &
+         & min_width_blas, &
          & workspace%hdl, row_list%hdl, col_list%hdl, &
          & anode%hdl, &
          & p &
@@ -1069,7 +1062,7 @@ contains
          & snode_c, scol, &
          & anode_c, a_bc_c, dcol, &
          & csrc, csrc2, rsrc, rsrc2, &
-         & control%min_width_blas, &
+         & min_width_blas, &
          & workspace%hdl, row_list%hdl, col_list%hdl, &
          & anode%hdl, &
          & p &
@@ -1163,7 +1156,7 @@ contains
     p_rlst => row_list
     p_clst => col_list
 
-    min_width_blas = control%min_width_blas
+    ! min_width_blas = control%min_width_blas
 
     ! p_snode => snode
     ! p_anode => anode
@@ -1294,7 +1287,6 @@ contains
   ! init node
   subroutine spllt_init_node_task(fdata, node, val, keep, prio)
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -1312,7 +1304,7 @@ contains
 
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
-    type(MA87_keep), target, intent(inout) :: keep ! on exit, matrix a copied
+    type(spllt_keep), target, intent(inout) :: keep ! on exit, matrix a copied
      ! into relevant part of keep%lfact
     integer, optional :: prio 
 
@@ -1326,7 +1318,7 @@ contains
     integer :: snum
     integer :: th_id
     ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    type(MA87_keep), pointer :: p_keep 
+    type(spllt_keep), pointer :: p_keep
     real(wp), pointer :: p_val(:)
 #endif
 

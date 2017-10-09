@@ -831,7 +831,7 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
                                         starpu_data_handle_t *cnode_hdls, int nc,
                                         starpu_data_handle_t map_hdl,
                                         void *snode, void *fdata, 
-                                        void *keep, void *control,
+                                        void *keep, void *cntl,
                                         int prio) {
 
    /* printf("[spllt_insert_factorize_node_task_c]\n"); */
@@ -860,7 +860,7 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
                             STARPU_VALUE, &snode, sizeof(void*),
                             STARPU_VALUE, &fdata, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
-                            STARPU_VALUE, &control, sizeof(void*),
+                            STARPU_VALUE, &cntl, sizeof(void*),
                             STARPU_DATA_MODE_ARRAY, descrs, nh,
                             STARPU_PRIORITY, prio,
                             0);

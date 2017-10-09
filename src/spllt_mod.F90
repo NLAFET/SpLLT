@@ -313,11 +313,10 @@ contains
 
   subroutine spllt_print_atree(adata, keep, cntl)
     use spllt_data_mod
-    use hsl_ma87_double
     implicit none    
 
     type(spllt_adata_type), intent(in)  :: adata
-    type(MA87_keep), target, intent(in) :: keep
+    type(spllt_keep), target, intent(in) :: keep
     type(spllt_cntl), intent(in) :: cntl
 
     integer :: snode, num_nodes

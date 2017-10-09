@@ -18,10 +18,10 @@ contains
 
     type(spllt_adata_type), intent(in) :: adata
     real(wp), target, intent(in) :: val(:) ! matrix values
-    type(MA87_keep), target, intent(inout) :: keep 
+    type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_cntl)      :: cntl
     type(spllt_data_type), target, intent(inout) :: fdata
-    type(MA87_info), intent(out) :: info 
+    type(spllt_info), intent(out) :: info 
 
     integer :: n ! matrix order
     integer :: snode, num_nodes

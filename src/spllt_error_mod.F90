@@ -5,7 +5,7 @@ module spllt_error_mod
 contains
   
   subroutine spllt_print_err(iflag, context, st)
-    use hsl_ma87_double
+    ! use hsl_ma87_double
     use spllt_data_mod
     implicit none
 

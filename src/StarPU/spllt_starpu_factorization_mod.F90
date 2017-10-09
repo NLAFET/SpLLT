@@ -416,7 +416,6 @@ contains
 
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
@@ -492,7 +491,6 @@ contains
 
   subroutine spllt_starpu_update_between_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
@@ -602,7 +600,6 @@ contains
   subroutine spllt_starpu_init_node_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
     use spllt_data_mod
-    use hsl_ma87_double
     use spllt_kernels_mod
     implicit none
 
@@ -612,7 +609,7 @@ contains
     integer, target           :: nval, snode
     type(c_ptr), target       :: val_c, keep_c
     real(wp), pointer         :: val(:)
-    type(ma87_keep), pointer  :: keep
+    type(spllt_keep), pointer  :: keep
 
     call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
          & c_loc(snode), &  
@@ -628,7 +625,6 @@ contains
   ! init node StarPU CPU kernel  
   subroutine spllt_starpu_subtree_factorize_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
@@ -639,7 +635,7 @@ contains
     type(c_ptr), target       :: val_c, keep_c, cntl_c
     integer, target           :: root
 
-    type(ma87_keep), pointer  :: keep
+    type(spllt_keep), pointer  :: keep
     integer :: n
     real(wp), pointer         :: val(:)
     type(spllt_cntl), pointer :: cntl
@@ -686,7 +682,6 @@ contains
   ! init node StarPU CPU kernel  
   subroutine spllt_starpu_subtree_scatter_block_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
-    use hsl_ma87_double
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
