@@ -35,8 +35,8 @@ module spllt_data_mod
 
 #if defined(SPLLT_USE_PARSEC)
   type(parsec_context_t) :: ctx
-  integer(c_int)        :: nds
-  integer(c_int)        :: rank
+  integer(c_int) :: nds
+  integer(c_int) :: rank
 #endif
 
   !*************************************************
@@ -68,7 +68,7 @@ module spllt_data_mod
   end type block_type
 
   !*************************************************
-
+  !
   ! Derived type for holding data for each node.
   ! This information is set up by ma87_analyse once the assembly tree
   ! has been constructed.

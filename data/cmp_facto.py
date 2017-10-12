@@ -117,7 +117,7 @@ for mat in flistmat:
     best_omp_t = omp_t_facto[omp_t_idx]
 
     best_starpu_nb = blocksizes[starpu_t_facto_idx]
-    best_starpu_t = parsec_t_facto[starpu_t_facto_idx]
+    best_starpu_t = starpu_t_facto[starpu_t_facto_idx]
 
     # Parsec and MA87, nb:time (txt)
     # print("%4s %10s %10s %10s %10s" % (matcount,
