@@ -4,6 +4,9 @@ module spllt_factorization_task_mod
   
 contains
 
+  !*************************************************
+  !
+
   subroutine spllt_scatter_block_task(rptr, rptr2, cptr, cptr2,  buffer, root, &
        & a_rptr, a_cptr, dest, anode)
     use spllt_data_mod
@@ -103,6 +106,9 @@ contains
 
   end subroutine spllt_scatter_block_task
 
+  !*************************************************
+  !
+
   subroutine spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -190,6 +196,9 @@ contains
 
   end subroutine spllt_subtree_factorize_task
 
+  !*************************************************
+  !
+
   subroutine spllt_factor_subtree_task(root, keep, buffer)
     use spllt_data_mod
     use spllt_kernels_mod
@@ -219,7 +228,10 @@ contains
   end subroutine spllt_factor_subtree_task
 
 #if defined(SPLLT_USE_STARPU)
-  ! deinitialize factorization
+
+  !*************************************************
+  !
+  ! Deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
   subroutine spllt_data_unregister_task(keep, fdata, adata)
     use spllt_data_mod
@@ -264,6 +276,9 @@ contains
 
   end subroutine spllt_data_unregister_task
 
+  !*************************************************
+  !
+
   subroutine spllt_data_unregister(keep, pbl)
     use spllt_data_mod
     use starpu_f_mod
@@ -303,7 +318,9 @@ contains
   end subroutine spllt_data_unregister
 #endif
 
-  ! factorize block 
+  !*************************************************
+  !
+  ! Factorize block task 
   ! _potrf
   subroutine spllt_factorize_block_task(fdata, node, bc, lfact, prio)
     use spllt_data_mod
