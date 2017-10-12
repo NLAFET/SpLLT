@@ -384,6 +384,7 @@ contains
 
     ! Find matrix norm
     call matrix_inf_norm(n, ptr, row, val, normA)
+    ! print *, "[internal_calc_norm] normA = ", normA
 
     ! Find x norm
     do i = 1, nrhs

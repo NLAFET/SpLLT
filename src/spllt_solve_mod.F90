@@ -166,7 +166,7 @@ contains
              ! Establish variables describing block
              n        = keep%blocks(blk)%blkn
              m        = keep%blocks(blk)%blkm
-             sa       = keep%blocks(blk)%sa
+             blk_sa       = keep%blocks(blk)%sa
              bcol     = keep%blocks(blk)%bcol
              dcol     = bcol - keep%blocks(keep%nodes(node)%blk_sa)%bcol + 1
              col      = keep%nodes(node)%sa + (dcol-1)*keep%nodes(node)%nb
@@ -175,7 +175,7 @@ contains
              offset   = offset + (blk-keep%blocks(blk)%dblk) * keep%nodes(node)%nb ! this blk
              
              call slv_fwd_update(m, n, col, offset, keep%nodes(node)%index, &
-                  keep%lfact(bcol)%lcol(sa:sa+n*m-1), n, nrhs, rhs, &
+                  keep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
                   ldr, rhs, ldr, xlocal)
              
           end do
@@ -255,7 +255,7 @@ contains
              ! Establish variables describing block
              n        = keep%blocks(blk)%blkn
              m        = keep%blocks(blk)%blkm
-             sa       = keep%blocks(blk)%sa
+             blk_sa       = keep%blocks(blk)%sa
              bcol     = keep%blocks(blk)%bcol
              ! node     = keep%blocks(blk)%node
              dcol     = bcol - keep%blocks(keep%nodes(node)%blk_sa)%bcol + 1
@@ -265,7 +265,7 @@ contains
              offset   = offset + (blk-keep%blocks(blk)%dblk) * keep%nodes(node)%nb ! this blk
 
              call slv_bwd_update(m, n, col, offset, keep%nodes(node)%index, &
-                  keep%lfact(bcol)%lcol(sa:sa+n*m-1), n, nrhs, rhs, &
+                  keep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
                   rhs, ldr, xlocal)
              
           end do
