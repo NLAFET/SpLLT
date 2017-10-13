@@ -132,9 +132,10 @@ contains
 
     ! Allocate workspace
     allocate(xlocal(keep%maxmn*nrhs), stat=st)
+    xlocal = zero 
 
     num_node = keep%info%num_nodes
-
+    
     do node = 1, num_node
 
        ! Get node info
@@ -226,6 +227,7 @@ contains
     allocate(xlocal(keep%maxmn*nrhs), stat=st)
 
     num_node = keep%info%num_nodes
+    ! print *, "num_node: ", num_node
     
     do node = num_node, 1, -1
 
@@ -240,6 +242,8 @@ contains
 
        ! Get first diag block in node
        dblk = keep%blocks(keep%nodes(node)%blk_en)%dblk
+
+       ! print *, "[solve_bwd] node = ", node, ", dblk = ", dblk
 
        ! Loop over block columns
        do jj = nc, 1, -1

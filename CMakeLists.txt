@@ -14,7 +14,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" 
 
 # Set Fortran flags
 #set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2" )
-# set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2 -ffpe-trap=underflow,denormal")
+# set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2 -ffpe-trap=zero,underflow,denormal")
+
+MESSAGE( STATUS "Fortran FLAGS: " ${CMAKE_Fortran_FLAGS} )
 
 # add_library(hsl_ma87 hsl_ma87d.F90 
 #   $ENV{HSLPACKDIR}/hsl_mc78/hsl_mc78i.f90

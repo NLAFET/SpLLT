@@ -2,7 +2,8 @@ module spllt_solve_task_mod
 contains
   
   !*************************************************  
-  ! Solve forward block task
+  !
+  ! Forward solve with block on diagoanl
   !
   subroutine spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, keep)
     use spllt_data_mod
@@ -24,22 +25,17 @@ contains
     integer :: bcol, dcol, col
     integer :: offset
     integer :: node
-
         
     ! Get block info
     node = keep%blocks(dblk)%node
-    sa = keep%nodes(node)%sa
     m = keep%blocks(dblk)%blkm
     n = keep%blocks(dblk)%blkn
-    blk_sa = keep%blocks(dblk)%sa
+    sa = keep%blocks(dblk)%sa
     bcol = keep%blocks(dblk)%bcol ! Current block column
     dcol     = bcol - keep%blocks(keep%nodes(node)%blk_sa)%bcol + 1
     col      = keep%nodes(node)%sa + (dcol-1)*keep%nodes(node)%nb
     offset   = col - keep%nodes(node)%sa + 1
     
-    !
-    ! Forward solve with block on diagoanl
-    !
     ! Perform triangular solve
     call slv_solve(n, n, col, keep%lfact(bcol)%lcol(sa:sa+n*n-1), &
          'Transpose    ', 'Non-unit', nrhs, rhs, ldr)
@@ -57,8 +53,9 @@ contains
   end subroutine spllt_solve_fwd_block_task
 
   !*************************************************  
-  ! Solve backward block task
   !
+  ! Backward solve with block on diagoanl
+  !         
   subroutine spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, keep)
     use spllt_data_mod
     use spllt_solve_kernels_mod
@@ -81,22 +78,23 @@ contains
     integer :: node
 
     node = keep%blocks(dblk)%node
-    ! Get node info
-    sa = keep%nodes(node)%sa
+
+    ! print *, "[spllt_solve_bwd_block_task] node = ", node
+
     ! Get block info
     n      = keep%blocks(dblk)%blkn
     m      = keep%blocks(dblk)%blkm
-    blk_sa = keep%blocks(dblk)%sa
+    sa = keep%blocks(dblk)%sa
     bcol   = keep%blocks(dblk)%bcol ! Current block column
-    bcol   = keep%blocks(dblk)%bcol
     col    = calc_col(keep%nodes(node), keep%blocks(dblk)) ! current bcol
     col    = keep%nodes(node)%sa + (col-1)*keep%nodes(node)%nb
     offset = col - keep%nodes(node)%sa + 1
 
-              !
-    ! Backward solve with block on diagoanl
-    !         
-    
+    ! print *, "m = ", m, ", n = ", n
+    ! print *, "blk_sa = ", blk_sa
+    ! print *, "bcol = ", bcol
+    ! print *, "col = ", col
+
     ! Perform and retangular update from diagonal block
     if(m.gt.n) then
        call slv_bwd_update(m-n, n, col, offset+n, keep%nodes(node)%index, &
