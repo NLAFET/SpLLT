@@ -1,5 +1,5 @@
 module spllt_solve_mod
-  use hsl_ma87_double
+  ! use hsl_ma87_double
 
    interface spllt_solve
       module procedure spllt_solve_one_double

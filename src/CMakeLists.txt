@@ -6,12 +6,12 @@ file(
   *.F90
   *.c)
 
-# file(
-#   GLOB 
-#   to_remove
-#   hsl_ma87d.F90)
+file(
+  GLOB 
+  to_remove
+  hsl_ma87d.F90)
 
-# list(REMOVE_ITEM sources ${to_remove})
+list(REMOVE_ITEM sources ${to_remove})
 
 
 if(${RUNTIME} MATCHES "StarPU")
@@ -111,11 +111,11 @@ if(${USE_GPU} MATCHES ON)
   cuda_add_library(spllt_cuda ${cuda_sources})
 endif()
 
-# if(MA87_TEST_DRIVER MATCHES ON)
-# MESSAGE( STATUS "Sources: " ${sources} )
-# MESSAGE( STATUS "HSL Sources: " ${HSL_SRC} )
-add_library(spllt ${sources} ${HSL_SRC})
-# else()
+if(MA87_TEST_DRIVER MATCHES ON)
+  # MESSAGE( STATUS "Sources: " ${sources} )
+  # MESSAGE( STATUS "HSL Sources: " ${HSL_SRC} )
+  add_library(spllt ${sources} ${HSL_SRC})
+else()
 
-#   add_library(spllt ${sources})
-# endif()
+  add_library(spllt ${sources})
+endif()
