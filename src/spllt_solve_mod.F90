@@ -14,7 +14,6 @@ contains
   !
   subroutine spllt_solve_one_double(x, order, keep, cntl, info, job)
     use spllt_data_mod
-    ! use hsl_ma87_double
     implicit none
 
     type(spllt_keep), intent(inout) :: keep
