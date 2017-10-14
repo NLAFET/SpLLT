@@ -6,14 +6,15 @@
 The sparse Cholesky solver SpLLT
 =================================
 
-Introduction
+SpLLT
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   purpose
    install
-
+   
 
 Indices and tables
 ==================

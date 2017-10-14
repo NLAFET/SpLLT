@@ -52,7 +52,7 @@ MESSAGE( STATUS "Use MA87 test driver:         " ${MA87_TEST_DRIVER} )
 ## Set BLAS and LAPACK libraries to use for linking
 SET(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
 set_property(CACHE BLAS_LAPACK PROPERTY STRINGS Ref MKL)
-MESSAGE( STATUS "BLAS/LAPACK:         " ${BLAS_LAPACK} )
+MESSAGE( STATUS "BLAS/LAPACK: " ${BLAS_LAPACK} )
 
 # spral
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
