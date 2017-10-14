@@ -1,6 +1,6 @@
 module spllt_data_mod
 #if defined(SPLLT_USE_STARPU)
-  use iso_c_binding
+  use, intrinsic :: iso_c_binding
   use starpu_f_mod
 #elif defined(SPLLT_USE_PARSEC)
   use parsec_f08_interfaces
