@@ -52,7 +52,7 @@ version of our code. SpLLT currently supports three runtime systems
 among `OpenMP <http://www.openmp.org/>`_, `StarPU
 <http://starpu.gforge.inria.fr/>`_ and `Parsec
 <https://bitbucket.org/icldistcomp/parsec>`_ that can be set using the
-:code:`-DRUNTIME` option when running the cmake command
+:code:`-DRUNTIME` option when running the cmake command.
 
 Support
 =======
