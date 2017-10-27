@@ -44,6 +44,10 @@ SPRAL is an open source (BSD) library for sparse linear algebra and
 associated algorithms. It can be downloaded directly from the SPRAL
 GitHub repository: `<https://github.com/ralna/spral>`_.
 
+
+.. code-block:: bash
+
+
 Runtime system
 --------------
 

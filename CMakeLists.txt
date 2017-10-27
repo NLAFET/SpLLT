@@ -22,19 +22,29 @@ MESSAGE( STATUS "Fortran FLAGS: " ${CMAKE_Fortran_FLAGS} )
 #   $ENV{HSLPACKDIR}/hsl_mc78/hsl_mc78i.f90
 #   $ENV{HSLPACKDIR}/hsl_mc34/hsl_mc34d.f90)
 
+#########################################
+# Runtime system
+
 SET(RUNTIME "STF" CACHE STRING "Runtime system")
 set_property(CACHE RUNTIME PROPERTY STRINGS STF StarPU OMP Parsec)
-MESSAGE( STATUS "Runtime: " ${RUNTIME} )
+if(${RUNTIME} MATCHES "STF")
+  message(STATUS "Build sequential version of SpLLT")
+else()
+  message(STATUS "Build SpLLT with ${RUNTIME} runtime system")
+endif()
 
-# Use GPU
+#########################################
+# Enable GPU
 option(USE_GPU "Use GPU" OFF)
 MESSAGE( STATUS "Use GPU: " ${USE_GPU} )   
 
-# Use MPI
+#########################################
+# Enable MPI
 option(USE_MPI "Use MPI" OFF)
 MESSAGE( STATUS "Use MPI: " ${USE_MPI} )   
 
-# Use KNL
+#########################################
+# Build for KNL
 option(USE_KNL "Use KNL" OFF)
 MESSAGE( STATUS "Use KNL: " ${USE_KNL} )
 

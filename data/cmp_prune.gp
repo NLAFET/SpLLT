@@ -45,9 +45,9 @@ set grid ytics lc rgbcolor "#000000" lt 0 lw 1
 
 # StarPU (wo/ and w/ pruning) and OpenMP (wo/ and w/ pruning)
 plot 'cn255/data_cmp_prune_perf.dat' using ($0+1):3 ls 1  w lp t 'SpLLT OpenMP           ', \
-     ''                              using ($0+1):5 ls 10 w lp t 'SpLLT OpenMP no prunnig', \
+     ''                              using ($0+1):5 ls 10 w lp t 'SpLLT OpenMP no prunig', \
      ''                              using ($0+1):7 ls 2  w lp t 'SpLLT StarPU           ', \
-     ''                              using ($0+1):9 ls 20 w lp t 'SpLLT StarPU no prunnig', \
+     ''                              using ($0+1):9 ls 20 w lp t 'SpLLT StarPU no prunig', \
 
 
 # StarPU (wo/ and w/ pruning) vs MA87
