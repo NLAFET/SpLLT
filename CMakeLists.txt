@@ -109,11 +109,11 @@ endif()
 ##################################################################################
 # Third-party libraries
 
-#########################################
-# BLAS
-set(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
-set_property(CACHE BLAS_LAPACK PROPERTY STRINGS Ref MKL)
-message( STATUS "BLAS/LAPACK: " ${BLAS_LAPACK} )
+# #########################################
+# # BLAS
+# set(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
+# set_property(CACHE BLAS_LAPACK PROPERTY STRINGS Ref MKL)
+# message( STATUS "BLAS/LAPACK: " ${BLAS_LAPACK} )
 
 #########################################
 # SPRAL
@@ -381,59 +381,119 @@ set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
 find_library(METIS_LIBRARY metis PATHS ${METIS_DIR})
 target_link_libraries(spllt_test ${METIS_LIBRARY})
 
+#########################################
 # HWLOC
 set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
 include_directories(${HWLOC_DIR}/include)  
 find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
 target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
-# BLAS and LAPACK
-if (${BLAS_LAPACK} MATCHES "MKL")
+#########################################
+# if (${BLAS_LAPACK} MATCHES "MKL")
 
-  # MKL library
+#   # MKL library
 
-  if(${USE_KNL} MATCHES ON)
+#   if(${USE_KNL} MATCHES ON)
 
-    find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
-    find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
+#     find_library(MKL_IFACE_LIBRARY mkl_intel_lp64 PATHS ${MKL_LIBS} ${MKL_DIR}/lib/intel64)
+#     find_library(MKL_THREAD_LIBRARY mkl_intel_thread PATHS ${MKL_ROOT}/lib/intel64)
     
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
-    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
+#     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64")
+#     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+#     set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -m64")
 
-    target_link_libraries(spllt_test iomp5)
+#     target_link_libraries(spllt_test iomp5)
 
-  else()
+#   else()
 
-    set(MKL_LIBS $ENV{MKL_LIBS})
-    set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
-    set(MKL_DIR $ENV{MKLROOT})
+#     set(MKL_LIBS $ENV{MKL_LIBS})
+#     set(MKL_ROOT "/opt/intel/mkl" CACHE PATH "Location of MKL Library")
+#     set(MKL_DIR $ENV{MKLROOT})
 
-    find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
-    # find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
-    find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
-    find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
-    # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
+#     find_library(MKL_IFACE_LIBRARY mkl_gf_lp64 PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
+#     # find_library(MKL_THREAD_LIBRARY mkl_gnu_thread PATHS ${MKL_ROOT}/lib/intel64)
+#     find_library(MKL_SEQ_LIBRARY mkl_sequential PATHS ${MKL_LIBS} ${MKL_DEFAULT_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64)
+#     find_library(MKL_CORE_LIBRARY mkl_core PATHS ${MKL_LIBS} ${MKL_ROOT}/lib/intel64 ${MKL_DIR}/lib/intel64) 
+#     # set(MKL_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_THREAD_LIBRARY} ${MKL_CORE_LIBRARY})
 
-    MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
-    MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
+#     MESSAGE( STATUS "MKL Root: " ${MKL_DIR} )
+#     MESSAGE( STATUS "MKL MKL_IFACE_LIBRARY: " ${MKL_IFACE_LIBRARY} )
 
-  endif()
+#   endif()
 
-  set(BLAS_LAPACK_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
-  MESSAGE( STATUS "BLAS and LAPACK Libraries: " ${BLAS_LAPACK_LIBRARIES} )
+#   set(BLAS_LAPACK_LIBRARIES ${MKL_IFACE_LIBRARY} ${MKL_SEQ_LIBRARY} ${MKL_CORE_LIBRARY})
+#   MESSAGE( STATUS "BLAS and LAPACK Libraries: " ${BLAS_LAPACK_LIBRARIES} )
 
-else()
+# else()
 
-  # Reference BLAS libraries
+#   # Reference BLAS libraries
 
-  find_library(BLAS_LIBRARY blas)
-  find_library(LAPACK_LIBRARY lapack)
-  set(BLAS_LAPACK_LIBRARIES ${BLAS_LIBRARY} ${LAPACK_LIBRARY})
+#   find_library(BLAS_LIBRARY blas)
+#   find_library(LAPACK_LIBRARY lapack)
+#   set(BLAS_LAPACK_LIBRARIES ${BLAS_LIBRARY} ${LAPACK_LIBRARY})
 
+# endif()
+
+#########################################
+# BLAS
+set(LBLAS "" CACHE STRING "BLAS library")
+
+# If LBLAS not set, use environement variable
+if(LBLAS)
+  set(BLAS_LIBRARIES ${LBLAS})
+elseif(DEFINED ENV{BLAS_LIB})
+  set(BLAS_LIBRARIES $ENV{BLAS_LIB})
 endif()
 
-target_link_libraries(spllt_test ${BLAS_LAPACK_LIBRARIES})
+if(DEFINED BLAS_LIBRARIES)
+  set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
+  CHECK_FORTRAN_FUNCTION_EXISTS("dgemm" BLAS_FOUND)
+  unset(CMAKE_REQUIRED_LIBRARIES)
+  if(NOT BLAS_FOUND)
+    message(ERROR "BLAS is NOT working")
+  endif()
+  
+  # When no BLAS library is provided, search for one
+else()
+  find_package(BLAS)
+endif()
+
+if(BLAS_FOUND)
+  set(LIBS ${LIBS} ${BLAS_LIBRARIES})
+else()
+  message(FATAL_ERROR "BLAS NOT found")
+endif (BLAS_FOUND)
+
+#########################################
+# LAPACK
+set(LLAPACK "" CACHE STRING "LAPACK library")
+# If LBLAS not set, use environement variable 
+if(LLAPACK)
+  set(LAPACK_LIBRARIES ${LLAPACK})
+elseif(DEFINED ENV{LAPACK_LIB})
+  set(LAPACK_LIBRARIES $ENV{LAPACK_LIB})
+endif()
+if(DEFINED LAPACK_LIBRARIES)
+  set(CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+  CHECK_FORTRAN_FUNCTION_EXISTS("dpotrf" LAPACK_FOUND)
+  unset(CMAKE_REQUIRED_LIBRARIES)
+  if(NOT LAPACK_FOUND)
+    message(ERROR "LAPACK is NOT working")
+  endif()
+
+else()
+  find_package(LAPACK)
+endif()
+
+if (LAPACK_FOUND)
+  set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+else()
+  message(FATAL_ERROR "LAPACK library NOT found")
+endif (LAPACK_FOUND)
+
+target_link_libraries(spllt_test ${LIBS})
+
+# target_link_libraries(spllt_test ${BLAS_LAPACK_LIBRARIES})
 
 # pthread
 target_link_libraries(spllt_test pthread)
@@ -446,9 +506,12 @@ target_link_libraries(spllt_test rt)
 #########################################
 # Print summary
 
-message("Configuration done\n"
+message("Configuration of SpLLT done\n"
   "Build type: ${CMAKE_BUILD_TYPE}\n"
   "Fortran compiler: ${CMAKE_Fortran_COMPILER} (${CMAKE_Fortran_COMPILER_ID})\n"
   "Fortran compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
   "C compiler:  ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})\n"
-  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n")
+  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
+  " \n"
+  "BLAS libraries: ${BLAS_LIBRARIES}\n"
+  "LAPACK libraries: ${LAPACK_LIBRARIES}\n")
