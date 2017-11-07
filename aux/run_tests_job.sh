@@ -1,12 +1,13 @@
 #BSUB -q numanlys-cpu
-#BSUB -n 56
-#BUSB -W 02:00
+# # BSUB -q numanlys-gpu
+# #BSUB -n 56
+# #BUSB -W 02:00
 # #BSUB -o %J.log
 # #BSUB -e %J.err
 #BSUB -o run.log
 #BSUB -e run.err
 #BSUB -x
-#BSUB -app no_turbo
+# #BSUB -app no_turbo
 
 case $HOSTNAME in
     gauss)
@@ -33,6 +34,17 @@ case $HOSTNAME in
         module load hsl/latest
         module load spral/trunk
         ;;
+    cn1g01.gpu.rl.ac.uk)
+        module purge
+        module load use.own
+        module load gcc/5.3.0
+        module load cuda/8.0.44
+        module load intel/mkl/11.2.0.090
+        module load hwloc/gpu-1.11.4
+        module load metis/4.0.3
+        module load starpu/trunk-gpu
+        module load hsl/latest
+        module load spral/master-gnu-5.3.0
 esac
 
 # Choose build
@@ -42,7 +54,7 @@ esac
 # - gnu_intel: SpLLT OpenMP version. Intel compiler 
 # - parsec: PaRSEC version of SpLLT
 
-build="gnu_omp"
+build="gnu_omp_prune"
 
 build_dir=`pwd`
 id=`whoami`

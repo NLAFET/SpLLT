@@ -455,13 +455,23 @@ if(DEFINED BLAS_LIBRARIES)
   
   # When no BLAS library is provided, search for one
 else()
-  find_package(BLAS)
+  # Search for MKL library
+  find_package(MKL)
+
+  # If MKL is not found, try to find another BLAS  
+  if(NOT MKL_FOUND)  
+    find_package(BLAS)
+  endif()
 endif()
 
 if(BLAS_FOUND)
   set(LIBS ${LIBS} ${BLAS_LIBRARIES})
 else()
-  message(FATAL_ERROR "BLAS NOT found")
+
+  # If neither BLAS or MKL is found, raise error
+  if(NOT MKL_FOUND)
+    message(FATAL_ERROR "BLAS NOT found")
+  endif()
 endif (BLAS_FOUND)
 
 #########################################
@@ -482,13 +492,23 @@ if(DEFINED LAPACK_LIBRARIES)
   endif()
 
 else()
-  find_package(LAPACK)
+
+  # Search for MKL library
+  find_package(MKL)
+
+  # If MKL is not found, try to find another BLAS  
+  if(NOT MKL_FOUND)
+    find_package(LAPACK)
+  endif()
 endif()
 
 if (LAPACK_FOUND)
   set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 else()
-  message(FATAL_ERROR "LAPACK library NOT found")
+  # If neither BLAS or MKL is found, raise error
+  if(NOT MKL_FOUND)
+    message(FATAL_ERROR "LAPACK library NOT found")
+  endif ()
 endif (LAPACK_FOUND)
 
 target_link_libraries(spllt_test ${LIBS})

@@ -1,8 +1,7 @@
 #!/bin/bash
 
 for matrix in `cat list.matrix`
-do
-    
+do    
     matname=`echo $matrix | sed -e 's/\//_/g'`
 
     ./prep.sh $matrix
