@@ -9,7 +9,6 @@ set(SPLLT_VERSION_MAJOR 1)
 set(SPLLT_VERSION_MINOR 0)
 set(SPLLT_VERSION_MICRO 0)
 
-
 # Include our own cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
 
@@ -141,7 +140,8 @@ elseif(${RUNTIME} MATCHES "StarPU")
   # Use StarPU code
   add_definitions(-DSPLLT_USE_STARPU)
 
-  # StarPU lib
+  #########################################
+  # StarPU
   set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU directory")
   set(STARPU_INCLUDE ${STARPU_DIR}/include/starpu/1.3 CACHE PATH "Location of StarPU includes")
   include_directories(${STARPU_INCLUDE})

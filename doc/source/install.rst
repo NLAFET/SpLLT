@@ -40,22 +40,13 @@ an order of magnitude slower than modern optimized BLAS, and should be
 avoided. If bit-compatible results are desired, a bit-compatible BLAS
 library must be used.
 
-The BLAS library can be passed to CMake using the :code:`-DLBLAS`
-option as following
+The BLAS library can be passed to `cmake` using the :code:`-DLBLAS`
+option and the LAPACK library can be passed using the
+:code:`-DLLAPACK` option as following
 
 .. code-block:: bash
 
-   cmake <path-to-source> -DLBLAS=/path/to/your/blas
-
-The LAPACK library can be passed to CMake using the :code:`-DLLAPACK`
-option as following
-
-.. code-block:: bash
-
-   cmake <path-to-source> -DLLAPACK=/path/to/your/lapack
-
-If no BLAS or LAPACK libraries are given to cmake, the cmake script
-will try to find one installed on your machine.
+   cmake <path-to-source> -DLBLAS=/path/to/blas -DLLAPACK=/path/to/lapack
 
 SPRAL
 -----
@@ -78,6 +69,37 @@ among `OpenMP <http://www.openmp.org/>`_, `StarPU
 <https://bitbucket.org/icldistcomp/parsec>`_ that can be set using the
 :code:`-DRUNTIME` option when running the cmake command.
 
+Compilers and compiler options
+==============================
+If no compiler is specified, `cmake` will pick a default
+compiler to use. If `cmake` cannot find an appropriate compiler, or
+you wish to specify a different compiler you can do so by setting the following
+variables:
+
+CC
+  specifies the C compiler to use.
+FC
+  specifies the Fortran 90/95/2003/2008 compiler to use.
+NVCC
+  specifies the CUDA compiler to use.
+
+Additionally, compiler flags can be specified using the following variables:
+
+CFLAGS
+   specifies options passed to the C compiler.
+FCFLAGS
+   specifies options passed to the Fortran compiler
+
+NVCCFLAGS
+   specifies options passed to the CUDA compiler.
+
+For example, to compile with ``ifort -g -O3 -ip`` we could use:
+
+.. code-block:: bash
+
+   FC=ifort FCFLAGS="-g -O3 -ip" cmake <path-to-source>
+
+      
 Support
 =======
 Feeback may be sent to `florent.lopez@stfc.ac.uk <florent@stfc.ac.uk>`_ or by filing
