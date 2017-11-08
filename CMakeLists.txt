@@ -469,9 +469,11 @@ if(BLAS_FOUND)
 else()
 
   # If neither BLAS or MKL is found, raise error
-  if(NOT MKL_FOUND)
+  if(MKL_FOUND)
+    set(LIBS ${LIBS} ${MKL_LIBRARIES})
+  else()
     message(FATAL_ERROR "BLAS NOT found")
-  endif()
+  endif(MKL_FOUND)
 endif (BLAS_FOUND)
 
 #########################################
@@ -506,7 +508,9 @@ if (LAPACK_FOUND)
   set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 else()
   # If neither BLAS or MKL is found, raise error
-  if(NOT MKL_FOUND)
+  if(MKL_FOUND)
+    set(LIBS ${LIBS} ${MKL_LIBRARIES} ${BLAS_LIBRARIES})
+  else()
     message(FATAL_ERROR "LAPACK library NOT found")
   endif ()
 endif (LAPACK_FOUND)
