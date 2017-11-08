@@ -136,22 +136,38 @@ elseif(${RUNTIME} MATCHES "StarPU")
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+  
+  #########################################
+  # StarPU
 
+  # set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU directory")
+  # set(STARPU_INCLUDE ${STARPU_DIR}/include/starpu/1.3 CACHE PATH "Location of StarPU includes")
+  # include_directories(${STARPU_INCLUDE})
+  # find_library(STARPU_LIBRARY starpu-1.3 PATHS ${STARPU_DIR}/lib)
+  find_package(STARPU)
+  if (STARPU_FOUND)
+    include_directories( ${STARPU_INCLUDE_DIRS} )
+    link_directories( ${STARPU_LIBRARY_DIRS} )
+    link_libraries( ${STARPU_LIBRARIES} )
+    set(LIBS ${LIBS} ${STARPU_LIBRARIES})
+    find_path(STARPU_F_MOD_FOUND fstarpu_mod.f90
+              HINTS ${STARPU_INCLUDE_DIRS}
+             )
+    set(STARPU_F_MOD "${STARPU_F_MOD_FOUND}/fstarpu_mod.f90")
+    include_directories(${STARPU_INCLUDE_DIRS}) 
+  else()
+    message(FATAL_ERROR "StarPU not found!")
+  endif(STARPU_FOUND)
+  
   # Use StarPU code
   add_definitions(-DSPLLT_USE_STARPU)
 
-  #########################################
-  # StarPU
-  set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU directory")
-  set(STARPU_INCLUDE ${STARPU_DIR}/include/starpu/1.3 CACHE PATH "Location of StarPU includes")
-  include_directories(${STARPU_INCLUDE})
-  find_library(STARPU_LIBRARY starpu-1.3 PATHS ${STARPU_DIR}/lib)
-  
   #########################################
   # HWLOC
   set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
   include_directories(${HWLOC_DIR}/include)  
   find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
+  set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
 elseif(${RUNTIME} MATCHES "OMP")
 
@@ -330,10 +346,10 @@ target_link_libraries(spllt_test spllt)
 # find libraries
 
 if(${RUNTIME} MATCHES "StarPU")
-  # StarPU
-  target_link_libraries(spllt_test ${STARPU_LIBRARY})
-  # HWLOC
-  target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+  # # StarPU
+  # target_link_libraries(spllt_test ${STARPU_LIBRARY})
+  # # HWLOC
+  # target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
 elseif(${RUNTIME} MATCHES "Parsec")
 
@@ -525,12 +541,14 @@ target_link_libraries(spllt_test rt)
 #########################################
 # Print summary
 
-message("Configuration of SpLLT done\n"
+message("Configuration of SpLLT done")
+
+message(
   "Build type: ${CMAKE_BUILD_TYPE}\n"
   "Fortran compiler: ${CMAKE_Fortran_COMPILER} (${CMAKE_Fortran_COMPILER_ID})\n"
   "Fortran compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
   "C compiler:  ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})\n"
-  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n")
+  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}")
 if(BLAS_LIBRARIES)
   message("BLAS libraries: ${BLAS_LIBRARIES}\n")
 elseif(MKL_FOUND)
@@ -542,5 +560,9 @@ elseif(MKL_FOUND)
   message("LAPACK libraries: ${MKL_LIBRARIES}\n")
 endif(LAPACK_LIBRARIES)
 
+if(${RUNTIME} MATCHES "StarPU")
+    message("StarPU libraries: ${STARPU_LIBRARIES}")
+endif()
+  
   # "BLAS libraries: ${BLAS_LIBRARIES}\n"
   # "LAPACK libraries: ${LAPACK_LIBRARIES}\n")

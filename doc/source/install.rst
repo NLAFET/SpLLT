@@ -42,7 +42,7 @@ library must be used.
 
 The BLAS library can be passed to `cmake` using the :code:`-DLBLAS`
 option and the LAPACK library can be passed using the
-:code:`-DLLAPACK` option as following
+:code:`-DLLAPACK` option as following:
 
 .. code-block:: bash
 
@@ -55,19 +55,33 @@ SPRAL is an open source (BSD) library for sparse linear algebra and
 associated algorithms. It can be downloaded directly from the SPRAL
 GitHub repository: `<https://github.com/ralna/spral>`_.
 
-
 .. code-block:: bash
 
 
 Runtime system
 --------------
 
-In this package we used a runtime system for implementing the parallel
-version of our code. SpLLT currently supports three runtime systems
+In this package, we use a runtime system for handling the parallel
+execution of the code. SpLLT currently supports three runtime systems
 among `OpenMP <http://www.openmp.org/>`_, `StarPU
 <http://starpu.gforge.inria.fr/>`_ and `Parsec
 <https://bitbucket.org/icldistcomp/parsec>`_ that can be set using the
-:code:`-DRUNTIME` option when running the cmake command.
+:code:`RUNTIME` variable when running the `cmake` command. For
+example, to compile the OpenMP version:
+
+.. code-block:: bash
+
+   cmake <path-to-source> -DRUNTIME=OMP
+   
+For StarPU and Parsec runtime systems, it is possible to specify which
+library to use for the compilation. For example, when building SpLLT
+with StarPU, you can pass the StarPU directory using the
+:code:`STARPU_DIR` variable:
+
+.. code-block:: bash
+
+   cmake <path-to-source> -DRUNTIME=StarPU -DSTARPU_DIR=/path/to/StarPU
+                
 
 Compilers and compiler options
 ==============================
