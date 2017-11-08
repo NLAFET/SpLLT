@@ -25,17 +25,37 @@ Under Linux, or Mac OS X:
 Third-party libraries
 =====================
 
-BLAS
-----
+BLAS and LAPACK
+---------------
 
-The solver depends on high performance BLAS library to perform the
-dense linear algebra operations that are abundant in our kernels. For
-best performance, please use the library recommended by your computer
-manufacturer (normally the Intel MKL). If this is not available, use
-an optimized alternative, such as OpenBLAS.  The reference BLAS from
-netlib are at least an order of magnitude slower than modern optimized
-BLAS, and should be avoided. If bit-compatible results are desired, a
-bit-compatible BLAS library must be used.
+The solver depends on high performance BLAS and LAPACK libraries to
+perform the dense linear algebra operations that are abundant in our
+kernels. For best performance, please use the library recommended by
+your computer manufacturer (normally the Intel MKL). If this is not
+available, use an optimized alternative, such as `OpenBLAS
+<http://www.openblas.net/>`_.  The `reference BLAS
+<http://www.netlib.org/blas/>`_ and `reference LAPACK
+<http://www.netlib.org/lapack/>`_ libraries from netlib are at least
+an order of magnitude slower than modern optimized BLAS, and should be
+avoided. If bit-compatible results are desired, a bit-compatible BLAS
+library must be used.
+
+The BLAS library can be passed to CMake using the :code:`-DLBLAS`
+option as following
+
+.. code-block:: bash
+
+   cmake <path-to-source> -DLBLAS=/path/to/your/blas
+
+The LAPACK library can be passed to CMake using the :code:`-DLLAPACK`
+option as following
+
+.. code-block:: bash
+
+   cmake <path-to-source> -DLLAPACK=/path/to/your/lapack
+
+If no BLAS or LAPACK libraries are given to cmake, the cmake script
+will try to find one installed on your machine.
 
 SPRAL
 -----

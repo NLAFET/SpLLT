@@ -108,12 +108,6 @@ endif()
 ##################################################################################
 # Third-party libraries
 
-# #########################################
-# # BLAS
-# set(BLAS_LAPACK "MKL" CACHE STRING "BLAS and LAPACK libraries")
-# set_property(CACHE BLAS_LAPACK PROPERTY STRINGS Ref MKL)
-# message( STATUS "BLAS/LAPACK: " ${BLAS_LAPACK} )
-
 #########################################
 # SPRAL
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
@@ -519,8 +513,6 @@ else()
 endif (LAPACK_FOUND)
 
 target_link_libraries(spllt_test ${LIBS})
-
-# target_link_libraries(spllt_test ${BLAS_LAPACK_LIBRARIES})
 
 # pthread
 target_link_libraries(spllt_test pthread)
