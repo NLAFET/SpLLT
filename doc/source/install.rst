@@ -40,9 +40,9 @@ an order of magnitude slower than modern optimized BLAS, and should be
 avoided. If bit-compatible results are desired, a bit-compatible BLAS
 library must be used.
 
-The BLAS library can be passed to `cmake` using the :code:`-DLBLAS`
-option and the LAPACK library can be passed using the
-:code:`-DLLAPACK` option as following:
+The BLAS library can be passed to `cmake` using the :code:`LBLAS`
+variable and the LAPACK library can be passed using the
+:code:`LLAPACK` variable as following:
 
 .. code-block:: bash
 
@@ -81,7 +81,7 @@ with StarPU, you can pass the StarPU directory using the
 .. code-block:: bash
 
    cmake <path-to-source> -DRUNTIME=StarPU -DSTARPU_DIR=/path/to/StarPU
-                
+
 
 Compilers and compiler options
 ==============================
