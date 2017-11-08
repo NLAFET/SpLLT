@@ -105,7 +105,6 @@ endif()
 
 # message( STATUS "Fortran FLAGS: " ${CMAKE_Fortran_FLAGS} )
 
-
 ##################################################################################
 # Third-party libraries
 
@@ -459,7 +458,7 @@ else()
   find_package(MKL)
 
   # If MKL is not found, try to find another BLAS  
-  if(NOT MKL_FOUND)  
+  if(NOT MKL_FOUND) 
     find_package(BLAS)
   endif()
 endif()
@@ -505,7 +504,11 @@ else()
 endif()
 
 if (LAPACK_FOUND)
-  set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+  if (BLAS_FOUND)
+    set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+  else()
+    set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${MKL_LIBRARIES})
+  endif(BLAS_FOUND)
 else()
   # If neither BLAS or MKL is found, raise error
   if(MKL_FOUND)
@@ -535,7 +538,17 @@ message("Configuration of SpLLT done\n"
   "Fortran compiler: ${CMAKE_Fortran_COMPILER} (${CMAKE_Fortran_COMPILER_ID})\n"
   "Fortran compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
   "C compiler:  ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})\n"
-  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
-  " \n"
-  "BLAS libraries: ${BLAS_LIBRARIES}\n"
-  "LAPACK libraries: ${LAPACK_LIBRARIES}\n")
+  "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n")
+if(BLAS_LIBRARIES)
+  message("BLAS libraries: ${BLAS_LIBRARIES}\n")
+elseif(MKL_FOUND)
+  message("BLAS libraries: ${MKL_LIBRARIES}\n")
+endif(BLAS_LIBRARIES)
+if(LAPACK_LIBRARIES)
+  message("LAPACK libraries: ${LAPACK_LIBRARIES}\n")
+elseif(MKL_FOUND)
+  message("LAPACK libraries: ${MKL_LIBRARIES}\n")
+endif(LAPACK_LIBRARIES)
+
+  # "BLAS libraries: ${BLAS_LIBRARIES}\n"
+  # "LAPACK libraries: ${LAPACK_LIBRARIES}\n")
