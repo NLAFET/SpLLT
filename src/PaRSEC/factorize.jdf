@@ -563,49 +563,49 @@ END
 
 extern "C" %{
    
-   parsec_handle_t* spllt_parsec_factorize(blk_desc_t *blk_desc, void *snodes, int nnodes, 
-                                          void *bcs, int nbc,
-                                          long int *diags, int ndiag,
-                                          int min_width_blas, int maxmn,
-                                          void *val, int nval, void *keep) {
+   parsec_taskpool_t* spllt_parsec_factorize(blk_desc_t *blk_desc, void *snodes, int nnodes, 
+                                             void *bcs, int nbc,
+                                             long int *diags, int ndiag,
+                                             int min_width_blas, int maxmn,
+                                             void *val, int nval, void *keep) {
 
-      parsec_factorize_handle_t* fac_hdl;
-
+      parsec_factorize_taskpool_t* fac_tp;
 
       /* printf("[factorize] number of blocks: %d\n", nbc); */
       /* printf("[factorize] number of diag blocks / block columns: %d\n", ndiag); */
       /* printf("[factorize] nnodes: %d\n", nnodes); */
             
-      fac_hdl = parsec_factorize_new(blk_desc,
-                                     snodes, nnodes,
-                                     bcs, nbc,
-                                     diags, ndiag,
-                                     min_width_blas, maxmn,
-                                     val, nval, keep,
-                                     NULL);
+      fac_tp = parsec_factorize_new(blk_desc,
+                                    snodes, nnodes,
+                                    bcs, nbc,
+                                    diags, ndiag,
+                                    min_width_blas, maxmn,
+                                    val, nval, keep,
+                                    NULL);
 
-      assert( NULL != fac_hdl );
+      assert( NULL != fac_tp );
 
-      fac_hdl->_g_p_work = ( parsec_memory_pool_t* ) malloc(sizeof(parsec_memory_pool_t));
-      parsec_private_memory_init( fac_hdl->_g_p_work, maxmn * maxmn * sizeof(double) );
+      fac_tp->_g_p_work = ( parsec_memory_pool_t* ) malloc(sizeof(parsec_memory_pool_t));
+      parsec_private_memory_init( fac_tp->_g_p_work, maxmn * maxmn * sizeof(double) );
       /* printf("[factorize] maxmn: %d\n", maxmn); */
-      parsec_matrix_add2arena( fac_hdl->arenas[PARSEC_factorize_DEFAULT_ARENA], parsec_datatype_double_t,
+      parsec_matrix_add2arena( fac_tp->arenas[PARSEC_factorize_DEFAULT_ARENA], parsec_datatype_double_t,
                                matrix_UpperLower, 0,
                                maxmn, maxmn, maxmn,
                                PARSEC_ARENA_ALIGNMENT_SSE, -1 );
       
-      return &fac_hdl->super;    
+      /* return &fac_tp->super;     */
+      return (parsec_taskpool_t*)fac_tp;
    }
 
-   void spllt_parsec_factorize_finalize( parsec_handle_t *handle ) {
+   void spllt_parsec_factorize_finalize( parsec_taskpool_t *tp ) {
       
-      parsec_factorize_handle_t *fac_hdl = (parsec_factorize_handle_t *) handle;
+      parsec_factorize_taskpool_t *fac_tp = (parsec_factorize_taskpool_t *) tp;
 
       printf("[factorize] finalize\n");
       
-      parsec_private_memory_fini(fac_hdl->_g_p_work);
-      free(fac_hdl->_g_p_work);
+      parsec_private_memory_fini(fac_tp->_g_p_work);
+      free(fac_tp->_g_p_work);
 
-      parsec_handle_free(handle);
+      parsec_taskpool_free(tp);
    }
 %}

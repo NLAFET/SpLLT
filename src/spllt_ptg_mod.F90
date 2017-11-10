@@ -30,7 +30,7 @@ contains
 
 #if defined(SPLLT_USE_PARSEC)
     ! PaRSEC 
-    type(parsec_handle_t)            :: fac_hdl
+    type(parsec_taskpool_t)            :: fac_tp
     type(c_ptr)                     :: bc_c, nodes_c, diags_c, keep_c, val_c
     integer(c_int)                  :: nbc, nval
     integer                         :: start_setup_t, stop_setup_t, rate_setup_t
@@ -85,11 +85,11 @@ contains
     call data_init(fdata%ddesc, bc_c, nbc, nds, rank)
 #endif    
 
-    fac_hdl = spllt_parsec_factorize(fdata%ddesc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
+    fac_tp = spllt_parsec_factorize(fdata%ddesc, nodes_c, num_nodes,bc_c, nbc, diags_c, keep%nbcol, &
          & cntl%min_width_blas, keep%maxmn, val_c, nval, keep_c)
     
     ! add factorization DAG to PaRSEC
-    call parsec_enqueue(ctx, fac_hdl)
+    call parsec_enqueue(ctx, fac_tp)
     call system_clock(stop_setup_t)
     ! write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 

@@ -28,7 +28,7 @@ static inline parsec_data_t* get_or_create_data(spllt_parsec_data_t* dat, int sn
                              0, NULL, 0);
 }
 
-static parsec_data_t* factorize_data_of(parsec_ddesc_t *desc, ...) {
+static parsec_data_t* factorize_data_of(parsec_data_collection_t *desc, ...) {
 
   spllt_parsec_data_t* dat = (spllt_parsec_data_t*)desc;
   va_list ap;
@@ -47,7 +47,7 @@ spllt_parsec_data_t* spllt_parsec_data_create(int num_nodes) {
 
    data->num_nodes = num_nodes;
    data->data = NULL;
-   memcpy(&(data->super), &parsec_static_local_data_ddesc, sizeof(parsec_ddesc_t));
+   memcpy(&(data->super), &parsec_static_local_data_ddesc, sizeof(parsec_data_collection_t));
    data->super.data_of = factorize_data_of;
 
    return data;

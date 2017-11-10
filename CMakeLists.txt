@@ -21,7 +21,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" 
 set(RUNTIME "STF" CACHE STRING "Runtime system")
 set_property(CACHE RUNTIME PROPERTY STRINGS STF StarPU OMP Parsec)
 if(${RUNTIME} MATCHES "STF")
-  message(STATUS "Build sequential version of SpLLT")
+  message(STATUS "Build SEQUENTIAL version of SpLLT")
 else()
   message(STATUS "Build SpLLT with ${RUNTIME} runtime system")
 endif()
@@ -177,31 +177,24 @@ elseif(${RUNTIME} MATCHES "OMP")
 elseif(${RUNTIME} MATCHES "Parsec")
 
   # Set C flags
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mcx16" )
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64 -mcx16" )
-
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mcx16" )
+  # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64 -mcx16" )
 
   #########################################
   # Parsec
-  set(PARSEC_DIR $ENV{PARSECDIR} CACHE PATH "Location of Parsec Library")
-  set(PARSEC_SRC_DIR $ENV{PARSECSRCDIR} CACHE PATH "Location of Parsec sources")
+  set(PARSEC_DIR $ENV{PARSEC_DIR} CACHE PATH "Location of Parsec Library")
+  set(PARSEC_SRC_DIR $ENV{PARSEC_SRCDIR} CACHE PATH "Location of Parsec sources")
   include_directories(${PARSEC_SRC_DIR})
   include_directories(${PARSEC_SRC_DIR}/parsec)
   include_directories(${PARSEC_SRC_DIR}/parsec/include)
-  include_directories(${PARSEC_SRC_DIR}/parsec/include/dague)
+  include_directories(${PARSEC_SRC_DIR}/parsec/include/parsec)
   include_directories(${PARSEC_DIR}/parsec/include)
-  include_directories(${PARSEC_DIR}/parsec/fortran)
+  include_directories(${PARSEC_DIR}/parsec/mod_files)
   include_directories(${PARSEC_DIR}/data_dist/matrix)
 
-  message(STATUS "Parsec directory ENV: " $ENV{PARSECDIR})
-  message(STATUS "Parsec directory: " ${PARSEC_SRC_DIR})
+  # message(STATUS "Parsec directory ENV: " $ENV{PARSECDIR})
+  message(STATUS "Parsec source directory: " ${PARSEC_SRC_DIR})
   
-  # find_library(PARSEC_LIBRARY dague_profilef PATHS ${PARSEC_DIR}/dague/fortran)
-  # find_library(PARSEC_LIBRARY daguef PATHS ${PARSEC_DIR}/dague/fortran)
-  # find_library(PARSEC_LIBRARY dague_distribution PATHS ${PARSEC_DIR}/data_dist)
-  # find_library(PARSEC_LIBRARY dague PATHS ${PARSEC_DIR}/dague)
-  # find_library(PARSEC_LIBRARY dague-base PATHS ${PARSEC_DIR}/dague)
-
   #########################################
   # Parsec libraries
   find_library(PARSEC_FORTRAN_LIBRARY
@@ -228,9 +221,10 @@ elseif(${RUNTIME} MATCHES "Parsec")
     NAMES parsec
     PATHS ${PARSEC_DIR}/parsec)
 
-  set (PARSEC_LIBRARY ${PARSEC_PROFILEF_LIBRARY}
+  set (PARSEC_LIBRARIES ${PARSEC_PROFILEF_LIBRARY}
     ${PARSEC_FORTRAN_LIBRARY} ${PARSEC_DIST_MAT_LIBRARY} 
     ${PARSEC_DIST_LIBRARY} ${PARSEC_LIB} ${PARSEC_BASE_LIBRARY})
+  set(LIBS ${LIBS} ${PARSEC_LIBRARIES})
 
   # message(STATUS "Parsec library: ${PARSEC_LIBRARY}")
 
@@ -244,18 +238,37 @@ elseif(${RUNTIME} MATCHES "Parsec")
   set(PARSEC_PTGPP $ENV{PARSECPP} CACHE PATH "Parsec JDF compiler") 
   set(parsec_ptgpp_EXE ${PARSEC_PTGPP})
   
-  # message(STATUS "Dague PP: ${daguepp_EXE}")
+  # # message(STATUS "Dague PP: ${daguepp_EXE}")
+
+  # find_package(PARSEC)
+  # if (PARSEC_FOUND)
+  #   include_directories(${PARSEC_INCLUDE_DIRS})
+  #   link_directories(${PARSEC_LIBRARY_DIRS})
+  #   link_libraries(${PARSEC_LIBRARIES})
+  #   # Adds directory containing module files
+  #   include_directories(${PARSEC_LIBRARY_DIRS}/mod_files)
+  #   message("Parsec inc dirs ${PARSEC_INCLUDE_DIRS}")
+  #   message("Parsec lib dirs ${PARSEC_LIBRARY_DIRS}")
+  #   set(LIBS ${LIBS} ${PARSEC_LIBRARIES})
+  #   # Adds JDF compiler and flags
+  #   set(PARSEC_PTGPP_CFLAGS "--noline" CACHE STRING "Additional ptgpp precompiling flags")
+  #   set(parsec_ptgpp_EXE ${PARSEC_PARSEC_PTGPP})
+  # else()
+  #   message(FATAL_ERROR "PARSEC not found!")
+  # endif(PARSEC_FOUND)
 
   #########################################
   # HWLOC
   set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
   include_directories(${HWLOC_DIR}/include)  
   find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
+  set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
   #########################################
   # PAPI
   find_library(PAPI_LIBRARY papi)
-  message(STATUS "PAPI: " ${PAPI_LIBRARY})
+  # message(STATUS "PAPI: " ${PAPI_LIBRARY})
+  set(LIBS ${LIBS} ${PAPI_LIBRARY})
 
   # Enable Parsec
   add_definitions(-DSPLLT_USE_PARSEC)
@@ -340,26 +353,6 @@ endif()
 
 target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
 target_link_libraries(spllt_test spllt)
-# find libraries
-
-if(${RUNTIME} MATCHES "StarPU")
-  # # StarPU
-  # target_link_libraries(spllt_test ${STARPU_LIBRARY})
-  # # HWLOC
-  # target_link_libraries(spllt_test ${HWLOC_LIBRARY})
-
-elseif(${RUNTIME} MATCHES "Parsec")
-
-  # Parsec
-  target_link_libraries(spllt_test ${PARSEC_LIBRARY})
-
-  # HWLOC
-  target_link_libraries(spllt_test ${HWLOC_LIBRARY})
-
-  # PAPI
-  target_link_libraries(spllt_test ${PAPI_LIBRARY})
-
-endif()
 
 ## GPU
 if(${USE_GPU} MATCHES ON)
@@ -374,6 +367,8 @@ if(${USE_MPI} MATCHES ON)
   target_link_libraries(spllt_test ${MPI_LIBRARY})
 endif()
 
+
+#########################################
 # spral
 target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
 find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR})
@@ -457,7 +452,7 @@ if(DEFINED BLAS_LIBRARIES)
   unset(CMAKE_REQUIRED_LIBRARIES)
   if(NOT BLAS_FOUND)
     message(ERROR "User supplied BLAS is NOT working")
-  endif()  
+  endif()
 else()
   find_package(BLAS)
 endif()
@@ -495,6 +490,8 @@ else()
   message(FATAL_ERROR "LAPACK library NOT found")
 endif (LAPACK_FOUND)
 
+##################################################################################
+# Link SpLLT with third-party libraries
 target_link_libraries(spllt_test ${LIBS})
 
 # pthread
@@ -508,28 +505,24 @@ target_link_libraries(spllt_test rt)
 #########################################
 # Print summary
 
-message("Configuration of SpLLT done")
-
+message("-----------------------------------------")
+message("Configuration of SpLLT done.")
+message("")
 message(
   "Build type: ${CMAKE_BUILD_TYPE}\n"
   "Fortran compiler: ${CMAKE_Fortran_COMPILER} (${CMAKE_Fortran_COMPILER_ID})\n"
   "Fortran compiler flags: ${CMAKE_Fortran_FLAGS_ALL}\n"
   "C compiler:  ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})\n"
   "C compiler flags: ${CMAKE_Fortran_FLAGS_ALL}")
-if(BLAS_LIBRARIES)
-  message("BLAS libraries: ${BLAS_LIBRARIES}\n")
-elseif(MKL_FOUND)
-  message("BLAS libraries: ${MKL_LIBRARIES}\n")
-endif(BLAS_LIBRARIES)
-if(LAPACK_LIBRARIES)
-  message("LAPACK libraries: ${LAPACK_LIBRARIES}\n")
-elseif(MKL_FOUND)
-  message("LAPACK libraries: ${MKL_LIBRARIES}\n")
-endif(LAPACK_LIBRARIES)
-
+message("")
+message("BLAS libraries: ${BLAS_LIBRARIES}")
+message("LAPACK libraries: ${LAPACK_LIBRARIES}")
+message("")
 if(${RUNTIME} MATCHES "StarPU")
-    message("StarPU libraries: ${STARPU_LIBRARIES}")
+  message("Runtime system: StarPU")
+  message("StarPU libraries: ${STARPU_LIBRARIES}")
+elseif(${RUNTIME} MATCHES "Parsec")
+  message("Runtime system: PaRSEC")
+  message("Parsec libraries: ${PARSEC_LIBRARIES}")
 endif()
-  
-  # "BLAS libraries: ${BLAS_LIBRARIES}\n"
-  # "LAPACK libraries: ${LAPACK_LIBRARIES}\n")
+message("-----------------------------------------")

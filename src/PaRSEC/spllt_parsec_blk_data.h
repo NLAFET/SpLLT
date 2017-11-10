@@ -2,7 +2,7 @@
 #define __SPLLT_PARSEC_BLK_DATA_H__
 
 typedef struct blk_desc {
-   parsec_ddesc_t super;
+   parsec_data_collection_t super;
    parsec_data_t** data_map;   /**< map of the data */
    void *bcs;
    int nbc;

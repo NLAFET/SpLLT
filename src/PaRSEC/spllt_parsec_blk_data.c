@@ -13,7 +13,7 @@ static inline uint32_t blk_key(int id) {
    return  key;
 }
 
-static uint32_t blk_data_key(parsec_ddesc_t *desc, ... ) {
+static uint32_t blk_data_key(parsec_data_collection_t *desc, ... ) {
 
     va_list ap;
     /* sparse_matrix_desc_t *spmtx = (sparse_matrix_desc_t*)mat; */
@@ -26,7 +26,7 @@ static uint32_t blk_data_key(parsec_ddesc_t *desc, ... ) {
     return blk_key(id);
 }
 
-static uint32_t blk_rank_of(parsec_ddesc_t *desc, ... ) {
+static uint32_t blk_rank_of(parsec_data_collection_t *desc, ... ) {
 
     /* (void)desc; */
     /* return 0; */
@@ -59,7 +59,7 @@ static uint32_t blk_rank_of(parsec_ddesc_t *desc, ... ) {
     return res;
 }
 
-static uint32_t blk_rank_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
+static uint32_t blk_rank_of_key(parsec_data_collection_t *desc, parsec_data_key_t key) {
 
    (void)desc; (void)key;
    return 0;
@@ -69,7 +69,7 @@ static uint32_t blk_rank_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
    /* return 0;    */
 }
 
-static int32_t blk_vpid_of(parsec_ddesc_t *desc, ... ) {
+static int32_t blk_vpid_of(parsec_data_collection_t *desc, ... ) {
    
    /* printf("[blk_vpid_of] TETETETETETETETE\n"); */
    /* int nvp = vpmap_get_nb_vp(); */
@@ -79,7 +79,7 @@ static int32_t blk_vpid_of(parsec_ddesc_t *desc, ... ) {
    return 0;
 }
 
-static int32_t blk_vpid_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
+static int32_t blk_vpid_of_key(parsec_data_collection_t *desc, parsec_data_key_t key) {
 
    /* printf("[blk_vpid_of_key] TETETETETETETETE\n"); */
 
@@ -87,7 +87,7 @@ static int32_t blk_vpid_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
     return 0;
 }
 
-static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
+static parsec_data_t *blk_data_of(parsec_data_collection_t *desc, ... ) {
 
     blk_desc_t *blk_desc = (blk_desc_t*)desc;
 
@@ -121,7 +121,7 @@ static parsec_data_t *blk_data_of(parsec_ddesc_t *desc, ... ) {
     return parsec_data_create(blk_desc->data_map + pos, desc, key, bc, size);
 }
 
-static parsec_data_t *blk_data_of_key(parsec_ddesc_t *desc, parsec_data_key_t key) {
+static parsec_data_t *blk_data_of_key(parsec_data_collection_t *desc, parsec_data_key_t key) {
    /* printf("[blk_data_of_key] TETETETETETE\n"); */
     (void)desc; (void)key;
     return 0;   
@@ -132,12 +132,12 @@ void spllt_parsec_blk_data_init(blk_desc_t *desc,
                                 void *bcs, int nbc,
                                 int nodes, int myrank) {
    
-    parsec_ddesc_t *o = (parsec_ddesc_t*)desc;
+    parsec_data_collection_t *o = (parsec_data_collection_t*)desc;
 
     /* printf("[spllt_parsec_blk_data_init] myrank: %d\n", myrank); */
     
     /* Super setup */
-    parsec_ddesc_init( o, nodes, myrank );
+    parsec_data_collection_init( o, nodes, myrank );
 
     /* o->nodes     = nodes; */
     /* o->myrank    = myrank; */

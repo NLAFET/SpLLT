@@ -9,7 +9,7 @@
 #include "data_dist/matrix/two_dim_tabular.h"
 
 typedef struct spllt_parsec_data {
-   parsec_ddesc_t   super;
+   parsec_data_collection_t super;
    int num_nodes;
    dague_data_t*  data;
 } spllt_parsec_data_t;

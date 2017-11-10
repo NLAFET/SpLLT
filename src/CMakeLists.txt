@@ -29,7 +29,8 @@ elseif(${RUNTIME} MATCHES "Parsec")
   # adds headers to the include directories
   include_directories(${CMAKE_SOURCE_DIR}/src/PaRSEC)
 
-  include(${PARSEC_SRC_DIR}/cmake_modules/RulesJDF.cmake)
+  # include(${PARSEC_SRC_DIR}/cmake_modules/RulesJDF.cmake)
+  include(${CMAKE_SOURCE_DIR}/cmake/Modules/RulesJDF.cmake)
 
   jdf_rules(generated_jdf "${CMAKE_SOURCE_DIR}/src/PaRSEC/factorize.jdf")
   jdf_rules(generated_jdf "${CMAKE_SOURCE_DIR}/src/PaRSEC/gather.jdf")

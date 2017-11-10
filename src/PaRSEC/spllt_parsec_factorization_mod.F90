@@ -11,14 +11,14 @@ module spllt_parsec_factorization_mod
        type(c_ptr), value      :: nodes, bcs, diags, val, keep
        integer(c_int), value   :: num_nodes, nbc, ndiag, nval
        integer(c_int), value   :: min_width_blas, maxmn
-       type(parsec_handle_t)    :: spllt_parsec_factorize
+       type(parsec_taskpool_t)    :: spllt_parsec_factorize
      end function spllt_parsec_factorize
      
      ! Finalize factorization
      subroutine spllt_parsec_factorize_finalize(handle) bind(C)
        use iso_c_binding
        use parsec_f08_interfaces
-       type(parsec_handle_t), value    :: handle
+       type(parsec_taskpool_t), value    :: handle
      end subroutine spllt_parsec_factorize_finalize
 
      ! Gather 
@@ -27,7 +27,7 @@ module spllt_parsec_factorization_mod
        use parsec_f08_interfaces
        type(c_ptr), value :: blk_desc, base_desc
        integer(c_int), value :: nbc, maxmn
-       type(parsec_handle_t) :: gather
+       type(parsec_taskpool_t) :: gather
      end function gather
 
   end interface
@@ -56,13 +56,12 @@ contains
 
   function get_blk_node(bcs_c, id) bind(C)
     use iso_c_binding
-    use spllt_mod
-    ! use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     type(c_ptr), value, target :: bcs_c
     integer(long), value       :: id
-    integer(c_int)              :: get_blk_node
+    integer(c_int)             :: get_blk_node
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
     
@@ -159,7 +158,7 @@ contains
   ! get number of internode updates to be performed on block id 
   function get_dep_out_count(bcs_c, id) bind(C)
     use iso_c_binding
-    ! use spllt_mod
+    use spllt_data_mod
     implicit none
 
     type(c_ptr), value, target :: bcs_c
@@ -616,7 +615,7 @@ contains
 
   function get_lcol_ptr(lfact_c, bcol) bind(C)
     use iso_c_binding
-    ! use hsl_ma87_double
+    use spllt_data_mod
     implicit none
 
     type(c_ptr), target :: lfact_c

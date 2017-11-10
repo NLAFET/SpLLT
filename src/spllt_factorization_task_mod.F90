@@ -1294,7 +1294,7 @@ contains
          & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
          & lfact(bcol1)%lcol(rsrc:rsrc+rsrc2-1), &
          & row_list%c, col_list%c, workspace%c, &
-         & control%min_width_blas)
+         & min_width_blas)
 
 #endif
 
