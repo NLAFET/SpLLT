@@ -139,11 +139,6 @@ elseif(${RUNTIME} MATCHES "StarPU")
   
   #########################################
   # StarPU
-
-  # set(STARPU_DIR $ENV{STARPUDIR} CACHE PATH "Location of StarPU directory")
-  # set(STARPU_INCLUDE ${STARPU_DIR}/include/starpu/1.3 CACHE PATH "Location of StarPU includes")
-  # include_directories(${STARPU_INCLUDE})
-  # find_library(STARPU_LIBRARY starpu-1.3 PATHS ${STARPU_DIR}/lib)
   find_package(STARPU)
   if (STARPU_FOUND)
     include_directories( ${STARPU_INCLUDE_DIRS} )
@@ -185,6 +180,8 @@ elseif(${RUNTIME} MATCHES "Parsec")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mcx16" )
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64 -mcx16" )
 
+
+  #########################################
   # Parsec
   set(PARSEC_DIR $ENV{PARSECDIR} CACHE PATH "Location of Parsec Library")
   set(PARSEC_SRC_DIR $ENV{PARSECSRCDIR} CACHE PATH "Location of Parsec sources")
@@ -459,30 +456,16 @@ if(DEFINED BLAS_LIBRARIES)
   CHECK_FORTRAN_FUNCTION_EXISTS("dgemm" BLAS_FOUND)
   unset(CMAKE_REQUIRED_LIBRARIES)
   if(NOT BLAS_FOUND)
-    message(ERROR "BLAS is NOT working")
-  endif()
-  
-  # When no BLAS library is provided, search for one
+    message(ERROR "User supplied BLAS is NOT working")
+  endif()  
 else()
-  # Search for MKL library
-  find_package(MKL)
-
-  # If MKL is not found, try to find another BLAS  
-  if(NOT MKL_FOUND) 
-    find_package(BLAS)
-  endif()
+  find_package(BLAS)
 endif()
 
 if(BLAS_FOUND)
   set(LIBS ${LIBS} ${BLAS_LIBRARIES})
 else()
-
-  # If neither BLAS or MKL is found, raise error
-  if(MKL_FOUND)
-    set(LIBS ${LIBS} ${MKL_LIBRARIES})
-  else()
-    message(FATAL_ERROR "BLAS NOT found")
-  endif(MKL_FOUND)
+  message(FATAL_ERROR "BLAS NOT found")
 endif (BLAS_FOUND)
 
 #########################################
@@ -499,33 +482,17 @@ if(DEFINED LAPACK_LIBRARIES)
   CHECK_FORTRAN_FUNCTION_EXISTS("dpotrf" LAPACK_FOUND)
   unset(CMAKE_REQUIRED_LIBRARIES)
   if(NOT LAPACK_FOUND)
-    message(ERROR "LAPACK is NOT working")
+    message(ERROR "User supplied LAPACK is NOT working")
   endif()
 
 else()
-
-  # Search for MKL library
-  find_package(MKL)
-
-  # If MKL is not found, try to find another BLAS  
-  if(NOT MKL_FOUND)
-    find_package(LAPACK)
-  endif()
+  find_package(LAPACK)
 endif()
 
 if (LAPACK_FOUND)
-  if (BLAS_FOUND)
-    set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
-  else()
-    set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${MKL_LIBRARIES})
-  endif(BLAS_FOUND)
+  set(LIBS ${LIBS} ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
 else()
-  # If neither BLAS or MKL is found, raise error
-  if(MKL_FOUND)
-    set(LIBS ${LIBS} ${MKL_LIBRARIES} ${BLAS_LIBRARIES})
-  else()
-    message(FATAL_ERROR "LAPACK library NOT found")
-  endif ()
+  message(FATAL_ERROR "LAPACK library NOT found")
 endif (LAPACK_FOUND)
 
 target_link_libraries(spllt_test ${LIBS})
