@@ -220,7 +220,7 @@ contains
   !   use spllt_data_mod
   !   implicit none
 
-  !   type(spllt_bc_type), intent(in) :: bc ! block to be factorized    
+  !   type(spllt_block), intent(in) :: bc ! block to be factorized    
   !   integer, intent(in) :: prio
 
   !   call spllt_starpu_insert_factorize_block_c(bc%hdl, prio)
@@ -264,7 +264,7 @@ contains
     implicit none
     
     ! block to be solved (bc_ik) wrt diag block (bc_kk)
-    type(spllt_bc_type), intent(in) :: bc_kk, bc_ik 
+    type(spllt_block), intent(in) :: bc_kk, bc_ik 
     integer, intent(in) :: prio
 
     call spllt_starpu_insert_solve_block_c(bc_kk%hdl, bc_ik%hdl, prio)
@@ -429,7 +429,7 @@ contains
     integer, target     :: min_width_blas
 
     type(spllt_node), pointer  :: snode, anode
-    type(spllt_bc_type), pointer :: a_bc
+    type(spllt_block), pointer :: a_bc
     integer :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: rlst_c, clst_c, work_c, dest, src1, src2, ptr1, ptr2
@@ -504,7 +504,7 @@ contains
     integer, target           :: min_width_blas, nhlik, nhljk
 
     type(spllt_node), pointer  :: snode, anode
-    type(spllt_bc_type), pointer :: a_bc
+    type(spllt_block), pointer :: a_bc
     integer                   :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2

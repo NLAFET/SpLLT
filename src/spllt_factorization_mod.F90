@@ -39,10 +39,10 @@ contains
 
     integer, intent(in) :: root ! root of subtree
     ! real(wp), dimension(*), intent(in) :: buffer ! generated element
-    type(spllt_bc_type), intent(in) :: buffer
+    type(spllt_block), intent(in) :: buffer
 
     type(spllt_node), dimension(-1:), intent(in) :: nodes
-    type(spllt_bc_type), dimension(*), intent(inout) :: blocks
+    type(spllt_block), dimension(*), intent(inout) :: blocks
     type(lfactor), dimension(*), intent(inout) :: lfact
     integer, dimension(:), intent(inout) :: map ! Workarray to hold map from row
     ! indices to block indices in ancestor node. 
@@ -216,11 +216,11 @@ contains
     real(wp), dimension(:), intent(in) :: val ! User's matrix values
     type(spllt_cntl), intent(inout) :: cntl
     integer, pointer, intent(inout) :: map(:)
-    type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
+    type(spllt_block), target, intent(inout) :: buffer ! update_buffer workspace
 
     type(spllt_node), pointer :: node ! node in the atree    
     integer :: m, n, b_sz
-    type(spllt_bc_type), pointer :: buf
+    type(spllt_block), pointer :: buf
 
     node => fdata%nodes(root)
     m = size(node%index)
@@ -552,7 +552,7 @@ contains
     integer(long) :: dblk ! diagonal block
     integer :: s_nb ! block size
     integer :: ii, jj, kk ! indexes 
-    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
+    type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
     integer(long) :: blk, blk1, blk2 ! block id
     
     ! node => snode%node
@@ -652,7 +652,7 @@ contains
     integer(long) :: dblk ! diagonal block
     integer :: s_nb ! block size
     integer :: ii, jj, kk ! indexes 
-    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
+    type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
     integer(long) :: blk, blk1, blk2 ! block id
 
     ! update between
@@ -666,7 +666,7 @@ contains
     ! matching a column of the current block column of anode.
     logical :: map_done
     integer :: i, ilast
-    type(spllt_bc_type), pointer :: bc, a_bc ! node in the atree
+    type(spllt_block), pointer :: bc, a_bc ! node in the atree
     integer :: cb, jb
     integer :: jlast ! Last column in the cb-th block column of anode
     integer :: k

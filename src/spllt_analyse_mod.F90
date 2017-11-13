@@ -562,7 +562,7 @@ contains
     integer :: lik_sa, lik_en ! start and end index for lik contribution
     integer(long) :: id_ik, id_jk
     integer :: i, j ! index
-    type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
+    type(spllt_block), pointer :: bc_jk, bc_ik, bc_ij
     logical :: sync ! true if task is use for synchronization purpose
     integer :: n1 ! column width of blocks Ljk and Lik
     integer :: csrc, rsrc ! start of fist row respectively in Ljk and Lik block 
@@ -657,7 +657,7 @@ contains
     integer :: lik, ljk, ljk_sa, ljk_en
     integer :: nr, nc
     integer(long) :: id_ik, id_jk, id, id_jk_sa, id_jk_en
-    type(spllt_bc_type), pointer :: bc_jk, bc_ik, bc_ij
+    type(spllt_block), pointer :: bc_jk, bc_ik, bc_ij
 
     write(*,*)'[spllt_analyse_mod][compute_dep]'
 
@@ -1057,7 +1057,7 @@ contains
     integer, dimension(:), intent(in) :: arow
     integer, intent(in) :: num_nodes
     type(spllt_node), dimension(-1:), intent(in) :: nodes ! Node info
-    type(spllt_bc_type), dimension(:), intent(in) :: blocks ! block info
+    type(spllt_block), dimension(:), intent(in) :: blocks ! block info
     type(lmap_type), dimension(:), intent(out) :: lmap ! output lcol map
     integer, dimension(:), intent(out) :: map ! work array
     integer, dimension(:), intent(in) :: amap ! map set up by make_map

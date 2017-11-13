@@ -63,7 +63,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_blk_node
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
     
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -120,7 +120,7 @@ contains
     integer(long), value       :: id
     integer(long)              :: get_nc
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
     type(spllt_node), pointer :: node, nodes(:)
     integer :: sa, en, numcol, s_nb
 
@@ -147,7 +147,7 @@ contains
     integer(long), value       :: id_jk, id_ik
     integer(long)              :: get_dest_blk_id
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
     
     call c_f_pointer(bcs_c, bc,(/nbc/))    
     
@@ -165,7 +165,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_dep_out_count
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -187,7 +187,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_out_p
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -210,7 +210,7 @@ contains
     integer(c_int), value      :: i
     integer(long)              :: get_dep_out_id_ij
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -232,7 +232,7 @@ contains
     integer(c_int), value      :: i
     integer                    :: get_dep_out_flow
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -254,7 +254,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_in_csrc
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -276,7 +276,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_in_rsrc
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -298,7 +298,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_in_sync
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -320,7 +320,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_in_p1
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -342,7 +342,7 @@ contains
     integer(c_int), value      :: i
     integer(long)              :: get_dep_in_id_jk
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -364,7 +364,7 @@ contains
     integer(c_int), value      :: i
     integer(c_int)             :: get_dep_in_p2
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -386,7 +386,7 @@ contains
     integer(c_int), value      :: i
     integer(long)              :: get_dep_in_id_ik
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -408,7 +408,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_upd_count
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -429,7 +429,7 @@ contains
     integer(long), value       :: diag
     integer(c_int)             :: get_next_dblk
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/diag/))    
     
@@ -446,7 +446,7 @@ contains
     integer(long), value       :: diag
     integer(c_int)             :: get_prev_dblk
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/diag/))    
     
@@ -467,7 +467,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_last_blk
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -484,7 +484,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_bcol
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))
 
@@ -501,7 +501,7 @@ contains
     integer(long), value       :: id
     integer(c_int)             :: get_num_subdiag
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 
@@ -522,7 +522,7 @@ contains
     integer(long), value      :: id
     integer(c_int)             :: get_blk_m
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))
 
@@ -539,7 +539,7 @@ contains
     integer(long), value      :: id
     integer(c_int)             :: get_blk_n
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))
 
@@ -556,7 +556,7 @@ contains
     integer(long), value      :: id
     type(c_ptr)                :: get_blk
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     ! write(*,*)'[get_blk_ptr] id: ', id
     get_blk = c_null_ptr
@@ -578,7 +578,7 @@ contains
     integer(long), value      :: id
     type(c_ptr)                :: get_blk_ptr
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     ! write(*,*)'[get_blk_ptr] id: ', id
     get_blk_ptr = c_null_ptr
@@ -600,7 +600,7 @@ contains
     integer(long), value             :: id
     integer(c_size_t)          :: get_blk_sze
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
     integer m, n
 
     call c_f_pointer(bcs_c, bc,(/id/))

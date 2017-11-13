@@ -20,10 +20,10 @@ contains
     implicit none
 
     integer, intent(in) :: rptr, rptr2, cptr, cptr2
-    type(spllt_bc_type), intent(in) :: buffer
+    type(spllt_block), intent(in) :: buffer
     type(spllt_node), target :: root
     integer, intent(in) :: a_rptr, a_cptr
-    type(spllt_bc_type) :: dest
+    type(spllt_block) :: dest
     type(spllt_node), target :: anode
     
     integer :: rm, rn
@@ -123,7 +123,7 @@ contains
     type(spllt_fdata_type), target, intent(inout)  :: fdata
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
     ! type(spllt_keep), target, intent(inout) :: keep
-    type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
+    type(spllt_block), target, intent(inout) :: buffer ! update_buffer workspace
     type(spllt_cntl), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
@@ -134,7 +134,7 @@ contains
 #if defined(SPLLT_USE_OMP)
     real(wp), pointer :: p_val(:) => null()
     real(wp), dimension(:), pointer :: buffer_c => null()
-    type(spllt_bc_type), pointer :: p_workspace(:) => null()
+    type(spllt_block), pointer :: p_workspace(:) => null()
     type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
     real(wp), dimension(:), pointer :: work => null()
     integer, dimension(:), pointer :: rlst => null(), clst => null()
@@ -336,10 +336,10 @@ contains
     type(spllt_fdata_type), target, intent(in)  :: fdata
     type(spllt_node), intent(in)          :: node
 #if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc ! block to be factorized    
+    type(spllt_block), pointer, intent(inout) :: bc ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
-    type(spllt_bc_type), target, intent(inout) :: bc ! block to be factorized    
+    type(spllt_block), target, intent(inout) :: bc ! block to be factorized    
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio
@@ -466,11 +466,11 @@ contains
 
     type(spllt_fdata_type), target, intent(inout)  :: fdata
 #if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
+    type(spllt_block), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
     ! type(block_type), pointer :: blk_kk, blk_ik ! block to be factorized
 #else
-    type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
+    type(spllt_block), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio 
@@ -633,10 +633,10 @@ contains
     type(spllt_fdata_type), target, intent(in)  :: fdata
     ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
 #if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
+    type(spllt_block), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
 #else
-    type(spllt_bc_type), intent(inout) :: bc_ik, bc_jk, bc_ij
+    type(spllt_block), intent(inout) :: bc_ik, bc_jk, bc_ij
     type(lfactor), allocatable, intent(inout) :: lfact(:)
 #endif
     integer, optional :: prio 
@@ -879,18 +879,18 @@ contains
 
     type(spllt_fdata_type), target, intent(in)       :: fdata
 #if defined(SPLLT_USE_OMP)
-    type(spllt_bc_type), pointer, intent(inout)     :: a_bc ! dest block
-    type(spllt_bc_type), pointer, intent(inout)     :: dbc ! diag block in source node
+    type(spllt_block), pointer, intent(inout)     :: a_bc ! dest block
+    type(spllt_block), pointer, intent(inout)     :: dbc ! diag block in source node
 
-    type(spllt_bc_type), allocatable, target        :: workspace(:)
-    type(spllt_bc_type), target                     :: bcs(:) ! block info.
+    type(spllt_block), allocatable, target        :: workspace(:)
+    type(spllt_block), target                     :: bcs(:) ! block info.
     type(spllt_workspace_i), allocatable, target    :: row_list(:), col_list(:)
 #else
-    type(spllt_bc_type), intent(inout)              :: a_bc ! dest block
-    type(spllt_bc_type), intent(in)                 :: dbc ! diag block in source node
+    type(spllt_block), intent(inout)              :: a_bc ! dest block
+    type(spllt_block), intent(in)                 :: dbc ! diag block in source node
 
-    type(spllt_bc_type)                             :: workspace
-    type(spllt_bc_type)                             :: bcs(:) ! block info.
+    type(spllt_block)                             :: workspace
+    type(spllt_block)                             :: bcs(:) ! block info.
     type(spllt_workspace_i)                         :: row_list, col_list
 #endif
 
@@ -947,13 +947,13 @@ contains
     real(wp), dimension(:), pointer :: lcol1, lcol
     integer :: th_id
     integer :: csrc_sa, rsrc_sa, csrc_en, rsrc_en
-    ! type(spllt_bc_type), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    ! type(spllt_block), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     real(wp), dimension(:), pointer :: a_bc_c, dbc_c
     ! real(wp), dimension(:), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    ! type(spllt_bc_type), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
+    ! type(spllt_block), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     real(wp), dimension(:), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     ! type(block_type), pointer :: blk_kk, a_blk
-    type(spllt_bc_type), pointer :: p_workspace(:) => null()
+    type(spllt_block), pointer :: p_workspace(:) => null()
     type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
     ! real(wp), dimension(:), allocatable :: work
     real(wp), dimension(:), pointer :: work

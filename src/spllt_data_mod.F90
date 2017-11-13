@@ -97,7 +97,7 @@ module spllt_data_mod
   end type spllt_dep_upd_out
 
   ! block type  
-  type spllt_bc_type
+  type spllt_block
      ! type(block_type), pointer :: blk => null()! pointer to the block in keep
      real(wp), pointer :: c(:)
 #if defined(SPLLT_USE_STARPU)
@@ -136,7 +136,7 @@ module spllt_data_mod
      ! for this block.
      ! Note: locks initialised in ma87_analyse and destroyed
      !       in ma87_finalise
-  end type spllt_bc_type
+  end type spllt_block
 
   ! node type
   type spllt_node
@@ -146,7 +146,7 @@ module spllt_data_mod
      type(c_ptr)    :: hdl  ! StarPU handle
      type(c_ptr)    :: hdl2  ! StarPU second handle
 #endif
-     type(spllt_bc_type) :: buffer ! buffer for accumulating updates
+     type(spllt_block) :: buffer ! buffer for accumulating updates
 
      integer(long) :: blk_sa ! identifier of the first block in node
      integer(long) :: blk_en ! identifier of the last block in node
@@ -237,11 +237,11 @@ module spllt_data_mod
 
   ! problem data (factorization)
   type spllt_fdata_type
-     type(spllt_bc_type), allocatable :: bc(:) ! blocks
+     type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
-     type(spllt_bc_type), allocatable :: workspace(:) ! workspaces
+     type(spllt_block), allocatable :: workspace(:) ! workspaces
 #else
-     type(spllt_bc_type) :: workspace ! workspaces
+     type(spllt_block) :: workspace ! workspaces
 #endif
      type(spllt_node), allocatable :: nodes(:) ! supernodes 
 #if defined(SPLLT_USE_PARSEC)
@@ -263,7 +263,7 @@ module spllt_data_mod
      type(spllt_workspace_i) :: map ! workspaces
 #endif
      !     private
-     ! type(spllt_bc_type), dimension(:), allocatable :: blocks ! block info
+     ! type(spllt_block), dimension(:), allocatable :: blocks ! block info
      integer, dimension(:), allocatable :: flag_array ! allocated to
      ! have size equal to the number of threads. For each thread, holds
      ! error flag
@@ -350,8 +350,8 @@ contains
   
   integer(long) function get_dest_block(src1, src2)
 
-    type(spllt_bc_type), intent(in) :: src1
-    type(spllt_bc_type), intent(in) :: src2
+    type(spllt_block), intent(in) :: src1
+    type(spllt_block), intent(in) :: src2
 
     integer(long) :: i
     integer :: sz

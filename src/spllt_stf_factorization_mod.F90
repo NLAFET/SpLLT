@@ -43,8 +43,8 @@ contains
 
     ! shortcuts
     type(spllt_node), pointer     :: node ! node in the atree    
-    type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
-    type(spllt_bc_type), dimension(:), pointer :: blocks ! block info. 
+    type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
+    type(spllt_block), dimension(:), pointer :: blocks ! block info. 
     type(spllt_node), dimension(:), pointer :: nodes 
 
     ! local scalars
@@ -71,7 +71,7 @@ contains
     integer :: subtree_start_t, subtree_stop_t, subtree_rate_t
 
     ! subtree factor variable
-    type(spllt_bc_type) :: buffer
+    type(spllt_block) :: buffer
 
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
@@ -250,7 +250,7 @@ contains
   !     integer :: jlast
   !     integer :: stf_start_t, stf_stop_t, stf_rate_t
   !     integer :: ii, i, ilast, k
-  !     type(spllt_bc_type), pointer :: bc, d_bc_kk
+  !     type(spllt_block), pointer :: bc, d_bc_kk
   !     integer(long) :: d_dblk 
   !     integer :: kk
 
@@ -260,7 +260,7 @@ contains
   !     integer :: nc, nr
   !     integer :: s_nb
   !     integer(long) :: blk1, blk2 
-  !     type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
+  !     type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
   !     integer :: jj
 
   ! #if defined(SPLLT_USE_OMP)

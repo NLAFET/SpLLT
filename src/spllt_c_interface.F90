@@ -5,13 +5,13 @@ contains
 
   function is_blk_diag(blk_c) bind(C)
     use iso_c_binding
-    use spllt_data_mod, only: spllt_bc_type
+    use spllt_data_mod, only: spllt_block
     implicit none
 
     type(c_ptr), value, target :: blk_c
     integer(c_int)             :: is_blk_diag
 
-    type(spllt_bc_type), pointer :: blk ! blocks
+    type(spllt_block), pointer :: blk ! blocks
 
     call c_f_pointer(blk_c, blk)
 
@@ -30,7 +30,7 @@ contains
     integer(long), value             :: id
     integer(c_int)             :: is_diag
 
-    type(spllt_bc_type), pointer :: bc(:) ! blocks
+    type(spllt_block), pointer :: bc(:) ! blocks
 
     call c_f_pointer(bcs_c, bc,(/id/))    
 

@@ -278,8 +278,8 @@ contains
           !
           call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
           
-          ! Update diag block in node          
-          if (jj .gt. 1) dblk = fdata%bc(dblk-1)%dblk          
+          ! Update diag block in node       
+          if (jj .gt. 1) dblk = fdata%bc(dblk-1)%dblk
        end do
        
     end do

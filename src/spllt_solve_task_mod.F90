@@ -117,7 +117,7 @@ contains
     implicit none
 
     type(spllt_node), intent(in) :: node
-    type(spllt_bc_type), intent(in) :: bc
+    type(spllt_block), intent(in) :: bc
 
     calc_col = (size(node%index)-1)/node%nb + 1 ! no. row blks for node
 
