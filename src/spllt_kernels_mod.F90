@@ -4,8 +4,9 @@ module spllt_kernels_mod
 contains
 
   !*************************************************
-  !  
-  ! Performs an update_between task directly rather than via a buffer.  
+  !
+  ! Performs an update_between operation directly without using a
+  ! buffer.
   subroutine spllt_update_direct(n, dest, n1, csrc, rsrc,  &
        row_list, rls, col_list, cls, ndiag)
     use spllt_data_mod
@@ -93,10 +94,10 @@ contains
     use spllt_data_mod
     implicit none
 
-    ! type(spllt_node_type), target, intent(inout)        :: snode ! node to factorize (spllt)    
-    ! type(spllt_node_type), target, intent(inout)        :: node ! node to factorize (ma87)    
-    type(spllt_node_type), target, intent(inout) :: node ! node to factorize (ma87)    
-    type(block_type), dimension(*), intent(in) :: blocks
+    ! type(spllt_node), target, intent(inout)        :: snode ! node to factorize (spllt)    
+    ! type(spllt_node), target, intent(inout)        :: node ! node to factorize (ma87)    
+    type(spllt_node), target, intent(inout) :: node ! node to factorize (ma87)    
+    type(spllt_bc_type), dimension(*), intent(in) :: blocks
     type(lfactor), dimension(*), intent(inout) :: lfact
 
     integer :: prio ! task priority
@@ -225,8 +226,8 @@ contains
     implicit none
 
     logical, intent(in) :: is_diag
-    type(spllt_node_type), intent(in) :: node 
-    type(spllt_node_type), intent(in) :: root 
+    type(spllt_node), intent(in) :: node 
+    type(spllt_node), intent(in) :: root 
     integer, intent(in) :: cptr, cptr2 ! Ljk
     integer, intent(in) :: rptr, rptr2 ! Lik
     integer, pointer, intent(inout) :: row_list(:), col_list(:) ! worskapce used for conputing indexes 
@@ -326,10 +327,10 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(spllt_node_type), intent(in) :: node 
+    type(spllt_node), intent(in) :: node 
     integer, intent(in) :: root ! root node in the subtree
-    type(spllt_node_type), dimension(-1:), target, intent(in) :: nodes
-    type(block_type), dimension(*), intent(in)          :: blocks
+    type(spllt_node), dimension(-1:), target, intent(in) :: nodes
+    type(spllt_bc_type), dimension(*), intent(in)          :: blocks
     type(lfactor), dimension(*), intent(inout)          :: lfact
     real(wp), dimension(:), pointer, intent(inout)  :: buffer ! data array used 
     ! to accumulate updates
@@ -343,7 +344,7 @@ contains
     integer :: numcol, numrow
     integer :: s_nb ! block size of source node
     integer :: sa, en
-    type(spllt_node_type), pointer :: anode ! ancestor node in the atree
+    type(spllt_node), pointer :: anode ! ancestor node in the atree
     ! locate source blocks
     integer :: a_num ! ancestor id
     integer :: cptr  ! Position in snode of the first row 
@@ -793,7 +794,7 @@ contains
     ! integer, intent(out) :: flag ! TODO error managment
 
     integer :: node, m, n
-    type(spllt_node_type), pointer :: snode
+    type(spllt_node), pointer :: snode
 
     m = size(fdata%nodes(root)%index)
     n = fdata%nodes(root)%en - fdata%nodes(root)%sa + 1
@@ -811,9 +812,9 @@ contains
        
        snode => fdata%nodes(node)
        ! factorize supernode
-       call spllt_subtree_factorize_node(snode, fdata%blocks, fdata%lfact)
+       call spllt_subtree_factorize_node(snode, fdata%bc, fdata%lfact)
        ! apply udpate on ancestor node (right-looking update)
-       call spllt_subtree_apply_node(snode, root, fdata%nodes, fdata%blocks, fdata%lfact, buffer, &
+       call spllt_subtree_apply_node(snode, root, fdata%nodes, fdata%bc, fdata%lfact, buffer, &
             & map, row_list, col_list, workspace, cntl)
     end do
 
@@ -824,8 +825,8 @@ contains
     implicit none
     
     integer, intent(in) :: root ! root of subtree
-    type(spllt_node_type), dimension(-1:), intent(in) :: nodes
-    type(block_type), dimension(*), intent(in) :: blocks
+    type(spllt_node), dimension(-1:), intent(in) :: nodes
+    type(spllt_bc_type), dimension(*), intent(in) :: blocks
     type(lfactor), dimension(*), intent(inout) :: lfact
     real(wp), dimension(:), allocatable, intent(inout) :: buffer
     ! integer, intent(out) :: flag ! TODO error managment
@@ -957,8 +958,8 @@ contains
 
     integer, intent(in) :: root ! root of subtree
     real(wp), dimension(*), intent(in) :: buffer ! generated element
-    type(spllt_node_type), dimension(-1:), intent(in) :: nodes
-    type(block_type), dimension(*), intent(inout) :: blocks
+    type(spllt_node), dimension(-1:), intent(in) :: nodes
+    type(spllt_bc_type), dimension(*), intent(inout) :: blocks
     type(lfactor), dimension(*), intent(inout) :: lfact
     integer, dimension(:), intent(inout) :: map ! Workarray to hold map from row
     ! indices to block indices in ancestor node. 
@@ -1284,7 +1285,6 @@ contains
   end subroutine spllt_update_block
 
   ! C wrapper
-
   subroutine spllt_update_block_c(m, n, dest_c, isDiag, n1, src1_c, src2_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
@@ -1328,11 +1328,11 @@ contains
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
     real(wp), dimension(*), intent(in) :: rsrc ! holds rsrc block
-    type(block_type), intent(in) :: blk_dest ! destination block
-    type(block_type), intent(in) :: blk_csrc ! destination block
-    type(block_type), intent(in) :: blk_rsrc ! destination block
-    type(spllt_node_type), intent(in) :: dnode ! Node to which blk belongs
-    type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
+    type(spllt_bc_type), intent(in) :: blk_dest ! destination block
+    type(spllt_bc_type), intent(in) :: blk_csrc ! destination block
+    type(spllt_bc_type), intent(in) :: blk_rsrc ! destination block
+    type(spllt_node), intent(in) :: dnode ! Node to which blk belongs
+    type(spllt_node), intent(in) :: snode ! Node to which src belongs
     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
     integer, intent(in) :: scol ! index of block column that blk belongs to in node
     integer, intent(in) :: min_width_blas      ! Minimum width of source block
@@ -1522,8 +1522,7 @@ contains
     return
   end subroutine spllt_update_between_block
 
-  ! C wrapper
-  
+  ! C wrapper  
   subroutine spllt_update_between_block_c(m, n, dest_c, n1, csrc_c, rsrc_c, &
        & dcol, scol, &
        & blk_dest_c, dnode_c, blk_csrc_c, blk_rsrc_c, snode_c, &
@@ -1551,22 +1550,22 @@ contains
     real(wp), pointer, dimension(:) :: dest => null(), csrc => null(), rsrc => null()
     integer, dimension(:), allocatable :: row_list ! reallocated to min size m
     integer, dimension(:), allocatable :: col_list ! reallocated to min size n
-    type(spllt_node_type), pointer :: dnode => null(), snode => null()
-    type(block_type), pointer :: blk_dest => null(), blk_csrc => null(), blk_rsrc => null()
+    type(spllt_node), pointer :: dnode => null(), snode => null()
+    type(spllt_bc_type), pointer :: blk_dest => null(), blk_csrc => null(), blk_rsrc => null()
     real(wp), pointer, dimension(:) :: buffer => null()
     
     call c_f_pointer(dest_c, dest, (/m*n/))
     call c_f_pointer(csrc_c, csrc, (/n*n1/))
-    call c_f_pointer(rsrc_c, rsrc, (/m*n1/))    
+    call c_f_pointer(rsrc_c, rsrc, (/m*n1/))
 
-    call c_f_pointer(dnode_c, dnode)    
-    call c_f_pointer(snode_c, snode)    
+    call c_f_pointer(dnode_c, dnode)
+    call c_f_pointer(snode_c, snode)
 
-    call c_f_pointer(blk_dest_c, blk_dest)    
-    call c_f_pointer(blk_csrc_c, blk_csrc)    
-    call c_f_pointer(blk_rsrc_c, blk_rsrc)    
-    
-    call c_f_pointer(buffer_c, buffer, (/m*n/))    
+    call c_f_pointer(blk_dest_c, blk_dest)
+    call c_f_pointer(blk_csrc_c, blk_csrc)
+    call c_f_pointer(blk_rsrc_c, blk_rsrc)
+
+    call c_f_pointer(buffer_c, buffer, (/m*n/))
 
     allocate(row_list(1), col_list(1))
 
@@ -1604,11 +1603,11 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(block_type), intent(in) :: blk ! destination block
+    type(spllt_bc_type), intent(in) :: blk ! destination block
     integer(c_int), intent(in) :: dcol ! index of block column that blk belongs to in dnode
-    type(spllt_node_type), intent(in) :: dnode ! destination node
+    type(spllt_node), intent(in) :: dnode ! destination node
     integer(c_int), intent(in) :: scol ! index of block column that src belongs to in snode
-    type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
+    type(spllt_node), intent(in) :: snode ! Node to which src belongs
 
     integer(c_int), dimension(:), pointer, intent(inout) :: row_list ! reallocated to min size m
     integer(c_int), dimension(:), pointer, intent(inout) :: col_list ! reallocated to min size n
@@ -1737,9 +1736,9 @@ contains
     integer(c_int), intent(inout) :: s2sa, s2en ! point to the first and last rows of
     ! the block rsrc within scol
 
-    type(block_type), pointer :: blk => null() ! destination block
-    type(spllt_node_type), pointer  :: dnode => null() ! destination node
-    type(spllt_node_type), pointer  :: snode => null() ! source node
+    type(spllt_bc_type), pointer :: blk => null() ! destination block
+    type(spllt_node), pointer  :: dnode => null() ! destination node
+    type(spllt_node), pointer  :: snode => null() ! source node
     integer(c_int), dimension(:), pointer :: row_list => null() ! reallocated to min size m
     integer(c_int), dimension(:), pointer :: col_list => null() ! reallocated to min size n
     integer :: m, n
@@ -1773,13 +1772,13 @@ contains
     integer, intent(in) :: m  ! number of rows in destination block
     integer, intent(in) :: n  ! number of columns in destination block
     ! integer(long), intent(in) :: blk ! identifier of destination block
-    type(block_type), intent(in) :: blk ! destination block
+    type(spllt_bc_type), intent(in) :: blk ! destination block
     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-    type(spllt_node_type), intent(in) :: dnode ! Node to which blk belongs
+    type(spllt_node), intent(in) :: dnode ! Node to which blk belongs
     integer :: n1 ! number of columns in source block column
     ! integer(long), intent(in) :: src  ! identifier of block in source block col
     integer, intent(in) :: scol ! index of block column that src belongs to in snode
-    type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
+    type(spllt_node), intent(in) :: snode ! Node to which src belongs
     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
@@ -2107,13 +2106,13 @@ contains
     integer, intent(in) :: m  ! number of rows in destination block
     integer, intent(in) :: n  ! number of columns in destination block
     ! integer(long), intent(in) :: blk ! identifier of destination block
-    type(block_type), intent(in) :: blk ! destination block
+    type(spllt_bc_type), intent(in) :: blk ! destination block
     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-    type(spllt_node_type), intent(in) :: dnode ! Node to which blk belongs
+    type(spllt_node), intent(in) :: dnode ! Node to which blk belongs
     integer :: n1 ! number of columns in source block column
     ! integer(long), intent(in) :: src  ! identifier of block in source block col
     integer, intent(in) :: scol ! index of block column that src belongs to in snode
-    type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
+    type(spllt_node), intent(in) :: snode ! Node to which src belongs
     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
     ! that is to be updated.
     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
@@ -2361,9 +2360,9 @@ contains
     integer, dimension(:), pointer :: col_list => null() ! reallocated to min size n
     real(wp), pointer :: buffer(:) => null()
     ! type(spllt_bc_type), pointer :: bc(:) ! blocks
-    type(spllt_node_type), pointer :: dnode => null() ! destination node
-    type(spllt_node_type), pointer :: snode => null() ! source node
-    type(block_type), pointer :: blk => null()
+    type(spllt_node), pointer :: dnode => null() ! destination node
+    type(spllt_node), pointer :: snode => null() ! source node
+    type(spllt_bc_type), pointer :: blk => null()
 
     call c_f_pointer(dnode_c, dnode)
     call c_f_pointer(snode_c, snode)
@@ -2441,13 +2440,13 @@ contains
     en = fdata%nodes(snode)%en
 
     do cb = sa, en, l_nb
-       bcol = fdata%blocks(dblk)%bcol
+       bcol = fdata%bc(dblk)%bcol
        sz = size(fdata%lfact(bcol)%lcol)
        ! Zero the block column. 
        fdata%lfact(bcol)%lcol(1:sz) = zero
 
-       offset = fdata%blocks(dblk)%sa - (cb-sa)*fdata%blocks(dblk)%blkn
-       swidth = fdata%blocks(dblk)%blkn
+       offset = fdata%bc(dblk)%sa - (cb-sa)*fdata%bc(dblk)%blkn
+       swidth = fdata%bc(dblk)%blkn
 
        do i = 1, fdata%lmap(bcol)%len_map
           fdata%lfact(bcol)%lcol(fdata%lmap(bcol)%map(1,i)) = &
@@ -2455,7 +2454,7 @@ contains
        end do
 
        ! move to next block column in snode
-       dblk = fdata%blocks(dblk)%last_blk + 1
+       dblk = fdata%bc(dblk)%last_blk + 1
     end do
 
     return
@@ -2493,13 +2492,13 @@ contains
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
     type(spllt_fdata_type), target, intent(inout) :: fdata 
 
-    type(block_type), pointer :: blk
+    type(spllt_bc_type), pointer :: blk
     integer :: sa
     integer :: sz
     integer :: bcol
     integer :: i, j
 
-    blk => fdata%blocks(id)
+    blk => fdata%bc(id)
     
     sa = blk%sa
     sz = blk%blkn*blk%blkm
@@ -2551,7 +2550,7 @@ contains
     type(spllt_adata_type), intent(in) :: adata
     integer :: snode
 
-    type(spllt_node_type), pointer :: node ! node in the atree    
+    type(spllt_node), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
     integer :: nbcol, l_nb, sz, sa, en
     integer :: blkm, blkn, size_bcol
@@ -2575,21 +2574,21 @@ contains
        ! nbcol = nbcol + 1
        size_bcol = 0
        dblk = blk
-       nbcol = fdata%blocks(dblk)%bcol
+       nbcol = fdata%bc(dblk)%bcol
        ! loop over the row blocks
        do blk = dblk, dblk+sz-1
-          blkm = fdata%blocks(blk)%blkm
-          blkn = fdata%blocks(blk)%blkn
+          blkm = fdata%bc(blk)%blkm
+          blkn = fdata%bc(blk)%blkn
           size_bcol = size_bcol + blkm*blkn
        end do
        allocate (fdata%lfact(nbcol)%lcol(size_bcol),stat=st)
        
        ptr = 1
        do blk = dblk, dblk+sz-1
-          blkm = fdata%blocks(blk)%blkm
-          blkn = fdata%blocks(blk)%blkn
+          blkm = fdata%bc(blk)%blkm
+          blkn = fdata%bc(blk)%blkn
 
-          fdata%bc(blk)%blk => fdata%blocks(blk)
+          ! fdata%bc(blk)%blk => fdata%bc(blk)
 #if defined(SPLLT_USE_STARPU)
           ! FIXME do not register blocks in subtrees
           ! if (adata%small(snode) .eq. 0) then
@@ -2617,7 +2616,7 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(spllt_node_type), intent(in) :: node  ! current node in the atree
+    type(spllt_node), intent(in) :: node  ! current node in the atree
     integer, dimension(:), intent(out) :: rowmap ! Workarray to hold map from row 
     ! indices to block indices in ancestor node.
 

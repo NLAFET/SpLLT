@@ -320,7 +320,7 @@ contains
     type(spllt_cntl), intent(in) :: cntl
 
     integer :: snode, num_nodes
-    type(spllt_node_type), pointer     :: node ! node in the atree
+    type(spllt_node), pointer     :: node ! node in the atree
     integer :: m, n
 
     num_nodes = fdata%info%num_nodes

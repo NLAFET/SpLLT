@@ -42,10 +42,10 @@ contains
     integer, dimension(:), pointer ::  map
 
     ! shortcuts
-    type(spllt_node_type), pointer     :: node ! node in the atree    
+    type(spllt_node), pointer     :: node ! node in the atree    
     type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
-    type(block_type), dimension(:), pointer :: blocks ! block info. 
-    type(spllt_node_type), dimension(:), pointer :: nodes 
+    type(spllt_bc_type), dimension(:), pointer :: blocks ! block info. 
+    type(spllt_node), dimension(:), pointer :: nodes 
 
     ! local scalars
     integer(long) :: blk, blk1, blk2 ! block identity
@@ -77,7 +77,7 @@ contains
     call system_clock(start_setup_t, rate_setup_t)
 
     ! shortcut
-    blocks => fdata%blocks
+    blocks => fdata%bc
     nodes  => fdata%nodes
     num_nodes = fdata%info%num_nodes
 
@@ -234,9 +234,9 @@ contains
   !     type(spllt_cntl)      :: cntl
 
   !     type(block_type), dimension(:), pointer :: blocks ! block info. 
-  !     type(spllt_node_type), dimension(:), pointer :: nodes 
+  !     type(spllt_node), dimension(:), pointer :: nodes 
   !     integer :: snode, num_nodes
-  !     type(spllt_node_type), pointer     :: node, dnode ! node in the atree    
+  !     type(spllt_node), pointer     :: node, dnode ! node in the atree    
 
   !     integer, dimension(:), allocatable ::  tmpmap
 

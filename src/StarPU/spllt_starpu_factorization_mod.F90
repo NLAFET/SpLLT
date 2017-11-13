@@ -360,7 +360,7 @@ contains
   !   integer, target     :: scol, dcol
   !   integer, target     :: min_width_blas
 
-  !   type(spllt_node_type), pointer  :: snode, anode
+  !   type(spllt_node), pointer  :: snode, anode
   !   type(block_type), pointer :: a_bc
   !   integer, dimension(:), allocatable  :: row_list, col_list
   !   integer :: i, nh, cld2, cld1
@@ -428,8 +428,8 @@ contains
     integer, target     :: scol, dcol
     integer, target     :: min_width_blas
 
-    type(spllt_node_type), pointer  :: snode, anode
-    type(block_type), pointer :: a_bc
+    type(spllt_node), pointer  :: snode, anode
+    type(spllt_bc_type), pointer :: a_bc
     integer :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: rlst_c, clst_c, work_c, dest, src1, src2, ptr1, ptr2
@@ -503,8 +503,8 @@ contains
     integer, target           :: scol, dcol
     integer, target           :: min_width_blas, nhlik, nhljk
 
-    type(spllt_node_type), pointer  :: snode, anode
-    type(block_type), pointer :: a_bc
+    type(spllt_node), pointer  :: snode, anode
+    type(spllt_bc_type), pointer :: a_bc
     integer                   :: i, nh, cld2, cld1
 
     type(c_ptr), target      :: work_c, dest, src1, src2, ptr1, ptr2
@@ -692,7 +692,7 @@ contains
     integer, target           :: rptr, rptr2, cptr, cptr2
     type(c_ptr), target       :: root_c, anode_c
     integer, target           :: a_rptr, a_cptr
-    type(spllt_node_type), pointer  :: root, anode
+    type(spllt_node), pointer  :: root, anode
     
     type(c_ptr), target       :: buffer_c, dest_c
     integer, target           :: bm, bn, bld 

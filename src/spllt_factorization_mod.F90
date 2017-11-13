@@ -41,8 +41,8 @@ contains
     ! real(wp), dimension(*), intent(in) :: buffer ! generated element
     type(spllt_bc_type), intent(in) :: buffer
 
-    type(spllt_node_type), dimension(-1:), intent(in) :: nodes
-    type(block_type), dimension(*), intent(inout) :: blocks
+    type(spllt_node), dimension(-1:), intent(in) :: nodes
+    type(spllt_bc_type), dimension(*), intent(inout) :: blocks
     type(lfactor), dimension(*), intent(inout) :: lfact
     integer, dimension(:), intent(inout) :: map ! Workarray to hold map from row
     ! indices to block indices in ancestor node. 
@@ -218,7 +218,7 @@ contains
     integer, pointer, intent(inout) :: map(:)
     type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
 
-    type(spllt_node_type), pointer :: node ! node in the atree    
+    type(spllt_node), pointer :: node ! node in the atree    
     integer :: m, n, b_sz
     type(spllt_bc_type), pointer :: buf
 
@@ -267,7 +267,7 @@ contains
 
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_apply_buffer(root, fdata%nodes(root)%buffer, fdata%nodes, fdata%blocks, &
+    call spllt_subtree_apply_buffer(root, fdata%nodes(root)%buffer, fdata%nodes, fdata%bc, &
          fdata%lfact, map, fdata)
 
     ! call spllt_apply_subtree(root, buf%c, &
@@ -296,7 +296,7 @@ contains
     use spllt_starpu_factorization_mod
     implicit none
 
-    type(spllt_node_type), target, intent(inout) :: snode ! node to factorize (spllt)
+    type(spllt_node), target, intent(inout) :: snode ! node to factorize (spllt)
     type(spllt_fdata_type), target, intent(inout) :: fdata
     ! type(spllt_keep), target, intent(inout) :: keep
     type(spllt_cntl), target, intent(in) :: cntl
@@ -307,8 +307,8 @@ contains
     ! type(c_ptr) :: keep_c
     type(c_ptr) :: cntl_c
 
-    type(spllt_node_type), pointer :: node
-    type(spllt_node_type), pointer :: cnode 
+    type(spllt_node), pointer :: node
+    type(spllt_node), pointer :: cnode 
     integer :: nchild, i, c
     type(c_ptr), allocatable, target :: cnode_handles(:)
 
@@ -347,7 +347,7 @@ contains
 
     type(c_ptr), target:: snode_c, fdata_c, cntl_c
     type(c_ptr), target :: map_c
-    type(spllt_node_type),pointer :: snode
+    type(spllt_node),pointer :: snode
     type(spllt_fdata_type), pointer :: fdata
     ! type(spllt_keep), pointer :: keep    
     type(spllt_cntl), pointer :: cntl 
@@ -537,11 +537,11 @@ contains
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_node_type), target, intent(inout) :: node ! node to factorize (spllt)    
+    type(spllt_node), target, intent(inout) :: node ! node to factorize (spllt)    
     type(spllt_fdata_type), target, intent(inout) :: fdata
     ! type(spllt_keep), target, intent(inout)              :: keep 
 
-    ! type(spllt_node_type), pointer :: node ! node to factorize (hsl_ma87)
+    ! type(spllt_node), pointer :: node ! node to factorize (hsl_ma87)
     integer :: prio ! task priority
     integer :: sa ! first column 
     integer :: en ! last column
@@ -610,7 +610,7 @@ contains
 
              ! A_ij
              ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
-             blk = get_dest_block(fdata%blocks(blk2), fdata%blocks(blk1))
+             blk = get_dest_block(fdata%bc(blk2), fdata%bc(blk1))
              bc_ij => fdata%bc(blk)
              call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, fdata%lfact, prio+1)
 
@@ -618,7 +618,7 @@ contains
        end do
 
        ! move to next block column in snode
-       dblk = fdata%blocks(dblk)%last_blk + 1
+       dblk = fdata%bc(dblk)%last_blk + 1
        ! numrow = numrow - s_nb
     end do
 
@@ -632,13 +632,13 @@ contains
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_node_type), target, intent(inout) :: node ! node to factorize (spllt)    
+    type(spllt_node), target, intent(inout) :: node ! node to factorize (spllt)    
     integer, dimension(:), pointer, intent(inout) :: map
     type(spllt_fdata_type), target, intent(inout) :: fdata
     ! type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_cntl), intent(in) :: cntl
 
-    ! type(spllt_node_type), pointer :: node ! node to factorize (hsl_ma87)
+    ! type(spllt_node), pointer :: node ! node to factorize (hsl_ma87)
     integer :: num_nodes ! number of nodes in etree
     integer :: snum ! node idx
     integer :: prio ! task priority
@@ -656,8 +656,8 @@ contains
     integer(long) :: blk, blk1, blk2 ! block id
 
     ! update between
-    type(spllt_node_type), pointer :: anode ! ancestor node in the atree
-    ! type(spllt_node_type), pointer :: a_node ! ancestor node in the atree
+    type(spllt_node), pointer :: anode ! ancestor node in the atree
+    ! type(spllt_node), pointer :: a_node ! ancestor node in the atree
     ! locate source blocks
     integer :: a_num ! ancestor id
     integer :: cptr  ! Position in snode of the first row 
@@ -720,7 +720,7 @@ contains
           cb = (node%index(cptr) - anode%sa)/anode%nb + 1
           a_dblk = anode%blk_sa
           do jb = 2, cb
-             a_dblk = fdata%blocks(a_dblk)%last_blk + 1
+             a_dblk = fdata%bc(a_dblk)%last_blk + 1
           end do
 
           ! Find cptr2
@@ -774,10 +774,10 @@ contains
                                 ! & csrc, rsrc, &
                         & cptr, cptr2, ilast, i-1, &
                         & fdata%row_list, fdata%col_list, fdata%workspace, &
-                        & fdata%lfact, fdata%blocks, fdata%bc, &
+                        & fdata%lfact, fdata%bc, &
                         & cntl%min_width_blas, prio)
 
-                   dblk = fdata%blocks(dblk)%last_blk + 1
+                   dblk = fdata%bc(dblk)%last_blk + 1
                 end do
 
                 ii = k
@@ -809,10 +809,10 @@ contains
                                 ! & csrc, rsrc, &
                   & cptr, cptr2, ilast, i-1, &
                   & fdata%row_list, fdata%col_list, fdata%workspace, &
-                  & fdata%lfact, fdata%blocks, fdata%bc, &
+                  & fdata%lfact, fdata%bc, &
                   & cntl%min_width_blas, prio)
 
-             dblk = fdata%blocks(dblk)%last_blk + 1
+             dblk = fdata%bc(dblk)%last_blk + 1
           end do
 
           ! Move cptr down, ready for next block column of anode

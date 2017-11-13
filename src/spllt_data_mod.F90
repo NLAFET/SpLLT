@@ -37,63 +37,33 @@ module spllt_data_mod
   integer(c_int) :: rank
 #endif
 
-  !*************************************************
-  !  
-  ! Data type for storing information for each block (BLK)
-  ! The blocks are numbered 1,2,..., keep%final_blk
-  type block_type
-     ! Static info, which is set in ma87_analayse
-     integer :: bcol            ! block column that blk belongs to
-     integer :: blkm            ! height of block (number of rows in blk)
-     integer :: blkn            ! width of block (number of columns in blk)
-     integer(long) :: dblk      ! id of the block on the diagonal within the 
-     ! block column to which blk belongs
-     integer :: dep_initial     ! initial dependency count for block,
-     integer(long) :: id        ! The block identitifier (ie, its number blk)
-     integer(long) :: last_blk  ! id of the last block within the
-     ! block column to which blk belongs
-     integer :: node            ! node to which blk belongs
-     integer :: sa              ! posn of the first entry of the
-     ! block blk within the array that holds the block column of L
-     ! that blk belongs to.
-
-     ! Non-static info
-     integer :: dep  ! dependency countdown/marker. Once factor or solve done,
-     ! value is -2.
-     ! for this block.
-     ! Note: locks initialised in ma87_analyse and destroyed
-     !       in ma87_finalise
-  end type block_type
-
   ! !*************************************************
-  ! !
-  ! ! Derived type for holding data for each node.
-  ! ! This information is set up by ma87_analyse once the assembly tree
-  ! ! has been constructed.
-  ! type node_type
-  !    integer(long) :: blk_sa ! identifier of the first block in node
-  !    integer(long) :: blk_en ! identifier of the last block in node
+  ! !  
+  ! ! Data type for storing information for each block (BLK)
+  ! ! The blocks are numbered 1,2,..., keep%final_blk
+  ! type block_type
+  !    ! Static info, which is set in ma87_analayse
+  !    integer :: bcol            ! block column that blk belongs to
+  !    integer :: blkm            ! height of block (number of rows in blk)
+  !    integer :: blkn            ! width of block (number of columns in blk)
+  !    integer(long) :: dblk      ! id of the block on the diagonal within the 
+  !    ! block column to which blk belongs
+  !    integer :: dep_initial     ! initial dependency count for block,
+  !    integer(long) :: id        ! The block identitifier (ie, its number blk)
+  !    integer(long) :: last_blk  ! id of the last block within the
+  !    ! block column to which blk belongs
+  !    integer :: node            ! node to which blk belongs
+  !    integer :: sa              ! posn of the first entry of the
+  !    ! block blk within the array that holds the block column of L
+  !    ! that blk belongs to.
 
-  !    integer :: nb ! Block size for nodal matrix
-  !    ! If number of cols nc in nodal matrix is less than control%nb but 
-  !    ! number of rows is large, the block size for the node is taken as 
-  !    ! control%nb**2/nc, rounded up to a multiple of 8. The aim is for
-  !    ! the numbers of entries in the blocks to be similar to those in the 
-  !    ! normal case. 
-
-  !    integer :: sa ! index (in pivotal order) of the first column of the node
-  !    integer :: en ! index (in pivotal order) of the last column of the node
-
-  !    integer, allocatable :: index(:) ! holds the permuted variable
-  !    ! list for node. They are sorted into increasing order.
-  !    ! index is set up by ma87_analyse
-
-  !    integer :: nchild ! number of children node has in assembly tree
-  !    integer, allocatable :: child(:) ! holds children of node
-  !    integer :: parent ! Parent of node in assembly tree
-  !    integer :: least_desc ! Least descendant in assembly tree
-
-  ! end type node_type
+  !    ! Non-static info
+  !    integer :: dep  ! dependency countdown/marker. Once factor or solve done,
+  !    ! value is -2.
+  !    ! for this block.
+  !    ! Note: locks initialised in ma87_analyse and destroyed
+  !    !       in ma87_finalise
+  ! end type block_type
 
   ! user control
   type spllt_cntl
@@ -128,7 +98,7 @@ module spllt_data_mod
 
   ! block type  
   type spllt_bc_type
-     type(block_type), pointer :: blk => null()! pointer to the block in keep
+     ! type(block_type), pointer :: blk => null()! pointer to the block in keep
      real(wp), pointer :: c(:)
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
@@ -145,10 +115,31 @@ module spllt_data_mod
      ! type(spllt_dep_list), pointer :: dep_out => null()
      type(spllt_dep_upd_out), pointer :: dep_out(:) => null()
 #endif
+     ! Static info, which is set in ma87_analayse
+     integer :: bcol            ! block column that blk belongs to
+     integer :: blkm            ! height of block (number of rows in blk)
+     integer :: blkn            ! width of block (number of columns in blk)
+     integer(long) :: dblk      ! id of the block on the diagonal within the 
+     ! block column to which blk belongs
+     integer :: dep_initial     ! initial dependency count for block,
+     integer(long) :: id        ! The block identitifier (ie, its number blk)
+     integer(long) :: last_blk  ! id of the last block within the
+     ! block column to which blk belongs
+     integer :: node            ! node to which blk belongs
+     integer :: sa              ! posn of the first entry of the
+     ! block blk within the array that holds the block column of L
+     ! that blk belongs to.
+
+     ! Non-static info
+     integer :: dep  ! dependency countdown/marker. Once factor or solve done,
+     ! value is -2.
+     ! for this block.
+     ! Note: locks initialised in ma87_analyse and destroyed
+     !       in ma87_finalise
   end type spllt_bc_type
 
   ! node type
-  type spllt_node_type
+  type spllt_node
      ! type(node_type), pointer :: node
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
@@ -178,7 +169,7 @@ module spllt_data_mod
      integer, allocatable :: child(:) ! holds children of node
      integer :: parent ! Parent of node in assembly tree
      integer :: least_desc ! Least descendant in assembly tree
-  end type spllt_node_type
+  end type spllt_node
 
   type spllt_workspace_i
      integer, pointer :: c(:)
@@ -252,7 +243,7 @@ module spllt_data_mod
 #else
      type(spllt_bc_type) :: workspace ! workspaces
 #endif
-     type(spllt_node_type), allocatable :: nodes(:) ! supernodes 
+     type(spllt_node), allocatable :: nodes(:) ! supernodes 
 #if defined(SPLLT_USE_PARSEC)
      ! ids of diag blocks. size keep%nbcol
      integer(long), allocatable :: diags(:)
@@ -272,7 +263,7 @@ module spllt_data_mod
      type(spllt_workspace_i) :: map ! workspaces
 #endif
      !     private
-     type(block_type), dimension(:), allocatable :: blocks ! block info
+     ! type(spllt_bc_type), dimension(:), allocatable :: blocks ! block info
      integer, dimension(:), allocatable :: flag_array ! allocated to
      ! have size equal to the number of threads. For each thread, holds
      ! error flag
@@ -359,8 +350,8 @@ contains
   
   integer(long) function get_dest_block(src1, src2)
 
-    type(block_type), intent(in) :: src1
-    type(block_type), intent(in) :: src2
+    type(spllt_bc_type), intent(in) :: src1
+    type(spllt_bc_type), intent(in) :: src2
 
     integer(long) :: i
     integer :: sz

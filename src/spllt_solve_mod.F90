@@ -164,15 +164,15 @@ contains
              !
 
              ! Establish variables describing block
-             n        = fdata%blocks(blk)%blkn
-             m        = fdata%blocks(blk)%blkm
-             blk_sa       = fdata%blocks(blk)%sa
-             bcol     = fdata%blocks(blk)%bcol
-             dcol     = bcol - fdata%blocks(fdata%nodes(node)%blk_sa)%bcol + 1
+             n        = fdata%bc(blk)%blkn
+             m        = fdata%bc(blk)%blkm
+             blk_sa       = fdata%bc(blk)%sa
+             bcol     = fdata%bc(blk)%bcol
+             dcol     = bcol - fdata%bc(fdata%nodes(node)%blk_sa)%bcol + 1
              col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
 
              offset   = col - fdata%nodes(node)%sa + 1 ! diagonal blk
-             offset   = offset + (blk-fdata%blocks(blk)%dblk) * fdata%nodes(node)%nb ! this blk
+             offset   = offset + (blk-fdata%bc(blk)%dblk) * fdata%nodes(node)%nb ! this blk
              
              call slv_fwd_update(m, n, col, offset, fdata%nodes(node)%index, &
                   fdata%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
@@ -181,7 +181,7 @@ contains
           end do
           
           ! Update diag block in node          
-          dblk = fdata%blocks(dblk)%last_blk + 1
+          dblk = fdata%bc(dblk)%last_blk + 1
        end do
               
     end do
@@ -240,7 +240,7 @@ contains
        nr = (numrow-1) / s_nb + 1 
 
        ! Get first diag block in node
-       dblk = fdata%blocks(fdata%nodes(node)%blk_en)%dblk
+       dblk = fdata%bc(fdata%nodes(node)%blk_en)%dblk
 
        ! print *, "[solve_bwd] node = ", node, ", dblk = ", dblk
 
@@ -256,16 +256,16 @@ contains
              !
 
              ! Establish variables describing block
-             n        = fdata%blocks(blk)%blkn
-             m        = fdata%blocks(blk)%blkm
-             blk_sa       = fdata%blocks(blk)%sa
-             bcol     = fdata%blocks(blk)%bcol
-             ! node     = fdata%blocks(blk)%node
-             dcol     = bcol - fdata%blocks(fdata%nodes(node)%blk_sa)%bcol + 1
+             n        = fdata%bc(blk)%blkn
+             m        = fdata%bc(blk)%blkm
+             blk_sa       = fdata%bc(blk)%sa
+             bcol     = fdata%bc(blk)%bcol
+             ! node     = fdata%bc(blk)%node
+             dcol     = bcol - fdata%bc(fdata%nodes(node)%blk_sa)%bcol + 1
              col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
 
              offset   = col - fdata%nodes(node)%sa + 1 ! diagonal blk
-             offset   = offset + (blk-fdata%blocks(blk)%dblk) * fdata%nodes(node)%nb ! this blk
+             offset   = offset + (blk-fdata%bc(blk)%dblk) * fdata%nodes(node)%nb ! this blk
 
              call slv_bwd_update(m, n, col, offset, fdata%nodes(node)%index, &
                   fdata%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
@@ -279,7 +279,7 @@ contains
           call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
           
           ! Update diag block in node          
-          if (jj .gt. 1) dblk = fdata%blocks(dblk-1)%dblk          
+          if (jj .gt. 1) dblk = fdata%bc(dblk-1)%dblk          
        end do
        
     end do

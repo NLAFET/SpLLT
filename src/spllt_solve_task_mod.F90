@@ -27,12 +27,12 @@ contains
     integer :: node
         
     ! Get block info
-    node = fdata%blocks(dblk)%node
-    m = fdata%blocks(dblk)%blkm
-    n = fdata%blocks(dblk)%blkn
-    sa = fdata%blocks(dblk)%sa
-    bcol = fdata%blocks(dblk)%bcol ! Current block column
-    dcol     = bcol - fdata%blocks(fdata%nodes(node)%blk_sa)%bcol + 1
+    node = fdata%bc(dblk)%node
+    m = fdata%bc(dblk)%blkm
+    n = fdata%bc(dblk)%blkn
+    sa = fdata%bc(dblk)%sa
+    bcol = fdata%bc(dblk)%bcol ! Current block column
+    dcol     = bcol - fdata%bc(fdata%nodes(node)%blk_sa)%bcol + 1
     col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
     offset   = col - fdata%nodes(node)%sa + 1
     
@@ -77,16 +77,16 @@ contains
     integer :: offset
     integer :: node
 
-    node = fdata%blocks(dblk)%node
+    node = fdata%bc(dblk)%node
 
     ! print *, "[spllt_solve_bwd_block_task] node = ", node
 
     ! Get block info
-    n      = fdata%blocks(dblk)%blkn
-    m      = fdata%blocks(dblk)%blkm
-    sa = fdata%blocks(dblk)%sa
-    bcol   = fdata%blocks(dblk)%bcol ! Current block column
-    col    = calc_col(fdata%nodes(node), fdata%blocks(dblk)) ! current bcol
+    n      = fdata%bc(dblk)%blkn
+    m      = fdata%bc(dblk)%blkm
+    sa = fdata%bc(dblk)%sa
+    bcol   = fdata%bc(dblk)%bcol ! Current block column
+    col    = calc_col(fdata%nodes(node), fdata%bc(dblk)) ! current bcol
     col    = fdata%nodes(node)%sa + (col-1)*fdata%nodes(node)%nb
     offset = col - fdata%nodes(node)%sa + 1
 
@@ -111,18 +111,17 @@ contains
 
   !*************************************************
   !
-  ! This function calculates column of a node we are on
-  
-  integer function calc_col(node, block)
+  ! This function calculates column of a node we are on  
+  integer function calc_col(node, bc)
     use spllt_data_mod    
     implicit none
 
-    type(spllt_node_type), intent(in) :: node
-    type(block_type), intent(in) :: block
+    type(spllt_node), intent(in) :: node
+    type(spllt_bc_type), intent(in) :: bc
 
     calc_col = (size(node%index)-1)/node%nb + 1 ! no. row blks for node
 
-    calc_col = calc_col - (block%last_blk - block%dblk + 1) + 1 ! column of node
+    calc_col = calc_col - (bc%last_blk - bc%dblk + 1) + 1 ! column of node
 
   end function calc_col
 

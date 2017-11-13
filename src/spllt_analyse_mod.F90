@@ -323,15 +323,10 @@ contains
     ! end if
 
     !**************************************   
-    ! Fill out block information. 
-    
-    deallocate(fdata%blocks,stat=st)
-    allocate(fdata%blocks(fdata%final_blk),stat=st)
-    if(st.ne.0) goto 100
-
-    ! allocate blocks in fdata
+    ! Fill out block information.    
     deallocate(fdata%bc,stat=st)
     allocate(fdata%bc(fdata%final_blk),stat=st)
+    if(st.ne.0) goto 100
     ! if(st.ne.0) go to 9999
 
 #if defined(SPLLT_USE_PARSEC)
@@ -389,46 +384,46 @@ contains
           row_used = 0 
           do blk = dblk, dblk+sz-1
              ! store identity of block
-             fdata%blocks(blk)%id       = blk
+             fdata%bc(blk)%id       = blk
              !print *, "node ", node, "=> blk", blk
 
              ! store number of rows in the block.
              ! For all but the last block, the number of rows is l_nb
-             fdata%blocks(blk)%blkm     = min(l_nb, numrow-row_used)
-             row_used = row_used + fdata%blocks(blk)%blkm
+             fdata%bc(blk)%blkm     = min(l_nb, numrow-row_used)
+             row_used = row_used + fdata%bc(blk)%blkm
 
              ! store number of columns in the block.
-             fdata%blocks(blk)%blkn     = blkn
+             fdata%bc(blk)%blkn     = blkn
 
              fdata%maxmn = max(fdata%maxmn, &
-                  fdata%blocks(blk)%blkm,  fdata%blocks(blk)%blkn)
+                  fdata%bc(blk)%blkm,  fdata%bc(blk)%blkn)
 
              ! store position of the first entry of the block within the
              ! block column of L
-             fdata%blocks(blk)%sa       = k
+             fdata%bc(blk)%sa       = k
 
              ! store identity of diagonal block within current block column
-             fdata%blocks(blk)%dblk     = dblk
+             fdata%bc(blk)%dblk     = dblk
 
              ! store identity of last block within current block column
-             fdata%blocks(blk)%last_blk = dblk + sz - 1
+             fdata%bc(blk)%last_blk = dblk + sz - 1
 
              ! store node the blk belongs to
-             fdata%blocks(blk)%node     = node
+             fdata%bc(blk)%node     = node
 
              ! initialise dependency count
-             fdata%blocks(blk)%dep_initial = cb
+             fdata%bc(blk)%dep_initial = cb
 
              ! store identity of block column that blk belongs to
-             fdata%blocks(blk)%bcol     = fdata%nbcol
+             fdata%bc(blk)%bcol     = fdata%nbcol
 
              ! increment k by number of entries in block
-             k = k + fdata%blocks(blk)%blkm * fdata%blocks(blk)%blkn
+             k = k + fdata%bc(blk)%blkm * fdata%bc(blk)%blkn
 
           end do
 
           ! Diagonal block has no dependency for factor(dblk)
-          fdata%blocks(dblk)%dep_initial = cb - 1 
+          fdata%bc(dblk)%dep_initial = cb - 1 
 
           ! decrement number of row blocks and rows in next block column
           sz = sz - 1
@@ -514,7 +509,7 @@ contains
     if(st.ne.0) goto 100
     call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
     ! call spllt_make_map(n, order, ptr, row, aptr, arow, amap)
-    call spllt_lcol_map(aptr, arow, num_nodes, fdata%nodes, fdata%blocks, &
+    call spllt_lcol_map(aptr, arow, num_nodes, fdata%nodes, fdata%bc, &
          fdata%lmap, map, amap, st)
     if(st.ne.0) goto 100
 
@@ -554,7 +549,7 @@ contains
     implicit none
 
     type(spllt_fdata_type), target, intent(inout) :: fdata ! data related to the factorization
-    type(spllt_node_type)     :: node
+    type(spllt_node)     :: node
     integer :: cptr, cptr2, rptr, rptr2
     integer(long)     :: dest_blk
 
@@ -604,7 +599,7 @@ contains
              id_ik = dblk + i - (c-1)
 
              ! compute first row of Ljk block
-             n1 = fdata%blocks(dblk)%blkn
+             n1 = fdata%bc(dblk)%blkn
              csrc  = 1 + (mod(cptr-1, s_nb))*n1
              rsrc  = 1 + (mod(rptr-1, s_nb))*n1
 
@@ -632,7 +627,7 @@ contains
           end do
        end do
 
-       dblk = fdata%blocks(dblk)%last_blk + 1
+       dblk = fdata%bc(dblk)%last_blk + 1
     end do
 
     return
@@ -648,7 +643,7 @@ contains
     ! type(spllt_keep), target, intent(in) :: keep
     integer, allocatable :: map(:)
 
-    type(spllt_node_type), pointer     :: node, anode ! node in the atree
+    type(spllt_node), pointer     :: node, anode ! node in the atree
     integer :: num_nodes, snum, anum
     integer :: numcol, numrow
     integer :: s_nb
@@ -711,7 +706,7 @@ contains
              cb = (node%index(cptr) - anode%sa)/anode%nb + 1
              a_dblk = anode%blk_sa
              do jb = 2, cb
-                a_dblk = fdata%blocks(a_dblk)%last_blk + 1
+                a_dblk = fdata%bc(a_dblk)%last_blk + 1
              end do
 
              ! Find cptr2
@@ -1061,8 +1056,8 @@ contains
     ! integer, dimension(:), intent(in) :: aptr
     integer, dimension(:), intent(in) :: arow
     integer, intent(in) :: num_nodes
-    type(spllt_node_type), dimension(-1:), intent(in) :: nodes ! Node info
-    type(block_type), dimension(:), intent(in) :: blocks ! block info
+    type(spllt_node), dimension(-1:), intent(in) :: nodes ! Node info
+    type(spllt_bc_type), dimension(:), intent(in) :: blocks ! block info
     type(lmap_type), dimension(:), intent(out) :: lmap ! output lcol map
     integer, dimension(:), intent(out) :: map ! work array
     integer, dimension(:), intent(in) :: amap ! map set up by make_map

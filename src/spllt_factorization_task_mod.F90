@@ -21,10 +21,10 @@ contains
 
     integer, intent(in) :: rptr, rptr2, cptr, cptr2
     type(spllt_bc_type), intent(in) :: buffer
-    type(spllt_node_type), target :: root
+    type(spllt_node), target :: root
     integer, intent(in) :: a_rptr, a_cptr
     type(spllt_bc_type) :: dest
-    type(spllt_node_type), target :: anode
+    type(spllt_node), target :: anode
     
     integer :: rm, rn
     integer :: b_sz
@@ -32,8 +32,8 @@ contains
     integer :: bsa, ben
 
 #if defined(SPLLT_USE_OMP)
-    type(spllt_node_type), pointer :: p_root
-    type(spllt_node_type), pointer :: p_anode
+    type(spllt_node), pointer :: p_root
+    type(spllt_node), pointer :: p_anode
     real(wp), pointer :: buffer_c(:), dest_c(:)
     integer :: blkn
 #endif
@@ -64,7 +64,7 @@ contains
     p_anode => anode 
 
     dest_c => dest%c
-    blkn = dest%blk%blkn
+    blkn = dest%blkn
 
 !$omp task firstprivate(m, n, rptr, rptr2, cptr, cptr2, b_sz, blkn) &
 !$omp      & firstprivate(bsa, ben) &
@@ -101,7 +101,7 @@ contains
          anode%index(a_rptr), &
          anode%index(a_cptr), &
          dest%c, &
-         dest%blk%blkn)
+         dest%blkn)
 #endif
 
   end subroutine spllt_scatter_block_task
@@ -208,14 +208,14 @@ contains
     type(spllt_fdata_type), target, intent(inout) :: fdata
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
-    type(spllt_node_type), pointer :: node ! node in the atree    
+    type(spllt_node), pointer :: node ! node in the atree    
     integer :: m, n, blk
 
     node => fdata%nodes(root)
     blk = node%blk_sa
 
-    m = fdata%blocks(blk)%blkm
-    n = fdata%blocks(blk)%blkn
+    m = fdata%bc(blk)%blkm
+    n = fdata%bc(blk)%blkn
 
     if (size(buffer).lt.(m-n)**2) then
        deallocate(buffer)
@@ -223,7 +223,7 @@ contains
     end if
 
     ! perform factorization of subtree rooted at snode
-    call spllt_factor_subtree(root, fdata%nodes, fdata%blocks, fdata%lfact, buffer)
+    call spllt_factor_subtree(root, fdata%nodes, fdata%bc, fdata%lfact, buffer)
  
   end subroutine spllt_factor_subtree_task
 
@@ -243,7 +243,7 @@ contains
 
     integer :: i
     integer :: snode, num_nodes
-    type(spllt_node_type), pointer :: node ! node in the atree    
+    type(spllt_node), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
@@ -287,7 +287,7 @@ contains
 
     integer :: i
     integer :: snode, num_nodes
-    type(spllt_node_type), pointer :: node ! node in the atree    
+    type(spllt_node), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
@@ -334,7 +334,7 @@ contains
     implicit none
     
     type(spllt_fdata_type), target, intent(in)  :: fdata
-    type(spllt_node_type), intent(in)          :: node
+    type(spllt_node), intent(in)          :: node
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout) :: bc ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
@@ -346,7 +346,7 @@ contains
 
     integer :: m, n, bcol, sa
     integer(long) :: id
-    type(block_type), pointer :: blk ! block to be factorized
+    ! type(block_type), pointer :: blk ! block to be factorized
     integer :: p
 #if defined(SPLLT_USE_STARPU)
     type(c_ptr) :: node_hdl
@@ -368,7 +368,7 @@ contains
 
     ! pass snode handle to tasks only in first block in snode
     node_hdl = c_null_ptr
-    if (node%node%blk_sa .eq. bc%blk%id) then
+    if (node%blk_sa .eq. bc%id) then
     node_hdl = node%hdl
     end if
 
@@ -377,14 +377,14 @@ contains
     ! call spllt_starpu_insert_factorize_block(bc, p)
 #elif defined(SPLLT_USE_OMP)
 
-    blk => bc%blk
-    bcol = blk%bcol
+    ! blk => bc%blk
+    bcol = bc%bcol
     lcol => lfact(bcol)%lcol
 
-    m    = blk%blkm
-    n    = blk%blkn
-    sa   = blk%sa
-    id   = blk%id
+    m    = bc%blkm
+    n    = bc%blkn
+    sa   = bc%sa
+    id   = bc%id
     bc_c => fdata%bc(id)%c
 
 ! !$omp taskwait
@@ -393,7 +393,7 @@ contains
 #if defined(SPLLT_OMP_TRACE)
 !$omp    & shared(fac_blk_id) &
 #endif
-!$omp    & firstprivate(blk, bc_c, bcol, lcol) &
+!$omp    & firstprivate(bc_c, bcol, lcol) &
 ! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
 ! !$omp    & depend(inout:fdata%bc(id)%c(:))
 !$omp    & depend(inout:bc_c(1))
@@ -430,14 +430,14 @@ contains
 
 #else    
 
-    blk => bc%blk
+    ! blk => bc%blk
 
-    m    = blk%blkm
-    n    = blk%blkn
-    id   = blk%id 
-    bcol = blk%bcol
+    m    = bc%blkm
+    n    = bc%blkn
+    id   = bc%id 
+    bcol = bc%bcol
 
-    sa   = blk%sa
+    sa   = bc%sa
 
     ! factorize_block
     ! call factor_diag_block(n, m, id, &
@@ -468,7 +468,7 @@ contains
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
-    type(block_type), pointer :: blk_kk, blk_ik ! block to be factorized
+    ! type(block_type), pointer :: blk_kk, blk_ik ! block to be factorized
 #else
     type(spllt_bc_type), intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, intent(inout) :: lfact(:)
@@ -500,30 +500,30 @@ contains
 #elif defined(SPLLT_USE_OMP)
     
 
-    blk_kk => bc_kk%blk
-    blk_ik => bc_ik%blk
+    ! blk_kk => bc_kk%blk
+    ! blk_ik => bc_ik%blk
     ! bcol is block column that blk and dblk belong to
-    bcol = blk_kk%bcol    
+    bcol = bc_kk%bcol    
     ! write(*,*)"bcol: ", bcol
     lcol => lfact(bcol)%lcol
 
     ! bc_kk
-    d_m  = blk_kk%blkm
-    d_n  = blk_kk%blkn
-    d_sa = blk_kk%sa
-    d_id = blk_kk%id
+    d_m  = bc_kk%blkm
+    d_n  = bc_kk%blkn
+    d_sa = bc_kk%sa
+    d_id = bc_kk%id
 
     ! bc_ik
-    n  = blk_ik%blkn
-    m  = blk_ik%blkm
-    sa = blk_ik%sa
-    id = blk_ik%id
+    n  = bc_ik%blkn
+    m  = bc_ik%blkm
+    sa = bc_ik%sa
+    id = bc_ik%id
     ! write(*,*)"solve id: ", id
 
     bc_kk_c => fdata%bc(d_id)%c
     bc_ik_c => fdata%bc(id)%c
 
-    snode = blk_kk%node
+    snode = bc_kk%node
     blk_sa = fdata%nodes(snode)%blk_sa
     ! write(*,*)"blk_sa: ", blk_sa
 ! !$omp taskwait
@@ -531,7 +531,7 @@ contains
 !$omp task private(th_id) &
 !$omp    & firstprivate(m, n, sa, d_m, d_n, d_sa) &
 !$omp    & firstprivate(lcol, bcol) &
-!$omp    & firstprivate(blk_kk, blk_ik) &
+! !$omp    & firstprivate(blk_kk, blk_ik) &
 !$omp    & firstprivate(bc_kk_c, bc_ik_c) &
 !$omp    & firstprivate(d_id, id) &
 #if defined(SPLLT_OMP_TRACE)
@@ -586,19 +586,19 @@ contains
 #else    
 
     ! bc_kk
-    d_m  = bc_kk%blk%blkm
-    d_n  = bc_kk%blk%blkn
-    d_sa = bc_kk%blk%sa
-    d_id = bc_kk%blk%id
+    d_m  = bc_kk%blkm
+    d_n  = bc_kk%blkn
+    d_sa = bc_kk%sa
+    d_id = bc_kk%id
 
     ! bc_ik
-    n  = bc_ik%blk%blkn
-    m  = bc_ik%blk%blkm
-    sa = bc_ik%blk%sa
-    id = bc_ik%blk%id
+    n  = bc_ik%blkn
+    m  = bc_ik%blkm
+    sa = bc_ik%sa
+    id = bc_ik%id
     
     ! bcol is block column that blk and dblk belong to
-    bcol = bc_kk%blk%bcol    
+    bcol = bc_kk%bcol    
 
     ! solve_block task
     ! call solv_col_block(m, n, id, & 
@@ -648,7 +648,7 @@ contains
     logical :: is_diag
     real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
     real(wp), dimension(:), pointer :: bc_ik_c, bc_jk_c, bc_ij_c
-    type(block_type), pointer :: blk_ik, blk_jk, blk_ij ! block to be factorized
+    ! type(block_type), pointer :: blk_ik, blk_jk, blk_ij ! block to be factorized
     integer :: th_id
     integer(long) :: id_ik, id_jk, id_ij
     integer :: snode
@@ -662,7 +662,7 @@ contains
     end if
 
 #if defined(SPLLT_USE_STARPU)
-    if (bc_ij%blk%dblk .eq. bc_ij%blk%id) then
+    if (bc_ij%dblk .eq. bc_ij%id) then
        d = 1
     else
        d = 0
@@ -671,28 +671,28 @@ contains
     call spllt_starpu_insert_update_block_c(bc_ik%hdl, bc_jk%hdl, bc_ij%hdl, d, p)
 #elif defined(SPLLT_USE_OMP)
 
-    blk_ik => bc_ik%blk
-    blk_jk => bc_jk%blk
-    blk_ij => bc_ij%blk
+    ! blk_ik => bc_ik%blk
+    ! blk_jk => bc_jk%blk
+    ! blk_ij => bc_ij%blk
 
-    id_ik = blk_ik%id
-    id_jk = blk_jk%id
-    id_ij = blk_ij%id
+    id_ik = bc_ik%id
+    id_jk = bc_jk%id
+    id_ij = bc_ij%id
 
     bc_ik_c => fdata%bc(id_ik)%c
     bc_jk_c => fdata%bc(id_jk)%c
     bc_ij_c => fdata%bc(id_ij)%c
 
-    bcol1 = bc_ik%blk%bcol
+    bcol1 = bc_ik%bcol
     lcol1 => lfact(bcol1)%lcol
 
-    bcol2 = bc_jk%blk%bcol
+    bcol2 = bc_jk%bcol
     lcol2 => lfact(bcol2)%lcol
 
-    bcol = bc_ij%blk%bcol
+    bcol = bc_ij%bcol
     lcol => lfact(bcol)%lcol
 
-    snode = blk_ij%node
+    snode = bc_ij%node
     blk_sa = fdata%nodes(snode)%blk_sa
     
 ! !$omp taskwait
@@ -702,7 +702,7 @@ contains
 !$omp    & firstprivate(bcol2, lcol2, bcol1, lcol1, bcol, lcol) &
 !$omp    & firstprivate(bc_ik, bc_jk, bc_ij) &
 !$omp    & firstprivate(bc_ik_c, bc_jk_c, bc_ij_c) &
-!$omp    & firstprivate(blk_ik, blk_jk, blk_ij) &
+! !$omp    & firstprivate(blk_ik, blk_jk, blk_ij) &
 #if defined(SPLLT_OMP_TRACE)
 !$omp    & shared(upd_blk_id) &
 #endif
@@ -731,21 +731,21 @@ contains
 #endif
 
     ! bc_ik
-    n1  = blk_ik%blkn
-    m1  = blk_ik%blkm
-    sa1 = blk_ik%sa
+    n1  = bc_ik%blkn
+    m1  = bc_ik%blkm
+    sa1 = bc_ik%sa
 
     ! bc_jk
-    n2  = blk_jk%blkn
-    m2  = blk_jk%blkm
-    sa2 = blk_jk%sa
+    n2  = bc_jk%blkn
+    m2  = bc_jk%blkm
+    sa2 = bc_jk%sa
 
     ! bc_ij
-    n  = blk_ij%blkn
-    m  = blk_ij%blkm
-    sa = blk_ij%sa
+    n  = bc_ij%blkn
+    m  = bc_ij%blkm
+    sa = bc_ij%sa
 
-    is_diag = blk_ij%dblk.eq.blk_ij%id 
+    is_diag = bc_ij%dblk.eq.bc_ij%id 
 
     ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
     ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
@@ -774,23 +774,23 @@ contains
 #else
 
     ! bc_ik
-    n1  = bc_ik%blk%blkn
-    m1  = bc_ik%blk%blkm
-    sa1 = bc_ik%blk%sa
-    bcol1 = bc_ik%blk%bcol
+    n1    = bc_ik%blkn
+    m1    = bc_ik%blkm
+    sa1   = bc_ik%sa
+    bcol1 = bc_ik%bcol
     
     ! bc_jk
-    n2  = bc_jk%blk%blkn
-    m2  = bc_jk%blk%blkm
-    sa2 = bc_jk%blk%sa
-    bcol2 = bc_jk%blk%bcol
+    n2    = bc_jk%blkn
+    m2    = bc_jk%blkm
+    sa2   = bc_jk%sa
+    bcol2 = bc_jk%bcol
     
     ! bc_ij
-    n  = bc_ij%blk%blkn
-    m  = bc_ij%blk%blkm
-    sa = bc_ij%blk%sa
+    n  = bc_ij%blkn
+    m  = bc_ij%blkm
+    sa = bc_ij%sa
     
-    bcol = bc_ij%blk%bcol
+    bcol = bc_ij%bcol
 
     ! write(*,*)"bc_ik id: ", bc_ik%id, ", m: ", m1, ", n: ", n1
     ! write(*,*)"bc_jk id: ", bc_jk%id, ", m: ", m2, ", n: ", n2
@@ -801,7 +801,7 @@ contains
 
     call spllt_update_block(m, n, &
          & lfact(bcol)%lcol(sa:sa+n*m-1), &
-         & bc_ij%blk%dblk.eq.bc_ij%blk%id, n1, &
+         & bc_ij%dblk.eq.bc_ij%id, n1, &
          & lfact(bcol1)%lcol(sa2:sa2+n1*m2-1), &
          & lfact(bcol1)%lcol(sa1:sa1+n1*m1-1))
 
@@ -821,11 +821,11 @@ contains
 !     ! integer(long), intent(in) :: blk ! identifier of destination block
 !     type(block_type), intent(in) :: blk ! destination block
 !     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-!     type(spllt_node_type), intent(in) :: dnode ! Node to which blk belongs
+!     type(spllt_node), intent(in) :: dnode ! Node to which blk belongs
 !     integer :: n1 ! number of columns in source block column
 !     ! integer(long), intent(in) :: src  ! identifier of block in source block col
 !     integer, intent(in) :: scol ! index of block column that src belongs to in snode
-!     type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
+!     type(spllt_node), intent(in) :: snode ! Node to which src belongs
 !     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
 !     ! that is to be updated.
 !     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
@@ -863,7 +863,7 @@ contains
        ! & csrc, rsrc, &
        & cptr, cptr2, rptr, rptr2, &
        & row_list, col_list, workspace, &
-       & lfact, blocks, bcs, &
+       & lfact, bcs, &
        & min_width_blas, prio)
     use spllt_data_mod
     use spllt_kernels_mod
@@ -895,21 +895,20 @@ contains
 #endif
 
 #if defined(SPLLT_USE_STARPU)
-    type(spllt_node_type), target                         :: snode ! src node
-    type(spllt_node_type), target                   :: anode ! dest node
+    type(spllt_node), target                         :: snode ! src node
+    type(spllt_node), target                   :: anode ! dest node
 #elif defined(SPLLT_USE_OMP)
-    type(spllt_node_type), pointer, intent(in)            :: snode ! src node
-    type(spllt_node_type), pointer, intent(in)      :: anode ! dest node
+    type(spllt_node), pointer, intent(in)            :: snode ! src node
+    type(spllt_node), pointer, intent(in)      :: anode ! dest node
 #else
-    type(spllt_node_type)                                 :: snode ! src node
-    type(spllt_node_type)                           :: anode ! dest node
+    type(spllt_node)                                 :: snode ! src node
+    type(spllt_node)                           :: anode ! dest node
 #endif
     integer                                         :: cptr, cptr2, rptr, rptr2 
-!    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
-
+    !    integer :: csrc(2), rsrc(2) ! used for update_between tasks to
 
     ! real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
-    type(block_type), dimension(:)                  :: blocks ! block info. 
+    ! type(block_type), dimension(:)                  :: blocks ! block info. 
 
 #if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     type(lfactor), allocatable, target, intent(inout)  :: lfact(:)
@@ -953,14 +952,14 @@ contains
     ! real(wp), dimension(:), pointer :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     ! type(spllt_bc_type), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
     real(wp), dimension(:), pointer    :: bc_jk_sa, bc_jk_en, bc_ik_sa, bc_ik_en
-    type(block_type), pointer :: blk_kk, a_blk
+    ! type(block_type), pointer :: blk_kk, a_blk
     type(spllt_bc_type), pointer :: p_workspace(:) => null()
     type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
     ! real(wp), dimension(:), allocatable :: work
     real(wp), dimension(:), pointer :: work
     integer, dimension(:), pointer :: rlst, clst ! row and column lists
-    type(spllt_node_type), pointer :: p_snode ! src node
-    type(spllt_node_type), pointer :: p_anode ! dest node
+    type(spllt_node), pointer :: p_snode ! src node
+    type(spllt_node), pointer :: p_anode ! dest node
     integer(long) :: id_ik_sa, id_ik_en, id_jk_sa, id_jk_en, id_ij
     real(wp), dimension(:), pointer :: lcol_ik, lcol_jk
     type(lfactor), pointer :: p_lfact(:)
@@ -975,19 +974,19 @@ contains
     ! print *, 'update_between_task'
 
     s_nb = snode%nb    ! block size in source node
-    n1  = dbc%blk%blkn ! width of column
+    n1  = dbc%blkn ! width of column
 
-    bcol1 = dbc%blk%bcol
-    scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
+    bcol1 = dbc%bcol
+    scol = bcol1 - bcs(snode%blk_sa)%bcol + 1
 
-    bcol = a_bc%blk%bcol
-    dcol = bcol - blocks(anode%blk_sa)%bcol + 1
+    bcol = a_bc%bcol
+    dcol = bcol - bcs(anode%blk_sa)%bcol + 1
     ! dcol = a_bc%blk%bcol ! blocks(anode%node%blk_sa)%bcol + 1
 
 #if defined(SPLLT_USE_STARPU)
 ! #if 0
     ! write(*,*)"associated blk: ", associated(a_bc%blk)
-    dblk = dbc%blk%id
+    dblk = dbc%id
 
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
@@ -1000,9 +999,9 @@ contains
     do blk=blk_sa,blk_en
        nhljk=nhljk+1
        ljk_handles(nhljk) = bcs(blk)%hdl
-       ljk_m = ljk_m + bcs(blk)%blk%blkm
+       ljk_m = ljk_m + bcs(blk)%blkm
     end do
-    ljk_n = dbc%blk%blkn
+    ljk_n = dbc%blkn
     ! write(*,*) "ljk_hdl: ", ljk_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
 #if defined(SPLLT_USE_GPU)
     ! create temporary handle for gathering blocks in Ljk factor
@@ -1025,7 +1024,7 @@ contains
     do blk=blk_sa,blk_en
        nhlik=nhlik+1
        lik_handles(nhlik) = bcs(blk)%hdl
-       lik_m = lik_m + bcs(blk)%blk%blkm
+       lik_m = lik_m + bcs(blk)%blkm
     end do
 
     ! write(*,*) "lik_m: ", lik_m
@@ -1049,7 +1048,7 @@ contains
 
     snode_c = c_loc(snode)
     anode_c = c_loc(anode)
-    a_bc_c  = c_loc(a_bc%blk)
+    a_bc_c  = c_loc(a_bc)
     
     ! write(*,*)"dcol: ", dcol
 #if defined(SPLLT_USE_GPU)
@@ -1101,7 +1100,7 @@ contains
 #elif defined(SPLLT_USE_OMP)
 
     p_lfact => lfact
-    a_blk => a_bc%blk
+    ! a_blk => a_bc%blk
 
     ! ! lik
     ! blk_sa = (rptr -1)/s_nb - (scol-1) + dblk
@@ -1116,8 +1115,8 @@ contains
     !      & lfact(bcol1)%lcol(rsrc(1):rsrc(1)+rsrc(2)-1), &
     !      & blocks, row_list, col_list, buffer, &
     !      & control, info, st)
-    blk_kk => dbc%blk
-    dblk = blk_kk%id
+    ! blk_kk => dbc%blk
+    dblk = dbc%id
 
     ! ljk
     blk_sa = (cptr -1)/s_nb - (scol-1) + dblk
@@ -1133,8 +1132,8 @@ contains
     bc_jk_en => fdata%bc(id_jk_en)%c ! bcs(blk_en)%c
     ! write(*,*) "nb_blk: ", nb_blk
     ! write(*,*) "nb_blk:", nb_blk, "blk_sa: ", blk_sa, ", blk_en: ", blk_en
-    csrc_sa = blocks(blk_sa)%sa
-    csrc_en = blocks(blk_en)%sa
+    csrc_sa = bcs(blk_sa)%sa
+    csrc_en = bcs(blk_en)%sa
 
     ! csrc_sa = 1 + (cptr_sa-(scol-1)*s_nb-1)*n1
     ! csrc_le = (cptr_en - cptr_sa + 1)*n1
@@ -1152,16 +1151,16 @@ contains
     bc_ik_sa => fdata%bc(id_ik_sa)%c ! bcs(blk_sa)%c
     bc_ik_en => fdata%bc(id_ik_en)%c ! bcs(blk_en)%c
 
-    rsrc_sa = blocks(blk_sa)%sa
-    rsrc_en = blocks(blk_en)%sa
+    rsrc_sa = bcs(blk_sa)%sa
+    rsrc_en = bcs(blk_en)%sa
 
-    id_ij = a_blk%id
+    id_ij = a_bc%id
     a_bc_c => fdata%bc(id_ij)%c
 
     dbc_c => dbc%c
 
-    bcol1 = blk_kk%bcol
-    bcol  = a_bc%blk%bcol
+    bcol1 = dbc%bcol
+    bcol  = a_bc%bcol
 
     lcol1 => lfact(bcol1)%lcol
     lcol  => lfact(bcol)%lcol
@@ -1176,11 +1175,11 @@ contains
     ! p_snode => snode
     ! p_anode => anode
 
-    p_snode => fdata%nodes(blk_kk%node)
-    p_anode => fdata%nodes(a_blk%node)
+    p_snode => fdata%nodes(dbc%node)
+    p_anode => fdata%nodes(a_bc%node)
 
     s_nb = p_snode%nb    ! block size in source node
-    n1  = blk_kk%blkn ! width of column
+    n1  = dbc%blkn ! width of column
 
     csrc  = 1 + (cptr-(scol-1)*s_nb-1)*n1
     csrc2 = (cptr2 - cptr + 1)*n1
@@ -1191,15 +1190,15 @@ contains
     lcol_ik => lcol1(rsrc:rsrc+rsrc2-1)
     lcol_jk => lcol1(csrc:csrc+csrc2-1)
 
-    m  = a_blk%blkm
-    n  = a_blk%blkn
-    sa = a_blk%sa
+    m  = a_bc%blkm
+    n  = a_bc%blkn
+    sa = a_bc%sa
 
     blk_sa = snode%blk_sa
 
 ! !$omp taskwait    
 
-!$omp task firstprivate(m, n, a_blk, dcol, p_anode, n1, scol, p_snode, &
+!$omp task firstprivate(m, n, a_bc, dcol, p_anode, n1, scol, p_snode, &
 !$omp    & lcol, lcol1, min_width_blas, sa, csrc, csrc2, rsrc, rsrc2) &
 !$omp    & private(rlst, clst, work) & 
 #if defined(SPLLT_OMP_TRACE)
@@ -1226,7 +1225,7 @@ contains
     th_id = 0
     !$  th_id = omp_get_thread_num()
 
-    ! call spllt_omp_update_between_cpu_func(m, n, a_blk, dcol, p_anode%node, &
+    ! call spllt_omp_update_between_cpu_func(m, n, a_bc, dcol, p_anode%node, &
     !      & n1, scol, p_snode, &
     !      & lcol(sa:sa+m*n-1), &
     !      & lcol1(csrc:csrc+csrc2-1), &
@@ -1243,7 +1242,7 @@ contains
     ! work(:) = 0
     ! allocate(rlst(1), clst(1))
 
-    call spllt_update_between(m, n, a_blk, dcol, p_anode, &
+    call spllt_update_between(m, n, a_bc, dcol, p_anode, &
          & n1, scol, p_snode, &
          & lcol(sa:sa+m*n-1), &
          & lcol1(csrc:csrc+csrc2-1), &
@@ -1266,10 +1265,10 @@ contains
     
 #else
     
-    m  = a_bc%blk%blkm
-    n  = a_bc%blk%blkn
-    id = a_bc%blk%id
-    sa = a_bc%blk%sa
+    m  = a_bc%blkm
+    n  = a_bc%blkn
+    id = a_bc%id
+    sa = a_bc%sa
     
     ! write(*,*) "update_between_task"
     ! call update_between(m, n, id, anode, &
@@ -1286,7 +1285,7 @@ contains
     rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
     rsrc2 = (rptr2 - rptr + 1)*n1
 
-    call spllt_update_between(m, n, a_bc%blk, dcol, anode%node, &
+    call spllt_update_between(m, n, a_bc, dcol, anode%node, &
          & n1, scol, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
@@ -1314,7 +1313,7 @@ contains
     implicit none
 
     type(spllt_fdata_type), target, intent(in)  :: fdata    
-    type(spllt_node_type), intent(in) :: node
+    type(spllt_node), intent(in) :: node
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
 
      ! so that, if variable (row) i is involved in node,

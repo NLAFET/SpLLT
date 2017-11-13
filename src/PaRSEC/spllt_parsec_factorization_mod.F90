@@ -46,7 +46,7 @@ contains
     integer(c_int), value      :: snode
     type(c_ptr)                :: get_node
 
-    type(spllt_node_type), pointer :: nodes(:)
+    type(spllt_node), pointer :: nodes(:)
 
     call c_f_pointer(nodes_c, nodes, (/snode/))    
     
@@ -81,7 +81,7 @@ contains
     integer(c_int), value      :: snode
     integer(long)              :: get_blk_sa
 
-    type(spllt_node_type), pointer :: node, nodes(:)
+    type(spllt_node), pointer :: node, nodes(:)
     
     call c_f_pointer(nodes_c, nodes, (/snode/))    
 
@@ -100,7 +100,7 @@ contains
     integer(c_int), value      :: snode
     integer(long)              :: get_blk_en
 
-    type(spllt_node_type), pointer :: node, nodes(:)
+    type(spllt_node), pointer :: node, nodes(:)
     
     call c_f_pointer(nodes_c, nodes, (/snode/))    
 
@@ -121,7 +121,7 @@ contains
     integer(long)              :: get_nc
 
     type(spllt_bc_type), pointer :: bc(:) ! blocks
-    type(spllt_node_type), pointer :: node, nodes(:)
+    type(spllt_node), pointer :: node, nodes(:)
     integer :: sa, en, numcol, s_nb
 
     call c_f_pointer(nodes_c, nodes, (/nnodes/))    
