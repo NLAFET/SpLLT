@@ -3,7 +3,7 @@ project(SpLLT)
 enable_language(Fortran)
 enable_language(C)
 
-#########################################
+########################################
 # Version number
 set(SPLLT_VERSION_MAJOR 1)
 set(SPLLT_VERSION_MINOR 0)
@@ -12,10 +12,10 @@ set(SPLLT_VERSION_MICRO 0)
 # Include our own cmake modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/" )
 
-##################################################################################
+################################################################################
 # Options
 
-#########################################
+########################################
 # Runtime system
 
 set(RUNTIME "STF" CACHE STRING "Runtime system")
@@ -26,17 +26,17 @@ else()
   message(STATUS "Build SpLLT with ${RUNTIME} runtime system")
 endif()
 
-#########################################
+########################################
 # Enable GPU
 option(USE_GPU "Enable GPU" OFF)
 message(STATUS "Enable GPU: " ${USE_GPU})   
 
-#########################################
+########################################
 # Enable MPI
 option(USE_MPI "Enable MPI" OFF)
 message(STATUS "Enable MPI: " ${USE_MPI})
 
-#########################################
+########################################
 # Build for KNL
 option(USE_KNL "Run on KNL device" OFF)
 message(STATUS "Run on KNL device: " ${USE_KNL})
@@ -52,10 +52,10 @@ message(STATUS "Run on KNL device: " ${USE_KNL})
 option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
 message(STATUS "Use MA87 test driver: " ${MA87_TEST_DRIVER})
 
-##################################################################################
+################################################################################
 # Compiler option
 
-#########################################
+########################################
 # Custom compiler flags
 
 # Set C flags
@@ -70,7 +70,7 @@ message(STATUS "Use MA87 test driver: " ${MA87_TEST_DRIVER})
 #set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2" )
 # set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -g -O2 -ffpe-trap=zero,underflow,denormal")
 
-#########################################
+########################################
 # Build type
 
 # Default build type
@@ -104,16 +104,16 @@ endif()
 
 # message( STATUS "Fortran FLAGS: " ${CMAKE_Fortran_FLAGS} )
 
-##################################################################################
+################################################################################
 # Third-party libraries
 
-#########################################
+########################################
 # SPRAL
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 include_directories(${SPRAL_DIR})
 message(STATUS "SPRAL Directory: " ${SPRAL_DIR})   
 
-#########################################
+########################################
 # Runtime system
 
 # add spLLT test driver
@@ -137,7 +137,7 @@ elseif(${RUNTIME} MATCHES "StarPU")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
   
-  #########################################
+  ########################################
   # StarPU
   find_package(STARPU)
   if (STARPU_FOUND)
@@ -157,7 +157,7 @@ elseif(${RUNTIME} MATCHES "StarPU")
   # Use StarPU code
   add_definitions(-DSPLLT_USE_STARPU)
 
-  #########################################
+  ########################################
   # HWLOC
   set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
   include_directories(${HWLOC_DIR}/include)  
@@ -180,7 +180,7 @@ elseif(${RUNTIME} MATCHES "Parsec")
   # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64 -mcx16" )
   # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m64 -mcx16" )
 
-  #########################################
+  ########################################
   # Parsec
   set(PARSEC_DIR $ENV{PARSEC_DIR} CACHE PATH "Location of Parsec Library")
   set(PARSEC_SRC_DIR $ENV{PARSEC_SRCDIR} CACHE PATH "Location of Parsec sources")
@@ -195,7 +195,7 @@ elseif(${RUNTIME} MATCHES "Parsec")
   # message(STATUS "Parsec directory ENV: " $ENV{PARSECDIR})
   message(STATUS "Parsec source directory: " ${PARSEC_SRC_DIR})
   
-  #########################################
+  ########################################
   # Parsec libraries
   find_library(PARSEC_FORTRAN_LIBRARY
     NAMES parsecf
@@ -257,14 +257,14 @@ elseif(${RUNTIME} MATCHES "Parsec")
   #   message(FATAL_ERROR "PARSEC not found!")
   # endif(PARSEC_FOUND)
 
-  #########################################
+  ########################################
   # HWLOC
   set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
   include_directories(${HWLOC_DIR}/include)  
   find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
   set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
-  #########################################
+  ########################################
   # PAPI
   find_library(PAPI_LIBRARY papi)
   # message(STATUS "PAPI: " ${PAPI_LIBRARY})
@@ -283,7 +283,7 @@ if(${USE_GPU} MATCHES ON)
   # set(CUDA_NVCC_FLAGS "-g -arch=compute_20 -code=compute_20,sm_20,sm_35" CACHE
   #   STRING "NVCC flags")
 
-  #########################################
+  ########################################
   # CUDA
   find_package(CUDA REQUIRED)
 
@@ -312,7 +312,7 @@ if(${USE_GPU} MATCHES ON)
   find_library(MAGMA_LIBRARY magma PATHS ${MAGMA_DIR}/lib)
 endif()
 
-#########################################
+########################################
 # MPI
 if(${USE_MPI} MATCHES ON)
 
@@ -368,7 +368,7 @@ if(${USE_MPI} MATCHES ON)
 endif()
 
 
-#########################################
+########################################
 # spral
 target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
 find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR})
@@ -376,20 +376,20 @@ target_link_libraries(spllt_test ${SPRAL_LIBRARY})
 # MESSAGE( STATUS "spral dir:         " ${SPRAL_DIR})
 # MESSAGE( STATUS "spral lib:         " ${SPRAL_LIBRARY})
 
-#########################################
+########################################
 # Metis
 set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
 find_library(METIS_LIBRARY metis PATHS ${METIS_DIR})
 target_link_libraries(spllt_test ${METIS_LIBRARY})
 
-#########################################
+########################################
 # HWLOC
 set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
 include_directories(${HWLOC_DIR}/include)  
 find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
 target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
-#########################################
+########################################
 # if (${BLAS_LAPACK} MATCHES "MKL")
 
 #   # MKL library
@@ -435,7 +435,7 @@ target_link_libraries(spllt_test ${HWLOC_LIBRARY})
 
 # endif()
 
-#########################################
+########################################
 # BLAS
 set(LBLAS "" CACHE STRING "BLAS library")
 
@@ -463,7 +463,7 @@ else()
   message(FATAL_ERROR "BLAS NOT found")
 endif (BLAS_FOUND)
 
-#########################################
+########################################
 # LAPACK
 set(LLAPACK "" CACHE STRING "LAPACK library")
 # If LBLAS not set, use environement variable 
@@ -490,7 +490,7 @@ else()
   message(FATAL_ERROR "LAPACK library NOT found")
 endif (LAPACK_FOUND)
 
-##################################################################################
+################################################################################
 # Link SpLLT with third-party libraries
 target_link_libraries(spllt_test ${LIBS})
 
@@ -502,7 +502,7 @@ target_link_libraries(spllt_test stdc++)
 
 target_link_libraries(spllt_test rt)
 
-#########################################
+########################################
 # Print summary
 
 message("-----------------------------------------")
@@ -524,5 +524,7 @@ if(${RUNTIME} MATCHES "StarPU")
 elseif(${RUNTIME} MATCHES "Parsec")
   message("Runtime system: PaRSEC")
   message("Parsec libraries: ${PARSEC_LIBRARIES}")
+elseif(${RUNTIME} MATCHES "OMP")
+  message("Runtime system: OpenMP")
 endif()
 message("-----------------------------------------")

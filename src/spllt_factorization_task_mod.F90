@@ -21,10 +21,10 @@ contains
 
     integer, intent(in) :: rptr, rptr2, cptr, cptr2
     type(spllt_bc_type), intent(in) :: buffer
-    type(node_type), target :: root
+    type(spllt_node_type), target :: root
     integer, intent(in) :: a_rptr, a_cptr
     type(spllt_bc_type) :: dest
-    type(node_type), target :: anode
+    type(spllt_node_type), target :: anode
     
     integer :: rm, rn
     integer :: b_sz
@@ -32,8 +32,8 @@ contains
     integer :: bsa, ben
 
 #if defined(SPLLT_USE_OMP)
-    type(node_type), pointer :: p_root
-    type(node_type), pointer :: p_anode
+    type(spllt_node_type), pointer :: p_root
+    type(spllt_node_type), pointer :: p_anode
     real(wp), pointer :: buffer_c(:), dest_c(:)
     integer :: blkn
 #endif
@@ -109,7 +109,7 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_subtree_factorize_task(root, fdata, val, keep, buffer, cntl, map)
+  subroutine spllt_subtree_factorize_task(root, fdata, val, buffer, cntl, map)
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -120,15 +120,15 @@ contains
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_data_type), target, intent(inout)  :: fdata
+    type(spllt_fdata_type), target, intent(inout)  :: fdata
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
-    type(spllt_keep), target, intent(inout) :: keep
+    ! type(spllt_keep), target, intent(inout) :: keep
     type(spllt_bc_type), target, intent(inout) :: buffer ! update_buffer workspace
     type(spllt_cntl), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, keep_c, cntl_c 
+    type(c_ptr) :: val_c, fdata_c, cntl_c 
 #endif
 
 #if defined(SPLLT_USE_OMP)
@@ -139,7 +139,7 @@ contains
     real(wp), dimension(:), pointer :: work => null()
     integer, dimension(:), pointer :: rlst => null(), clst => null()
     integer :: th_id ! thread id
-    type(spllt_keep), pointer :: p_keep => null()
+    type(spllt_fdata_type), pointer :: p_fdata => null()
     type(spllt_cntl), pointer :: p_cntl => null()
     type(spllt_workspace_i), dimension(:), pointer :: p_map => null()
 #endif
@@ -147,10 +147,10 @@ contains
 #if defined(SPLLT_USE_STARPU)
     
     val_c  = c_loc(val(1)) 
-    keep_c = c_loc(keep)
+    fdata_c = c_loc(fdata)
     cntl_c = c_loc(cntl)
 
-    call spllt_insert_subtree_factorize_task_c(root, val_c, keep_c, buffer%hdl, &
+    call spllt_insert_subtree_factorize_task_c(root, val_c, fdata_c, buffer%hdl, &
          & cntl_c, fdata%map%hdl, fdata%row_list%hdl, fdata%col_list%hdl, &
          & fdata%workspace%hdl)
 
@@ -166,11 +166,11 @@ contains
 
     p_map => fdata%map
 
-    p_keep => keep
+    p_fdata => fdata
     p_cntl => cntl
 
 !$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
-!$omp & firstprivate(root, p_keep, p_cntl, p_map) &
+!$omp & firstprivate(root, p_fdata, p_cntl, p_map) &
 !$omp & private(work, rlst, clst) &
 !$omp & private(th_id) &
 !$omp & depend(out:buffer_c(1))
@@ -182,14 +182,14 @@ contains
     rlst => p_rlst(th_id)%c
     clst => p_clst(th_id)%c
 
-    call spllt_subtree_factorize(root, p_val, p_keep, buffer_c, p_cntl, p_map(th_id)%c, &
+    call spllt_subtree_factorize(root, p_val, p_fdata, buffer_c, p_cntl, p_map(th_id)%c, &
          & rlst, clst, work)
     
 !$omp end task
 
 #else
     
-    call spllt_subtree_factorize(root, val, keep, buffer%c, cntl, map, &
+    call spllt_subtree_factorize(root, val, fdata, buffer%c, cntl, map, &
          & fdata%row_list%c, fdata%col_list%c , fdata%workspace%c)
 
 #endif
@@ -199,23 +199,23 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_factor_subtree_task(root, keep, buffer)
+  subroutine spllt_factor_subtree_task(root, fdata, buffer)
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_keep), target, intent(inout) :: keep
+    type(spllt_fdata_type), target, intent(inout) :: fdata
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
-    type(node_type), pointer :: node ! node in the atree    
+    type(spllt_node_type), pointer :: node ! node in the atree    
     integer :: m, n, blk
 
-    node => keep%nodes(root)
+    node => fdata%nodes(root)
     blk = node%blk_sa
 
-    m = keep%blocks(blk)%blkm
-    n = keep%blocks(blk)%blkn
+    m = fdata%blocks(blk)%blkm
+    n = fdata%blocks(blk)%blkn
 
     if (size(buffer).lt.(m-n)**2) then
        deallocate(buffer)
@@ -223,7 +223,7 @@ contains
     end if
 
     ! perform factorization of subtree rooted at snode
-    call spllt_factor_subtree(root, keep%nodes, keep%blocks, keep%lfact, buffer)
+    call spllt_factor_subtree(root, fdata%nodes, fdata%blocks, fdata%lfact, buffer)
  
   end subroutine spllt_factor_subtree_task
 
@@ -233,22 +233,21 @@ contains
   !
   ! Deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
-  subroutine spllt_data_unregister_task(keep, fdata, adata)
+  subroutine spllt_data_unregister_task(fdata, adata)
     use spllt_data_mod
     use  starpu_f_mod
     implicit none
 
-    type(spllt_keep), target, intent(inout) :: keep 
-    type(spllt_data_type), intent(inout) :: fdata
+    type(spllt_fdata_type), intent(inout) :: fdata
     type(spllt_adata_type), intent(in) :: adata
 
     integer :: i
     integer :: snode, num_nodes
-    type(node_type), pointer :: node ! node in the atree    
+    type(spllt_node_type), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
-    num_nodes = keep%info%num_nodes
+    num_nodes = fdata%info%num_nodes
     blk = 1
 
     do snode = 1, num_nodes
@@ -256,7 +255,7 @@ contains
        ! if (adata%small(snode) .ne. 0) cycle
        ! print *, "[data_unregister_task] node", snode, ", small: ", adata%small(snode)
 
-       node => keep%nodes(snode)
+       node => fdata%nodes(snode)
 
        l_nb = node%nb
        sz = (size(node%index) - 1) / l_nb + 1
@@ -279,26 +278,25 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_data_unregister(keep, pbl)
+  subroutine spllt_data_unregister(fdata)
     use spllt_data_mod
     use starpu_f_mod
     implicit none
 
-    type(spllt_keep), target, intent(inout) :: keep 
-    type(spllt_data_type), intent(inout) :: pbl
+    type(spllt_fdata_type), intent(inout) :: fdata
 
     integer :: i
     integer :: snode, num_nodes
-    type(node_type), pointer :: node ! node in the atree    
+    type(spllt_node_type), pointer :: node ! node in the atree    
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
-    num_nodes = keep%info%num_nodes
+    num_nodes = fdata%info%num_nodes
     blk = 1
 
     do snode = 1, num_nodes
 
-       node => keep%nodes(snode)
+       node => fdata%nodes(snode)
 
        l_nb = node%nb
        sz = (size(node%index) - 1) / l_nb + 1
@@ -309,7 +307,7 @@ contains
           dblk = blk
           do blk = dblk, dblk+sz-1
              ! write(*,*) 'unregister blk: ', blk
-             call starpu_f_data_unregister(pbl%bc(blk)%hdl)
+             call starpu_f_data_unregister(fdata%bc(blk)%hdl)
           end do
           sz = sz - 1
        end do
@@ -335,7 +333,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_data_type), target, intent(in)  :: fdata
+    type(spllt_fdata_type), target, intent(in)  :: fdata
     type(spllt_node_type), intent(in)          :: node
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout) :: bc ! block to be factorized    
@@ -466,7 +464,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_data_type), target, intent(inout)  :: fdata
+    type(spllt_fdata_type), target, intent(inout)  :: fdata
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
@@ -526,7 +524,7 @@ contains
     bc_ik_c => fdata%bc(id)%c
 
     snode = blk_kk%node
-    blk_sa = fdata%nodes(snode)%node%blk_sa
+    blk_sa = fdata%nodes(snode)%blk_sa
     ! write(*,*)"blk_sa: ", blk_sa
 ! !$omp taskwait
 
@@ -632,7 +630,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_data_type), target, intent(in)  :: fdata
+    type(spllt_fdata_type), target, intent(in)  :: fdata
     ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
@@ -695,7 +693,7 @@ contains
     lcol => lfact(bcol)%lcol
 
     snode = blk_ij%node
-    blk_sa = fdata%nodes(snode)%node%blk_sa
+    blk_sa = fdata%nodes(snode)%blk_sa
     
 ! !$omp taskwait
 
@@ -823,11 +821,11 @@ contains
 !     ! integer(long), intent(in) :: blk ! identifier of destination block
 !     type(block_type), intent(in) :: blk ! destination block
 !     integer, intent(in) :: dcol ! index of block column that blk belongs to in dnode
-!     type(node_type), intent(in) :: dnode ! Node to which blk belongs
+!     type(spllt_node_type), intent(in) :: dnode ! Node to which blk belongs
 !     integer :: n1 ! number of columns in source block column
 !     ! integer(long), intent(in) :: src  ! identifier of block in source block col
 !     integer, intent(in) :: scol ! index of block column that src belongs to in snode
-!     type(node_type), intent(in) :: snode ! Node to which src belongs
+!     type(spllt_node_type), intent(in) :: snode ! Node to which src belongs
 !     real(wp), dimension(*), intent(inout) :: dest ! holds block in L
 !     ! that is to be updated.
 !     real(wp), dimension(*), intent(in) :: csrc ! holds csrc block
@@ -879,7 +877,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_data_type), target, intent(in)       :: fdata
+    type(spllt_fdata_type), target, intent(in)       :: fdata
 #if defined(SPLLT_USE_OMP)
     type(spllt_bc_type), pointer, intent(inout)     :: a_bc ! dest block
     type(spllt_bc_type), pointer, intent(inout)     :: dbc ! diag block in source node
@@ -897,13 +895,13 @@ contains
 #endif
 
 #if defined(SPLLT_USE_STARPU)
-    type(node_type), target                         :: snode ! src node
+    type(spllt_node_type), target                         :: snode ! src node
     type(spllt_node_type), target                   :: anode ! dest node
 #elif defined(SPLLT_USE_OMP)
-    type(node_type), pointer, intent(in)            :: snode ! src node
+    type(spllt_node_type), pointer, intent(in)            :: snode ! src node
     type(spllt_node_type), pointer, intent(in)      :: anode ! dest node
 #else
-    type(node_type)                                 :: snode ! src node
+    type(spllt_node_type)                                 :: snode ! src node
     type(spllt_node_type)                           :: anode ! dest node
 #endif
     integer                                         :: cptr, cptr2, rptr, rptr2 
@@ -960,9 +958,9 @@ contains
     type(spllt_workspace_i), pointer :: p_rlst(:) => null(), p_clst(:) => null()
     ! real(wp), dimension(:), allocatable :: work
     real(wp), dimension(:), pointer :: work
-    integer, dimension(:), pointer :: rlst, clst
-    type(node_type), pointer                :: p_snode ! src node
-    type(spllt_node_type), pointer          :: p_anode ! dest node
+    integer, dimension(:), pointer :: rlst, clst ! row and column lists
+    type(spllt_node_type), pointer :: p_snode ! src node
+    type(spllt_node_type), pointer :: p_anode ! dest node
     integer(long) :: id_ik_sa, id_ik_en, id_jk_sa, id_jk_en, id_ij
     real(wp), dimension(:), pointer :: lcol_ik, lcol_jk
     type(lfactor), pointer :: p_lfact(:)
@@ -983,7 +981,7 @@ contains
     scol = bcol1 - blocks(snode%blk_sa)%bcol + 1
 
     bcol = a_bc%blk%bcol
-    dcol = bcol - blocks(anode%node%blk_sa)%bcol + 1
+    dcol = bcol - blocks(anode%blk_sa)%bcol + 1
     ! dcol = a_bc%blk%bcol ! blocks(anode%node%blk_sa)%bcol + 1
 
 #if defined(SPLLT_USE_STARPU)
@@ -1050,7 +1048,7 @@ contains
     rsrc2 = (rptr2 - rptr + 1)*n1
 
     snode_c = c_loc(snode)
-    anode_c = c_loc(anode%node)
+    anode_c = c_loc(anode)
     a_bc_c  = c_loc(a_bc%blk)
     
     ! write(*,*)"dcol: ", dcol
@@ -1178,7 +1176,7 @@ contains
     ! p_snode => snode
     ! p_anode => anode
 
-    p_snode => fdata%nodes(blk_kk%node)%node
+    p_snode => fdata%nodes(blk_kk%node)
     p_anode => fdata%nodes(a_blk%node)
 
     s_nb = p_snode%nb    ! block size in source node
@@ -1245,7 +1243,7 @@ contains
     ! work(:) = 0
     ! allocate(rlst(1), clst(1))
 
-    call spllt_update_between(m, n, a_blk, dcol, p_anode%node, &
+    call spllt_update_between(m, n, a_blk, dcol, p_anode, &
          & n1, scol, p_snode, &
          & lcol(sa:sa+m*n-1), &
          & lcol1(csrc:csrc+csrc2-1), &
@@ -1302,7 +1300,7 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task(fdata, node, val, keep, prio)
+  subroutine spllt_init_node_task(fdata, node, val, prio)
     use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -1315,19 +1313,19 @@ contains
 #endif
     implicit none
 
-    type(spllt_data_type), target, intent(in)  :: fdata    
+    type(spllt_fdata_type), target, intent(in)  :: fdata    
     type(spllt_node_type), intent(in) :: node
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
 
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
-    type(spllt_keep), target, intent(inout) :: keep ! on exit, matrix a copied
+    ! type(spllt_fdata_type), target, intent(inout) :: fdata ! on exit, matrix a copied
      ! into relevant part of keep%lfact
     integer, optional :: prio 
 
     integer :: p
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, keep_c
+    type(c_ptr) :: val_c, fdata_c
     integer(c_int) :: nval
 #endif
 
@@ -1335,7 +1333,7 @@ contains
     integer :: snum
     integer :: th_id
     ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    type(spllt_keep), pointer :: p_keep
+    type(spllt_fdata_type), pointer :: p_fdata
     real(wp), pointer :: p_val(:)
 #endif
 
@@ -1348,17 +1346,17 @@ contains
 #if defined(SPLLT_USE_STARPU)
     nval = size(val,1)
     val_c  = c_loc(val(1)) 
-    keep_c = c_loc(keep)
+    fdata_c = c_loc(fdata)
 
     call spllt_insert_init_node_task_c(node%hdl, &
-         & node%num, val_c, nval, keep_c, p)
+         & node%num, val_c, nval, fdata_c, p)
 #elif defined(SPLLT_USE_OMP)
 
     snum = node%num
-    p_keep => keep
+    p_fdata => fdata
     p_val => val
 
-!$omp task firstprivate(snum) firstprivate(p_keep, p_val) &
+!$omp task firstprivate(snum) firstprivate(p_fdata, p_val) &
 #if defined(SPLLT_OMP_TRACE)
 !$omp    & shared(ini_nde_id) &
 #endif
@@ -1370,7 +1368,7 @@ contains
     call trace_event_start(ini_nde_id, th_id)
 #endif
 
-    call spllt_init_node(snum, p_val, p_keep)
+    call spllt_init_node(snum, p_val, p_fdata)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(ini_nde_id, th_id)
@@ -1379,7 +1377,7 @@ contains
 !$omp end task
 
 #else
-    call spllt_init_node(node%num, val, keep)
+    call spllt_init_node(node%num, val, fdata)
 #endif
     
     return

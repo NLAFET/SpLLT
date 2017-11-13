@@ -69,12 +69,12 @@ contains
     integer :: r, i, j
     integer :: k
 
-    type(spllt_keep) :: keep
+    ! type(spllt_keep) :: keep
     type(spllt_info) :: info
 
     ! SpLLT
     type(spllt_adata_type) :: adata
-    type(spllt_data_type), target  :: fdata
+    type(spllt_fdata_type), target  :: fdata
     integer, dimension(:), allocatable :: order
 
     ! timing
@@ -225,14 +225,14 @@ contains
     smafact = real(inform%num_factor)
 
     ! Analyse SpLLT
-    call spllt_analyse(adata, fdata, n, ptr, row, order, akeep, keep, cntl, info)
+    call spllt_analyse(adata, fdata, n, ptr, row, order, akeep, cntl, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        stop
     endif
 
     ! Print elimination tree
-    call spllt_print_atree(adata, keep, cntl)
+    call spllt_print_atree(adata, fdata, cntl)
 
 #if defined(SPLLT_USE_OMP)
     !$omp parallel num_threads(cntl%ncpu)
@@ -254,15 +254,15 @@ contains
 
 #if defined(SPLLT_STF_LL)
     ! Unroll the DAG using a Left-Looking strategy
-    call spllt_stf_ll_factorize(n, ptr, row, val, order, keep, info, fdata, cntl)
+    call spllt_stf_ll_factorize(n, ptr, row, val, order, info, fdata, cntl)
 
 #else
-    call spllt_stf_factorize(n, ptr, row, val, order, keep, info, adata, fdata, cntl)
+    call spllt_stf_factorize(n, ptr, row, val, order, info, adata, fdata, cntl)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #endif
 
 #elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(adata, val, keep, cntl, fdata, info)
+    call spllt_ptg_factorize(adata, val, cntl, fdata, info)
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -270,7 +270,7 @@ contains
     call starpu_f_task_wait_for_all()
 #if defined(SPLLT_USE_GPU)
     ! put data back on home node e.g. from GPU to CPU
-    call spllt_data_unregister(keep, fdata)
+    call spllt_data_unregister(fdata)
 #endif
     call starpu_f_fxt_stop_profiling()
 #elif defined(SPLLT_USE_OMP)
@@ -297,7 +297,7 @@ contains
 
     call data_init(base_desc, bc_c, nbc, nds, rank)
 
-    gat_hdl = gather(fdata%ddesc, base_desc, size(fdata%bc,1), keep%maxmn)
+    gat_hdl = gather(fdata%ddesc, base_desc, size(fdata%bc,1), fdata%maxmn)
 
     call parsec_enqueue(ctx, gat_hdl)
     call parsec_context_start(ctx)
@@ -325,7 +325,7 @@ contains
     soln = rhs ! init solution with RHS
     ! solve
     ! call MA87_solve(nrhs, n, soln, order, keep, control, info)
-    call spllt_solve(soln(:,1), order, keep, cntl, info)
+    call spllt_solve(soln(:,1), order, fdata, cntl, info)
     ! if(info%flag .lt. spllt_success) then
     !    write(*, "(a,i4)") " fail on 1d solve", &
     !         info%flag

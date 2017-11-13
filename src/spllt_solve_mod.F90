@@ -12,18 +12,18 @@ contains
   !
   ! Solve phase. simplified interface for a single rhs
   !
-  subroutine spllt_solve_one_double(x, order, keep, cntl, info, job)
+  subroutine spllt_solve_one_double(x, order, fdata, cntl, info, job)
     use spllt_data_mod
     implicit none
 
-    type(spllt_keep), intent(inout) :: keep
-    real(wp), intent(inout) :: x(keep%n) ! On entry, x must
+    type(spllt_fdata_type), intent(inout) :: fdata
+    real(wp), intent(inout) :: x(fdata%n) ! On entry, x must
     ! be set so that if i has been used to index a variable,
     ! x(i) is the corresponding component of the right-hand side.
     ! On exit, if i has been used to index a variable,
     ! x(i) holds solution for variable i.
     integer, intent(in) :: order(:) ! pivot order. must be unchanged
-    ! For details of keep, control, info : see derived type description
+    ! For details of fdata, control, info : see derived type description
     type(spllt_cntl), intent(in) :: cntl
     type(spllt_info), intent(out) :: info
     integer, optional, intent(in) :: job  ! used to indicate whether
@@ -40,7 +40,7 @@ contains
     ! reorder solution.
     integer :: st ! stat parameter
 
-    n = keep%n
+    n = fdata%n
 
     ! immediate return if n = 0
     if (n == 0) return
@@ -83,10 +83,10 @@ contains
 
     ! Forward solve
     !
-    call solve_fwd(nrhs, soln, n, keep)
+    call solve_fwd(nrhs, soln, n, fdata)
     
     ! Backward solve
-    call solve_bwd(nrhs, soln, n, keep)
+    call solve_bwd(nrhs, soln, n, fdata)
 
    !
    ! Reorder soln
@@ -100,13 +100,13 @@ contains
   !*************************************************
   !
   ! Forward solve routine
-  subroutine solve_fwd(nrhs, rhs, ldr, keep)
+  subroutine solve_fwd(nrhs, rhs, ldr, fdata)
     use spllt_data_mod
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_keep), intent(inout) :: keep
+    type(spllt_fdata_type), intent(inout) :: fdata
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
@@ -130,31 +130,31 @@ contains
     print *, "[spllt_solve_mod] solve_fwd"
 
     ! Allocate workspace
-    allocate(xlocal(keep%maxmn*nrhs), stat=st)
+    allocate(xlocal(fdata%maxmn*nrhs), stat=st)
     xlocal = zero 
 
-    num_node = keep%info%num_nodes
+    num_node = fdata%info%num_nodes
     
     do node = 1, num_node
 
        ! Get node info
-       s_nb = keep%nodes(node)%nb
-       sa = keep%nodes(node)%sa
-       en = keep%nodes(node)%en
+       s_nb = fdata%nodes(node)%nb
+       sa = fdata%nodes(node)%sa
+       en = fdata%nodes(node)%en
        numcol = en - sa + 1
-       numrow = size(keep%nodes(node)%index)
+       numrow = size(fdata%nodes(node)%index)
        nc = (numcol-1) / s_nb + 1
        nr = (numrow-1) / s_nb + 1 
        
        ! Get first diag block in node
-       dblk = keep%nodes(node)%blk_sa
+       dblk = fdata%nodes(node)%blk_sa
        ! Loop over block columns
        do jj = 1, nc
           
           !
           ! Forward solve with block on diagoanl
           !
-          call spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, keep)
+          call spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
           
           do ii = jj+1, nr
              blk = dblk+ii-jj
@@ -164,24 +164,24 @@ contains
              !
 
              ! Establish variables describing block
-             n        = keep%blocks(blk)%blkn
-             m        = keep%blocks(blk)%blkm
-             blk_sa       = keep%blocks(blk)%sa
-             bcol     = keep%blocks(blk)%bcol
-             dcol     = bcol - keep%blocks(keep%nodes(node)%blk_sa)%bcol + 1
-             col      = keep%nodes(node)%sa + (dcol-1)*keep%nodes(node)%nb
+             n        = fdata%blocks(blk)%blkn
+             m        = fdata%blocks(blk)%blkm
+             blk_sa       = fdata%blocks(blk)%sa
+             bcol     = fdata%blocks(blk)%bcol
+             dcol     = bcol - fdata%blocks(fdata%nodes(node)%blk_sa)%bcol + 1
+             col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
 
-             offset   = col - keep%nodes(node)%sa + 1 ! diagonal blk
-             offset   = offset + (blk-keep%blocks(blk)%dblk) * keep%nodes(node)%nb ! this blk
+             offset   = col - fdata%nodes(node)%sa + 1 ! diagonal blk
+             offset   = offset + (blk-fdata%blocks(blk)%dblk) * fdata%nodes(node)%nb ! this blk
              
-             call slv_fwd_update(m, n, col, offset, keep%nodes(node)%index, &
-                  keep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
+             call slv_fwd_update(m, n, col, offset, fdata%nodes(node)%index, &
+                  fdata%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
                   ldr, rhs, ldr, xlocal)
              
           end do
           
           ! Update diag block in node          
-          dblk = keep%blocks(dblk)%last_blk + 1
+          dblk = fdata%blocks(dblk)%last_blk + 1
        end do
               
     end do
@@ -191,13 +191,13 @@ contains
 
   end subroutine solve_fwd
 
-  subroutine solve_bwd(nrhs, rhs, ldr, keep)
+  subroutine solve_bwd(nrhs, rhs, ldr, fdata)
     use spllt_data_mod
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_keep), intent(inout) :: keep
+    type(spllt_fdata_type), intent(inout) :: fdata
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
@@ -223,24 +223,24 @@ contains
     print *, "[spllt_solve_mod] solve_bwd"
 
     ! Allocate workspace
-    allocate(xlocal(keep%maxmn*nrhs), stat=st)
+    allocate(xlocal(fdata%maxmn*nrhs), stat=st)
 
-    num_node = keep%info%num_nodes
+    num_node = fdata%info%num_nodes
     ! print *, "num_node: ", num_node
     
     do node = num_node, 1, -1
 
        ! Get node info
-       s_nb = keep%nodes(node)%nb
-       sa = keep%nodes(node)%sa
-       en = keep%nodes(node)%en
+       s_nb = fdata%nodes(node)%nb
+       sa = fdata%nodes(node)%sa
+       en = fdata%nodes(node)%en
        numcol = en - sa + 1
-       numrow = size(keep%nodes(node)%index)
+       numrow = size(fdata%nodes(node)%index)
        nc = (numcol-1) / s_nb + 1
        nr = (numrow-1) / s_nb + 1 
 
        ! Get first diag block in node
-       dblk = keep%blocks(keep%nodes(node)%blk_en)%dblk
+       dblk = fdata%blocks(fdata%nodes(node)%blk_en)%dblk
 
        ! print *, "[solve_bwd] node = ", node, ", dblk = ", dblk
 
@@ -256,19 +256,19 @@ contains
              !
 
              ! Establish variables describing block
-             n        = keep%blocks(blk)%blkn
-             m        = keep%blocks(blk)%blkm
-             blk_sa       = keep%blocks(blk)%sa
-             bcol     = keep%blocks(blk)%bcol
-             ! node     = keep%blocks(blk)%node
-             dcol     = bcol - keep%blocks(keep%nodes(node)%blk_sa)%bcol + 1
-             col      = keep%nodes(node)%sa + (dcol-1)*keep%nodes(node)%nb
+             n        = fdata%blocks(blk)%blkn
+             m        = fdata%blocks(blk)%blkm
+             blk_sa       = fdata%blocks(blk)%sa
+             bcol     = fdata%blocks(blk)%bcol
+             ! node     = fdata%blocks(blk)%node
+             dcol     = bcol - fdata%blocks(fdata%nodes(node)%blk_sa)%bcol + 1
+             col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
 
-             offset   = col - keep%nodes(node)%sa + 1 ! diagonal blk
-             offset   = offset + (blk-keep%blocks(blk)%dblk) * keep%nodes(node)%nb ! this blk
+             offset   = col - fdata%nodes(node)%sa + 1 ! diagonal blk
+             offset   = offset + (blk-fdata%blocks(blk)%dblk) * fdata%nodes(node)%nb ! this blk
 
-             call slv_bwd_update(m, n, col, offset, keep%nodes(node)%index, &
-                  keep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
+             call slv_bwd_update(m, n, col, offset, fdata%nodes(node)%index, &
+                  fdata%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
                   rhs, ldr, xlocal)
              
           end do
@@ -276,10 +276,10 @@ contains
           !
           ! Backward solve with block on diagoanl
           !
-          call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, keep)
+          call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
           
           ! Update diag block in node          
-          if (jj .gt. 1) dblk = keep%blocks(dblk-1)%dblk          
+          if (jj .gt. 1) dblk = fdata%blocks(dblk-1)%dblk          
        end do
        
     end do

@@ -311,19 +311,19 @@ contains
   !   return
   ! end subroutine spllt_realloc_1d
 
-  subroutine spllt_print_atree(adata, keep, cntl)
+  subroutine spllt_print_atree(adata, fdata, cntl)
     use spllt_data_mod
     implicit none    
 
     type(spllt_adata_type), intent(in)  :: adata
-    type(spllt_keep), target, intent(in) :: keep
+    type(spllt_fdata_type), target, intent(in) :: fdata
     type(spllt_cntl), intent(in) :: cntl
 
     integer :: snode, num_nodes
-    type(node_type), pointer     :: node ! node in the atree
+    type(spllt_node_type), pointer     :: node ! node in the atree
     integer :: m, n
 
-    num_nodes = keep%info%num_nodes
+    num_nodes = fdata%info%num_nodes
 
     open(2, file="atree.dot")
 
@@ -334,7 +334,7 @@ contains
     
     do snode=1,num_nodes
 
-       node => keep%nodes(snode)
+       node => fdata%nodes(snode)
        m = size(node%index)
        n = node%en - node%sa + 1
 
@@ -363,7 +363,7 @@ contains
        write(2, '("]")', advance="no")
        write(2, '(" ")')
 
-       if(keep%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')keep%nodes(snode)%parent, snode
+       if(fdata%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')fdata%nodes(snode)%parent, snode
     end do
 
     write(2, '("}")')

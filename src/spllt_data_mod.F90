@@ -67,35 +67,35 @@ module spllt_data_mod
      !       in ma87_finalise
   end type block_type
 
-  !*************************************************
-  !
-  ! Derived type for holding data for each node.
-  ! This information is set up by ma87_analyse once the assembly tree
-  ! has been constructed.
-  type node_type
-     integer(long) :: blk_sa ! identifier of the first block in node
-     integer(long) :: blk_en ! identifier of the last block in node
+  ! !*************************************************
+  ! !
+  ! ! Derived type for holding data for each node.
+  ! ! This information is set up by ma87_analyse once the assembly tree
+  ! ! has been constructed.
+  ! type node_type
+  !    integer(long) :: blk_sa ! identifier of the first block in node
+  !    integer(long) :: blk_en ! identifier of the last block in node
 
-     integer :: nb ! Block size for nodal matrix
-     ! If number of cols nc in nodal matrix is less than control%nb but 
-     ! number of rows is large, the block size for the node is taken as 
-     ! control%nb**2/nc, rounded up to a multiple of 8. The aim is for
-     ! the numbers of entries in the blocks to be similar to those in the 
-     ! normal case. 
+  !    integer :: nb ! Block size for nodal matrix
+  !    ! If number of cols nc in nodal matrix is less than control%nb but 
+  !    ! number of rows is large, the block size for the node is taken as 
+  !    ! control%nb**2/nc, rounded up to a multiple of 8. The aim is for
+  !    ! the numbers of entries in the blocks to be similar to those in the 
+  !    ! normal case. 
 
-     integer :: sa ! index (in pivotal order) of the first column of the node
-     integer :: en ! index (in pivotal order) of the last column of the node
+  !    integer :: sa ! index (in pivotal order) of the first column of the node
+  !    integer :: en ! index (in pivotal order) of the last column of the node
 
-     integer, allocatable :: index(:) ! holds the permuted variable
-     ! list for node. They are sorted into increasing order.
-     ! index is set up by ma87_analyse
+  !    integer, allocatable :: index(:) ! holds the permuted variable
+  !    ! list for node. They are sorted into increasing order.
+  !    ! index is set up by ma87_analyse
 
-     integer :: nchild ! number of children node has in assembly tree
-     integer, allocatable :: child(:) ! holds children of node
-     integer :: parent ! Parent of node in assembly tree
-     integer :: least_desc ! Least descendant in assembly tree
+  !    integer :: nchild ! number of children node has in assembly tree
+  !    integer, allocatable :: child(:) ! holds children of node
+  !    integer :: parent ! Parent of node in assembly tree
+  !    integer :: least_desc ! Least descendant in assembly tree
 
-  end type node_type
+  ! end type node_type
 
   ! user control
   type spllt_cntl
@@ -151,13 +151,35 @@ module spllt_data_mod
 
   ! node type
   type spllt_node_type
-     type(node_type), pointer :: node
+     ! type(node_type), pointer :: node
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
      type(c_ptr)    :: hdl2  ! StarPU second handle
 #endif
      type(spllt_bc_type) :: buffer ! buffer for accumulating updates
+
+     integer(long) :: blk_sa ! identifier of the first block in node
+     integer(long) :: blk_en ! identifier of the last block in node
+
+     integer :: nb ! Block size for nodal matrix
+     ! If number of cols nc in nodal matrix is less than control%nb but 
+     ! number of rows is large, the block size for the node is taken as 
+     ! control%nb**2/nc, rounded up to a multiple of 8. The aim is for
+     ! the numbers of entries in the blocks to be similar to those in the 
+     ! normal case. 
+
+     integer :: sa ! index (in pivotal order) of the first column of the node
+     integer :: en ! index (in pivotal order) of the last column of the node
+
+     integer, allocatable :: index(:) ! holds the permuted variable
+     ! list for node. They are sorted into increasing order.
+     ! index is set up by ma87_analyse
+
+     integer :: nchild ! number of children node has in assembly tree
+     integer, allocatable :: child(:) ! holds children of node
+     integer :: parent ! Parent of node in assembly tree
+     integer :: least_desc ! Least descendant in assembly tree
   end type spllt_node_type
 
   type spllt_workspace_i
@@ -181,34 +203,6 @@ module spllt_data_mod
      integer, allocatable :: small(:)
   end type spllt_adata_type
 
-  ! problem data (factorization)
-  type spllt_data_type
-     type(spllt_bc_type), allocatable :: bc(:) ! blocks
-#if defined(SPLLT_USE_OMP)
-     type(spllt_bc_type), allocatable :: workspace(:) ! workspaces
-#else
-     type(spllt_bc_type) :: workspace ! workspaces
-#endif
-     type(spllt_node_type), allocatable :: nodes(:) ! super nodes 
-#if defined(SPLLT_USE_PARSEC)
-     ! ids of diag blocks. size keep%nbcol
-     integer(long), allocatable :: diags(:)
-     ! data descriptor
-     type(c_ptr) :: ddesc
-#endif
-
-#if defined(SPLLT_USE_OMP)
-     type(spllt_workspace_i), allocatable :: row_list(:), col_list(:) ! workspaces
-#else
-     type(spllt_workspace_i) :: row_list, col_list ! workspaces
-#endif
-
-#if defined(SPLLT_USE_OMP)
-     type(spllt_workspace_i), allocatable :: map(:)
-#else
-     type(spllt_workspace_i) :: map ! workspaces
-#endif
-  end type spllt_data_type
 
   type spllt_options
      integer :: ncpu = 1              ! number of CPU workers
@@ -252,9 +246,33 @@ module spllt_data_mod
      ! and lcol_map, and is used in factorization phase by blk_col_add_a
   end type lmap_type
 
-  !*************************************************  
-  ! Data type for communication between threads and routines
-  type spllt_keep
+  ! problem data (factorization)
+  type spllt_fdata_type
+     type(spllt_bc_type), allocatable :: bc(:) ! blocks
+#if defined(SPLLT_USE_OMP)
+     type(spllt_bc_type), allocatable :: workspace(:) ! workspaces
+#else
+     type(spllt_bc_type) :: workspace ! workspaces
+#endif
+     type(spllt_node_type), allocatable :: nodes(:) ! supernodes 
+#if defined(SPLLT_USE_PARSEC)
+     ! ids of diag blocks. size keep%nbcol
+     integer(long), allocatable :: diags(:)
+     ! data descriptor
+     type(c_ptr) :: ddesc
+#endif
+
+#if defined(SPLLT_USE_OMP)
+     type(spllt_workspace_i), allocatable :: row_list(:), col_list(:) ! workspaces
+#else
+     type(spllt_workspace_i) :: row_list, col_list ! workspaces
+#endif
+
+#if defined(SPLLT_USE_OMP)
+     type(spllt_workspace_i), allocatable :: map(:)
+#else
+     type(spllt_workspace_i) :: map ! workspaces
+#endif
      !     private
      type(block_type), dimension(:), allocatable :: blocks ! block info
      integer, dimension(:), allocatable :: flag_array ! allocated to
@@ -265,13 +283,34 @@ module spllt_data_mod
      type(spllt_info) :: info ! Holds copy of info
      integer :: maxmn ! holds largest block dimension
      integer :: n  ! Order of the system.
-     type(node_type), dimension(:), allocatable :: nodes ! nodal info
+     ! type(node_type), dimension(:), allocatable :: nodes ! nodal info
      integer :: nbcol = 0 ! number of block columns in L
      type(lfactor), dimension(:), allocatable :: lfact
      ! holds block cols of L
      type(lmap_type), dimension(:), allocatable :: lmap
      ! holds mapping from matrix values into lfact
-  end type spllt_keep
+  end type spllt_fdata_type
+
+  ! !*************************************************  
+  ! ! Data type for communication between threads and routines
+  ! type spllt_keep
+  !    !     private
+  !    type(block_type), dimension(:), allocatable :: blocks ! block info
+  !    integer, dimension(:), allocatable :: flag_array ! allocated to
+  !    ! have size equal to the number of threads. For each thread, holds
+  !    ! error flag
+  !    integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
+  !    ! locks in finalise
+  !    type(spllt_info) :: info ! Holds copy of info
+  !    integer :: maxmn ! holds largest block dimension
+  !    integer :: n  ! Order of the system.
+  !    type(node_type), dimension(:), allocatable :: nodes ! nodal info
+  !    integer :: nbcol = 0 ! number of block columns in L
+  !    type(lfactor), dimension(:), allocatable :: lfact
+  !    ! holds block cols of L
+  !    type(lmap_type), dimension(:), allocatable :: lmap
+  !    ! holds mapping from matrix values into lfact
+  ! end type spllt_keep
 
   !*************************************************
   !  

@@ -6,7 +6,7 @@ contains
   !
   ! STF-based Cholesky factorization
   ! right-looking variant for the task submission 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, keep, info, adata, fdata, cntl)
+  subroutine spllt_stf_factorize(n, ptr, row, val, order, info, adata, fdata, cntl)
     use spllt_data_mod
     use spllt_error_mod
     use spllt_factorization_task_mod
@@ -27,11 +27,11 @@ contains
     integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
     ! since the analyse phase)
 
-    type(spllt_keep), target, intent(inout) :: keep 
+    ! type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_info), intent(out) :: info 
 
     type(spllt_adata_type), target :: adata
-    type(spllt_data_type), target :: fdata
+    type(spllt_fdata_type), target :: fdata
     type(spllt_cntl)      :: cntl
 
     ! local arrays
@@ -42,10 +42,10 @@ contains
     integer, dimension(:), pointer ::  map
 
     ! shortcuts
-    type(node_type), pointer     :: node ! node in the atree    
+    type(spllt_node_type), pointer     :: node ! node in the atree    
     type(spllt_bc_type), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
     type(block_type), dimension(:), pointer :: blocks ! block info. 
-    type(node_type), dimension(:), pointer :: nodes 
+    type(spllt_node_type), dimension(:), pointer :: nodes 
 
     ! local scalars
     integer(long) :: blk, blk1, blk2 ! block identity
@@ -77,12 +77,12 @@ contains
     call system_clock(start_setup_t, rate_setup_t)
 
     ! shortcut
-    blocks => keep%blocks
-    nodes  => keep%nodes
-    num_nodes = keep%info%num_nodes
+    blocks => fdata%blocks
+    nodes  => fdata%nodes
+    num_nodes = fdata%info%num_nodes
 
     ! init facto, allocate map array, factor blocks
-    call spllt_factorization_init(fdata, map, keep)    
+    call spllt_factorization_init(fdata, map)    
 
     if (cntl%prune_tree) allocate(buffer%c(1))
 
@@ -98,7 +98,7 @@ contains
 #endif
 #endif
        ! activate node: allocate factors, register handles
-       call spllt_activate_node(snode, keep, fdata, adata)
+       call spllt_activate_node(snode, fdata, adata)
     end do
 
     call system_clock(stop_setup_t)
@@ -121,7 +121,7 @@ contains
        ! init node
        if (adata%small(snode) .ne. 0) cycle
 
-       call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, prio)
+       call spllt_init_node_task(fdata, fdata%nodes(snode), val, prio)
     end do
     ! call system_clock(stop_cpya2l_t)
 
@@ -145,7 +145,7 @@ contains
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(snode, fdata, val, keep, cntl, map, buffer)
+          call spllt_subtree_factorize_apply(snode, fdata, val, cntl, map, buffer)
 
        else
           ! if (adata%small())
@@ -154,9 +154,9 @@ contains
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, keep, cntl, prio)
+          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, cntl, prio)
 #else
-          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, keep, cntl)
+          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, cntl)
 #endif
 
        end if
@@ -171,7 +171,7 @@ contains
 #ifndef SPLLT_USE_NESTED_STF
     ! deinit factorization
     ! clean up data structure, unregister data handles
-    call spllt_factorization_fini(fdata, map, keep, adata)
+    call spllt_factorization_fini(fdata, map, adata)
 #endif
 
     call system_clock(stf_stop_t)
@@ -230,13 +230,13 @@ contains
   !     type(MA87_control), intent(in) :: control 
   !     type(MA87_info), intent(out) :: info 
 
-  !     type(spllt_data_type), target :: fdata
+  !     type(spllt_fdata_type), target :: fdata
   !     type(spllt_cntl)      :: cntl
 
   !     type(block_type), dimension(:), pointer :: blocks ! block info. 
-  !     type(node_type), dimension(:), pointer :: nodes 
+  !     type(spllt_node_type), dimension(:), pointer :: nodes 
   !     integer :: snode, num_nodes
-  !     type(node_type), pointer     :: node, dnode ! node in the atree    
+  !     type(spllt_node_type), pointer     :: node, dnode ! node in the atree    
 
   !     integer, dimension(:), allocatable ::  tmpmap
 
