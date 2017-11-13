@@ -5,7 +5,6 @@ module spllt_data_mod
 #elif defined(SPLLT_USE_PARSEC)
   use parsec_f08_interfaces
 #endif
-  ! use hsl_zd11_double
   implicit none
 
   integer, parameter :: wp = kind(0d0)
@@ -18,16 +17,15 @@ module spllt_data_mod
   real(wp), parameter :: one = 1.0_wp
   real(wp), parameter :: zero = 0.0_wp
 
-  ! error flags
-  integer, parameter :: spllt_success           = 0 
-  integer, parameter :: spllt_error_allocation  = -1
-  integer, parameter :: spllt_error_unknown     = -99 
+  ! Error flags
+  integer, parameter :: SPLLT_SUCCESS              = 0 
+  integer, parameter :: SPLLT_ERROR_ALLOCATION     = -1
+  integer, parameter :: SPLLT_ERROR_UNIMPLEMENTED  = -98
+  integer, parameter :: SPLLT_ERROR_UNKNOWN        = -99 
 
   ! Default values
-  ! node amalgamation parameter
-  integer, parameter :: spllt_nemin_default = 32
-  ! Block size with dense kernel
-  integer, parameter :: spllt_nb_default = 256
+  integer, parameter :: nemin_default = 32 ! node amalgamation parameter
+  integer, parameter :: nb_default = 256 ! block size with dense kernel
 
 #if defined(SPLLT_USE_OMP) && defined(SPLLT_OMP_TRACE) 
   integer, save :: ini_nde_id, fac_blk_id, slv_blk_id, upd_blk_id, upd_btw_id 
@@ -217,11 +215,11 @@ module spllt_data_mod
   !
   ! data type for returning information to user.
   type spllt_info 
-     integer :: flag = 0               ! Error return flag (0 on success)
-     integer :: maxdepth = 0           ! Maximum depth of the tree.
-     integer(long) :: num_factor = 0_long ! Number of entries in the factor.
-     integer(long) :: num_flops = 0_long  ! Number of flops for factor.
-     integer :: num_nodes = 0          ! Number of nodes
+     integer :: flag = SPLLT_SUCCESS  ! error return flag (0 on success)
+     integer :: maxdepth = 0           ! maximum depth of the tree.
+     integer(long) :: num_factor = 0_long ! number of entries in the factor.
+     integer(long) :: num_flops = 0_long  ! number of flops for factor.
+     integer :: num_nodes = 0          ! number of nodes
      integer :: stat = 0               ! STAT value on error return -1.
   end type Spllt_info
 

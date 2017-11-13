@@ -16,7 +16,7 @@ contains
     use spllt_mod
     use spral_rutherford_boeing
     use spral_matrix_util, only : cscl_verify, SPRAL_MATRIX_REAL_SYM_PSDEF
-    use spral_ssids
+    ! use spral_ssids
     use spllt_analyse_mod, only : spllt_analyse
     use spllt_stf_factorization_mod 
 #if defined(SPLLT_USE_STARPU)
@@ -81,14 +81,7 @@ contains
     integer :: start_t, stop_t, rate_t
     ! flags
     integer :: flag, more
-    
-    ! ssids options 
-    type(ssids_options) :: ssids_opt
- 
-    ! ssids structures
-    type(ssids_inform) :: inform ! stats
-    type(ssids_akeep) :: akeep   ! analysis data
-   
+       
     ! test options
     type(spllt_options) :: options 
 
@@ -197,35 +190,35 @@ contains
     ! ordering
     allocate(order(n))
 
-    ! Set options for analysis
-    ssids_opt%ordering = 1 ! use Metis ordering
-    ssids_opt%scaling = 0 ! no scaling
+    ! ! Set options for analysis
+    ! ssids_opt%ordering = 1 ! use Metis ordering
+    ! ssids_opt%scaling = 0 ! no scaling
 
-    ! Analyse SSIDS
-    write(*, "(a)") "Analyse..."
-    call system_clock(start_t, rate_t)
-    call ssids_analyse(.false., n, ptr, row, akeep, &
-         ssids_opt, inform, order, val=val)
-    call system_clock(stop_t)
-    print *, "Used order ", ssids_opt%ordering
-    if (inform%flag < 0) then
-       print *, "oops on analyse ", inform%flag
-       stop
-    endif
-    write(*, "(a)") "ok"
-    print *, "Analyse took ", (stop_t - start_t)/real(rate_t)
-    !print *, "Used maximum memory of ", inform%maxmem
-    smanal = (stop_t - start_t)/real(rate_t)
-    print "(a,es10.2)", "Predict nfact = ", real(inform%num_factor)
-    print "(a,es10.2)", "Predict nflop = ", real(inform%num_flops)
-    print "(a6, i10)", "nparts", inform%nparts
-    print "(a6, es10.2)", "cpu_flops", real(inform%cpu_flops)
-    ! print "(a6, es10.2)", "gpu_flops", real(inform%gpu_flops)
-    smaflop = real(inform%num_flops)
-    smafact = real(inform%num_factor)
+    ! ! Analyse SSIDS
+    ! write(*, "(a)") "Analyse..."
+    ! call system_clock(start_t, rate_t)
+    ! call ssids_analyse(.false., n, ptr, row, akeep, &
+    !      ssids_opt, inform, order, val=val)
+    ! call system_clock(stop_t)
+    ! print *, "Used order ", ssids_opt%ordering
+    ! if (inform%flag < 0) then
+    !    print *, "oops on analyse ", inform%flag
+    !    stop
+    ! endif
+    ! write(*, "(a)") "ok"
+    ! print *, "Analyse took ", (stop_t - start_t)/real(rate_t)
+    ! !print *, "Used maximum memory of ", inform%maxmem
+    ! smanal = (stop_t - start_t)/real(rate_t)
+    ! print "(a,es10.2)", "Predict nfact = ", real(inform%num_factor)
+    ! print "(a,es10.2)", "Predict nflop = ", real(inform%num_flops)
+    ! print "(a6, i10)", "nparts", inform%nparts
+    ! print "(a6, es10.2)", "cpu_flops", real(inform%cpu_flops)
+    ! ! print "(a6, es10.2)", "gpu_flops", real(inform%gpu_flops)
+    ! smaflop = real(inform%num_flops)
+    ! smafact = real(inform%num_factor)
 
     ! Analyse SpLLT
-    call spllt_analyse(adata, fdata, n, ptr, row, order, akeep, cntl, info)
+    call spllt_analyse(adata, fdata, n, ptr, row, order, cntl, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        stop

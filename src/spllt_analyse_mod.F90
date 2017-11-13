@@ -4,14 +4,17 @@ module spllt_analyse_mod
 
 contains
 
-  ! analysis phase
-  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, akeep, cntl, info)
+  !*******************************************************************************
+  ! Performs analysis of the input matrix
+  ! Uses SSDIS routine ssids_analyse to compute the assembly tree
+  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, cntl, info)
   ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
-    ! use hsl_mc78_integer
-    ! use hsl_mc34_double
     use spllt_data_mod
+    use spral_ssids_datatypes, only: ssids_options
     use spral_ssids_akeep, only: ssids_akeep
-    use spral_ssids_anal, only : expand_pattern
+    use spral_ssids_anal, only: expand_pattern
+    use spral_ssids_inform, only: ssids_inform
+    use spral_ssids, only: ssids_analyse
     implicit none
 
     type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
@@ -22,7 +25,6 @@ contains
     integer, intent(inout), dimension(:) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
-    type(ssids_akeep), target, intent(in) :: akeep ! analyse information from ssids
     ! type(spllt_keep), target, intent(out) :: keep
     type(spllt_cntl), intent(in) :: cntl
     type(spllt_info), intent(inout) :: info
@@ -64,14 +66,33 @@ contains
     integer :: ci ! do loop variable. current block col.
     integer :: root_node
 
-    ! type(mc78_control) :: control78
     integer :: par
-    ! integer :: info78
     integer, dimension(:), pointer :: sptr, sparent, rlist
     integer(long), dimension(:), pointer :: rptr
-    ! integer, dimension(:), allocatable :: sptr, sparent, rlist
-    ! integer(long), dimension(:), allocatable :: rptr
     integer, dimension(:), allocatable :: nchild ! pointer on the nth child in the current node
+
+    ! SSIDS data
+    type(ssids_options) :: ssids_opt ! SSIDS options
+    type(ssids_inform) :: inform ! SSDIS stats
+    type(ssids_akeep), target :: akeep   ! analysis data from SSIDS
+
+    ! Setup options for analysis in SSIDS
+    ssids_opt%ordering = 1 ! use Metis ordering
+    ssids_opt%scaling = 0 ! no scaling
+
+    ! Check nemin and set to default if out of range.
+    nemin = cntl%nemin
+    if (nemin .lt. 1) nemin = nemin_default
+
+    ssids_opt%nemin = nemin
+
+    ! Perform analysis with SSIDS
+    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, inform, order)
+    if (inform%flag .lt. 0) then
+       ! Problem occured in SSIDS routine
+       info%flag = SPLLT_ERROR_UNKNOWN
+       goto 100
+    end if
 
     ! initialise
     info%flag = 0
@@ -99,7 +120,7 @@ contains
     
     ! allocate space for expanded matrix (held in aptr,arow)
     allocate(arow(2*nz), aptr(n+3), amap(ptr(n+1)-1), stat=st)
-    if (st /= 0) go to 9999
+    if (st /= 0) goto 100
 
     allocate(ptr64(size(ptr,1)))
     ptr64 = ptr
@@ -156,11 +177,11 @@ contains
     ! For each node, hold data in keep%nodes(node) 
     deallocate(fdata%nodes, stat=st)    
     allocate(fdata%nodes(-1:num_nodes+1),stat=st)
-    if (st /= 0) go to 9999
+    if (st /= 0) goto 100
 
     deallocate(fdata%nodes, stat=st)
     allocate(fdata%nodes(-1:num_nodes+1),stat=st)
-    if (st /= 0) go to 9999
+    if (st /= 0) goto 100
 
     fdata%nodes(0)%blk_en = 0
     fdata%nodes(1)%blk_sa = 1
@@ -185,11 +206,11 @@ contains
        ! Allocate space to store child nodes
        ! print *, "node:", node, ", nchild:", fdata%nodes(node)%nchild
        allocate(fdata%nodes(node)%child(fdata%nodes(node)%nchild), stat=st)
-       if(st.ne.0) goto 9999
+       if(st.ne.0) goto 100
     end do
 
     allocate(nchild(num_nodes+1),stat=st)
-    if (st /= 0) go to 9999
+    if (st /= 0) goto 100
 
     ! Add children list to nodes, use nchild as a counter
     nchild(:) = 0
@@ -223,7 +244,7 @@ contains
 
     ! prune tree
     allocate(adata%small(adata%nnodes))
-    if (st /= 0) go to 9999
+    if (st /= 0) goto 100
     adata%small = 0
     if (cntl%prune_tree) then
        call spllt_prune_tree(adata, sparent, cntl%ncpu, fdata)
@@ -246,7 +267,7 @@ contains
        ! not overflow at the end), and limit the answer to huge(l_nb)/2
        ! if (adata%small(node) .eq. 0) then
        l_nb = cntl%nb
-       if (l_nb < 1) l_nb = spllt_nb_default
+       if (l_nb < 1) l_nb = nb_default
        ! l_nb = min(huge(l_nb)/2_long, &
        !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
 
@@ -260,7 +281,7 @@ contains
 
        ! Copy row list into fdata%nodes
        allocate(fdata%nodes(node)%index(rptr(node+1)-rptr(node)),stat=st)
-       if (st /= 0) go to 9999
+       if (st /= 0) goto 100
        j = 1
        do ii = rptr(node), rptr(node+1)-1
           fdata%nodes(node)%index(j) = rlist(ii)
@@ -306,7 +327,7 @@ contains
     
     deallocate(fdata%blocks,stat=st)
     allocate(fdata%blocks(fdata%final_blk),stat=st)
-    if(st.ne.0) go to 9999
+    if(st.ne.0) goto 100
 
     ! allocate blocks in fdata
     deallocate(fdata%bc,stat=st)
@@ -485,17 +506,17 @@ contains
     end do
 
     allocate (map(n),stat=st)
-    if(st.ne.0) go to 9999
+    if(st.ne.0) goto 100
 
     ! Note: following two functions could probably be combined with mc34 call
     ! above, but have been left as is to ease maintenance
     allocate(fdata%lmap(fdata%nbcol),stat=st)
-    if(st.ne.0) go to 9999
+    if(st.ne.0) goto 100
     call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
     ! call spllt_make_map(n, order, ptr, row, aptr, arow, amap)
     call spllt_lcol_map(aptr, arow, num_nodes, fdata%nodes, fdata%blocks, &
          fdata%lmap, map, amap, st)
-    if(st.ne.0) goto 9999
+    if(st.ne.0) goto 100
 
 #if defined(SPLLT_USE_PARSEC)
     call spllt_compute_dep(adata, fdata, fdata, map)
@@ -519,7 +540,7 @@ contains
 
     return
 
-9999 continue
+100 continue
 
     ! TODO print error
     
