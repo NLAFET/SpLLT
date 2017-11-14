@@ -75,7 +75,7 @@ contains
     integer(long) :: blk ! temporary variable for holding block number
     integer(long) :: dblk ! diagonal block within block column
     integer :: blkn ! number of columns within block column
-    integer :: ci ! do loop variable. current block col.
+    integer :: ci ! do loop variable. current block col
     integer :: root_node
 
     integer :: par
@@ -98,10 +98,10 @@ contains
 
     ssids_opt%nemin = nemin
 
-    ! Perform analysis with SSIDS
+    ! Perform analysis with SSIDS.
     call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
     if (info%ssids_inform%flag .lt. 0) then
-       ! Problem occured in SSIDS routine
+       ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN
        goto 100
     end if

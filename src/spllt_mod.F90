@@ -136,6 +136,30 @@ contains
   end subroutine spllt_finalize
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Factorizes the input matrix.
+!   subroutine spllt_factor()
+! #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
+!     use spllt_stf_factorization_mod
+! #elif defined(SPLLT_USE_PARSEC)
+!     use spllt_ptg_mod
+! #endif    
+!     implicit none
+
+! #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
+    
+!     ! Use the STF-based factorize routine.
+!     call spllt_stf_factorize()
+
+! #elif defined(SPLLT_USE_PARSEC)
+
+!     ! Use the PTG-based factorize routine.
+!     call spllt_ptg_factorize()
+    
+! #endif
+    
+!   end subroutine spllt_factor
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Prints the assemlby tree.  
   !>
   !> @param adata Symbolic factorization data.

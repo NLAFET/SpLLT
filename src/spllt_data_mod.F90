@@ -66,16 +66,6 @@ module spllt_data_mod
   !    !       in ma87_finalise
   ! end type block_type
 
-  ! ! user control
-  ! type spllt_cntl
-  !    integer :: ncpu = 1 ! number of CPU workers
-  !    integer :: nb   = 16 ! blocking size
-  !    integer :: nemin = 32 ! node amalgamation parameter
-  !    logical :: prune_tree = .false.
-  !    integer :: min_width_blas  = 8      ! Minimum width of source block
-  !    ! integer :: min_width_blas  = 0      ! Minimum width of source block
-  !    ! before we use an indirect update_between
-  ! end type spllt_cntl
 
   ! useful type for representing dependencies betwewen blocks
 
@@ -238,9 +228,12 @@ module spllt_data_mod
   ! Data associated with input matrix know after analysis phase
   !
   type spllt_adata
+     !> Number of nodes in the assembly tree.
      integer :: nnodes
+     !> Oder of the system.
      integer :: n
-     integer(long) :: num_factor = 0_long ! Number of entries in the factor.
+     !> Number of entries in the factor.
+     integer(long) :: num_factor = 0_long
      integer(long) :: num_flops = 0_long  ! Number of flops for factor.
      ! weight(i): weight of the subtree rooted at node i where weight
      ! corresponds to the number of flops

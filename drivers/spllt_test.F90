@@ -18,7 +18,7 @@ contains
     use spral_matrix_util, only : cscl_verify, SPRAL_MATRIX_REAL_SYM_PSDEF
     ! use spral_ssids
     use spllt_analyse_mod, only : spllt_analyse
-    use spllt_stf_factorization_mod 
+    use spllt_stf_mod 
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
     use starpu_f_mod

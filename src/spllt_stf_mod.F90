@@ -1,4 +1,4 @@
-module spllt_stf_factorization_mod
+module spllt_stf_mod
 
 contains
 
@@ -559,4 +559,4 @@ contains
 
   !   end subroutine spllt_stf_ll_factorize
 
-end module spllt_stf_factorization_mod
+end module spllt_stf_mod
