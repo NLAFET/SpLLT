@@ -6,21 +6,21 @@ module spllt_factorization_mod
 
   interface
      subroutine spllt_insert_factorize_node_task_c(node_hdl, cnode_hdls, nchild, &
-          & map_hdl, snode, fdata, control, prio) bind(C)
+          & map_hdl, snode, fdata, options, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: node_hdl, map_hdl
        type(c_ptr)            :: cnode_hdls(*)
-       type(c_ptr), value     :: snode, fdata, control
+       type(c_ptr), value     :: snode, fdata, options
        integer(c_int), value  :: prio, nchild
      end subroutine spllt_insert_factorize_node_task_c
   end interface
 
   interface
      subroutine spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
-          & snode, fdata, control) bind(C)
+          & snode, fdata, options) bind(C)
        use iso_c_binding
        type(c_ptr), value :: cl_arg 
-       type(c_ptr), value :: snode, fdata, control
+       type(c_ptr), value :: snode, fdata, options
      end subroutine spllt_starpu_codelet_unpack_args_factorize_node
   end interface
 
