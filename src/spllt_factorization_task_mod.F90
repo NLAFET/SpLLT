@@ -238,7 +238,7 @@ contains
     use  starpu_f_mod
     implicit none
 
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata_type), target, intent(inout) :: fdata
     type(spllt_adata_type), intent(in) :: adata
 
     integer :: i
@@ -283,7 +283,7 @@ contains
     use starpu_f_mod
     implicit none
 
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata_type), target, intent(inout) :: fdata
 
     integer :: i
     integer :: snode, num_nodes
@@ -886,7 +886,7 @@ contains
     type(spllt_block), target                     :: bcs(:) ! block info.
     type(spllt_workspace_i), allocatable, target    :: row_list(:), col_list(:)
 #else
-    type(spllt_block), intent(inout)              :: a_bc ! dest block
+    type(spllt_block), target, intent(inout)              :: a_bc ! dest block
     type(spllt_block), intent(in)                 :: dbc ! diag block in source node
 
     type(spllt_block)                             :: workspace

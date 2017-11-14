@@ -781,11 +781,10 @@ contains
     use spllt_data_mod
     implicit none
     
-    integer, intent(in) :: root ! root of subtree
+    integer, intent(in) :: root ! root node index of subtree
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
     type(spllt_fdata_type), target, intent(inout) :: fdata ! on exit, matrix a copied
     real(wp), dimension(:), pointer, intent(inout) :: buffer
-    ! type(MA87_control), intent(in) :: control
     type(spllt_cntl), intent(in)     :: cntl
     integer, pointer, intent(inout)  :: map(:)
     integer, pointer, intent(inout)  :: row_list(:), col_list(:)

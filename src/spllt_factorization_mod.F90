@@ -165,14 +165,6 @@ contains
                 call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
                      & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
 
-                ! call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
-                !      nodes(root)%index(rsrc(1):rsrc(2)), &
-                !      nodes(root)%index(csrc(1):csrc(2)), &
-                !      buffer%c(bsa:ben), lds, &
-                !      nodes(anode)%index((jb-1)*a_nb+1), &
-                !      nodes(anode)%index((cb-1)*a_nb+1), &
-                !      lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
-                !      blocks(dest)%blkn)
                 jb = k
                 ilast = i ! Update start of current block
              endif
@@ -185,15 +177,6 @@ contains
 
           call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
                & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
-
-          ! call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
-          !      nodes(root)%index(rsrc(1):rsrc(2)), &
-          !      nodes(root)%index(csrc(1):csrc(2)), &
-          !      buffer%c(bsa:ben), lds, &
-          !      nodes(anode)%index((jb-1)*a_nb+1), &
-          !      nodes(anode)%index((cb-1)*a_nb+1), &
-          !      lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
-          !      blocks(dest)%blkn)
 
           ! Move cptr down, ready for next block column of anode
           cptr = cptr2 + 1
@@ -228,17 +211,14 @@ contains
     b_sz = m-n
 
 #if defined(SPLLT_USE_STARPU)
-    
-    ! allocate(buf)
-    ! allocate(buf%c((m-n)**2))
 
-    ! allocate(fdata%nodes(root)%buffer%c((m-n)**2))
-
+    ! Create a temporary buffer for the update operation. This is done
+    ! by registering a StarPU handle associated to a NULL pointer
+    ! which means that StarPU is in charge of allocating/deallocating
+    ! memory for this buffer
     call starpu_f_matrix_data_register(fdata%nodes(root)%buffer%hdl, & 
-         -1, c_null_ptr, &
-         ! fdata%nodes(root)%buffer%mem_node, c_loc(fdata%nodes(root)%buffer%c(1)), &         
-         int(b_sz, kind=c_int), int(b_sz, kind=c_int), int(b_sz, kind=c_int), &
-         int(wp, kind=c_size_t))
+         -1, c_null_ptr, int(b_sz, kind=c_int), int(b_sz, kind=c_int), &
+         int(b_sz, kind=c_int), int(wp, kind=c_size_t))
     
 #elif defined(SPLLT_USE_OMP)
 
@@ -254,31 +234,18 @@ contains
 #endif
 
     ! subtree factorization task
-    ! call spllt_factor_subtree_task(snode, fdata, buffer)
+
     ! call system_clock(subtree_start_t, subtree_rate_t)
     call spllt_subtree_factorize_task(root, fdata, val, fdata%nodes(root)%buffer, cntl, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
-! #if defined(SPLLT_USE_STARPU)
-!     call starpu_f_task_wait_for_all() ! DEBUG
-! #endif
-
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
     call spllt_subtree_apply_buffer(root, fdata%nodes(root)%buffer, fdata%nodes, fdata%bc, &
          fdata%lfact, map, fdata)
 
-    ! call spllt_apply_subtree(root, buf%c, &
-    !      & keep%nodes, keep%blocks, keep%lfact, map)
-    ! call system_clock(subtree_stop_t)
-    ! write(*,'("[>] [spllt_stf_factorize] apply subtree: ", es10.3, " s")') &
-         ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
-
-! #if defined(SPLLT_USE_STARPU)
-!     call starpu_f_task_wait_for_all() ! DEBUG
-! #endif
 
 #if defined(SPLLT_USE_STARPU)   
     call starpu_f_data_unregister_submit(fdata%nodes(root)%buffer%hdl)
@@ -289,37 +256,37 @@ contains
   end subroutine spllt_subtree_factorize_apply
 
 #if defined(SPLLT_USE_STARPU)
-  subroutine spllt_factorize_apply_node_task(snode, fdata, cntl, prio)
+
+  ! Factorize node task submission routine for StarPU
+  subroutine spllt_factorize_apply_node_task(node, fdata, cntl, prio)
     use iso_c_binding
     use spllt_data_mod
     use starpu_f_mod
     use spllt_starpu_factorization_mod
     implicit none
 
-    type(spllt_node), target, intent(inout) :: snode ! node to factorize (spllt)
-    type(spllt_fdata_type), target, intent(inout) :: fdata
-    ! type(spllt_keep), target, intent(inout) :: keep
-    type(spllt_cntl), target, intent(in) :: cntl
-    integer, intent(in) :: prio
+    type(spllt_node), target, intent(inout) :: node ! supernode to be factorized 
+    type(spllt_fdata_type), target, intent(inout) :: fdata ! factorization data
+    type(spllt_cntl), target, intent(in) :: cntl ! options
+    integer, intent(in) :: prio ! task priority for scheduler
 
-    type(c_ptr) :: snode_c
+    ! C pointers
+    type(c_ptr) :: node_c
     type(c_ptr) :: fdata_c
-    ! type(c_ptr) :: keep_c
     type(c_ptr) :: cntl_c
 
-    type(spllt_node), pointer :: node
-    type(spllt_node), pointer :: cnode 
+    type(spllt_node), pointer :: cnode ! child node 
     integer :: nchild, i, c
-    type(c_ptr), allocatable, target :: cnode_handles(:)
+    type(c_ptr), allocatable, target :: cnode_handles(:) ! children node hanldes
 
-    snode_c = c_loc(snode)
+    node_c = c_loc(node)
     fdata_c = c_loc(fdata)
     ! keep_c = c_loc(keep)
     cntl_c = c_loc(cntl)
 
-    node => snode%node
+    ! Gather the handles from the children nodes and put them in the
+    ! cnode_handles array.
     nchild = node%nchild
-
     allocate(cnode_handles(nchild))
     do i = 1, nchild
        c = node%child(i)
@@ -327,57 +294,43 @@ contains
        cnode_handles(i) = cnode%hdl2 
     end do
 
-    call spllt_insert_factorize_node_task_c(snode%hdl2, cnode_handles, &
-         & int(nchild, kind=c_int), fdata%map%hdl, snode_c, fdata_c, cntl_c, &
+    call spllt_insert_factorize_node_task_c(node%hdl2, cnode_handles, &
+         & int(nchild, kind=c_int), fdata%map%hdl, node_c, fdata_c, cntl_c, &
          & prio)
 
     deallocate(cnode_handles)
 
   end subroutine spllt_factorize_apply_node_task
 
-  ! factorize node StarPU task
+  ! Factorize node CPU kernel for StarPU 
   subroutine spllt_starpu_factorize_node_cpu_func(buffers, cl_arg) bind(C)
     use iso_c_binding
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
-    type(c_ptr), value        :: cl_arg
-    type(c_ptr), value        :: buffers
+    type(c_ptr), value :: cl_arg
+    type(c_ptr), value :: buffers
 
-    type(c_ptr), target:: snode_c, fdata_c, cntl_c
+    type(c_ptr), target:: node_c, fdata_c, cntl_c
     type(c_ptr), target :: map_c
-    type(spllt_node),pointer :: snode
+    type(spllt_node),pointer :: node
     type(spllt_fdata_type), pointer :: fdata
-    ! type(spllt_keep), pointer :: keep    
     type(spllt_cntl), pointer :: cntl 
     integer, pointer :: map(:)
     integer, target :: n
 
     call spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
-         & c_loc(snode_c), c_loc(fdata_c), c_loc(cntl_c)) 
+         & c_loc(node_c), c_loc(fdata_c), c_loc(cntl_c)) 
 
-    call c_f_pointer(snode_c, snode)
+    call c_f_pointer(node_c, node)
     call c_f_pointer(fdata_c, fdata)
-    ! call c_f_pointer(keep_c, keep)  
     call c_f_pointer(cntl_c, cntl)
 
     call starpu_f_get_buffer(buffers, 0, c_loc(map_c), c_loc(n))
     call c_f_pointer(map_c, map, (/n/))
 
-    ! allocate(map(n))
-
-    ! write(*,*)"num", snode%num
-
-    call spllt_factorize_apply_node(snode, map, fdata, cntl)
-
-    ! deallocate(map)
-
-    ! write(*,*)"map() :", map(n)
-    ! write(*,*)"n :", n
-    ! write(*,*)"n :", keep%n
-    ! write(*,*)"final_blk :", keep%final_blk
-    ! write(*,*)"min_width_blas", cntl%min_width_blas
+    call spllt_factorize_apply_node(node, map, fdata, cntl)
 
   end subroutine spllt_starpu_factorize_node_cpu_func
 #endif
