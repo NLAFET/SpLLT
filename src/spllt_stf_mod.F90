@@ -2,11 +2,21 @@ module spllt_stf_mod
 
 contains
 
-  !*************************************************
-  !
-  ! STF-based Cholesky factorization
-  ! right-looking variant for the task submission 
-  subroutine spllt_stf_factorize(n, ptr, row, val, order, info, adata, fdata, cntl)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Perform the task-based Cholesky factoization using a STF
+  !> model. Note that this routine unroll the DAG in a right-looking
+  !> fashion.
+  !>
+  !> @param adata Symbolic factorization data.
+  !> @param fdata Factorization data.
+  !> @param options User-supplied options.
+  !> @param n Order of A
+  !> @param ptr Column pointers for lower triangular part
+  !> @param row Row indices of lower triangular part
+  !> @param val Matrix values
+  !> @param order Holds pivot order (must be unchanged since the analyse phase)
+  !> @param info 
+  subroutine spllt_stf_factorize(adata, fdata, options, n, ptr, row, val, order, info)
     use spllt_data_mod
     use spllt_error_mod
     use spllt_factorization_task_mod
@@ -20,27 +30,20 @@ contains
     use spllt_factorization_mod
     implicit none
 
-    integer, intent(in) :: n ! order of A
-    integer, intent(in) :: row(:) ! row indices of lower triangular part
+    type(spllt_adata), target :: adata ! Symbolic factorization data.
+    type(spllt_fdata), target :: fdata  ! Factorization data.
+    type(spllt_options) :: options ! User-supplied options
+    integer, intent(in) :: n ! Order of A
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
+    integer, intent(in) :: row(:) ! row indices of lower triangular part
     real(wp), intent(in) :: val(:) ! matrix values
     integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
     ! since the analyse phase)
-
-    ! type(spllt_keep), target, intent(inout) :: keep 
     type(spllt_inform), intent(out) :: info 
-
-    type(spllt_adata), target :: adata
-    type(spllt_fdata), target :: fdata
-    type(spllt_options)      :: cntl
-
-    ! local arrays
-    ! integer, dimension(:), allocatable ::  map ! allocated to have size n.
 
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
     integer, dimension(:), pointer ::  map
-
     ! shortcuts
     type(spllt_node), pointer     :: node ! node in the atree    
     type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij
@@ -84,7 +87,7 @@ contains
     ! init facto, allocate map array, factor blocks
     call spllt_factorization_init(fdata, map)    
 
-    if (cntl%prune_tree) allocate(buffer%c(1))
+    if (options%prune_tree) allocate(buffer%c(1))
 
     ! start measuring time for submitting tasks
     call system_clock(stf_start_t, stf_rate_t)
@@ -125,11 +128,8 @@ contains
     end do
     ! call system_clock(stop_cpya2l_t)
 
-    ! #if defined(SPLLT_USE_STARPU)
-    ! call starpu_f_task_wait_for_all()
-    ! #endif
-
 #if defined(SPLLT_USE_OMP)
+    ! @todo remove synchronization between init and facto phases.
     !$omp taskwait
 #endif
 
@@ -138,14 +138,12 @@ contains
 
        if (adata%small(snode) .lt. 0) cycle
        if (adata%small(snode) .eq. 1) then
-
-          ! print *, "[>] [spllt_stf_factorize] root: ", snode
         
-          ! factorize the subtree rooted at node snode. All
+          ! Factorize the subtree rooted at node snode. All
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(snode, fdata, val, cntl, map, buffer)
+          call spllt_subtree_factorize_apply(snode, fdata, val, options, map, buffer)
 
        else
           ! if (adata%small())
@@ -154,20 +152,16 @@ contains
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_apply_node_task(fdata, cntl, fdata%nodes(snode), prio)
+          call spllt_factorize_apply_node_task(fdata, options, fdata%nodes(snode), prio)
 #else
-          call spllt_factorize_apply_node(fdata, cntl, fdata%nodes(snode), map)
+          call spllt_factorize_apply_node(fdata, options, fdata%nodes(snode), map)
 #endif
 
        end if
 
     end do
 
-! #if defined(SPLLT_USE_STARPU) && defined(SPLLT_USE_NESTED_STF)
-!     call starpu_f_task_wait_for_all()
-! #endif
-
-! TODO unregister handles when using nested stf 
+    ! @todo unregister handles when using nested stf 
 #ifndef SPLLT_USE_NESTED_STF
     ! deinit factorization
     ! clean up data structure, unregister data handles
@@ -183,10 +177,6 @@ contains
     ! wait for task completion
     call starpu_f_task_wait_for_all()
 #endif
-
-    ! #if defined(SPLLT_USE_OMP)
-    ! !$omp taskwait
-    ! #endif
 
     call system_clock(stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] time: ", es10.3, " s")') (stop_t - start_t)/real(rate_t)
@@ -205,7 +195,7 @@ contains
   end subroutine spllt_stf_factorize
 
   ! left looking variant of the STF algorithm
-  !   subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, cntl)
+  !   subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, options)
   !     use spllt_data_mod
   !     use spllt_error_mod
   !     use hsl_ma87_double
@@ -231,7 +221,7 @@ contains
   !     type(MA87_info), intent(out) :: info 
 
   !     type(spllt_fdata), target :: fdata
-  !     type(spllt_cntl)      :: cntl
+  !     type(spllt_options)      :: options
 
   !     type(block_type), dimension(:), pointer :: blocks ! block info. 
   !     type(spllt_node), dimension(:), pointer :: nodes 

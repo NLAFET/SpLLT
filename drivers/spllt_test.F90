@@ -259,7 +259,7 @@ contains
     call spllt_stf_ll_factorize(n, ptr, row, val, order, info, fdata, cntl)
 
 #else
-    call spllt_stf_factorize(n, ptr, row, val, order, info, adata, fdata, cntl)
+    call spllt_stf_factorize(adata, fdata, cntl, n, ptr, row, val, order, info)
     ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
 #endif
 
