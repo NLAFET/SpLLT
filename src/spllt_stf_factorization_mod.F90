@@ -28,11 +28,11 @@ contains
     ! since the analyse phase)
 
     ! type(spllt_keep), target, intent(inout) :: keep 
-    type(spllt_info), intent(out) :: info 
+    type(spllt_inform), intent(out) :: info 
 
-    type(spllt_adata_type), target :: adata
-    type(spllt_fdata_type), target :: fdata
-    type(spllt_cntl)      :: cntl
+    type(spllt_adata), target :: adata
+    type(spllt_fdata), target :: fdata
+    type(spllt_options)      :: cntl
 
     ! local arrays
     ! integer, dimension(:), allocatable ::  map ! allocated to have size n.
@@ -154,9 +154,9 @@ contains
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_apply_node_task(fdata%nodes(snode), fdata, cntl, prio)
+          call spllt_factorize_apply_node_task(fdata, cntl, fdata%nodes(snode), prio)
 #else
-          call spllt_factorize_apply_node(fdata%nodes(snode), map, fdata, cntl)
+          call spllt_factorize_apply_node(fdata, cntl, fdata%nodes(snode), map)
 #endif
 
        end if
@@ -230,7 +230,7 @@ contains
   !     type(MA87_control), intent(in) :: control 
   !     type(MA87_info), intent(out) :: info 
 
-  !     type(spllt_fdata_type), target :: fdata
+  !     type(spllt_fdata), target :: fdata
   !     type(spllt_cntl)      :: cntl
 
   !     type(block_type), dimension(:), pointer :: blocks ! block info. 

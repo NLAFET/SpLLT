@@ -17,8 +17,8 @@ contains
     use spral_ssids, only: ssids_analyse
     implicit none
 
-    type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
-    type(spllt_fdata_type), intent(inout) :: fdata ! data related to the factorization
+    type(spllt_adata), intent(inout) :: adata ! data related to the analysis
+    type(spllt_fdata), intent(inout) :: fdata ! data related to the factorization
     integer, intent(in) :: n ! order of A
     integer, intent(in) :: row(:) ! row indices of lower triangular part
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
@@ -26,8 +26,8 @@ contains
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
-    type(spllt_cntl), intent(in) :: cntl
-    type(spllt_info), intent(inout) :: info
+    type(spllt_options), intent(in) :: cntl
+    type(spllt_inform), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
     integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
@@ -548,7 +548,7 @@ contains
     use spllt_mod
     implicit none
 
-    type(spllt_fdata_type), target, intent(inout) :: fdata ! data related to the factorization
+    type(spllt_fdata), target, intent(inout) :: fdata ! data related to the factorization
     type(spllt_node)     :: node
     integer :: cptr, cptr2, rptr, rptr2
     integer(long)     :: dest_blk
@@ -638,8 +638,8 @@ contains
     use spllt_kernels_mod
     implicit none
 
-    type(spllt_adata_type), intent(inout) :: adata ! data related to the analysis
-    type(spllt_fdata_type), target, intent(inout) :: fdata ! data related to the factorization
+    type(spllt_adata), intent(inout) :: adata ! data related to the analysis
+    type(spllt_fdata), target, intent(inout) :: fdata ! data related to the factorization
     ! type(spllt_keep), target, intent(in) :: keep
     integer, allocatable :: map(:)
 
@@ -765,10 +765,10 @@ contains
     use spllt_utils_mod
     implicit none
     
-    type(spllt_adata_type), intent(inout) :: adata
+    type(spllt_adata), intent(inout) :: adata
     integer, dimension(:), intent(in) :: sparent ! atree
     integer :: nth ! number of workers
-    type(spllt_fdata_type), target, intent(in) :: fdata
+    type(spllt_fdata), target, intent(in) :: fdata
 
     integer                         :: i, j
     integer                         :: c
@@ -948,7 +948,7 @@ contains
     use spllt_mod
     implicit none
 
-    type(spllt_adata_type), intent(inout) :: adata
+    type(spllt_adata), intent(inout) :: adata
     integer, intent(in) :: nnodes ! number of nodes if the atree
     integer, dimension(:), intent(in) :: sptr, sparent
     integer(long), dimension(:), intent(in) :: rptr

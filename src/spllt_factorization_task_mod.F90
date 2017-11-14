@@ -120,11 +120,11 @@ contains
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_fdata_type), target, intent(inout)  :: fdata
+    type(spllt_fdata), target, intent(inout)  :: fdata
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
     ! type(spllt_keep), target, intent(inout) :: keep
     type(spllt_block), target, intent(inout) :: buffer ! update_buffer workspace
-    type(spllt_cntl), target, intent(in) :: cntl
+    type(spllt_options), target, intent(in) :: cntl
     integer, pointer, intent(inout) :: map(:)
 
 #if defined(SPLLT_USE_STARPU)
@@ -139,8 +139,8 @@ contains
     real(wp), dimension(:), pointer :: work => null()
     integer, dimension(:), pointer :: rlst => null(), clst => null()
     integer :: th_id ! thread id
-    type(spllt_fdata_type), pointer :: p_fdata => null()
-    type(spllt_cntl), pointer :: p_cntl => null()
+    type(spllt_fdata), pointer :: p_fdata => null()
+    type(spllt_options), pointer :: p_cntl => null()
     type(spllt_workspace_i), dimension(:), pointer :: p_map => null()
 #endif
 
@@ -205,7 +205,7 @@ contains
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_fdata_type), target, intent(inout) :: fdata
+    type(spllt_fdata), target, intent(inout) :: fdata
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
     type(spllt_node), pointer :: node ! node in the atree    
@@ -233,13 +233,13 @@ contains
   !
   ! Deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
-  subroutine spllt_data_unregister_task(fdata, adata)
+  subroutine spllt_data_unregister_task(adata, fdata)
     use spllt_data_mod
     use  starpu_f_mod
     implicit none
 
-    type(spllt_fdata_type), target, intent(inout) :: fdata
-    type(spllt_adata_type), intent(in) :: adata
+    type(spllt_adata), intent(in) :: adata
+    type(spllt_fdata), target, intent(inout) :: fdata
 
     integer :: i
     integer :: snode, num_nodes
@@ -283,7 +283,7 @@ contains
     use starpu_f_mod
     implicit none
 
-    type(spllt_fdata_type), target, intent(inout) :: fdata
+    type(spllt_fdata), target, intent(inout) :: fdata
 
     integer :: i
     integer :: snode, num_nodes
@@ -333,7 +333,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_fdata_type), target, intent(in)  :: fdata
+    type(spllt_fdata), target, intent(in)  :: fdata
     type(spllt_node), intent(in)          :: node
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc ! block to be factorized    
@@ -464,7 +464,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata_type), target, intent(inout)  :: fdata
+    type(spllt_fdata), target, intent(inout)  :: fdata
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
@@ -630,7 +630,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_fdata_type), target, intent(in)  :: fdata
+    type(spllt_fdata), target, intent(in)  :: fdata
     ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
@@ -877,7 +877,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata_type), target, intent(in)       :: fdata
+    type(spllt_fdata), target, intent(in)       :: fdata
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout)     :: a_bc ! dest block
     type(spllt_block), pointer, intent(inout)     :: dbc ! diag block in source node
@@ -1312,13 +1312,13 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata_type), target, intent(in)  :: fdata    
+    type(spllt_fdata), target, intent(in)  :: fdata    
     type(spllt_node), intent(in) :: node
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
 
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
-    ! type(spllt_fdata_type), target, intent(inout) :: fdata ! on exit, matrix a copied
+    ! type(spllt_fdata), target, intent(inout) :: fdata ! on exit, matrix a copied
      ! into relevant part of keep%lfact
     integer, optional :: prio 
 
@@ -1332,7 +1332,7 @@ contains
     integer :: snum
     integer :: th_id
     ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    type(spllt_fdata_type), pointer :: p_fdata
+    type(spllt_fdata), pointer :: p_fdata
     real(wp), pointer :: p_val(:)
 #endif
 

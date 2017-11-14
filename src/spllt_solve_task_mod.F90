@@ -15,7 +15,7 @@ contains
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
     real(wp), dimension(:), intent(inout) :: xlocal
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata), intent(inout) :: fdata
     
     ! Node info
     integer :: sa
@@ -66,7 +66,7 @@ contains
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
     real(wp), dimension(:), intent(inout) :: xlocal
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata), intent(inout) :: fdata
     
     ! Node info
     integer :: sa

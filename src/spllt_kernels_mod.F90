@@ -339,7 +339,7 @@ contains
     ! when scatering elements in update_between
     real(wp), pointer :: workspace(:) ! workspace used for update between
     ! type(MA87_control), intent(in) :: control
-    type(spllt_cntl), intent(in) :: cntl
+    type(spllt_options), intent(in) :: cntl
 
     integer :: numcol, numrow
     integer :: s_nb ! block size of source node
@@ -783,9 +783,9 @@ contains
     
     integer, intent(in) :: root ! root node index of subtree
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(spllt_fdata_type), target, intent(inout) :: fdata ! on exit, matrix a copied
+    type(spllt_fdata), target, intent(inout) :: fdata ! on exit, matrix a copied
     real(wp), dimension(:), pointer, intent(inout) :: buffer
-    type(spllt_cntl), intent(in)     :: cntl
+    type(spllt_options), intent(in)     :: cntl
     integer, pointer, intent(inout)  :: map(:)
     integer, pointer, intent(inout)  :: row_list(:), col_list(:)
     real(wp), pointer, intent(inout) :: workspace(:) ! workspace for accumulating updates
@@ -2407,7 +2407,7 @@ contains
 ! #endif
     ! so that, if variable (row) i is involved in node,
     ! map(i) is set to its local row index
-    type(spllt_fdata_type), intent(inout) :: fdata ! on exit, matrix a copied
+    type(spllt_fdata), intent(inout) :: fdata ! on exit, matrix a copied
     ! into relevant part of keep%lfact
 
     integer(long) :: i, j ! Temporary variable   
@@ -2471,7 +2471,7 @@ contains
     type(c_ptr), value     :: fdata_c
     
     real(wp), pointer :: val(:) ! user's matrix values
-    type(spllt_fdata_type), pointer :: fdata 
+    type(spllt_fdata), pointer :: fdata 
 
     call c_f_pointer(val_c, val, (/nval/))
     call c_f_pointer(fdata_c, fdata)
@@ -2489,7 +2489,7 @@ contains
 
     integer(long) :: id
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(spllt_fdata_type), target, intent(inout) :: fdata 
+    type(spllt_fdata), target, intent(inout) :: fdata 
 
     type(spllt_block), pointer :: blk
     integer :: sa
@@ -2527,7 +2527,7 @@ contains
     type(c_ptr), value    :: fdata_c
 
     real(wp), pointer :: val(:) ! user's matrix values
-    type(spllt_fdata_type), pointer :: fdata 
+    type(spllt_fdata), pointer :: fdata 
 
     call c_f_pointer(val_c, val, (/nval/))
     call c_f_pointer(fdata_c, fdata)
@@ -2545,8 +2545,8 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata_type), target, intent(inout) :: fdata
-    type(spllt_adata_type), intent(in) :: adata
+    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_adata), intent(in) :: adata
     integer :: snode
 
     type(spllt_node), pointer :: node ! node in the atree    

@@ -15,6 +15,7 @@ SpLLT
    purpose
    install
    subroutines
+   types
 
 Indices and tables
 ==================

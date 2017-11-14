@@ -16,7 +16,7 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata), intent(inout) :: fdata
     real(wp), intent(inout) :: x(fdata%n) ! On entry, x must
     ! be set so that if i has been used to index a variable,
     ! x(i) is the corresponding component of the right-hand side.
@@ -24,8 +24,8 @@ contains
     ! x(i) holds solution for variable i.
     integer, intent(in) :: order(:) ! pivot order. must be unchanged
     ! For details of fdata, control, info : see derived type description
-    type(spllt_cntl), intent(in) :: cntl
-    type(spllt_info), intent(out) :: info
+    type(spllt_options), intent(in) :: cntl
+    type(spllt_inform), intent(out) :: info
     integer, optional, intent(in) :: job  ! used to indicate whether
     ! partial solution required
     ! job = 0 or absent: complete solve performed
@@ -106,7 +106,7 @@ contains
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata), intent(inout) :: fdata
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
@@ -197,7 +197,7 @@ contains
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_fdata_type), intent(inout) :: fdata
+    type(spllt_fdata), intent(inout) :: fdata
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)

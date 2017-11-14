@@ -2,7 +2,7 @@ program spllt_test
   use spllt_data_mod
   implicit none
 
-  type(spllt_cntl) :: cntl
+  type(spllt_options) :: cntl
 
   write(*,'("SpLLT test")')
 
@@ -40,7 +40,7 @@ contains
     implicit none
     
     character(len=*), intent(in) :: mf ! matrix file
-    type(spllt_cntl) :: cntl
+    type(spllt_options) :: cntl
 
     ! matrix reader options (Rutherford Boeing)
     type(rb_read_options) :: rb_options
@@ -70,11 +70,11 @@ contains
     integer :: k
 
     ! type(spllt_keep) :: keep
-    type(spllt_info) :: info
+    type(spllt_inform) :: info
 
     ! SpLLT
-    type(spllt_adata_type) :: adata
-    type(spllt_fdata_type), target  :: fdata
+    type(spllt_adata) :: adata
+    type(spllt_fdata), target  :: fdata
     integer, dimension(:), allocatable :: order
 
     ! timing

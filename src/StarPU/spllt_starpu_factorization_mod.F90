@@ -596,7 +596,7 @@ contains
     integer, target            :: nval, snode
     type(c_ptr), target        :: val_c, fdata_c
     real(wp), pointer          :: val(:)
-    type(spllt_fdata_type), pointer  :: fdata
+    type(spllt_fdata), pointer  :: fdata
 
     call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
          & c_loc(snode), &  
@@ -622,10 +622,10 @@ contains
     type(c_ptr), target       :: val_c, fdata_c, cntl_c
     integer, target           :: root
 
-    type(spllt_fdata_type), pointer  :: fdata
+    type(spllt_fdata), pointer  :: fdata
     integer :: n
     real(wp), pointer         :: val(:)
-    type(spllt_cntl), pointer :: cntl
+    type(spllt_options), pointer :: cntl
 
     type(c_ptr), target       :: buffer_c, map_c, rlst_c, clst_c, work_c
     real(wp), pointer         :: buffer(:), work(:)

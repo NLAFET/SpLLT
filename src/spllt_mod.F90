@@ -50,7 +50,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_cntl) :: cntl
+    type(spllt_options) :: cntl
 #if defined(SPLLT_USE_STARPU)
     integer :: start_starpuinit_t, stop_starpuinit_t, rate_starpuinit_t
     integer(c_int) :: ret
@@ -315,9 +315,9 @@ contains
     use spllt_data_mod
     implicit none    
 
-    type(spllt_adata_type), intent(in)  :: adata
-    type(spllt_fdata_type), target, intent(in) :: fdata
-    type(spllt_cntl), intent(in) :: cntl
+    type(spllt_adata), intent(in)  :: adata
+    type(spllt_fdata), target, intent(in) :: fdata
+    type(spllt_options), intent(in) :: cntl
 
     integer :: snode, num_nodes
     type(spllt_node), pointer     :: node ! node in the atree

@@ -65,16 +65,16 @@ module spllt_data_mod
   !    !       in ma87_finalise
   ! end type block_type
 
-  ! user control
-  type spllt_cntl
-     integer :: ncpu = 1 ! number of CPU workers
-     integer :: nb   = 16 ! blocking size
-     integer :: nemin = 32 ! node amalgamation parameter
-     logical :: prune_tree = .false.
-     integer :: min_width_blas  = 8      ! Minimum width of source block
-     ! integer :: min_width_blas  = 0      ! Minimum width of source block
-     ! before we use an indirect update_between
-  end type spllt_cntl
+  ! ! user control
+  ! type spllt_cntl
+  !    integer :: ncpu = 1 ! number of CPU workers
+  !    integer :: nb   = 16 ! blocking size
+  !    integer :: nemin = 32 ! node amalgamation parameter
+  !    logical :: prune_tree = .false.
+  !    integer :: min_width_blas  = 8      ! Minimum width of source block
+  !    ! integer :: min_width_blas  = 0      ! Minimum width of source block
+  !    ! before we use an indirect update_between
+  ! end type spllt_cntl
 
   ! useful type for representing dependencies betwewen blocks
 
@@ -95,6 +95,26 @@ module spllt_data_mod
      integer(long) :: id_ij = 0
      integer :: p = 0
   end type spllt_dep_upd_out
+
+  !*************************************************  
+  !
+  ! Data type that represents a single block column in L
+  !
+  type lfactor
+     real(wp), dimension(:), allocatable :: lcol ! holds block column
+  end type lfactor
+
+  !*************************************************  
+  ! Data type for storing mapping from user's matrix values into
+  ! block columns of L
+  type lmap_type
+     integer(long) :: len_map ! length of map
+     integer(long), allocatable :: map(:,:) ! holds map from user's val
+     ! array into lfact(:)%lcol values as follows:
+     ! lcol( map(1,i) ) += val( map(2,i) )     i = 1:lmap
+     ! map is set at end of analyse phase using subroutines make_map
+     ! and lcol_map, and is used in factorization phase by blk_col_add_a
+  end type lmap_type
 
   ! block type  
   type spllt_block
@@ -180,8 +200,42 @@ module spllt_data_mod
 
   !*************************************************
   !
+  ! Data type for control parameters
+  type spllt_options
+     integer :: print_level = 0 ! Controls diagnostic printing.
+     ! Possible values are:
+     !  < 0: no printing.
+     !  0: error and warning messages only.
+     !  1: as 0 plus basic diagnostic printing.
+     !  > 1: as 1 plus some more detailed diagnostic messages.
+     !  > 9999: debug (absolutely everything - really don't use this)
+     integer :: ncpu = 1             ! Number of CPU workers
+     integer :: nb   = 16            ! Blocking size
+     character(len=100) :: mat = ''
+     integer :: nemin = 32           ! nemin parameter for analysis
+     logical :: prune_tree = .true.  ! Tree pruning
+     character(len=3) :: fmt='csc'
+     integer :: min_width_blas  = 8  ! Minimum width of source block
+     ! before we use an indirect update_between
+  end type spllt_options
+
+  !*************************************************
+  !
+  ! data type for returning information to user.
+  type spllt_inform
+     integer :: flag = SPLLT_SUCCESS  ! Error return flag (0 on success)
+     integer :: maxdepth = 0           ! Maximum depth of the tree.
+     integer(long) :: num_factor = 0_long ! Number of entries in the factor.
+     integer(long) :: num_flops = 0_long  ! Number of flops for factor.
+     integer :: num_nodes = 0          ! Number of nodes
+     integer :: stat = 0               ! STAT value on error return -1.
+  end type spllt_inform
+
+  !*************************************************
+  !
   ! Data associated with input matrix know after analysis phase
-  type spllt_adata_type
+  !
+  type spllt_adata
      integer :: nnodes
      integer :: n
      integer(long) :: num_factor = 0_long ! Number of entries in the factor.
@@ -190,53 +244,13 @@ module spllt_data_mod
      ! corresponds to the number of flops
      integer(long), allocatable :: weight(:)
      integer, allocatable :: small(:)
-  end type spllt_adata_type
-
-
-  type spllt_options
-     integer :: ncpu = 1              ! number of CPU workers
-     integer :: nb   = 16             ! blocking size
-     character(len=100) :: mat = ''
-     integer :: nemin = -1            ! nemin parameter for analysis
-     logical :: prune_tree = .false.  ! use tree pruning
-     character(len=3) :: fmt='csc'
-  end type spllt_options
+  end type spllt_adata
 
   !*************************************************
   !
-  ! data type for returning information to user.
-  type spllt_info 
-     integer :: flag = SPLLT_SUCCESS  ! error return flag (0 on success)
-     integer :: maxdepth = 0           ! maximum depth of the tree.
-     integer(long) :: num_factor = 0_long ! number of entries in the factor.
-     integer(long) :: num_flops = 0_long  ! number of flops for factor.
-     integer :: num_nodes = 0          ! number of nodes
-     integer :: stat = 0               ! STAT value on error return -1.
-  end type Spllt_info
-
-
-  !*************************************************  
+  ! Data type for data generated in factorise phase
   !
-  ! Data type that represents a single block column in L
-  ! (allocated by ma87_analyse)
-  type lfactor
-     real(wp), dimension(:), allocatable :: lcol ! holds block column
-  end type lfactor
-
-  !*************************************************  
-  ! Data type for storing mapping from user's matrix values into
-  ! block columns of L
-  type lmap_type
-     integer(long) :: len_map ! length of map
-     integer(long), allocatable :: map(:,:) ! holds map from user's val
-     ! array into lfact(:)%lcol values as follows:
-     ! lcol( map(1,i) ) += val( map(2,i) )     i = 1:lmap
-     ! map is set at end of analyse phase using subroutines make_map
-     ! and lcol_map, and is used in factorization phase by blk_col_add_a
-  end type lmap_type
-
-  ! problem data (factorization)
-  type spllt_fdata_type
+  type spllt_fdata
      type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
      type(spllt_block), allocatable :: workspace(:) ! workspaces
@@ -269,7 +283,7 @@ module spllt_data_mod
      ! error flag
      integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
      ! locks in finalise
-     type(spllt_info) :: info ! Holds copy of info
+     type(spllt_inform) :: info ! Holds copy of info
      integer :: maxmn ! holds largest block dimension
      integer :: n  ! Order of the system.
      ! type(node_type), dimension(:), allocatable :: nodes ! nodal info
@@ -278,28 +292,7 @@ module spllt_data_mod
      ! holds block cols of L
      type(lmap_type), dimension(:), allocatable :: lmap
      ! holds mapping from matrix values into lfact
-  end type spllt_fdata_type
-
-  ! !*************************************************  
-  ! ! Data type for communication between threads and routines
-  ! type spllt_keep
-  !    !     private
-  !    type(block_type), dimension(:), allocatable :: blocks ! block info
-  !    integer, dimension(:), allocatable :: flag_array ! allocated to
-  !    ! have size equal to the number of threads. For each thread, holds
-  !    ! error flag
-  !    integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
-  !    ! locks in finalise
-  !    type(spllt_info) :: info ! Holds copy of info
-  !    integer :: maxmn ! holds largest block dimension
-  !    integer :: n  ! Order of the system.
-  !    type(node_type), dimension(:), allocatable :: nodes ! nodal info
-  !    integer :: nbcol = 0 ! number of block columns in L
-  !    type(lfactor), dimension(:), allocatable :: lfact
-  !    ! holds block cols of L
-  !    type(lmap_type), dimension(:), allocatable :: lmap
-  !    ! holds mapping from matrix values into lfact
-  ! end type spllt_keep
+  end type spllt_fdata
 
   !*************************************************
   !  
@@ -346,8 +339,7 @@ contains
   !*************************************************  
   !
   ! Returns the destination block of an internal update task.
-  ! Called by add_updates.
-  
+  ! Called by add_updates.  
   integer(long) function get_dest_block(src1, src2)
 
     type(spllt_block), intent(in) :: src1

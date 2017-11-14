@@ -62,8 +62,8 @@ contains
     integer, dimension(:), allocatable :: order
     real(wp) :: num_flops, num_factor, resid
     real(wp), dimension(:), allocatable :: b, x
-    type(spllt_adata_type) :: adata
-    type(spllt_data_type)  :: fdata
+    type(spllt_adata) :: adata
+    type(spllt_fdata)  :: fdata
 
     ! mc68
     type(mc68_control) :: order_control
@@ -296,13 +296,9 @@ contains
     integer :: n, nnz
     type(spllt_cntl) :: cntl
 
-    type(spllt_adata_type) :: adata
-    type(spllt_data_type) :: fdata
+    type(spllt_adata) :: adata
+    type(spllt_fdata) :: fdata
     type(spllt_options) :: options
-
-    ! mc68
-    ! type(mc68_control) :: order_control
-    ! type(mc68_info) :: order_info
     
     ! ma87
     type(ma87_keep) :: keep

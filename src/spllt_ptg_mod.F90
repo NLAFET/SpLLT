@@ -16,12 +16,12 @@ contains
 #endif
     implicit none
 
-    type(spllt_adata_type), intent(in) :: adata
+    type(spllt_adata), intent(in) :: adata
     real(wp), target, intent(in) :: val(:) ! matrix values
     ! type(spllt_keep), target, intent(inout) :: keep 
-    type(spllt_cntl)      :: cntl
-    type(spllt_fdata_type), target, intent(inout) :: fdata
-    type(spllt_info), intent(out) :: info 
+    type(spllt_options)      :: cntl
+    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_inform), intent(out) :: info 
 
     integer :: n ! matrix order
     integer :: snode, num_nodes
