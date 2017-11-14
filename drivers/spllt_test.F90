@@ -218,11 +218,20 @@ contains
     ! smafact = real(inform%num_factor)
 
     ! Analyse SpLLT
+    write(*, "(a)") "Analyse..."
+    call system_clock(start_t, rate_t)
     call spllt_analyse(adata, fdata, n, ptr, row, order, cntl, info)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        stop
     endif
+    call system_clock(stop_t)
+    write(*, "(a)") "ok"
+    print *, "Analyse took ", (stop_t - start_t)/real(rate_t)
+    ! print "(a,es10.2)", "Predict nfact = ", real(inform%num_factor)
+    ! print "(a,es10.2)", "Predict nflop = ", real(inform%num_flops)
+    ! smaflop = real(inform%num_flops)
+    ! smafact = real(inform%num_factor)
 
     ! Print elimination tree
     call spllt_print_atree(adata, fdata, cntl)

@@ -1,7 +1,5 @@
 module spllt_mod
   use spllt_data_mod
-  ! use hsl_ma87_double, only: block_type, node_type 
-  ! use hsl_zd11_double
 #if defined(SPLLT_USE_STARPU)
   use iso_c_binding
   use starpu_f_mod
@@ -10,14 +8,6 @@ module spllt_mod
 #endif
   implicit none
   
-  ! interface gen_random_posdef
-  !    module procedure gen_random_posdef
-  ! end interface gen_random_posdef
-
-  ! interface spllt_bwerr
-  !    module procedure spllt_bwerr_1d
-  ! end interface spllt_bwerr
-
   ! Read matrix in Matrix Market foramt  
   interface mm_read
      module procedure mm_double_read 
@@ -71,7 +61,7 @@ contains
 
 #elif defined(SPLLT_USE_OMP)
 
-#if defined(SPLLT_OMP_TRACE) 
+#if defined(SPLLT_OMP_TRACE)
 
     call trace_init(omp_get_num_threads())
     call trace_create_event('INIT_NODE', ini_nde_id)
@@ -86,17 +76,20 @@ contains
 
     ctx = spllt_parsec_init(options%ncpu, nds, rank)
     write(*,'("Parsec init    nodes: ", i6, ", rank: ", i6)') nds, rank
+
 #endif
 
 #if defined(SPLLT_USE_GPU)
+
     call magmaf_init()
+
 #endif
 
     return
   end subroutine spllt_init
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Shutdowns SpLLT
+  !> @brief Shutdowns SpLLT.
   subroutine spllt_finalize()
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding

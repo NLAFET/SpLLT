@@ -1,19 +1,31 @@
+!> \file
+!> \copyright 2016-17 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
 module spllt_analyse_mod
   use spllt_mod
   implicit none
 
 contains
 
-  !*******************************************************************************
-  ! Performs analysis of the input matrix
-  ! Uses SSDIS routine ssids_analyse to compute the assembly tree
-  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, cntl, info)
-  ! subroutine spllt_analyse(adata, fdata, n, ptr, row, order, keep, cntl, info)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the analysis phase.
+  !>
+  !> Performs the symbolic factorization of the input matrix. It uses
+  !> the ssids_analyse from SSIDSto compute the assembly tree.
+  !> @param adata Symbolic factorization data.
+  !> @param fdata Factorization data.
+  !> @param n Order of the input matrix.
+  !> @param ptr Column pointers of A.
+  !> @param row Row indices of A.
+  !> @param order Return ordering to user / allow user to supply order.
+  !> @param options User-supplied options. 
+  !> @param info Stats/information returned to user.
+  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, options, info)
     use spllt_data_mod
     use spral_ssids_datatypes, only: ssids_options
     use spral_ssids_akeep, only: ssids_akeep
     use spral_ssids_anal, only: expand_pattern
-    use spral_ssids_inform, only: ssids_inform
     use spral_ssids, only: ssids_analyse
     implicit none
 
@@ -26,7 +38,7 @@ contains
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
-    type(spllt_options), intent(in) :: cntl
+    type(spllt_options), intent(in) :: options
     type(spllt_inform), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
@@ -73,7 +85,7 @@ contains
 
     ! SSIDS data
     type(ssids_options) :: ssids_opt ! SSIDS options
-    type(ssids_inform) :: inform ! SSDIS stats
+    ! type(ssids_inform) :: inform ! SSDIS stats
     type(ssids_akeep), target :: akeep   ! analysis data from SSIDS
 
     ! Setup options for analysis in SSIDS
@@ -81,14 +93,14 @@ contains
     ssids_opt%scaling = 0 ! no scaling
 
     ! Check nemin and set to default if out of range.
-    nemin = cntl%nemin
+    nemin = options%nemin
     if (nemin .lt. 1) nemin = nemin_default
 
     ssids_opt%nemin = nemin
 
     ! Perform analysis with SSIDS
-    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, inform, order)
-    if (inform%flag .lt. 0) then
+    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
+    if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine
        info%flag = SPLLT_ERROR_UNKNOWN
        goto 100
@@ -133,7 +145,7 @@ contains
     ! call mc34_expand(n, arow, aptr, iw)
     ! deallocate(iw,stat=st)
 
-    ! nemin = cntl%nemin
+    ! nemin = options%nemin
     ! ! Check nemin (a node is merged with its parent if both involve
     ! ! fewer than nemin eliminations). If out of range, use the default
     ! if (nemin < 1) nemin = spllt_nemin_default
@@ -246,8 +258,8 @@ contains
     allocate(adata%small(adata%nnodes))
     if (st /= 0) goto 100
     adata%small = 0
-    if (cntl%prune_tree) then
-       call spllt_prune_tree(adata, sparent, cntl%ncpu, fdata)
+    if (options%prune_tree) then
+       call spllt_prune_tree(adata, sparent, options%ncpu, fdata)
        ! call spllt_prune_tree(adata, sparent, 1, fdata) ! TESTS sequential
        ! call spllt_prune_tree(adata, sparent, 2, fdata) ! TESTS
        ! call spllt_prune_tree(adata, sparent, 4, fdata) ! TESTS
@@ -266,7 +278,7 @@ contains
        ! note we are careful in case l_nb**2 overflows (in fact 1+l_nb must
        ! not overflow at the end), and limit the answer to huge(l_nb)/2
        ! if (adata%small(node) .eq. 0) then
-       l_nb = cntl%nb
+       l_nb = options%nb
        if (l_nb < 1) l_nb = nb_default
        ! l_nb = min(huge(l_nb)/2_long, &
        !      (l_nb**2_long) / min(sptr(node+1)-sptr(node), l_nb) )
@@ -303,7 +315,7 @@ contains
        if (node < num_nodes)  &
             fdata%nodes(node+1)%blk_sa = fdata%nodes(node)%blk_en + 1
 
-       ! if(cntl%prune_tree) then
+       ! if(options%prune_tree) then
        !    fdata%nodes(node)%subtree_root = subtree_root(node)
        ! else
        !    fdata%nodes(node)%subtree_root = -1
@@ -312,15 +324,6 @@ contains
 
     ! set fdata%final_blk to hold total number of blocks.
     fdata%final_blk = fdata%nodes(num_nodes)%blk_en
-
-    ! ! Setup subtrees if required
-    ! if (cntl%prune_tree) then
-    !    do node = 1, num_nodes
-    !       if (adata%small(node) .eq. 1) then
-             
-    !       end if
-    !    end do
-    ! end if
 
     !**************************************   
     ! Fill out block information.    
@@ -758,8 +761,8 @@ contains
   end subroutine spllt_compute_dep
 #endif
 
-  ! tree pruning method. Inspired by the strategy employed in qr_mumps
-  ! for pruning the atree
+  ! Tree pruning method. Inspired by the strategy employed in qr_mumps
+  ! for pruning the atree.
   subroutine spllt_prune_tree(adata, sparent, nth, fdata)
     use spllt_data_mod
     use spllt_utils_mod
@@ -943,7 +946,7 @@ contains
     return
   end subroutine spllt_prune_tree
 
-  ! performs symbolic factorization of the atree
+  ! Performs the symbolic factorization of the assembly tree.
   subroutine spllt_symbolic(adata, nnodes, sptr, sparent, rptr)
     use spllt_mod
     implicit none
@@ -1106,7 +1109,7 @@ contains
           k = 1
           lmap(bcol)%len_map = aptr(min(cb+l_nb-1,en)+1) - aptr(cb)
           allocate(lmap(bcol)%map(2,lmap(bcol)%len_map), stat=st)
-          if(st.ne.0) return
+          if (st.ne.0) return
 
           ! Loop over columns in the block column bcol
           do col = cb, min(cb+l_nb-1, en)

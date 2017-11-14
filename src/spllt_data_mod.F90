@@ -5,6 +5,7 @@ module spllt_data_mod
 #elif defined(SPLLT_USE_PARSEC)
   use parsec_f08_interfaces
 #endif
+  use spral_ssids_inform, only: ssids_inform
   implicit none
 
   integer, parameter :: wp = kind(0d0)
@@ -223,6 +224,7 @@ module spllt_data_mod
   !
   ! data type for returning information to user.
   type spllt_inform
+     type(ssids_inform) :: ssids_inform ! SSDIS stats
      integer :: flag = SPLLT_SUCCESS  ! Error return flag (0 on success)
      integer :: maxdepth = 0           ! Maximum depth of the tree.
      integer(long) :: num_factor = 0_long ! Number of entries in the factor.
