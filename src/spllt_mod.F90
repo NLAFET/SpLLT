@@ -321,10 +321,12 @@ contains
 
   end function spllt_dep_out_add
   
-  subroutine spllt_parse_args(options)
+  subroutine spllt_parse_args(options, matfile, nrhs)
     implicit none
 
     type(spllt_options), intent(inout) :: options
+    character(len=200), intent(inout) :: matfile
+    integer, intent(inout) :: nrhs ! Numebr of right-hand side
     
     integer :: argnum, narg
     character(len=200) :: argval
@@ -335,6 +337,12 @@ contains
        call get_command_argument(argnum, argval)
        argnum = argnum + 1
        select case(argval)
+       case("--mat")
+          ! input matrix in Rutherford Boeing format
+          options%fmt = 'csc'
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) matfile
        case("--nb")
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
@@ -343,24 +351,25 @@ contains
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%ncpu
-       case("--mat")
-          ! input matrix in Rutherford Boeing format
-          options%fmt = 'csc'
-          call get_command_argument(argnum, argval)
-          argnum = argnum + 1
-          read( argval, * ) options%mat
        case("--nemin")
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%nemin
        case("--prune-tree")
           options%prune_tree = .true.
+       case("--no-prune-tree")
+          options%prune_tree = .false.
        case("--mm")
           ! input matrix in Matrix Market format
           options%fmt = 'coo'
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
-          read( argval, * ) options%mat
+          read( argval, * ) matfile
+       case("--nrhs")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read (argval, *) nrhs
+          print *, 'solving for', nrhs, 'right-hand sides'
        case default
           write(*,'("Unrecognised command line argument: ", a20)') argval
        end select

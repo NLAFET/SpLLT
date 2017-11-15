@@ -96,16 +96,12 @@ contains
     ! Set nrhs
     nrhs = 1
 
-   call spllt_parse_args(options)
+   call spllt_parse_args(options, matfile)
 
    cntl%nb = options%nb
    cntl%ncpu = options%ncpu
 
-   if (options%mat .ne. '') then
-      matfile = options%mat
-   else
-      matfile = 'matrix.rb'
-   end if
+   if (matfile .eq. '') matfile = 'matrix.rb'
 
     if (options%nemin .gt. 0) then
        cntl%nemin = options%nemin

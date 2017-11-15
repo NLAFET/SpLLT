@@ -481,7 +481,7 @@ set(test_drivers)
 
 if(MA87_TEST_DRIVER MATCHES ON)
   # Generate the MA87 test driver
-  MESSAGE( STATUS "MA87 test driver:         " ${MA87_TEST_DRIVER} )
+  MESSAGE( STATUS "MA87 test driver: " ${MA87_TEST_DRIVER} )
 
   list(APPEND test_drivers "drivers/run_ma87.f90")
 
@@ -489,8 +489,12 @@ if(MA87_TEST_DRIVER MATCHES ON)
 else()
   # add_executable(spllt_test spllt_test.F90)
   list(APPEND test_drivers "drivers/spllt_test.F90")
-
+  
   # add_executable(spllt_test drivers/spllt_test.F90)
+endif()
+
+if(${RUNTIME} MATCHES "OMP")
+  list(APPEND test_drivers "drivers/spllt_omp.F90")
 endif()
 
 foreach(test_driver ${test_drivers})
@@ -506,7 +510,7 @@ foreach(test_driver ${test_drivers})
 
 endforeach()
 
-########################################
+################################################################################
 # Print summary
 
 message("-----------------------------------------")

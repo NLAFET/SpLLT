@@ -20,7 +20,7 @@ contains
   !> @param order Return ordering to user / allow user to supply order.
   !> @param options User-supplied options. 
   !> @param info Stats/information returned to user.
-  subroutine spllt_analyse(adata, fdata, n, ptr, row, order, options, info)
+  subroutine spllt_analyse(adata, fdata, options, n, ptr, row, info, order)
     use spllt_data_mod
     use spral_ssids_datatypes, only: ssids_options
     use spral_ssids_akeep, only: ssids_akeep
@@ -30,14 +30,14 @@ contains
 
     type(spllt_adata), intent(inout) :: adata ! data related to the analysis
     type(spllt_fdata), intent(inout) :: fdata ! data related to the factorization
+    type(spllt_options), intent(in) :: options ! User-supplied options
     integer, intent(in) :: n ! order of A
     integer, intent(in) :: row(:) ! row indices of lower triangular part
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
-    integer, intent(inout), dimension(:) :: order
+    integer, dimension(:), optional, intent(inout) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
-    type(spllt_options), intent(in) :: options
     type(spllt_inform), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
@@ -98,7 +98,12 @@ contains
     ssids_opt%nemin = nemin
 
     ! Perform analysis with SSIDS.
-    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
+    ! if (present(order)) then
+    !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
+    ! else
+    !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform)
+    ! end if
+    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order=order)
     if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN
