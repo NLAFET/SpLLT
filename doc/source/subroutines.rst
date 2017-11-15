@@ -6,11 +6,11 @@ Basic subroutines
 =================
 
    
-.. f:subroutine:: spllt_analyse()
+.. f:subroutine:: spllt_analyse(adata, fdata, options, n, ptr, row, info, order)
 
    Perform the analysis of the input matrix.
 
-.. f:subroutine:: spllt_factor()
+.. f:subroutine:: spllt_factor(adata, fdata, options, val, info)
 
    Factorizes the input matrix.
 
