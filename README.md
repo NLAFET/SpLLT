@@ -1,4 +1,4 @@
-# SpLLT
+# SpLLT - sparse Cholesky sovler
 
 |OpenMP|
 |------|

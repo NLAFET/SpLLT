@@ -53,7 +53,7 @@ option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
 message(STATUS "Use MA87 test driver: " ${MA87_TEST_DRIVER})
 
 ################################################################################
-# Compiler option
+# Compiler options
 
 ########################################
 # Custom compiler flags
@@ -73,7 +73,7 @@ message(STATUS "Use MA87 test driver: " ${MA87_TEST_DRIVER})
 ########################################
 # Build type
 
-# Default build type
+# Set default build type
 set(default_build_type "RelWithDebInfo")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -309,7 +309,12 @@ if(${USE_GPU} MATCHES ON)
   set(MAGMA_SRCDIR $ENV{MAGMASRCDIR} CACHE PATH "Location of MAGMA Sources")
   include_directories(${MAGMA_DIR}/include)
   include_directories(${MAGMA_SRCDIR}/control)     
-  find_library(MAGMA_LIBRARY magma PATHS ${MAGMA_DIR}/lib)
+  find_library(MAGMA_LIBRARIES magma PATHS ${MAGMA_DIR}/lib)
+
+  set(LIBS ${LIBS} ${MAGMA_LIBRARIES})
+
+  set(LIBS ${LIBS} spllt_cuda)
+
 endif()
 
 ########################################
@@ -324,6 +329,8 @@ if(${USE_MPI} MATCHES ON)
   include_directories(${MPI_DIR}/include)
   find_library(MPI_LIBRARY mpi PATHS ${MPI_DIR}/lib)
 
+  set(LIBS ${LIBS} ${PAPI_LIBRARY})
+
 endif()
 
 
@@ -335,59 +342,27 @@ if(MA87_TEST_DRIVER MATCHES ON)
   set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
 endif()
 
-# Adds sources files
-
-add_subdirectory(src)
-
-# Generate the MA87 test driver
-
-if(MA87_TEST_DRIVER MATCHES ON)
-
-  MESSAGE( STATUS "MA87 test driver:         " ${MA87_TEST_DRIVER} )
-
-  add_executable(spllt_test drivers/run_ma87.f90)
-else()
-  # add_executable(spllt_test spllt_test.F90)
-  add_executable(spllt_test drivers/spllt_test.F90)
-endif()
-
-target_include_directories(spllt_test PUBLIC ${CMAKE_BINARY_DIR}/src)
-target_link_libraries(spllt_test spllt)
-
-## GPU
-if(${USE_GPU} MATCHES ON)
-  # MAGMA
-  target_link_libraries(spllt_test ${MAGMA_LIBRARY})
-
-  target_link_libraries(spllt_test spllt_cuda)
-endif()
-
-## MPI
-if(${USE_MPI} MATCHES ON)
-  target_link_libraries(spllt_test ${MPI_LIBRARY})
-endif()
-
+########################################
+# SpLLT
+set(LIBS ${LIBS} spllt)
 
 ########################################
 # spral
-target_include_directories(spllt_test PUBLIC ${SPRAL_DIR})
-find_library(SPRAL_LIBRARY spral PATHS ${SPRAL_DIR})
-target_link_libraries(spllt_test ${SPRAL_LIBRARY})
-# MESSAGE( STATUS "spral dir:         " ${SPRAL_DIR})
-# MESSAGE( STATUS "spral lib:         " ${SPRAL_LIBRARY})
+find_library(SPRAL_LIBRARIES spral PATHS ${SPRAL_DIR})
+set(LIBS ${LIBS} ${SPRAL_LIBRARIES})
 
 ########################################
 # Metis
 set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
-find_library(METIS_LIBRARY metis PATHS ${METIS_DIR})
-target_link_libraries(spllt_test ${METIS_LIBRARY})
+find_library(METIS_LIBRARIES metis PATHS ${METIS_DIR})
+set(LIBS ${LIBS} ${METIS_LIBRARIES})
 
 ########################################
 # HWLOC
 set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
 include_directories(${HWLOC_DIR}/include)  
-find_library(HWLOC_LIBRARY hwloc PATHS ${HWLOC_DIR}/lib)
-target_link_libraries(spllt_test ${HWLOC_LIBRARY})
+find_library(HWLOC_LIBRARIES hwloc PATHS ${HWLOC_DIR}/lib)
+set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
 ########################################
 # if (${BLAS_LAPACK} MATCHES "MKL")
@@ -490,17 +465,46 @@ else()
   message(FATAL_ERROR "LAPACK library NOT found")
 endif (LAPACK_FOUND)
 
+########################################
+# std C++ (needed for linking with ssids)
+set(LIBS ${LIBS} stdc++)
+
+# Add sources files
+add_subdirectory(src)
+
 ################################################################################
-# Link SpLLT with third-party libraries
-target_link_libraries(spllt_test ${LIBS})
+# Test drivers
 
-# pthread
-target_link_libraries(spllt_test pthread)
+########################################
+# Setup list of test drivers
+set(test_drivers)
 
-## std C++ (needed for linking with ssids)
-target_link_libraries(spllt_test stdc++)
+if(MA87_TEST_DRIVER MATCHES ON)
+  # Generate the MA87 test driver
+  MESSAGE( STATUS "MA87 test driver:         " ${MA87_TEST_DRIVER} )
 
-target_link_libraries(spllt_test rt)
+  list(APPEND test_drivers "drivers/run_ma87.f90")
+
+  # add_executable(spllt_test drivers/run_ma87.f90)
+else()
+  # add_executable(spllt_test spllt_test.F90)
+  list(APPEND test_drivers "drivers/spllt_test.F90")
+
+  # add_executable(spllt_test drivers/spllt_test.F90)
+endif()
+
+foreach(test_driver ${test_drivers})
+  
+  get_filename_component(test_driver_name ${test_driver} NAME_WE)
+  add_executable(${test_driver_name} ${test_driver})
+
+  ########################################
+  # Link test drivers with external libraries
+  target_include_directories(${test_driver_name} PUBLIC ${SPRAL_DIR})
+  target_include_directories(${test_driver_name} PUBLIC ${CMAKE_BINARY_DIR}/src)
+  target_link_libraries(${test_driver_name} ${LIBS})
+
+endforeach()
 
 ########################################
 # Print summary

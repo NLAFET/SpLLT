@@ -2,9 +2,16 @@ module spllt_ptg_mod
 
 contains
 
-  subroutine spllt_ptg_factorize(adata, val, cntl, fdata, info)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Perform the task-based Cholesky factoization using a PTG
+  !> model. Note that this call is asynchronous.
+  !>
+  !> @param adata Symbolic factorization data.
+  !> @param fdata Factorization data.
+  subroutine spllt_ptg_factorize(adata, fdata, options, val, info)
     use spllt_error_mod
-    use spllt_kernels_mod, only : spllt_activate_node, spllt_init_node, spllt_init_blk
+    use spllt_kernels_mod, only : spllt_activate_node, &
+         spllt_init_node, spllt_init_blk
 #if defined(SPLLT_USE_PARSEC)
     use iso_c_binding
     use parsec_f08_interfaces
@@ -13,21 +20,20 @@ contains
 #endif
     implicit none
 
-    type(spllt_adata), intent(in) :: adata
-    real(wp), target, intent(in) :: val(:) ! matrix values
-    ! type(spllt_keep), target, intent(inout) :: keep 
-    type(spllt_options)      :: cntl
+    type(spllt_adata), intent(in)            :: adata
     type(spllt_fdata), target, intent(inout) :: fdata
-    type(spllt_inform), intent(out) :: info 
+    type(spllt_options), intent(in)          :: options ! User-supplied options
+    real(wp), target, intent(in)             :: val(:) ! Matrix values
+    type(spllt_inform), intent(out)          :: info 
 
     integer :: n ! matrix order
-    integer :: snode, num_nodes
-
+    integer :: snode
+    integer :: nnodes ! Number of nodes in the assembly tree
     integer :: st ! stat parameter
 
 #if defined(SPLLT_USE_PARSEC)
-    ! PaRSEC 
-    type(parsec_taskpool_t)            :: fac_tp
+    ! Parsec specific variables 
+    type(parsec_taskpool_t)         :: fac_tp
     type(c_ptr)                     :: bc_c, nodes_c, diags_c, fdata_c, val_c
     integer(c_int)                  :: nbc, nval
     integer                         :: start_setup_t, stop_setup_t, rate_setup_t
@@ -35,29 +41,17 @@ contains
 
     integer(long) :: id
 
-    ! write(*,'("[spllt_ptg_factorize]")')
-
-    num_nodes = adata%nnodes
+    nnodes = adata%nnodes
     n = adata%n
-
-    ! write(*,'("[spllt_ptg_factorize] num_nodes: ", i8)')num_nodes
-    ! write(*,'("[spllt_ptg_factorize]         n: ", i8)')n
 
     deallocate (fdata%lfact,stat=st)
     allocate (fdata%lfact(fdata%nbcol),stat=st)
     if(st.ne.0) go to 10
 
-    do snode = 1, num_nodes ! loop over nodes
-       ! activate node: allocate factors
+    ! Allocate factors
+    do snode = 1, nnodes ! loop over nodes
        call spllt_activate_node(snode, fdata, adata)
-       ! init node 
-       ! TODO parallelize node init
-       ! call spllt_init_node(snode, val, fdata)
     end do
-
-    ! do id = 1, fdata%final_blk
-    !    call spllt_init_blk(id, val, fdata)
-    ! end do
 
 #if defined(SPLLT_USE_PARSEC)
 
@@ -82,15 +76,17 @@ contains
     call data_init(fdata%ddesc, bc_c, nbc, nds, rank)
 #endif    
 
-    fac_tp = spllt_parsec_factorize(fdata%ddesc, nodes_c, num_nodes,bc_c, nbc, diags_c, fdata%nbcol, &
-         & cntl%min_width_blas, fdata%maxmn, val_c, nval, fdata_c)
+    ! Create Parsec taskpool for factorization.
+    fac_tp = spllt_parsec_factorize(&
+         fdata%ddesc, nodes_c, nnodes, bc_c, nbc, diags_c, fdata%nbcol, &
+         & options%min_width_blas, fdata%maxmn, val_c, nval, fdata_c)
     
-    ! add factorization DAG to PaRSEC
+    ! Add factorization taskpool to Parsec runtime.
     call parsec_enqueue(ctx, fac_tp)
     call system_clock(stop_setup_t)
     ! write(*,'("[>] [spllt_ptg_factorize]   setup time: ", es10.3, " s")') (stop_setup_t - start_setup_t)/real(rate_setup_t)
 
-    ! start factorization
+    ! Start factorization
     call parsec_context_start(ctx)
 #endif
 

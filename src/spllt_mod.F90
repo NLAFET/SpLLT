@@ -6,6 +6,7 @@ module spllt_mod
 #elif defined(SPLLT_USE_PARSEC)
   use parsec_f08_interfaces
 #endif
+  use spllt_analyse_mod
   implicit none
   
   ! Read matrix in Matrix Market foramt  
@@ -21,7 +22,7 @@ module spllt_mod
 contains
   
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  !> @brief Initializes SpLLT.
+  !> @brief Initialize SpLLT.
   !>
   !> @param options User-supplied options.
   subroutine spllt_init(options)
@@ -137,7 +138,7 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Factorizes the input matrix.
-  subroutine spllt_factor()
+  subroutine spllt_factor(adata, fdata, options, val, info)
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     use spllt_stf_mod
 #elif defined(SPLLT_USE_PARSEC)
@@ -145,19 +146,40 @@ contains
 #endif    
     implicit none
 
+    type(spllt_adata), intent(in)    :: adata
+    type(spllt_fdata), intent(inout) :: fdata
+    type(spllt_options), intent(in)  :: options ! User-supplied options
+    real(wp), intent(in)             :: val(:) ! Matrix values
+    type(spllt_inform), intent(out)  :: info 
+
+
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
 
     ! Call the STF-based factorize routine.
-    ! call spllt_stf_factorize()
+    call spllt_stf_factorize(adata, fdata, options, val, info)
 
 #elif defined(SPLLT_USE_PARSEC)
 
     ! Call the PTG-based factorize routine.
-    ! call spllt_ptg_factorize()
+    call spllt_ptg_factorize(adata, fdata, options, val, info)
 
 #endif
 
   end subroutine spllt_factor
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Wait for completion of previously submitted tasks.
+  subroutine spllt_wait()
+    use spllt_data_mod
+    implicit none
+#if defined(SPLLT_USE_STARPU)
+    call starpu_f_task_wait_for_all()
+#elif defined(SPLLT_USE_OMP)
+    !$omp taskwait
+#elif defined(SPLLT_USE_PARSEC)
+    call parsec_context_wait(ctx)
+#endif
+  end subroutine spllt_wait
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Prints the assemlby tree.  

@@ -16,9 +16,7 @@ contains
     use spllt_mod
     use spral_rutherford_boeing
     use spral_matrix_util, only : cscl_verify, SPRAL_MATRIX_REAL_SYM_PSDEF
-    ! use spral_ssids
-    use spllt_analyse_mod, only : spllt_analyse
-    use spllt_stf_mod 
+    ! use spllt_stf_mod 
 #if defined(SPLLT_USE_STARPU)
     use iso_c_binding
     use starpu_f_mod
@@ -190,33 +188,6 @@ contains
     ! ordering
     allocate(order(n))
 
-    ! ! Set options for analysis
-    ! ssids_opt%ordering = 1 ! use Metis ordering
-    ! ssids_opt%scaling = 0 ! no scaling
-
-    ! ! Analyse SSIDS
-    ! write(*, "(a)") "Analyse..."
-    ! call system_clock(start_t, rate_t)
-    ! call ssids_analyse(.false., n, ptr, row, akeep, &
-    !      ssids_opt, inform, order, val=val)
-    ! call system_clock(stop_t)
-    ! print *, "Used order ", ssids_opt%ordering
-    ! if (inform%flag < 0) then
-    !    print *, "oops on analyse ", inform%flag
-    !    stop
-    ! endif
-    ! write(*, "(a)") "ok"
-    ! print *, "Analyse took ", (stop_t - start_t)/real(rate_t)
-    ! !print *, "Used maximum memory of ", inform%maxmem
-    ! smanal = (stop_t - start_t)/real(rate_t)
-    ! print "(a,es10.2)", "Predict nfact = ", real(inform%num_factor)
-    ! print "(a,es10.2)", "Predict nflop = ", real(inform%num_flops)
-    ! print "(a6, i10)", "nparts", inform%nparts
-    ! print "(a6, es10.2)", "cpu_flops", real(inform%cpu_flops)
-    ! ! print "(a6, es10.2)", "gpu_flops", real(inform%gpu_flops)
-    ! smaflop = real(inform%num_flops)
-    ! smafact = real(inform%num_factor)
-
     ! Analyse SpLLT
     write(*, "(a)") "Analyse..."
     call system_clock(start_t, rate_t)
@@ -228,10 +199,10 @@ contains
     call system_clock(stop_t)
     write(*, "(a)") "ok"
     print *, "Analyse took ", (stop_t - start_t)/real(rate_t)
-    ! print "(a,es10.2)", "Predict nfact = ", real(inform%num_factor)
-    ! print "(a,es10.2)", "Predict nflop = ", real(inform%num_flops)
-    ! smaflop = real(inform%num_flops)
-    ! smafact = real(inform%num_factor)
+    print "(a,es10.2)", "Predict nfact = ", real(info%ssids_inform%num_factor)
+    print "(a,es10.2)", "Predict nflop = ", real(info%ssids_inform%num_flops)
+    smaflop = real(info%ssids_inform%num_flops)
+    smafact = real(info%ssids_inform%num_factor)
 
     ! Print elimination tree
     call spllt_print_atree(adata, fdata, cntl)
@@ -244,45 +215,14 @@ contains
     ! goto 9999 ! DEBUG: jump init, factor, solve and finalize
     call spllt_init(cntl)
 
-    ! factorize matrix
-    ! goto 9998 ! DEBUG: jump factor and solve
-    ! goto 9999 ! DEBUG: jump factor, solve and finalize
-    write(*,'("Factorize...")')
+    ! Factor phase
+    write(*, "(a)") "Factor..."
     write(*,'("   nb: ", i6)') cntl%nb
     write(*,'("# cpu: ", i6)') cntl%ncpu
     call system_clock(start_t, rate_t)
-    ! TODO create factorize method
-#if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
-
-#if defined(SPLLT_STF_LL)
-    ! Unroll the DAG using a Left-Looking strategy
-    call spllt_stf_ll_factorize(n, ptr, row, val, order, info, fdata, cntl)
-
-#else
-    call spllt_stf_factorize(adata, fdata, cntl, n, ptr, row, val, order, info)
-    ! call MA87_factor(a%n, a%ptr, a%row, a%val, order, keep, control, info)
-#endif
-
-#elif defined(SPLLT_USE_PARSEC)
-    call spllt_ptg_factorize(adata, val, cntl, fdata, info)
-#endif
-
-#if defined(SPLLT_USE_STARPU)
-    ! wait for task completion
-    call starpu_f_task_wait_for_all()
-#if defined(SPLLT_USE_GPU)
-    ! put data back on home node e.g. from GPU to CPU
-    call spllt_data_unregister(fdata)
-#endif
-    call starpu_f_fxt_stop_profiling()
-#elif defined(SPLLT_USE_OMP)
-    !$omp taskwait
-#elif defined(SPLLT_USE_PARSEC)
-    write(*,'("[>] Parsec wait rank: ", i6)') rank
-    call parsec_context_wait(ctx)
-#endif
-
-    if(info%flag .lt. spllt_success) then
+    call spllt_factor(adata, fdata, cntl, val, info)
+    call spllt_wait() ! Wait for factorization to finish.
+    if(info%flag .lt. 0) then
        write(*, "(a)") "failed factorization"
     endif
     call system_clock(stop_t)
@@ -340,8 +280,6 @@ contains
     allocate(res(nrhs))
     call internal_calc_norm(n, ptr, row, val, soln, rhs, nrhs, res)
     print *, "bwd error scaled = ", res
-
-    ! write(*,'("[>] [solve] bwderr ||Ax-b|| / (||A||||x|| + ||b||): ", es10.3)') resid    
 
 9998 continue
 

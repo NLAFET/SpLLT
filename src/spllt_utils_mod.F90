@@ -1,5 +1,5 @@
 module spllt_utils_mod
-  use spllt_mod
+  use spllt_data_mod
   implicit none
 
   interface spllt_sort

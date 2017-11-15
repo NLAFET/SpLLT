@@ -186,17 +186,19 @@ contains
     end do
   end subroutine spllt_subtree_apply_buffer
 
-
-  subroutine spllt_subtree_factorize_apply(root, fdata, val, cntl, map, buffer)
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Factorize a subtree rooted at node root and update the
+  !> ancestor nodes with the computed factors.
+  subroutine spllt_subtree_factorize_apply(fdata, options, root, val, map, buffer)
     use spllt_data_mod
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    integer, intent(in) :: root ! Index of root node     
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_fdata), target, intent(inout) :: fdata ! Factorization data
+    type(spllt_options), intent(in) :: options ! User-supplied info
+    integer, intent(in) :: root ! Index of root node
     real(wp), dimension(:), intent(in) :: val ! User's matrix values
-    type(spllt_options), intent(inout) :: cntl
     integer, pointer, intent(inout) :: map(:)
     type(spllt_block), target, intent(inout) :: buffer ! update_buffer workspace
 
@@ -235,7 +237,7 @@ contains
     ! subtree factorization task
 
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_factorize_task(root, fdata, val, fdata%nodes(root)%buffer, cntl, map)
+    call spllt_subtree_factorize_task(root, fdata, val, fdata%nodes(root)%buffer, options, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)

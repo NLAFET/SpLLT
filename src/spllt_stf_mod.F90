@@ -4,19 +4,14 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Perform the task-based Cholesky factoization using a STF
-  !> model. Note that this routine unroll the DAG in a right-looking
-  !> fashion.
+  !> model. Note that this call is asynchronous.
   !>
   !> @param adata Symbolic factorization data.
   !> @param fdata Factorization data.
   !> @param options User-supplied options.
-  !> @param n Order of A
-  !> @param ptr Column pointers for lower triangular part
-  !> @param row Row indices of lower triangular part
   !> @param val Matrix values
-  !> @param order Holds pivot order (must be unchanged since the analyse phase)
   !> @param info 
-  subroutine spllt_stf_factorize(adata, fdata, options, n, ptr, row, val, order, info)
+  subroutine spllt_stf_factorize(adata, fdata, options, val, info)
     use spllt_data_mod
     use spllt_error_mod
     use spllt_factorization_task_mod
@@ -30,16 +25,11 @@ contains
     use spllt_factorization_mod
     implicit none
 
-    type(spllt_adata), target :: adata ! Symbolic factorization data.
-    type(spllt_fdata), target :: fdata  ! Factorization data.
-    type(spllt_options) :: options ! User-supplied options
-    integer, intent(in) :: n ! Order of A
-    integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
-    integer, intent(in) :: row(:) ! row indices of lower triangular part
-    real(wp), intent(in) :: val(:) ! matrix values
-    integer, intent(in) :: order(:) ! holds pivot order (must be unchanged
-    ! since the analyse phase)
-    type(spllt_inform), intent(out) :: info 
+    type(spllt_adata), target, intent(in)    :: adata ! Symbolic factorization data.
+    type(spllt_fdata), target, intent(inout) :: fdata  ! Factorization data.
+    type(spllt_options), intent(in)          :: options ! User-supplied options
+    real(wp), intent(in)                     :: val(:) ! matrix values
+    type(spllt_inform), intent(out)          :: info
 
     ! used in copying entries of user's matrix a into factor storage 
     ! (keep%fact).
@@ -51,6 +41,7 @@ contains
     type(spllt_node), dimension(:), pointer :: nodes 
 
     ! local scalars
+    integer :: n ! Order of A
     integer(long) :: blk, blk1, blk2 ! block identity
     integer(long) :: dblk ! diagonal block within block column
     integer :: en ! holds keep%nodes(snode)%en
@@ -79,6 +70,8 @@ contains
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
 
+    n = adata%n
+    
     ! shortcut
     blocks => fdata%bc
     nodes  => fdata%nodes
@@ -143,7 +136,7 @@ contains
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(snode, fdata, val, options, map, buffer)
+          call spllt_subtree_factorize_apply(fdata, options, snode, val, map, buffer)
 
        else
           ! if (adata%small())

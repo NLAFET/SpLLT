@@ -3,7 +3,6 @@
 !> \licence   BSD licence, see LICENCE file for details
 !> \author    Florent Lopez
 module spllt_analyse_mod
-  use spllt_mod
   implicit none
 
 contains
@@ -548,7 +547,6 @@ contains
 #if defined(SPLLT_USE_PARSEC)
   subroutine spllt_compute_upd_bet_add(fdata, node, cptr, cptr2, rptr, rptr2, dest_blk)
     use spllt_data_mod
-    use spllt_mod
     implicit none
 
     type(spllt_fdata), target, intent(inout) :: fdata ! data related to the factorization
@@ -948,7 +946,7 @@ contains
 
   ! Performs the symbolic factorization of the assembly tree.
   subroutine spllt_symbolic(adata, nnodes, sptr, sparent, rptr)
-    use spllt_mod
+    use spllt_data_mod
     implicit none
 
     type(spllt_adata), intent(inout) :: adata
