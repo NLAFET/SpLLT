@@ -3,11 +3,8 @@ module spllt_ptg_mod
 contains
 
   subroutine spllt_ptg_factorize(adata, val, cntl, fdata, info)
-    use spllt_mod
-    ! use hsl_ma87_double
     use spllt_error_mod
     use spllt_kernels_mod, only : spllt_activate_node, spllt_init_node, spllt_init_blk
-!    use spllt_factorization_mod
 #if defined(SPLLT_USE_PARSEC)
     use iso_c_binding
     use parsec_f08_interfaces
