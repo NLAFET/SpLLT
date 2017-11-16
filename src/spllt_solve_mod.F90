@@ -12,19 +12,19 @@ contains
   !
   ! Solve phase. simplified interface for a single rhs
   !
-  subroutine spllt_solve_one_double(x, order, fkeep, cntl, info, job)
+  subroutine spllt_solve_one_double(fkeep, options, order, x, info, job)
     use spllt_data_mod
     implicit none
 
-    type(spllt_fkeep), intent(inout) :: fkeep
+    type(spllt_fkeep), intent(inout) :: fkeep ! Facotrization data
+    type(spllt_options), intent(in) :: options ! User-supplied options
+    integer, intent(in) :: order(:) ! pivot order. must be unchanged
+    ! For details of fkeep, control, info : see derived type description        
     real(wp), intent(inout) :: x(fkeep%n) ! On entry, x must
     ! be set so that if i has been used to index a variable,
     ! x(i) is the corresponding component of the right-hand side.
     ! On exit, if i has been used to index a variable,
     ! x(i) holds solution for variable i.
-    integer, intent(in) :: order(:) ! pivot order. must be unchanged
-    ! For details of fkeep, control, info : see derived type description
-    type(spllt_options), intent(in) :: cntl
     type(spllt_inform), intent(out) :: info
     integer, optional, intent(in) :: job  ! used to indicate whether
     ! partial solution required
@@ -51,7 +51,7 @@ contains
     ! type(ma87_info) :: ma_info
     
     ! Set control for HSL_MA87
-    ! ma_control%nb = cntl%nb
+    ! ma_control%nb = options%nb
 
     ! Set keep for HSL_MA87
     ! ma_keep%n = keep%n

@@ -263,7 +263,7 @@ contains
     soln = rhs ! init solution with RHS
     ! solve
     ! call MA87_solve(nrhs, n, soln, order, keep, control, info)
-    call spllt_solve(soln(:,1), order, fkeep, cntl, info)
+    call spllt_solve(fkeep, cntl, order, soln(:,1), info)
     ! if(info%flag .lt. spllt_success) then
     !    write(*, "(a,i4)") " fail on 1d solve", &
     !         info%flag

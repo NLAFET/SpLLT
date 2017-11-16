@@ -6,6 +6,7 @@ program spllt_omp
 
   type(spllt_options) :: options ! User-supplied options 
   type(spllt_inform) :: info
+
   ! matrix reader options (Rutherford Boeing)
   type(rb_read_options) :: rb_options
   integer :: rb_flag
@@ -20,6 +21,7 @@ program spllt_omp
   ! Matrix description (Rutherford Boeing)
   integer, dimension(:), allocatable :: indx, jndx
   real(wp), dimension(:), allocatable :: val_in
+
   ! right-hand side and solution
   integer :: nrhs = 1 ! Numebr of right-hand side
   double precision, dimension(:, :), allocatable :: rhs, soln 
@@ -28,8 +30,10 @@ program spllt_omp
   integer :: flag, more
   type(spllt_akeep) :: akeep ! Symbolic factorization data
   type(spllt_fkeep), target  :: fkeep ! Factorization data
+
   ! timing
   integer :: start_t, stop_t, rate_t
+
   ! stats
   real :: smanal, smfact, smaflop, smafact
   integer, dimension(:), allocatable :: order ! Matrix permutation array
@@ -102,7 +106,7 @@ program spllt_omp
      print *, "CSCL_VERIFY failed: ", flag, more
      stop
   endif
-
+  
   allocate(order(n))
 
   ! Analyse SpLLT
