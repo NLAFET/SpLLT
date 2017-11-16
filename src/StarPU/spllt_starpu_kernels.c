@@ -819,18 +819,18 @@ struct starpu_codelet cl_factorize_node = {
 };
 
 void spllt_starpu_codelet_unpack_args_factorize_node(void *cl_arg,
-                                                     void *snode, void *fdata, 
+                                                     void *snode, void *fkeep, 
                                                      void *keep, void *control) {
    
    starpu_codelet_unpack_args(cl_arg,
-                              snode, fdata, 
+                              snode, fkeep, 
                               keep, control);
 }
 
 void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
                                         starpu_data_handle_t *cnode_hdls, int nc,
                                         starpu_data_handle_t map_hdl,
-                                        void *snode, void *fdata, 
+                                        void *snode, void *fkeep, 
                                         void *keep, void *cntl,
                                         int prio) {
 
@@ -858,7 +858,7 @@ void spllt_insert_factorize_node_task_c(starpu_data_handle_t node_hdl,
 
    ret = starpu_task_insert(&cl_factorize_node,
                             STARPU_VALUE, &snode, sizeof(void*),
-                            STARPU_VALUE, &fdata, sizeof(void*),
+                            STARPU_VALUE, &fkeep, sizeof(void*),
                             STARPU_VALUE, &keep, sizeof(void*),
                             STARPU_VALUE, &cntl, sizeof(void*),
                             STARPU_DATA_MODE_ARRAY, descrs, nh,

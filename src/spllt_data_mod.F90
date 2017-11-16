@@ -227,7 +227,7 @@ module spllt_data_mod
   !
   ! Data associated with input matrix know after analysis phase
   !
-  type spllt_adata
+  type spllt_akeep
      !> Number of nodes in the assembly tree.
      integer :: nnodes
      !> Oder of the system.
@@ -239,13 +239,13 @@ module spllt_data_mod
      ! corresponds to the number of flops
      integer(long), allocatable :: weight(:)
      integer, allocatable :: small(:)
-  end type spllt_adata
+  end type spllt_akeep
 
   !*************************************************
   !
   ! Data type for data generated in factorise phase
   !
-  type spllt_fdata
+  type spllt_fkeep
      type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
      type(spllt_block), allocatable :: workspace(:) ! workspaces
@@ -287,7 +287,7 @@ module spllt_data_mod
      ! holds block cols of L
      type(lmap_type), dimension(:), allocatable :: lmap
      ! holds mapping from matrix values into lfact
-  end type spllt_fdata
+  end type spllt_fkeep
 
   !*************************************************
   !  

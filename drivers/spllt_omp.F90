@@ -26,8 +26,8 @@ program spllt_omp
   double precision, dimension(:), allocatable :: res
   integer i, j, k, r
   integer :: flag, more
-  type(spllt_adata) :: adata ! Symbolic factorization data
-  type(spllt_fdata), target  :: fdata ! Factorization data
+  type(spllt_akeep) :: akeep ! Symbolic factorization data
+  type(spllt_fkeep), target  :: fkeep ! Factorization data
   ! timing
   integer :: start_t, stop_t, rate_t
   ! stats
@@ -108,7 +108,7 @@ program spllt_omp
   ! Analyse SpLLT
   write(*, "(a)") "Analyse..."
   call system_clock(start_t, rate_t)
-  call spllt_analyse(adata, fdata, options, n, ptr, row, info, order)
+  call spllt_analyse(akeep, fkeep, options, n, ptr, row, info, order)
   if(info%flag .lt. spllt_success) then
      write(*, "(a)") "error detected during analysis"
      stop

@@ -159,9 +159,9 @@ contains
           ! A_mk
           blk = dblk+ii-kk
           ! bc_ik => keep%blocks(blk)
-          ! bc_ik => fdata%bc(blk)
+          ! bc_ik => fkeep%bc(blk)
           ! write(*,*)"ii: ", ii
-          ! call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
+          ! call spllt_solve_block_task(fkeep, bc_kk, bc_ik, keep%lfact,prio+2)
           m  = blocks(blk)%blkm
           n  = blocks(blk)%blkn
           sa = blocks(blk)%sa
@@ -176,7 +176,7 @@ contains
 
           ! L_jk
           blk2 = dblk+jj-kk
-          ! bc_jk => fdata%bc(blk2)
+          ! bc_jk => fkeep%bc(blk2)
           n2  = blocks(blk2)%blkn
           m2  = blocks(blk2)%blkm
           sa2 = blocks(blk2)%sa
@@ -185,7 +185,7 @@ contains
 
              ! L_ik
              blk1 = dblk+ii-kk                
-             ! bc_ik => fdata%bc(blk1)
+             ! bc_ik => fkeep%bc(blk1)
              n1    = blocks(blk1)%blkn
              m1    = blocks(blk1)%blkm
              sa1   = blocks(blk1)%sa
@@ -194,8 +194,8 @@ contains
              ! A_ij
              ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
              blk = get_dest_block(blocks(blk2), blocks(blk1))
-             ! bc_ij => fdata%bc(blk)
-             ! call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+             ! bc_ij => fkeep%bc(blk)
+             ! call spllt_update_block_task(fkeep, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
              n  = blocks(blk)%blkn
              m  = blocks(blk)%blkm
              sa = blocks(blk)%sa
@@ -406,7 +406,7 @@ contains
     do while(a_num.gt.0)
        if (a_num .gt. root) exit ! make sure we stay in the subtree
        anode => nodes(a_num) 
-       ! a_node => fdata%nodes(a_num)
+       ! a_node => fkeep%nodes(a_num)
        ! Skip columns that come from other children
        do cptr = cptr, numrow
           if(node%index(cptr).ge.anode%sa) exit
@@ -460,7 +460,7 @@ contains
              if(k.ne.ii) then
                 a_blk = a_dblk + ii - cb
                 ! a_bc => keep%blocks(a_blk)
-                ! a_bc => fdata%bc(a_blk)
+                ! a_bc => fkeep%bc(a_blk)
 
                 m  = blocks(a_blk)%blkm
                 n  = blocks(a_blk)%blkn
@@ -474,7 +474,7 @@ contains
                 ! Loop over the block columns in node. 
                 do kk = 1, nc
 
-                   ! bc_kk => fdata%bc(dblk)
+                   ! bc_kk => fkeep%bc(dblk)
 
                    n1 = blocks(dblk)%blkn
                    
@@ -509,7 +509,7 @@ contains
           ! i = min(i,numrow)
           a_blk = a_dblk + ii - cb
           ! a_bc => keep%blocks(a_blk)
-          ! a_bc => fdata%bc(a_blk
+          ! a_bc => fkeep%bc(a_blk
           m  = blocks(a_blk)%blkm
           n  = blocks(a_blk)%blkn
           id = blocks(a_blk)%id
@@ -522,7 +522,7 @@ contains
           ! Loop over the block columns in node. 
           do kk = 1, nc
 
-             ! bc_kk => fdata%bc(dblk)
+             ! bc_kk => fkeep%bc(dblk)
 
              n1 = blocks(dblk)%blkn
 
@@ -776,14 +776,14 @@ contains
 
   end subroutine spllt_subtree_apply_node
 
-  subroutine spllt_subtree_factorize(root, val, fdata, buffer, &
+  subroutine spllt_subtree_factorize(root, val, fkeep, buffer, &
        & cntl, map, row_list, col_list, workspace)
     use spllt_data_mod
     implicit none
     
     integer, intent(in) :: root ! root node index of subtree
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(spllt_fdata), target, intent(inout) :: fdata ! on exit, matrix a copied
+    type(spllt_fkeep), target, intent(inout) :: fkeep ! on exit, matrix a copied
     real(wp), dimension(:), pointer, intent(inout) :: buffer
     type(spllt_options), intent(in)     :: cntl
     integer, pointer, intent(inout)  :: map(:)
@@ -795,25 +795,25 @@ contains
     integer :: node, m, n
     type(spllt_node), pointer :: snode
 
-    m = size(fdata%nodes(root)%index)
-    n = fdata%nodes(root)%en - fdata%nodes(root)%sa + 1
+    m = size(fkeep%nodes(root)%index)
+    n = fkeep%nodes(root)%en - fkeep%nodes(root)%sa + 1
     buffer(1:(m-n)**2) = 0.0
 
     ! initialize all nodes on the subtree. This is required because we
     ! update with a right-looking scheme.
-    do node = fdata%nodes(root)%least_desc, root
+    do node = fkeep%nodes(root)%least_desc, root
        ! init node
-       call spllt_init_node(node, val, fdata)
+       call spllt_init_node(node, val, fkeep)
     end do
 
     ! Loop over nodes of tree in order
-    do node = fdata%nodes(root)%least_desc, root
+    do node = fkeep%nodes(root)%least_desc, root
        
-       snode => fdata%nodes(node)
+       snode => fkeep%nodes(node)
        ! factorize supernode
-       call spllt_subtree_factorize_node(snode, fdata%bc, fdata%lfact)
+       call spllt_subtree_factorize_node(snode, fkeep%bc, fkeep%lfact)
        ! apply udpate on ancestor node (right-looking update)
-       call spllt_subtree_apply_node(snode, root, fdata%nodes, fdata%bc, fdata%lfact, buffer, &
+       call spllt_subtree_apply_node(snode, root, fkeep%nodes, fkeep%bc, fkeep%lfact, buffer, &
             & map, row_list, col_list, workspace, cntl)
     end do
 
@@ -2394,7 +2394,7 @@ contains
 
   ! init node
   ! copy matrix coefficients into lfact array within snode
-  subroutine spllt_init_node(snode, val, fdata)
+  subroutine spllt_init_node(snode, val, fkeep)
     use spllt_data_mod
     implicit none
 
@@ -2407,7 +2407,7 @@ contains
 ! #endif
     ! so that, if variable (row) i is involved in node,
     ! map(i) is set to its local row index
-    type(spllt_fdata), intent(inout) :: fdata ! on exit, matrix a copied
+    type(spllt_fkeep), intent(inout) :: fkeep ! on exit, matrix a copied
     ! into relevant part of keep%lfact
 
     integer(long) :: i, j ! Temporary variable   
@@ -2431,36 +2431,36 @@ contains
     !    map(i) = j - 1
     ! end do
 
-    ! Fill in fdata%lfact by block columns
-    dblk = fdata%nodes(snode)%blk_sa
+    ! Fill in fkeep%lfact by block columns
+    dblk = fkeep%nodes(snode)%blk_sa
 
-    l_nb = fdata%nodes(snode)%nb
-    sa = fdata%nodes(snode)%sa
-    en = fdata%nodes(snode)%en
+    l_nb = fkeep%nodes(snode)%nb
+    sa = fkeep%nodes(snode)%sa
+    en = fkeep%nodes(snode)%en
 
     do cb = sa, en, l_nb
-       bcol = fdata%bc(dblk)%bcol
-       sz = size(fdata%lfact(bcol)%lcol)
+       bcol = fkeep%bc(dblk)%bcol
+       sz = size(fkeep%lfact(bcol)%lcol)
        ! Zero the block column. 
-       fdata%lfact(bcol)%lcol(1:sz) = zero
+       fkeep%lfact(bcol)%lcol(1:sz) = zero
 
-       offset = fdata%bc(dblk)%sa - (cb-sa)*fdata%bc(dblk)%blkn
-       swidth = fdata%bc(dblk)%blkn
+       offset = fkeep%bc(dblk)%sa - (cb-sa)*fkeep%bc(dblk)%blkn
+       swidth = fkeep%bc(dblk)%blkn
 
-       do i = 1, fdata%lmap(bcol)%len_map
-          fdata%lfact(bcol)%lcol(fdata%lmap(bcol)%map(1,i)) = &
-               val(fdata%lmap(bcol)%map(2,i))
+       do i = 1, fkeep%lmap(bcol)%len_map
+          fkeep%lfact(bcol)%lcol(fkeep%lmap(bcol)%map(1,i)) = &
+               val(fkeep%lmap(bcol)%map(2,i))
        end do
 
        ! move to next block column in snode
-       dblk = fdata%bc(dblk)%last_blk + 1
+       dblk = fkeep%bc(dblk)%last_blk + 1
     end do
 
     return
   end subroutine spllt_init_node
 
   ! C wrapper
-  subroutine spllt_init_node_c(snode, val_c, nval, fdata_c) bind(C)
+  subroutine spllt_init_node_c(snode, val_c, nval, fkeep_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
     implicit none
@@ -2468,28 +2468,28 @@ contains
     integer(c_int), value  :: snode
     type(c_ptr), value     :: val_c
     integer(c_int), value  :: nval
-    type(c_ptr), value     :: fdata_c
+    type(c_ptr), value     :: fkeep_c
     
     real(wp), pointer :: val(:) ! user's matrix values
-    type(spllt_fdata), pointer :: fdata 
+    type(spllt_fkeep), pointer :: fkeep 
 
     call c_f_pointer(val_c, val, (/nval/))
-    call c_f_pointer(fdata_c, fdata)
+    call c_f_pointer(fkeep_c, fkeep)
 
-    call spllt_init_node(snode, val, fdata)
+    call spllt_init_node(snode, val, fkeep)
 
     return
   end subroutine spllt_init_node_c
   
   ! init blk
   ! copy matrix coefficicents into blk
-  subroutine spllt_init_blk(id, val, fdata)
+  subroutine spllt_init_blk(id, val, fkeep)
     use spllt_data_mod
     implicit none
 
     integer(long) :: id
     real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(spllt_fdata), target, intent(inout) :: fdata 
+    type(spllt_fkeep), target, intent(inout) :: fkeep 
 
     type(spllt_block), pointer :: blk
     integer :: sa
@@ -2497,26 +2497,26 @@ contains
     integer :: bcol
     integer :: i, j
 
-    blk => fdata%bc(id)
+    blk => fkeep%bc(id)
     
     sa = blk%sa
     sz = blk%blkn*blk%blkm
     bcol = blk%bcol
 
-    fdata%lfact(bcol)%lcol(sa:sa+sz-1) = zero
+    fkeep%lfact(bcol)%lcol(sa:sa+sz-1) = zero
 
-    do i = 1, fdata%lmap(bcol)%len_map
-       j = fdata%lmap(bcol)%map(1,i)
+    do i = 1, fkeep%lmap(bcol)%len_map
+       j = fkeep%lmap(bcol)%map(1,i)
        if ((j .ge. sa) .and. (j .le. sa+sz-1)) then
-          fdata%lfact(bcol)%lcol(j) = &
-               val(fdata%lmap(bcol)%map(2,i))
+          fkeep%lfact(bcol)%lcol(j) = &
+               val(fkeep%lmap(bcol)%map(2,i))
        end if
     end do
     
     return
   end subroutine spllt_init_blk
 
-  subroutine spllt_init_blk_c(id, val_c, nval, fdata_c) bind(C)
+  subroutine spllt_init_blk_c(id, val_c, nval, fkeep_c) bind(C)
     use iso_c_binding
     use spllt_data_mod
     implicit none
@@ -2524,20 +2524,20 @@ contains
     integer(long), value  :: id
     type(c_ptr), value    :: val_c
     integer(c_int), value        :: nval
-    type(c_ptr), value    :: fdata_c
+    type(c_ptr), value    :: fkeep_c
 
     real(wp), pointer :: val(:) ! user's matrix values
-    type(spllt_fdata), pointer :: fdata 
+    type(spllt_fkeep), pointer :: fkeep 
 
     call c_f_pointer(val_c, val, (/nval/))
-    call c_f_pointer(fdata_c, fdata)
+    call c_f_pointer(fkeep_c, fkeep)
     
-    call spllt_init_blk(id, val, fdata)
+    call spllt_init_blk(id, val, fkeep)
 
     return
   end subroutine spllt_init_blk_c
 
-  subroutine spllt_activate_node(snode, fdata, adata)
+  subroutine spllt_activate_node(snode, fkeep, akeep)
     use iso_c_binding
     use spllt_data_mod
 #if defined(SPLLT_USE_STARPU)
@@ -2545,8 +2545,8 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata
-    type(spllt_adata), intent(in) :: adata
+    type(spllt_fkeep), target, intent(inout) :: fkeep
+    type(spllt_akeep), intent(in) :: akeep
     integer :: snode
 
     type(spllt_node), pointer :: node ! node in the atree    
@@ -2558,9 +2558,9 @@ contains
     integer :: ptr
 
 
-    ! print *, "node", snode, ", small: ", adata%small(snode)
+    ! print *, "node", snode, ", small: ", akeep%small(snode)
 
-    node => fdata%nodes(snode)
+    node => fkeep%nodes(snode)
     blk = node%blk_sa
 
     l_nb = node%nb
@@ -2573,35 +2573,35 @@ contains
        ! nbcol = nbcol + 1
        size_bcol = 0
        dblk = blk
-       nbcol = fdata%bc(dblk)%bcol
+       nbcol = fkeep%bc(dblk)%bcol
        ! loop over the row blocks
        do blk = dblk, dblk+sz-1
-          blkm = fdata%bc(blk)%blkm
-          blkn = fdata%bc(blk)%blkn
+          blkm = fkeep%bc(blk)%blkm
+          blkn = fkeep%bc(blk)%blkn
           size_bcol = size_bcol + blkm*blkn
        end do
-       allocate (fdata%lfact(nbcol)%lcol(size_bcol),stat=st)
+       allocate (fkeep%lfact(nbcol)%lcol(size_bcol),stat=st)
        
        ptr = 1
        do blk = dblk, dblk+sz-1
-          blkm = fdata%bc(blk)%blkm
-          blkn = fdata%bc(blk)%blkn
+          blkm = fkeep%bc(blk)%blkm
+          blkn = fkeep%bc(blk)%blkn
 
-          ! fdata%bc(blk)%blk => fdata%bc(blk)
+          ! fkeep%bc(blk)%blk => fkeep%bc(blk)
 #if defined(SPLLT_USE_STARPU)
           ! FIXME do not register blocks in subtrees
-          ! if (adata%small(snode) .eq. 0) then
-          call starpu_matrix_data_register(fdata%bc(blk)%hdl, fdata%bc(blk)%mem_node, &
-               & c_loc(fdata%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
+          ! if (akeep%small(snode) .eq. 0) then
+          call starpu_matrix_data_register(fkeep%bc(blk)%hdl, fkeep%bc(blk)%mem_node, &
+               & c_loc(fkeep%lfact(nbcol)%lcol(ptr)), blkm, blkm, blkn, &
                & int(wp,kind=c_size_t))
           ! print *, "TET"
-          ! call starpu_matrix_data_register(fdata%bc(blk)%hdl2, 0, &
-          !      & c_loc(fdata%lfact(nbcol)%lcol(ptr)), 1, 1, blkn, &
+          ! call starpu_matrix_data_register(fkeep%bc(blk)%hdl2, 0, &
+          !      & c_loc(fkeep%lfact(nbcol)%lcol(ptr)), 1, 1, blkn, &
           !      & int(wp,kind=c_size_t))
           ! end if
 #endif
-          fdata%bc(blk)%c => fdata%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
-          ! write(*,'(z16)')c_loc(fdata%lfact(nbcol)%lcol(ptr))
+          fkeep%bc(blk)%c => fkeep%lfact(nbcol)%lcol(ptr:ptr+blkm*blkn-1)
+          ! write(*,'(z16)')c_loc(fkeep%lfact(nbcol)%lcol(ptr))
           ptr = ptr + blkm*blkn
        end do
        sz = sz - 1

@@ -5,7 +5,7 @@ contains
   !
   ! Forward solve with block on diagoanl
   !
-  subroutine spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
+  subroutine spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fkeep)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     implicit none
@@ -15,7 +15,7 @@ contains
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
     real(wp), dimension(:), intent(inout) :: xlocal
-    type(spllt_fdata), intent(inout) :: fdata
+    type(spllt_fkeep), intent(inout) :: fkeep
     
     ! Node info
     integer :: sa
@@ -27,17 +27,17 @@ contains
     integer :: node
         
     ! Get block info
-    node = fdata%bc(dblk)%node
-    m = fdata%bc(dblk)%blkm
-    n = fdata%bc(dblk)%blkn
-    sa = fdata%bc(dblk)%sa
-    bcol = fdata%bc(dblk)%bcol ! Current block column
-    dcol     = bcol - fdata%bc(fdata%nodes(node)%blk_sa)%bcol + 1
-    col      = fdata%nodes(node)%sa + (dcol-1)*fdata%nodes(node)%nb
-    offset   = col - fdata%nodes(node)%sa + 1
+    node = fkeep%bc(dblk)%node
+    m = fkeep%bc(dblk)%blkm
+    n = fkeep%bc(dblk)%blkn
+    sa = fkeep%bc(dblk)%sa
+    bcol = fkeep%bc(dblk)%bcol ! Current block column
+    dcol     = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
+    col      = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
+    offset   = col - fkeep%nodes(node)%sa + 1
     
     ! Perform triangular solve
-    call slv_solve(n, n, col, fdata%lfact(bcol)%lcol(sa:sa+n*n-1), &
+    call slv_solve(n, n, col, fkeep%lfact(bcol)%lcol(sa:sa+n*n-1), &
          'Transpose    ', 'Non-unit', nrhs, rhs, ldr)
     offset = offset + n
 
@@ -45,8 +45,8 @@ contains
     m = m - n
     if(m.gt.0) then
        sa = sa + n*n
-       call slv_fwd_update(m, n, col, offset, fdata%nodes(node)%index, &
-            fdata%lfact(bcol)%lcol(sa:sa+n*m-1), n, nrhs, &
+       call slv_fwd_update(m, n, col, offset, fkeep%nodes(node)%index, &
+            fkeep%lfact(bcol)%lcol(sa:sa+n*m-1), n, nrhs, &
             rhs, ldr, rhs, ldr, xlocal)
     endif
 
@@ -56,7 +56,7 @@ contains
   !
   ! Backward solve with block on diagoanl
   !         
-  subroutine spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fdata)
+  subroutine spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fkeep)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     implicit none
@@ -66,7 +66,7 @@ contains
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
     real(wp), dimension(:), intent(inout) :: xlocal
-    type(spllt_fdata), intent(inout) :: fdata
+    type(spllt_fkeep), intent(inout) :: fkeep
     
     ! Node info
     integer :: sa
@@ -77,18 +77,18 @@ contains
     integer :: offset
     integer :: node
 
-    node = fdata%bc(dblk)%node
+    node = fkeep%bc(dblk)%node
 
     ! print *, "[spllt_solve_bwd_block_task] node = ", node
 
     ! Get block info
-    n      = fdata%bc(dblk)%blkn
-    m      = fdata%bc(dblk)%blkm
-    sa = fdata%bc(dblk)%sa
-    bcol   = fdata%bc(dblk)%bcol ! Current block column
-    col    = calc_col(fdata%nodes(node), fdata%bc(dblk)) ! current bcol
-    col    = fdata%nodes(node)%sa + (col-1)*fdata%nodes(node)%nb
-    offset = col - fdata%nodes(node)%sa + 1
+    n      = fkeep%bc(dblk)%blkn
+    m      = fkeep%bc(dblk)%blkm
+    sa = fkeep%bc(dblk)%sa
+    bcol   = fkeep%bc(dblk)%bcol ! Current block column
+    col    = calc_col(fkeep%nodes(node), fkeep%bc(dblk)) ! current bcol
+    col    = fkeep%nodes(node)%sa + (col-1)*fkeep%nodes(node)%nb
+    offset = col - fkeep%nodes(node)%sa + 1
 
     ! print *, "m = ", m, ", n = ", n
     ! print *, "blk_sa = ", blk_sa
@@ -97,13 +97,13 @@ contains
 
     ! Perform and retangular update from diagonal block
     if(m.gt.n) then
-       call slv_bwd_update(m-n, n, col, offset+n, fdata%nodes(node)%index, &
-            fdata%lfact(bcol)%lcol(sa+n*n:sa+n*m-1), n, nrhs, rhs, &
+       call slv_bwd_update(m-n, n, col, offset+n, fkeep%nodes(node)%index, &
+            fkeep%lfact(bcol)%lcol(sa+n*n:sa+n*m-1), n, nrhs, rhs, &
             rhs, ldr, xlocal)
     endif
 
     ! Perform triangular solve
-    call slv_solve(n, n, col, fdata%lfact(bcol)%lcol(sa:sa+n*n-1), &
+    call slv_solve(n, n, col, fkeep%lfact(bcol)%lcol(sa:sa+n*n-1), &
          'Non-Transpose', 'Non-unit', nrhs, rhs, ldr)
 
 

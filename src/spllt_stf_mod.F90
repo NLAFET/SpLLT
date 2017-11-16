@@ -6,12 +6,12 @@ contains
   !> @brief Perform the task-based Cholesky factoization using a STF
   !> model. Note that this call is asynchronous.
   !>
-  !> @param adata Symbolic factorization data.
-  !> @param fdata Factorization data.
+  !> @param akeep Symbolic factorization data.
+  !> @param fkeep Factorization data.
   !> @param options User-supplied options.
   !> @param val Matrix values
   !> @param info 
-  subroutine spllt_stf_factorize(adata, fdata, options, val, info)
+  subroutine spllt_stf_factorize(akeep, fkeep, options, val, info)
     use spllt_data_mod
     use spllt_error_mod
     use spllt_factorization_task_mod
@@ -25,8 +25,8 @@ contains
     use spllt_factorization_mod
     implicit none
 
-    type(spllt_adata), target, intent(in)    :: adata ! Symbolic factorization data.
-    type(spllt_fdata), target, intent(inout) :: fdata  ! Factorization data.
+    type(spllt_akeep), target, intent(in)    :: akeep ! Symbolic factorization data.
+    type(spllt_fkeep), target, intent(inout) :: fkeep  ! Factorization data.
     type(spllt_options), intent(in)          :: options ! User-supplied options
     real(wp), intent(in)                     :: val(:) ! matrix values
     type(spllt_inform), intent(out)          :: info
@@ -70,15 +70,15 @@ contains
     ! start measuring setup time
     call system_clock(start_setup_t, rate_setup_t)
 
-    n = adata%n
+    n = akeep%n
     
     ! shortcut
-    blocks => fdata%bc
-    nodes  => fdata%nodes
-    num_nodes = fdata%info%num_nodes
+    blocks => fkeep%bc
+    nodes  => fkeep%nodes
+    num_nodes = fkeep%info%num_nodes
 
     ! init facto, allocate map array, factor blocks
-    call spllt_factorization_init(fdata, map)    
+    call spllt_factorization_init(fkeep, map)    
 
     if (options%prune_tree) allocate(buffer%c(1))
 
@@ -88,13 +88,13 @@ contains
     do snode = 1, num_nodes ! loop over nodes
 #if defined(SPLLT_USE_STARPU)
        ! TODO put in activate routine
-       call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+       call starpu_f_void_data_register(fkeep%nodes(snode)%hdl)
 #if defined(SPLLT_USE_NESTED_STF)
-       call starpu_f_void_data_register(fdata%nodes(snode)%hdl2)
+       call starpu_f_void_data_register(fkeep%nodes(snode)%hdl2)
 #endif
 #endif
        ! activate node: allocate factors, register handles
-       call spllt_activate_node(snode, fdata, adata)
+       call spllt_activate_node(snode, fkeep, akeep)
     end do
 
     call system_clock(stop_setup_t)
@@ -115,9 +115,9 @@ contains
        prio = 5 ! max priority 
        ! prio = huge(1)
        ! init node
-       if (adata%small(snode) .ne. 0) cycle
+       if (akeep%small(snode) .ne. 0) cycle
 
-       call spllt_init_node_task(fdata, fdata%nodes(snode), val, prio)
+       call spllt_init_node_task(fkeep, fkeep%nodes(snode), val, prio)
     end do
     ! call system_clock(stop_cpya2l_t)
 
@@ -129,25 +129,25 @@ contains
     ! factorize nodes
     do snode = 1, num_nodes
 
-       if (adata%small(snode) .lt. 0) cycle
-       if (adata%small(snode) .eq. 1) then
+       if (akeep%small(snode) .lt. 0) cycle
+       if (akeep%small(snode) .eq. 1) then
         
           ! Factorize the subtree rooted at node snode. All
           ! contributions to ancestors above the root node are
           ! accumulated into a buffer that is scatered after the
           ! subtree factorization
-          call spllt_subtree_factorize_apply(fdata, options, snode, val, map, buffer)
+          call spllt_subtree_factorize_apply(fkeep, options, snode, val, map, buffer)
 
        else
-          ! if (adata%small())
+          ! if (akeep%small())
 #if defined(SPLLT_USE_NESTED_STF)
           ! prio = 5 ! max priority 
           prio = -5 ! min priority 
           ! prio = huge(1)
 
-          call spllt_factorize_apply_node_task(fdata, options, fdata%nodes(snode), prio)
+          call spllt_factorize_apply_node_task(fkeep, options, fkeep%nodes(snode), prio)
 #else
-          call spllt_factorize_apply_node(fdata, options, fdata%nodes(snode), map)
+          call spllt_factorize_apply_node(fkeep, options, fkeep%nodes(snode), map)
 #endif
 
        end if
@@ -158,7 +158,7 @@ contains
 #ifndef SPLLT_USE_NESTED_STF
     ! deinit factorization
     ! clean up data structure, unregister data handles
-    call spllt_factorization_fini(fdata, map, adata)
+    call spllt_factorization_fini(fkeep, map, akeep)
 #endif
 
     call system_clock(stf_stop_t)
@@ -188,7 +188,7 @@ contains
   end subroutine spllt_stf_factorize
 
   ! left looking variant of the STF algorithm
-  !   subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fdata, options)
+  !   subroutine spllt_stf_ll_factorize(n, ptr, row, val, order, keep, control, info, fkeep, options)
   !     use spllt_data_mod
   !     use spllt_error_mod
   !     use hsl_ma87_double
@@ -213,7 +213,7 @@ contains
   !     type(MA87_control), intent(in) :: control 
   !     type(MA87_info), intent(out) :: info 
 
-  !     type(spllt_fdata), target :: fdata
+  !     type(spllt_fkeep), target :: fkeep
   !     type(spllt_options)      :: options
 
   !     type(block_type), dimension(:), pointer :: blocks ! block info. 
@@ -268,19 +268,19 @@ contains
   ! #if defined(SPLLT_USE_STARPU)
 
   !     ! register workspace handle
-  !     call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
+  !     call starpu_f_vector_data_register(fkeep%workspace%hdl, -1, c_null_ptr, &
   !          & int(keep%maxmn*keep%maxmn, kind=c_int), int(wp,kind=c_size_t))
   ! #elif defined(SPLLT_USE_OMP)
 
   !     nt = 1
   ! !$  nt = omp_get_num_threads()
-  !     allocate(fdata%workspace(0:nt-1))
+  !     allocate(fkeep%workspace(0:nt-1))
 
   !     do i=0,nt-1
-  !        allocate(fdata%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
+  !        allocate(fkeep%workspace(i)%c(keep%maxmn*keep%maxmn), stat=st)
   !     end do
   ! #else
-  !     allocate(fdata%workspace%c(keep%maxmn*keep%maxmn), stat=st)
+  !     allocate(fkeep%workspace%c(keep%maxmn*keep%maxmn), stat=st)
   !     if(st.ne.0) goto 9999
   ! #endif
 
@@ -289,10 +289,10 @@ contains
   !     do snode = 1, num_nodes ! loop over nodes
   ! #if defined(SPLLT_USE_STARPU)
   !        ! TODO put in activate routine
-  !        call starpu_f_void_data_register(fdata%nodes(snode)%hdl)
+  !        call starpu_f_void_data_register(fkeep%nodes(snode)%hdl)
   ! #endif
   !        ! activate node: allocate factors, register handles
-  !        call spllt_activate_node(snode, keep, fdata)
+  !        call spllt_activate_node(snode, keep, fkeep)
   !     end do
 
   ! ! #if defined(SPLLT_USE_STARPU)
@@ -301,7 +301,7 @@ contains
   !     ! write(*,*)"num_nodes: ", num_nodes
   !     do snode = 1, num_nodes ! loop over nodes
   !        ! init node
-  !        call spllt_init_node_task(fdata, fdata%nodes(snode), val, keep, huge(1))
+  !        call spllt_init_node_task(fkeep, fkeep%nodes(snode), val, keep, huge(1))
   !     end do
   ! ! #if defined(SPLLT_USE_STARPU)
   ! !     call starpu_f_task_wait_for_all()
@@ -395,20 +395,20 @@ contains
   !                 if(k.ne.ii) then
 
   !                    blk = dblk + ii - cb
-  !                    bc => fdata%bc(blk)
+  !                    bc => fkeep%bc(blk)
 
   !                    d_dblk = dnode%blk_sa
   !                    ! Loop over the block columns in node. 
   !                    do kk = 1, d_nc
 
-  !                       d_bc_kk => fdata%bc(d_dblk)
+  !                       d_bc_kk => fkeep%bc(d_dblk)
 
   !                       call spllt_update_between_task( &
-  !                            & fdata, &
-  !                            & d_bc_kk, dnode, bc, fdata%nodes(snode), &
+  !                            & fkeep, &
+  !                            & d_bc_kk, dnode, bc, fkeep%nodes(snode), &
   !                            & cptr, cptr2, ilast, i-1, &
-  !                            & fdata%row_list, fdata%col_list, fdata%workspace, &
-  !                            & keep%lfact, keep%blocks, fdata%bc, &
+  !                            & fkeep%row_list, fkeep%col_list, fkeep%workspace, &
+  !                            & keep%lfact, keep%blocks, fkeep%bc, &
   !                            & control, prio)
 
   !                          d_dblk = blocks(d_dblk)%last_blk + 1
@@ -420,20 +420,20 @@ contains
   !              end do
 
   !              blk = dblk + ii - cb
-  !              bc => fdata%bc(blk)
+  !              bc => fkeep%bc(blk)
 
   !              d_dblk = dnode%blk_sa
   !              ! Loop over the block columns in node. 
   !              do kk = 1, d_nc
 
-  !                 d_bc_kk => fdata%bc(d_dblk)
+  !                 d_bc_kk => fkeep%bc(d_dblk)
 
   !                 call spllt_update_between_task( &
-  !                      & fdata, &
-  !                      & d_bc_kk, dnode, bc, fdata%nodes(snode), &
+  !                      & fkeep, &
+  !                      & d_bc_kk, dnode, bc, fkeep%nodes(snode), &
   !                      & cptr, cptr2, ilast, i-1, &
-  !                      & fdata%row_list, fdata%col_list, fdata%workspace, &
-  !                      & keep%lfact, keep%blocks, fdata%bc, &
+  !                      & fkeep%row_list, fkeep%col_list, fkeep%workspace, &
+  !                      & keep%lfact, keep%blocks, fkeep%bc, &
   !                      & control, prio)
 
   !                 d_dblk = blocks(d_dblk)%last_blk + 1
@@ -457,8 +457,8 @@ contains
 
   !           ! A_kk          
 
-  !           bc_kk => fdata%bc(dblk)
-  !           call spllt_factorize_block_task(fdata, fdata%nodes(snode), bc_kk, keep%lfact, prio+3)
+  !           bc_kk => fkeep%bc(dblk)
+  !           call spllt_factorize_block_task(fkeep, fkeep%nodes(snode), bc_kk, keep%lfact, prio+3)
 
   !           ! #if defined(SPLLT_USE_OMP)
   !           ! !$omp taskwait
@@ -473,9 +473,9 @@ contains
   !              ! A_mk
   !              blk = dblk+ii-kk
   !              ! bc_ik => keep%blocks(blk)
-  !              bc_ik => fdata%bc(blk)
+  !              bc_ik => fkeep%bc(blk)
 
-  !              call spllt_solve_block_task(fdata, bc_kk, bc_ik, keep%lfact,prio+2)
+  !              call spllt_solve_block_task(fkeep, bc_kk, bc_ik, keep%lfact,prio+2)
   !           end do
 
   !           ! #if defined(SPLLT_USE_OMP)
@@ -490,19 +490,19 @@ contains
 
   !              ! L_jk
   !              blk2 = dblk+jj-kk
-  !              bc_jk => fdata%bc(blk2)
+  !              bc_jk => fkeep%bc(blk2)
 
   !              do ii = jj,nr
 
   !                 ! L_ik
   !                 blk1 = dblk+ii-kk                
-  !                 bc_ik => fdata%bc(blk1)
+  !                 bc_ik => fkeep%bc(blk1)
 
   !                 ! A_ij
   !                 ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
   !                 blk = get_dest_block(keep%blocks(blk2), keep%blocks(blk1))
-  !                 bc_ij => fdata%bc(blk)
-  !                 call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
+  !                 bc_ij => fkeep%bc(blk)
+  !                 call spllt_update_block_task(fkeep, bc_ik, bc_jk, bc_ij, keep%lfact, prio+1)
 
   !              end do
   !           end do
@@ -518,13 +518,13 @@ contains
 
   ! #if defined(SPLLT_USE_STARPU)
   !     ! unregister workspace handle
-  !     call starpu_f_data_unregister_submit(fdata%workspace%hdl)
+  !     call starpu_f_data_unregister_submit(fkeep%workspace%hdl)
 
   !     ! unregister data handles
-  !     call spllt_deinit_task(keep, fdata)
+  !     call spllt_deinit_task(keep, fkeep)
 
   !     ! do snode = 1, num_nodes
-  !     !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
+  !     !    call starpu_f_void_unregister_submit(fkeep%nodes(snode)%hdl)        
   !     ! end do
   ! #endif
 

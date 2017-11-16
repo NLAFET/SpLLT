@@ -71,8 +71,8 @@ contains
     type(spllt_inform) :: info
 
     ! SpLLT
-    type(spllt_adata) :: adata
-    type(spllt_fdata), target  :: fdata
+    type(spllt_akeep) :: akeep
+    type(spllt_fkeep), target  :: fkeep
     integer, dimension(:), allocatable :: order
 
     ! timing
@@ -96,7 +96,7 @@ contains
     ! Set nrhs
     nrhs = 1
 
-   call spllt_parse_args(options, matfile)
+   call spllt_parse_args(options, matfile, nrhs)
 
    cntl%nb = options%nb
    cntl%ncpu = options%ncpu
@@ -187,7 +187,7 @@ contains
     ! Analyse SpLLT
     write(*, "(a)") "Analyse..."
     call system_clock(start_t, rate_t)
-    call spllt_analyse(adata, fdata, n, ptr, row, order, cntl, info)
+    call spllt_analyse(akeep, fkeep, cntl, n, ptr, row,  info, order)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        stop
@@ -201,7 +201,7 @@ contains
     smafact = real(info%ssids_inform%num_factor)
 
     ! Print elimination tree
-    call spllt_print_atree(adata, fdata, cntl)
+    call spllt_print_atree(akeep, fkeep, cntl)
 
 #if defined(SPLLT_USE_OMP)
     !$omp parallel num_threads(cntl%ncpu)
@@ -216,7 +216,7 @@ contains
     write(*,'("   nb: ", i6)') cntl%nb
     write(*,'("# cpu: ", i6)') cntl%ncpu
     call system_clock(start_t, rate_t)
-    call spllt_factor(adata, fdata, cntl, val, info)
+    call spllt_factor(akeep, fkeep, cntl, val, info)
     call spllt_wait() ! Wait for factorization to finish.
     if(info%flag .lt. 0) then
        write(*, "(a)") "failed factorization"
@@ -230,12 +230,12 @@ contains
     write(*,*) "[spllt_test] gather blocks for solve"
     base_desc = alloc_desc()
 
-    nbc = size(fdata%bc,1)
-    bc_c = c_loc(fdata%bc(1))
+    nbc = size(fkeep%bc,1)
+    bc_c = c_loc(fkeep%bc(1))
 
     call data_init(base_desc, bc_c, nbc, nds, rank)
 
-    gat_hdl = gather(fdata%ddesc, base_desc, size(fdata%bc,1), fdata%maxmn)
+    gat_hdl = gather(fkeep%ddesc, base_desc, size(fkeep%bc,1), fkeep%maxmn)
 
     call parsec_enqueue(ctx, gat_hdl)
     call parsec_context_start(ctx)
@@ -263,7 +263,7 @@ contains
     soln = rhs ! init solution with RHS
     ! solve
     ! call MA87_solve(nrhs, n, soln, order, keep, control, info)
-    call spllt_solve(soln(:,1), order, fdata, cntl, info)
+    call spllt_solve(soln(:,1), order, fkeep, cntl, info)
     ! if(info%flag .lt. spllt_success) then
     !    write(*, "(a,i4)") " fail on 1d solve", &
     !         info%flag

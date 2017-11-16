@@ -109,7 +109,7 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_subtree_factorize_task(root, fdata, val, buffer, cntl, map)
+  subroutine spllt_subtree_factorize_task(root, fkeep, val, buffer, cntl, map)
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
     use spllt_starpu_factorization_mod
@@ -120,7 +120,7 @@ contains
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_fdata), target, intent(inout)  :: fdata
+    type(spllt_fkeep), target, intent(inout)  :: fkeep
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
     ! type(spllt_keep), target, intent(inout) :: keep
     type(spllt_block), target, intent(inout) :: buffer ! update_buffer workspace
@@ -128,7 +128,7 @@ contains
     integer, pointer, intent(inout) :: map(:)
 
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, fdata_c, cntl_c 
+    type(c_ptr) :: val_c, fkeep_c, cntl_c 
 #endif
 
 #if defined(SPLLT_USE_OMP)
@@ -139,7 +139,7 @@ contains
     real(wp), dimension(:), pointer :: work => null()
     integer, dimension(:), pointer :: rlst => null(), clst => null()
     integer :: th_id ! thread id
-    type(spllt_fdata), pointer :: p_fdata => null()
+    type(spllt_fkeep), pointer :: p_fkeep => null()
     type(spllt_options), pointer :: p_cntl => null()
     type(spllt_workspace_i), dimension(:), pointer :: p_map => null()
 #endif
@@ -147,30 +147,30 @@ contains
 #if defined(SPLLT_USE_STARPU)
     
     val_c  = c_loc(val(1)) 
-    fdata_c = c_loc(fdata)
+    fkeep_c = c_loc(fkeep)
     cntl_c = c_loc(cntl)
 
-    call spllt_insert_subtree_factorize_task_c(root, val_c, fdata_c, buffer%hdl, &
-         & cntl_c, fdata%map%hdl, fdata%row_list%hdl, fdata%col_list%hdl, &
-         & fdata%workspace%hdl)
+    call spllt_insert_subtree_factorize_task_c(root, val_c, fkeep_c, buffer%hdl, &
+         & cntl_c, fkeep%map%hdl, fkeep%row_list%hdl, fkeep%col_list%hdl, &
+         & fkeep%workspace%hdl)
 
 #elif defined(SPLLT_USE_OMP)
 
     p_val => val
     buffer_c => buffer%c
 
-    p_workspace => fdata%workspace
+    p_workspace => fkeep%workspace
 
-    p_rlst => fdata%row_list
-    p_clst => fdata%col_list
+    p_rlst => fkeep%row_list
+    p_clst => fkeep%col_list
 
-    p_map => fdata%map
+    p_map => fkeep%map
 
-    p_fdata => fdata
+    p_fkeep => fkeep
     p_cntl => cntl
 
 !$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
-!$omp & firstprivate(root, p_fdata, p_cntl, p_map) &
+!$omp & firstprivate(root, p_fkeep, p_cntl, p_map) &
 !$omp & private(work, rlst, clst) &
 !$omp & private(th_id) &
 !$omp & depend(out:buffer_c(1))
@@ -182,15 +182,15 @@ contains
     rlst => p_rlst(th_id)%c
     clst => p_clst(th_id)%c
 
-    call spllt_subtree_factorize(root, p_val, p_fdata, buffer_c, p_cntl, p_map(th_id)%c, &
+    call spllt_subtree_factorize(root, p_val, p_fkeep, buffer_c, p_cntl, p_map(th_id)%c, &
          & rlst, clst, work)
     
 !$omp end task
 
 #else
     
-    call spllt_subtree_factorize(root, val, fdata, buffer%c, cntl, map, &
-         & fdata%row_list%c, fdata%col_list%c , fdata%workspace%c)
+    call spllt_subtree_factorize(root, val, fkeep, buffer%c, cntl, map, &
+         & fkeep%row_list%c, fkeep%col_list%c , fkeep%workspace%c)
 
 #endif
 
@@ -199,23 +199,23 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_factor_subtree_task(root, fdata, buffer)
+  subroutine spllt_factor_subtree_task(root, fkeep, buffer)
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
     integer, intent(in) :: root
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_fkeep), target, intent(inout) :: fkeep
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
     type(spllt_node), pointer :: node ! node in the atree    
     integer :: m, n, blk
 
-    node => fdata%nodes(root)
+    node => fkeep%nodes(root)
     blk = node%blk_sa
 
-    m = fdata%bc(blk)%blkm
-    n = fdata%bc(blk)%blkn
+    m = fkeep%bc(blk)%blkm
+    n = fkeep%bc(blk)%blkn
 
     if (size(buffer).lt.(m-n)**2) then
        deallocate(buffer)
@@ -223,7 +223,7 @@ contains
     end if
 
     ! perform factorization of subtree rooted at snode
-    call spllt_factor_subtree(root, fdata%nodes, fdata%bc, fdata%lfact, buffer)
+    call spllt_factor_subtree(root, fkeep%nodes, fkeep%bc, fkeep%lfact, buffer)
  
   end subroutine spllt_factor_subtree_task
 
@@ -233,13 +233,13 @@ contains
   !
   ! Deinitialize factorization
   ! StarPU: unregister data handles (block handles) in StarPU
-  subroutine spllt_data_unregister_task(adata, fdata)
+  subroutine spllt_data_unregister_task(akeep, fkeep)
     use spllt_data_mod
     use  starpu_f_mod
     implicit none
 
-    type(spllt_adata), intent(in) :: adata
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_akeep), intent(in) :: akeep
+    type(spllt_fkeep), target, intent(inout) :: fkeep
 
     integer :: i
     integer :: snode, num_nodes
@@ -247,15 +247,15 @@ contains
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
-    num_nodes = fdata%info%num_nodes
+    num_nodes = fkeep%info%num_nodes
     blk = 1
 
     do snode = 1, num_nodes
 
-       ! if (adata%small(snode) .ne. 0) cycle
-       ! print *, "[data_unregister_task] node", snode, ", small: ", adata%small(snode)
+       ! if (akeep%small(snode) .ne. 0) cycle
+       ! print *, "[data_unregister_task] node", snode, ", small: ", akeep%small(snode)
 
-       node => fdata%nodes(snode)
+       node => fkeep%nodes(snode)
 
        l_nb = node%nb
        sz = (size(node%index) - 1) / l_nb + 1
@@ -267,7 +267,7 @@ contains
           do blk = dblk, dblk+sz-1
              ! write(*,*) 'unregister blk: ', blk
 
-             call starpu_f_data_unregister_submit(fdata%bc(blk)%hdl)
+             call starpu_f_data_unregister_submit(fkeep%bc(blk)%hdl)
           end do
           sz = sz - 1
        end do
@@ -278,12 +278,12 @@ contains
   !*************************************************
   !
 
-  subroutine spllt_data_unregister(fdata)
+  subroutine spllt_data_unregister(fkeep)
     use spllt_data_mod
     use starpu_f_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_fkeep), target, intent(inout) :: fkeep
 
     integer :: i
     integer :: snode, num_nodes
@@ -291,12 +291,12 @@ contains
     integer(long) :: blk, dblk
     integer :: l_nb, sz, sa, en
 
-    num_nodes = fdata%info%num_nodes
+    num_nodes = fkeep%info%num_nodes
     blk = 1
 
     do snode = 1, num_nodes
 
-       node => fdata%nodes(snode)
+       node => fkeep%nodes(snode)
 
        l_nb = node%nb
        sz = (size(node%index) - 1) / l_nb + 1
@@ -307,7 +307,7 @@ contains
           dblk = blk
           do blk = dblk, dblk+sz-1
              ! write(*,*) 'unregister blk: ', blk
-             call starpu_f_data_unregister(fdata%bc(blk)%hdl)
+             call starpu_f_data_unregister(fkeep%bc(blk)%hdl)
           end do
           sz = sz - 1
        end do
@@ -320,7 +320,7 @@ contains
   !
   ! Factorize block task 
   ! _potrf
-  subroutine spllt_factorize_block_task(fdata, node, bc, lfact, prio)
+  subroutine spllt_factorize_block_task(fkeep, node, bc, lfact, prio)
     use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -333,7 +333,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_fdata), target, intent(in)  :: fdata
+    type(spllt_fkeep), target, intent(in)  :: fkeep
     type(spllt_node), intent(in)          :: node
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc ! block to be factorized    
@@ -385,7 +385,7 @@ contains
     n    = bc%blkn
     sa   = bc%sa
     id   = bc%id
-    bc_c => fdata%bc(id)%c
+    bc_c => fkeep%bc(id)%c
 
 ! !$omp taskwait
 
@@ -395,7 +395,7 @@ contains
 #endif
 !$omp    & firstprivate(bc_c, bcol, lcol) &
 ! !$omp    & depend(inout:lcol(sa:sa+n*m-1))
-! !$omp    & depend(inout:fdata%bc(id)%c(:))
+! !$omp    & depend(inout:fkeep%bc(id)%c(:))
 !$omp    & depend(inout:bc_c(1))
 ! !$omp    & priority(p)
 
@@ -451,7 +451,7 @@ contains
   end subroutine spllt_factorize_block_task
 
   ! _trsm
-  subroutine spllt_solve_block_task(fdata, bc_kk, bc_ik, lfact, prio)
+  subroutine spllt_solve_block_task(fkeep, bc_kk, bc_ik, lfact, prio)
     use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -464,7 +464,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata), target, intent(inout)  :: fdata
+    type(spllt_fkeep), target, intent(inout)  :: fkeep
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc_kk, bc_ik ! block to be factorized    
     type(lfactor), allocatable, target, intent(inout) :: lfact(:)
@@ -520,11 +520,11 @@ contains
     id = bc_ik%id
     ! write(*,*)"solve id: ", id
 
-    bc_kk_c => fdata%bc(d_id)%c
-    bc_ik_c => fdata%bc(id)%c
+    bc_kk_c => fkeep%bc(d_id)%c
+    bc_ik_c => fkeep%bc(id)%c
 
     snode = bc_kk%node
-    blk_sa = fdata%nodes(snode)%blk_sa
+    blk_sa = fkeep%nodes(snode)%blk_sa
     ! write(*,*)"blk_sa: ", blk_sa
 ! !$omp taskwait
 
@@ -540,8 +540,8 @@ contains
 !$omp    & depend(in:bc_kk_c(1)) &
 !$omp    & depend(inout:bc_ik_c(1))
 
-! !$omp    & depend(in:fdata%bc(d_id)%c(1)) &
-! !$omp    & depend(inout:fdata%bc(id)%c)
+! !$omp    & depend(in:fkeep%bc(d_id)%c(1)) &
+! !$omp    & depend(inout:fkeep%bc(id)%c)
 
 ! !$omp    & depend(in:bc_kk%c(1)) &
 ! !$omp    & depend(in:bc_kk_c) &
@@ -617,7 +617,7 @@ contains
 
   ! syrk/gemm (same node)
   ! A_ij <- A_ij - A_ik A_jk^T
-  subroutine spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, lfact, prio)
+  subroutine spllt_update_block_task(fkeep, bc_ik, bc_jk, bc_ij, lfact, prio)
     use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -630,7 +630,7 @@ contains
 #endif
     implicit none
     
-    type(spllt_fdata), target, intent(in)  :: fdata
+    type(spllt_fkeep), target, intent(in)  :: fkeep
     ! type(block_type), intent(inout) :: bc_ik, bc_jk, bc_ij ! block to be updated    
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout) :: bc_ik, bc_jk, bc_ij
@@ -679,9 +679,9 @@ contains
     id_jk = bc_jk%id
     id_ij = bc_ij%id
 
-    bc_ik_c => fdata%bc(id_ik)%c
-    bc_jk_c => fdata%bc(id_jk)%c
-    bc_ij_c => fdata%bc(id_ij)%c
+    bc_ik_c => fkeep%bc(id_ik)%c
+    bc_jk_c => fkeep%bc(id_jk)%c
+    bc_ij_c => fkeep%bc(id_ij)%c
 
     bcol1 = bc_ik%bcol
     lcol1 => lfact(bcol1)%lcol
@@ -693,7 +693,7 @@ contains
     lcol => lfact(bcol)%lcol
 
     snode = bc_ij%node
-    blk_sa = fdata%nodes(snode)%blk_sa
+    blk_sa = fkeep%nodes(snode)%blk_sa
     
 ! !$omp taskwait
 
@@ -709,8 +709,8 @@ contains
 !$omp    & depend(in:bc_ik_c(1), bc_jk_c(1)) &
 !$omp    & depend(inout: bc_ij_c(1))
 
-! !$omp    & depend(in:fdata%bc(id_ik)%c, fdata%bc(id_jk)%c) &
-! !$omp    & depend(inout: fdata%bc(id_ij)%c)
+! !$omp    & depend(in:fkeep%bc(id_ik)%c, fkeep%bc(id_jk)%c) &
+! !$omp    & depend(inout: fkeep%bc(id_ij)%c)
 
 ! !$omp    & depend(in:bc_ik%c(1), bc_jk%c(1)) &
 ! !$omp    & depend(in:bc_ik_c(1:1), bc_jk_c(1:1)) &
@@ -858,7 +858,7 @@ contains
 ! #endif
 
   ! syrk/gemm (inter-node)
-  subroutine spllt_update_between_task(fdata, &
+  subroutine spllt_update_between_task(fkeep, &
        & dbc, snode, a_bc, anode, &
        ! & csrc, rsrc, &
        & cptr, cptr2, rptr, rptr2, &
@@ -877,7 +877,7 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata), target, intent(in)       :: fdata
+    type(spllt_fkeep), target, intent(in)       :: fkeep
 #if defined(SPLLT_USE_OMP)
     type(spllt_block), pointer, intent(inout)     :: a_bc ! dest block
     type(spllt_block), pointer, intent(inout)     :: dbc ! diag block in source node
@@ -1002,12 +1002,12 @@ contains
        ljk_m = ljk_m + bcs(blk)%blkm
     end do
     ljk_n = dbc%blkn
-    ! write(*,*) "ljk_hdl: ", ljk_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
+    ! write(*,*) "ljk_hdl: ", ljk_hdl, ", ptr: ", c_loc(fkeep%bc(blk_sa)%c(1))
 #if defined(SPLLT_USE_GPU)
     ! create temporary handle for gathering blocks in Ljk factor
     ! DEBUG
-    call starpu_matrix_data_register(ljk_hdl, fdata%bc(blk_sa)%mem_node, &
-         & c_loc(fdata%bc(blk_sa)%c(1)), ljk_m, ljk_m, ljk_n, &
+    call starpu_matrix_data_register(ljk_hdl, fkeep%bc(blk_sa)%mem_node, &
+         & c_loc(fkeep%bc(blk_sa)%c(1)), ljk_m, ljk_m, ljk_n, &
          & int(wp,kind=c_size_t))
     ! call starpu_f_data_unregister_submit(ljk_hdl)
 #endif
@@ -1031,13 +1031,13 @@ contains
 
 #if defined(SPLLT_USE_GPU)
     ! create temporary handle for gathering blocks in Ljk factor
-    call starpu_matrix_data_register(lik_hdl, fdata%bc(blk_sa)%mem_node, &
-         & c_loc(fdata%bc(blk_sa)%c(1)), lik_m, lik_m, ljk_n, &
+    call starpu_matrix_data_register(lik_hdl, fkeep%bc(blk_sa)%mem_node, &
+         & c_loc(fkeep%bc(blk_sa)%c(1)), lik_m, lik_m, ljk_n, &
          & int(wp,kind=c_size_t))
     ! call starpu_f_data_unregister_submit(lik_hdl)
 #endif
     ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl
-    ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl, ", ptr: ", c_loc(fdata%bc(blk_sa)%c(1))
+    ! write(*,*) "ljk_hdl: ", ljk_hdl, "lik_hdl: ", lik_hdl, ", ptr: ", c_loc(fkeep%bc(blk_sa)%c(1))
     ! return
     
     csrc  = 1 + (mod(cptr-1, s_nb))*n1
@@ -1128,8 +1128,8 @@ contains
     id_jk_en = blk_en
     ! write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
     ! if (nb_blk.gt.2) write(*,*) "nb_blk:", nb_blk, "id_jk_sa: ", id_jk_sa, ", id_jk_en: ", id_jk_en
-    bc_jk_sa => fdata%bc(id_jk_sa)%c ! bcs(blk_sa)%c
-    bc_jk_en => fdata%bc(id_jk_en)%c ! bcs(blk_en)%c
+    bc_jk_sa => fkeep%bc(id_jk_sa)%c ! bcs(blk_sa)%c
+    bc_jk_en => fkeep%bc(id_jk_en)%c ! bcs(blk_en)%c
     ! write(*,*) "nb_blk: ", nb_blk
     ! write(*,*) "nb_blk:", nb_blk, "blk_sa: ", blk_sa, ", blk_en: ", blk_en
     csrc_sa = bcs(blk_sa)%sa
@@ -1148,14 +1148,14 @@ contains
     id_ik_en = blk_en
     ! if (nb_blk.gt.2)  write(*,*) "nb_blk:", nb_blk, "id_ik_sa: ", id_ik_sa, ", id_ik_en: ", id_ik_en
 
-    bc_ik_sa => fdata%bc(id_ik_sa)%c ! bcs(blk_sa)%c
-    bc_ik_en => fdata%bc(id_ik_en)%c ! bcs(blk_en)%c
+    bc_ik_sa => fkeep%bc(id_ik_sa)%c ! bcs(blk_sa)%c
+    bc_ik_en => fkeep%bc(id_ik_en)%c ! bcs(blk_en)%c
 
     rsrc_sa = bcs(blk_sa)%sa
     rsrc_en = bcs(blk_en)%sa
 
     id_ij = a_bc%id
-    a_bc_c => fdata%bc(id_ij)%c
+    a_bc_c => fkeep%bc(id_ij)%c
 
     dbc_c => dbc%c
 
@@ -1175,8 +1175,8 @@ contains
     ! p_snode => snode
     ! p_anode => anode
 
-    p_snode => fdata%nodes(dbc%node)
-    p_anode => fdata%nodes(a_bc%node)
+    p_snode => fkeep%nodes(dbc%node)
+    p_anode => fkeep%nodes(a_bc%node)
 
     s_nb = p_snode%nb    ! block size in source node
     n1  = dbc%blkn ! width of column
@@ -1209,9 +1209,9 @@ contains
 !$omp    & depend(in:bc_jk_sa(1), bc_jk_en(1)) &
 !$omp    & depend(inout: a_bc_c(1))
 
-! !$omp    & depend(in:fdata%bc(id_ik_sa)%c, fdata%bc(id_ik_en)%c) &
-! !$omp    & depend(in:fdata%bc(id_jk_sa)%c, fdata%bc(id_jk_en)%c) &
-! !$omp    & depend(inout:fdata%bc(id_ij)%c)
+! !$omp    & depend(in:fkeep%bc(id_ik_sa)%c, fkeep%bc(id_ik_en)%c) &
+! !$omp    & depend(in:fkeep%bc(id_jk_sa)%c, fkeep%bc(id_jk_en)%c) &
+! !$omp    & depend(inout:fkeep%bc(id_ij)%c)
 
 #if defined(SPLLT_OMP_TRACE)
     th_id = omp_get_thread_num()
@@ -1299,7 +1299,7 @@ contains
   end subroutine spllt_update_between_task
 
   ! init node
-  subroutine spllt_init_node_task(fdata, node, val, prio)
+  subroutine spllt_init_node_task(fkeep, node, val, prio)
     use spllt_data_mod
     use spllt_kernels_mod
 #if defined(SPLLT_USE_STARPU)
@@ -1312,19 +1312,19 @@ contains
 #endif
     implicit none
 
-    type(spllt_fdata), target, intent(in)  :: fdata    
+    type(spllt_fkeep), target, intent(in)  :: fkeep    
     type(spllt_node), intent(in) :: node
     real(wp), dimension(:), target, intent(in) :: val ! user's matrix values
 
      ! so that, if variable (row) i is involved in node,
      ! map(i) is set to its local row index
-    ! type(spllt_fdata), target, intent(inout) :: fdata ! on exit, matrix a copied
+    ! type(spllt_fkeep), target, intent(inout) :: fkeep ! on exit, matrix a copied
      ! into relevant part of keep%lfact
     integer, optional :: prio 
 
     integer :: p
 #if defined(SPLLT_USE_STARPU)
-    type(c_ptr) :: val_c, fdata_c
+    type(c_ptr) :: val_c, fkeep_c
     integer(c_int) :: nval
 #endif
 
@@ -1332,7 +1332,7 @@ contains
     integer :: snum
     integer :: th_id
     ! type(MA87_keep), intent(inout) :: keep ! on exit, matrix a copied
-    type(spllt_fdata), pointer :: p_fdata
+    type(spllt_fkeep), pointer :: p_fkeep
     real(wp), pointer :: p_val(:)
 #endif
 
@@ -1345,17 +1345,17 @@ contains
 #if defined(SPLLT_USE_STARPU)
     nval = size(val,1)
     val_c  = c_loc(val(1)) 
-    fdata_c = c_loc(fdata)
+    fkeep_c = c_loc(fkeep)
 
     call spllt_insert_init_node_task_c(node%hdl, &
-         & node%num, val_c, nval, fdata_c, p)
+         & node%num, val_c, nval, fkeep_c, p)
 #elif defined(SPLLT_USE_OMP)
 
     snum = node%num
-    p_fdata => fdata
+    p_fkeep => fkeep
     p_val => val
 
-!$omp task firstprivate(snum) firstprivate(p_fdata, p_val) &
+!$omp task firstprivate(snum) firstprivate(p_fkeep, p_val) &
 #if defined(SPLLT_OMP_TRACE)
 !$omp    & shared(ini_nde_id) &
 #endif
@@ -1367,7 +1367,7 @@ contains
     call trace_event_start(ini_nde_id, th_id)
 #endif
 
-    call spllt_init_node(snum, p_val, p_fdata)
+    call spllt_init_node(snum, p_val, p_fkeep)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(ini_nde_id, th_id)
@@ -1376,7 +1376,7 @@ contains
 !$omp end task
 
 #else
-    call spllt_init_node(node%num, val, fdata)
+    call spllt_init_node(node%num, val, fkeep)
 #endif
     
     return

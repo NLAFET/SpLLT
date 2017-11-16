@@ -148,31 +148,31 @@ module spllt_starpu_factorization_mod
 
   ! init node StarPU task insert
   interface
-     subroutine spllt_insert_init_node_task_c(hdl, snode, val, nval, fdata, prio) bind(C)
+     subroutine spllt_insert_init_node_task_c(hdl, snode, val, nval, fkeep, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: hdl
        integer(c_int), value  :: snode, prio, nval
-       type(c_ptr), value     :: val, fdata
+       type(c_ptr), value     :: val, fkeep
      end subroutine spllt_insert_init_node_task_c
   end interface
 
   ! unpack args
   interface
      subroutine spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
-          & snode, val, nval, fdata) bind(C)
+          & snode, val, nval, fkeep) bind(C)
        use iso_c_binding
        type(c_ptr), value :: cl_arg
-       type(c_ptr), value :: snode, val, fdata, nval
+       type(c_ptr), value :: snode, val, fkeep, nval
      end subroutine spllt_starpu_codelet_unpack_args_init_node
   end interface
 
   ! subtree_factorize StarPU task insert
   interface
-     subroutine spllt_insert_subtree_factorize_task_c(root, val, fdata, &
+     subroutine spllt_insert_subtree_factorize_task_c(root, val, fkeep, &
           & buffer_hdl, cntl, map_hdl, rlst_hdl, clst_hdl, work_hdl) bind(C)
        use iso_c_binding
        integer(c_int), value  :: root ! root node of the subtree
-       type(c_ptr), value     :: val, fdata, cntl ! info
+       type(c_ptr), value     :: val, fkeep, cntl ! info
        type(c_ptr), value     :: buffer_hdl ! buffer memory containing accumulated update
        type(c_ptr), value     :: map_hdl, rlst_hdl, clst_hdl, work_hdl ! scratch memory
      end subroutine spllt_insert_subtree_factorize_task_c
@@ -181,11 +181,11 @@ module spllt_starpu_factorization_mod
   ! unpack args
   interface
      subroutine spllt_starpu_codelet_unpack_args_subtree_factorize(cl_arg, root, &
-          & val, fdata, cntl) bind(C)
+          & val, fkeep, cntl) bind(C)
        use iso_c_binding
        type(c_ptr), value :: cl_arg
        type(c_ptr), value :: root
-       type(c_ptr), value :: val, fdata, cntl
+       type(c_ptr), value :: val, fkeep, cntl
      end subroutine spllt_starpu_codelet_unpack_args_subtree_factorize
   end interface
 
@@ -594,18 +594,18 @@ contains
     type(c_ptr), value :: buffers
 
     integer, target            :: nval, snode
-    type(c_ptr), target        :: val_c, fdata_c
+    type(c_ptr), target        :: val_c, fkeep_c
     real(wp), pointer          :: val(:)
-    type(spllt_fdata), pointer  :: fdata
+    type(spllt_fkeep), pointer  :: fkeep
 
     call spllt_starpu_codelet_unpack_args_init_node(cl_arg, &
          & c_loc(snode), &  
-         & c_loc(val_c), c_loc(nval), c_loc(fdata_c)) 
+         & c_loc(val_c), c_loc(nval), c_loc(fkeep_c)) 
     
     call c_f_pointer(val_c, val, (/nval/))
-    call c_f_pointer(fdata_c, fdata)    
+    call c_f_pointer(fkeep_c, fkeep)    
 
-    call spllt_init_node(snode, val, fdata)
+    call spllt_init_node(snode, val, fkeep)
     
   end subroutine spllt_starpu_init_node_cpu_func
 
@@ -619,10 +619,10 @@ contains
     type(c_ptr), value :: cl_arg
     type(c_ptr), value :: buffers
 
-    type(c_ptr), target       :: val_c, fdata_c, cntl_c
+    type(c_ptr), target       :: val_c, fkeep_c, cntl_c
     integer, target           :: root
 
-    type(spllt_fdata), pointer  :: fdata
+    type(spllt_fkeep), pointer  :: fkeep
     integer :: n
     real(wp), pointer         :: val(:)
     type(spllt_options), pointer :: cntl
@@ -633,10 +633,10 @@ contains
     integer, target           :: mw, map_sz, rsize, csize, buf_m, buf_n, buf_ld
 
     call spllt_starpu_codelet_unpack_args_subtree_factorize(cl_arg, &
-         & c_loc(root), c_loc(val_c), c_loc(fdata_c), c_loc(cntl_c))
+         & c_loc(root), c_loc(val_c), c_loc(fkeep_c), c_loc(cntl_c))
 
-    call c_f_pointer(fdata_c, fdata)    
-    n = fdata%n
+    call c_f_pointer(fkeep_c, fkeep)    
+    n = fkeep%n
     call c_f_pointer(val_c, val, (/n*n/))
     
     call c_f_pointer(cntl_c, cntl)
@@ -661,7 +661,7 @@ contains
     call starpu_f_get_buffer(buffers, 4, c_loc(work_c), c_loc(mw))
     call c_f_pointer(work_c, work, (/mw/))
 
-    call spllt_subtree_factorize(root, val, fdata, buffer, &
+    call spllt_subtree_factorize(root, val, fkeep, buffer, &
        & cntl, map, rlst, clst, work)
 
   end subroutine spllt_starpu_subtree_factorize_cpu_func

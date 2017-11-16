@@ -6,21 +6,21 @@ module spllt_factorization_mod
 
   interface
      subroutine spllt_insert_factorize_node_task_c(node_hdl, cnode_hdls, nchild, &
-          & map_hdl, snode, fdata, options, prio) bind(C)
+          & map_hdl, snode, fkeep, options, prio) bind(C)
        use iso_c_binding
        type(c_ptr), value     :: node_hdl, map_hdl
        type(c_ptr)            :: cnode_hdls(*)
-       type(c_ptr), value     :: snode, fdata, options
+       type(c_ptr), value     :: snode, fkeep, options
        integer(c_int), value  :: prio, nchild
      end subroutine spllt_insert_factorize_node_task_c
   end interface
 
   interface
      subroutine spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
-          & snode, fdata, options) bind(C)
+          & snode, fkeep, options) bind(C)
        use iso_c_binding
        type(c_ptr), value :: cl_arg 
-       type(c_ptr), value :: snode, fdata, options
+       type(c_ptr), value :: snode, fkeep, options
      end subroutine spllt_starpu_codelet_unpack_args_factorize_node
   end interface
 
@@ -32,12 +32,12 @@ contains
   ! This routine aquires all locks as needed, and decrements dependencies
   ! upon release of relevant locks.
   ! NB: This is basically an immediate acting variant of add_between_updates()
-  subroutine spllt_subtree_apply_buffer(fdata, root, buffer, nodes, blocks, lfact, map)
+  subroutine spllt_subtree_apply_buffer(fkeep, root, buffer, nodes, blocks, lfact, map)
     use spllt_data_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_fdata) :: fdata
+    type(spllt_fkeep) :: fkeep
     integer, intent(in) :: root ! root of subtree
     ! real(wp), dimension(*), intent(in) :: buffer ! generated element
     type(spllt_block), intent(in) :: buffer
@@ -162,7 +162,7 @@ contains
                 ben = (rsrc(2)-n-1)*lds+csrc(2)-n
 
                 call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
-                     & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
+                     & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fkeep%bc(dest), nodes(anode))
 
                 jb = k
                 ilast = i ! Update start of current block
@@ -175,7 +175,7 @@ contains
           ben = (rsrc(2)-n-1)*lds+csrc(2)-n
 
           call spllt_scatter_block_task(ilast, i-1, cptr, cptr2,  buffer, nodes(root), &
-               & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fdata%bc(dest), nodes(anode))
+               & (jb-1)*a_nb+1, (cb-1)*a_nb+1, fkeep%bc(dest), nodes(anode))
 
           ! Move cptr down, ready for next block column of anode
           cptr = cptr2 + 1
@@ -189,13 +189,13 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Factorize a subtree rooted at node root and update the
   !> ancestor nodes with the computed factors.
-  subroutine spllt_subtree_factorize_apply(fdata, options, root, val, map, buffer)
+  subroutine spllt_subtree_factorize_apply(fkeep, options, root, val, map, buffer)
     use spllt_data_mod
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata ! Factorization data
+    type(spllt_fkeep), target, intent(inout) :: fkeep ! Factorization data
     type(spllt_options), intent(in) :: options ! User-supplied info
     integer, intent(in) :: root ! Index of root node
     real(wp), dimension(:), intent(in) :: val ! User's matrix values
@@ -206,9 +206,9 @@ contains
     integer :: m, n, b_sz
     type(spllt_block), pointer :: buf
 
-    node => fdata%nodes(root)
+    node => fkeep%nodes(root)
     m = size(node%index)
-    n = fdata%nodes(root)%en - fdata%nodes(root)%sa + 1
+    n = fkeep%nodes(root)%en - fkeep%nodes(root)%sa + 1
     b_sz = m-n
 
 #if defined(SPLLT_USE_STARPU)
@@ -217,16 +217,16 @@ contains
     ! by registering a StarPU handle associated to a NULL pointer
     ! which means that StarPU is in charge of allocating/deallocating
     ! memory for this buffer
-    call starpu_f_matrix_data_register(fdata%nodes(root)%buffer%hdl, & 
+    call starpu_f_matrix_data_register(fkeep%nodes(root)%buffer%hdl, & 
          -1, c_null_ptr, int(b_sz, kind=c_int), int(b_sz, kind=c_int), &
          int(b_sz, kind=c_int), int(wp, kind=c_size_t))
     
 #elif defined(SPLLT_USE_OMP)
 
-    allocate(fdata%nodes(root)%buffer%c(b_sz**2)) ! FIXME deallocate memory after apply
+    allocate(fkeep%nodes(root)%buffer%c(b_sz**2)) ! FIXME deallocate memory after apply
     
 #else
-    ! FIXME use fdata%nodes(root)%buffer
+    ! FIXME use fkeep%nodes(root)%buffer
     if (size(buffer%c).lt.(m-n)**2) then
        deallocate(buffer%c)
        allocate(buffer%c((m-n)**2))
@@ -237,19 +237,19 @@ contains
     ! subtree factorization task
 
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_factorize_task(root, fdata, val, fdata%nodes(root)%buffer, options, map)
+    call spllt_subtree_factorize_task(root, fkeep, val, fkeep%nodes(root)%buffer, options, map)
     ! call system_clock(subtree_stop_t)
     ! write(*,'("[>] [spllt_stf_factorize] facto subtree: ", es10.3, " s")') &
          ! & (subtree_stop_t - subtree_start_t)/real(subtree_rate_t)
 
     ! Expand generated element out to ancestors
     ! call system_clock(subtree_start_t, subtree_rate_t)
-    call spllt_subtree_apply_buffer(fdata, root, fdata%nodes(root)%buffer, fdata%nodes, &
-         fdata%bc, fdata%lfact, map)
+    call spllt_subtree_apply_buffer(fkeep, root, fkeep%nodes(root)%buffer, fkeep%nodes, &
+         fkeep%bc, fkeep%lfact, map)
 
 
 #if defined(SPLLT_USE_STARPU)   
-    call starpu_f_data_unregister_submit(fdata%nodes(root)%buffer%hdl)
+    call starpu_f_data_unregister_submit(fkeep%nodes(root)%buffer%hdl)
     ! deallocate(buf%c)
     ! deallocate(buf)
 #endif
@@ -259,21 +259,21 @@ contains
 #if defined(SPLLT_USE_STARPU)
 
   ! Factorize node task submission routine for StarPU
-  subroutine spllt_factorize_apply_node_task(fdata, options, node, prio)
+  subroutine spllt_factorize_apply_node_task(fkeep, options, node, prio)
     use iso_c_binding
     use spllt_data_mod
     use starpu_f_mod
     use spllt_starpu_factorization_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata ! factorization data
+    type(spllt_fkeep), target, intent(inout) :: fkeep ! factorization data
     type(spllt_options), target, intent(in) :: options
     type(spllt_node), target, intent(inout) :: node ! supernode to be factorized 
     integer, intent(in) :: prio ! task priority for scheduler
 
     ! C pointers
     type(c_ptr) :: node_c
-    type(c_ptr) :: fdata_c
+    type(c_ptr) :: fkeep_c
     type(c_ptr) :: options_c
 
     type(spllt_node), pointer :: cnode ! child node 
@@ -281,7 +281,7 @@ contains
     type(c_ptr), allocatable, target :: cnode_handles(:) ! children node hanldes
 
     node_c = c_loc(node)
-    fdata_c = c_loc(fdata)
+    fkeep_c = c_loc(fkeep)
     options_c = c_loc(options)
 
     ! Gather the handles from the children nodes and put them in the
@@ -290,12 +290,12 @@ contains
     allocate(cnode_handles(nchild))
     do i = 1, nchild
        c = node%child(i)
-       cnode => fdata%nodes(c)
+       cnode => fkeep%nodes(c)
        cnode_handles(i) = cnode%hdl2 
     end do
 
     call spllt_insert_factorize_node_task_c(node%hdl2, cnode_handles, &
-         & int(nchild, kind=c_int), fdata%map%hdl, node_c, fdata_c, options_c, &
+         & int(nchild, kind=c_int), fkeep%map%hdl, node_c, fkeep_c, options_c, &
          & prio)
 
     deallocate(cnode_handles)
@@ -313,41 +313,41 @@ contains
     type(c_ptr), value :: buffers
 
     ! C pointers
-    type(c_ptr), target:: node_c, fdata_c, options_c
+    type(c_ptr), target:: node_c, fkeep_c, options_c
     type(c_ptr), target :: map_c
 
     type(spllt_node),pointer :: node
-    type(spllt_fdata), pointer :: fdata
+    type(spllt_fkeep), pointer :: fkeep
     type(spllt_options), pointer :: options
     integer, pointer :: map(:)
     integer, target :: n
 
     call spllt_starpu_codelet_unpack_args_factorize_node(cl_arg, &
-         & c_loc(node_c), c_loc(fdata_c), c_loc(options_c)) 
+         & c_loc(node_c), c_loc(fkeep_c), c_loc(options_c)) 
 
     call c_f_pointer(node_c, node)
-    call c_f_pointer(fdata_c, fdata)
+    call c_f_pointer(fkeep_c, fkeep)
     call c_f_pointer(options_c, options)
 
     call starpu_f_get_buffer(buffers, 0, c_loc(map_c), c_loc(n))
     call c_f_pointer(map_c, map, (/n/))
 
-    call spllt_factorize_apply_node(fdata, options, node, map)
+    call spllt_factorize_apply_node(fkeep, options, node, map)
 
   end subroutine spllt_starpu_factorize_node_cpu_func
 #endif
 
   ! initialize factorization
   ! allocate map array
-  ! allocate workspaces: fdata%workspace, fdata%row_list, fdata%col_list 
-  subroutine spllt_factorization_init(fdata, map)
+  ! allocate workspaces: fkeep%workspace, fkeep%row_list, fkeep%col_list 
+  subroutine spllt_factorization_init(fkeep, map)
     use spllt_data_mod
 #if defined(SPLLT_USE_OMP)
 !$  use omp_lib
 #endif
     implicit none
 
-    type(spllt_fdata), target :: fdata
+    type(spllt_fkeep), target :: fkeep
     integer, dimension(:), pointer ::  map
     ! type(spllt_keep), target, intent(inout) :: keep 
 
@@ -358,10 +358,10 @@ contains
     integer :: nt ! num threads
 #endif
    
-    n = fdata%n
+    n = fkeep%n
 
-    deallocate (fdata%lfact,stat=st)
-    allocate (fdata%lfact(fdata%nbcol),stat=st)
+    deallocate (fkeep%lfact,stat=st)
+    allocate (fkeep%lfact(fkeep%nbcol),stat=st)
 
 #ifndef SPLLT_USE_NESTED_STF
     ! when using the nested STF model we let StarPU manage the map
@@ -374,45 +374,45 @@ contains
 #if defined(SPLLT_USE_STARPU)
 
     ! register workspace handle
-    call starpu_f_vector_data_register(fdata%workspace%hdl, -1, c_null_ptr, &
-         & int(fdata%maxmn*fdata%maxmn, kind=c_int), int(wp, kind=c_size_t))
+    call starpu_f_vector_data_register(fkeep%workspace%hdl, -1, c_null_ptr, &
+         & int(fkeep%maxmn*fkeep%maxmn, kind=c_int), int(wp, kind=c_size_t))
 
     ! register col_list and row_list workspaces
     ! register row_list handle
-    call starpu_f_vector_data_register(fdata%row_list%hdl, -1, c_null_ptr, &
-         & int(fdata%maxmn, kind=c_int), int(c_int, kind=c_size_t))
+    call starpu_f_vector_data_register(fkeep%row_list%hdl, -1, c_null_ptr, &
+         & int(fkeep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
 
     ! register col_list handle
-    call starpu_f_vector_data_register(fdata%col_list%hdl, -1, c_null_ptr, &
-         & int(fdata%maxmn, kind=c_int), int(c_int, kind=c_size_t))
+    call starpu_f_vector_data_register(fkeep%col_list%hdl, -1, c_null_ptr, &
+         & int(fkeep%maxmn, kind=c_int), int(c_int, kind=c_size_t))
 
-    call starpu_f_vector_data_register(fdata%map%hdl, -1, c_null_ptr, &
+    call starpu_f_vector_data_register(fkeep%map%hdl, -1, c_null_ptr, &
          & int(n, kind=c_int), int(c_int, kind=c_size_t))
 
 #elif defined(SPLLT_USE_OMP)
 
     nt = 1
 !$  nt = omp_get_num_threads()
-    allocate(fdata%workspace(0:nt-1)) ! workspace
-    allocate(fdata%row_list(0:nt-1)) ! row list workspace 
-    allocate(fdata%col_list(0:nt-1)) ! col list workspace
-    allocate(fdata%map(0:nt-1)) ! map workspace
+    allocate(fkeep%workspace(0:nt-1)) ! workspace
+    allocate(fkeep%row_list(0:nt-1)) ! row list workspace 
+    allocate(fkeep%col_list(0:nt-1)) ! col list workspace
+    allocate(fkeep%map(0:nt-1)) ! map workspace
 
     do i = 0, nt-1
-       allocate(fdata%workspace(i)%c(fdata%maxmn*fdata%maxmn), stat=st)
+       allocate(fkeep%workspace(i)%c(fkeep%maxmn*fkeep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
-       allocate(fdata%row_list(i)%c(fdata%maxmn), stat=st)
+       allocate(fkeep%row_list(i)%c(fkeep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
-       allocate(fdata%col_list(i)%c(fdata%maxmn), stat=st)
+       allocate(fkeep%col_list(i)%c(fkeep%maxmn), stat=st)
        ! if(st.ne.0) goto 10
-       allocate(fdata%map(i)%c(n), stat=st)
+       allocate(fkeep%map(i)%c(n), stat=st)
     end do
 #else
-    allocate(fdata%workspace%c(fdata%maxmn*fdata%maxmn), stat=st)
+    allocate(fkeep%workspace%c(fkeep%maxmn*fkeep%maxmn), stat=st)
     ! if(st.ne.0) goto 10
-    allocate(fdata%row_list%c(fdata%maxmn), stat=st)
+    allocate(fkeep%row_list%c(fkeep%maxmn), stat=st)
     ! if(st.ne.0) goto 10
-    allocate(fdata%col_list%c(fdata%maxmn), stat=st)
+    allocate(fkeep%col_list%c(fkeep%maxmn), stat=st)
     ! if(st.ne.0) goto 10
 #endif
 
@@ -422,25 +422,25 @@ contains
   ! deinitialize factorization
   ! deallocate map array
   ! deallocate workspaces
-  subroutine spllt_factorization_fini(fdata, map, adata)
+  subroutine spllt_factorization_fini(fkeep, map, akeep)
     use spllt_data_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_fdata), target :: fdata
+    type(spllt_fkeep), target :: fkeep
     integer, dimension(:), pointer ::  map
-    type(spllt_adata), target, intent(in) :: adata
+    type(spllt_akeep), target, intent(in) :: akeep
 
     integer :: st ! stat parameter
     
 #if defined(SPLLT_USE_STARPU)
     
     ! unregister workspace handle
-    call starpu_f_data_unregister_submit(fdata%workspace%hdl)
+    call starpu_f_data_unregister_submit(fkeep%workspace%hdl)
 
-    call starpu_f_data_unregister_submit(fdata%row_list%hdl)
-    call starpu_f_data_unregister_submit(fdata%col_list%hdl)
-    call starpu_f_data_unregister_submit(fdata%map%hdl)
+    call starpu_f_data_unregister_submit(fkeep%row_list%hdl)
+    call starpu_f_data_unregister_submit(fkeep%col_list%hdl)
+    call starpu_f_data_unregister_submit(fkeep%map%hdl)
 
 #endif
     
@@ -449,11 +449,11 @@ contains
 
 #ifndef SPLLT_USE_GPU
 
-    call spllt_data_unregister_task(adata, fdata)
+    call spllt_data_unregister_task(akeep, fkeep)
 #endif
 
     ! do snode = 1, num_nodes
-    !    call starpu_f_void_unregister_submit(fdata%nodes(snode)%hdl)        
+    !    call starpu_f_void_unregister_submit(fkeep%nodes(snode)%hdl)        
     ! end do
 #endif
 
@@ -467,12 +467,12 @@ contains
 
   end subroutine spllt_factorization_fini
 
-  subroutine spllt_factorize_node(fdata, node)
+  subroutine spllt_factorize_node(fkeep, node)
     use spllt_data_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_fkeep), target, intent(inout) :: fkeep
     type(spllt_node), target, intent(inout) :: node ! Supernode to factorize    
 
     ! type(spllt_node), pointer :: node ! node to factorize (hsl_ma87)
@@ -515,8 +515,8 @@ contains
     do kk = 1, nc
        ! write(*,*)"kk: ", kk
        ! A_kk
-       bc_kk => fdata%bc(dblk)
-       call spllt_factorize_block_task(fdata, node, bc_kk, fdata%lfact, prio+3)
+       bc_kk => fkeep%bc(dblk)
+       call spllt_factorize_block_task(fkeep, node, bc_kk, fkeep%lfact, prio+3)
 
        ! loop over the row blocks (that is, loop over blocks in block col)
        do ii = kk+1,nr
@@ -524,9 +524,9 @@ contains
           ! A_mk
           blk = dblk+ii-kk
           ! bc_ik => keep%blocks(blk)
-          bc_ik => fdata%bc(blk)
+          bc_ik => fkeep%bc(blk)
           ! write(*,*)"ii: ", ii
-          call spllt_solve_block_task(fdata, bc_kk, bc_ik, fdata%lfact,prio+2)
+          call spllt_solve_block_task(fkeep, bc_kk, bc_ik, fkeep%lfact,prio+2)
        end do
 
        ! perform update operations within node
@@ -534,25 +534,25 @@ contains
 
           ! L_jk
           blk2 = dblk+jj-kk
-          bc_jk => fdata%bc(blk2)
+          bc_jk => fkeep%bc(blk2)
 
           do ii = jj,nr
 
              ! L_ik
              blk1 = dblk+ii-kk                
-             bc_ik => fdata%bc(blk1)
+             bc_ik => fkeep%bc(blk1)
 
              ! A_ij
              ! blk = get_dest_block(keep%blocks(blk1), keep%blocks(blk2))
-             blk = get_dest_block(fdata%bc(blk2), fdata%bc(blk1))
-             bc_ij => fdata%bc(blk)
-             call spllt_update_block_task(fdata, bc_ik, bc_jk, bc_ij, fdata%lfact, prio+1)
+             blk = get_dest_block(fkeep%bc(blk2), fkeep%bc(blk1))
+             bc_ij => fkeep%bc(blk)
+             call spllt_update_block_task(fkeep, bc_ik, bc_jk, bc_ij, fkeep%lfact, prio+1)
 
           end do
        end do
 
        ! move to next block column in snode
-       dblk = fdata%bc(dblk)%last_blk + 1
+       dblk = fkeep%bc(dblk)%last_blk + 1
        ! numrow = numrow - s_nb
     end do
 
@@ -560,13 +560,13 @@ contains
 
   ! node factorization
   ! Submit the DAG for the factorization of a node
-  subroutine spllt_factorize_apply_node(fdata, options, node, map)
+  subroutine spllt_factorize_apply_node(fkeep, options, node, map)
     use spllt_data_mod
     use spllt_kernels_mod
     use spllt_factorization_task_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata
+    type(spllt_fkeep), target, intent(inout) :: fkeep
     type(spllt_options), intent(in) :: options
     type(spllt_node), target, intent(inout) :: node ! node to factorize (spllt)    
     integer, dimension(:), pointer, intent(inout) :: map
@@ -606,7 +606,7 @@ contains
     integer(long) :: a_dblk, a_blk ! id of block in scol containing row 
 
     ! Perform blocked Cholesky factorizaton of node
-    call spllt_factorize_node(fdata, node)
+    call spllt_factorize_node(fkeep, node)
 
     !
     ! Perform update between opertaions
@@ -630,8 +630,8 @@ contains
     cptr = 1 + numcol
     ! write(*,*)"numrow: ", numrow 
     do while(a_num.gt.0)
-       anode => fdata%nodes(a_num) 
-       ! a_node => fdata%nodes(a_num)
+       anode => fkeep%nodes(a_num) 
+       ! a_node => fkeep%nodes(a_num)
        ! Skip columns that come from other children
        do cptr = cptr, numrow
           if(node%index(cptr).ge.anode%sa) exit
@@ -650,7 +650,7 @@ contains
           cb = (node%index(cptr) - anode%sa)/anode%nb + 1
           a_dblk = anode%blk_sa
           do jb = 2, cb
-             a_dblk = fdata%bc(a_dblk)%last_blk + 1
+             a_dblk = fkeep%bc(a_dblk)%last_blk + 1
           end do
 
           ! Find cptr2
@@ -681,7 +681,7 @@ contains
              if(k.ne.ii) then
                 a_blk = a_dblk + ii - cb
                 ! a_bc => keep%blocks(a_blk)
-                a_bc => fdata%bc(a_blk)
+                a_bc => fkeep%bc(a_blk)
 
                 ! rsrc(1) = 1 + (ilast-(kk-1)*s_nb-1)*blocks(blk)%blkn
                 ! rsrc(2) = (i - ilast)*blocks(blk)%blkn
@@ -690,20 +690,20 @@ contains
                 ! Loop over the block columns in node. 
                 do kk = 1, nc
 
-                   bc_kk => fdata%bc(dblk)
+                   bc_kk => fkeep%bc(dblk)
 
                    call spllt_update_between_task( &
-                        & fdata, &
+                        & fkeep, &
                                 ! & bc, &
                         & bc_kk, &
                         & node, a_bc, anode, &
                                 ! & csrc, rsrc, &
                         & cptr, cptr2, ilast, i-1, &
-                        & fdata%row_list, fdata%col_list, fdata%workspace, &
-                        & fdata%lfact, fdata%bc, &
+                        & fkeep%row_list, fkeep%col_list, fkeep%workspace, &
+                        & fkeep%lfact, fkeep%bc, &
                         & options%min_width_blas, prio)
 
-                   dblk = fdata%bc(dblk)%last_blk + 1
+                   dblk = fkeep%bc(dblk)%last_blk + 1
                 end do
 
                 ii = k
@@ -713,27 +713,27 @@ contains
 
           a_blk = a_dblk + ii - cb
 
-          a_bc => fdata%bc(a_blk)
+          a_bc => fkeep%bc(a_blk)
 
 
           dblk = node%blk_sa
           ! Loop over the block columns in node. 
           do kk = 1, nc
 
-             bc_kk => fdata%bc(dblk)
+             bc_kk => fkeep%bc(dblk)
 
              call spllt_update_between_task( &
-                  & fdata, &
+                  & fkeep, &
                                 ! & bc, &
                   & bc_kk, &
                   & node, a_bc, anode, &
                                 ! & csrc, rsrc, &
                   & cptr, cptr2, ilast, i-1, &
-                  & fdata%row_list, fdata%col_list, fdata%workspace, &
-                  & fdata%lfact, fdata%bc, &
+                  & fkeep%row_list, fkeep%col_list, fkeep%workspace, &
+                  & fkeep%lfact, fkeep%bc, &
                   & options%min_width_blas, prio)
 
-             dblk = fdata%bc(dblk)%last_blk + 1
+             dblk = fkeep%bc(dblk)%last_blk + 1
           end do
 
           ! Move cptr down, ready for next block column of anode

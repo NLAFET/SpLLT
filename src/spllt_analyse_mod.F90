@@ -12,15 +12,15 @@ contains
   !>
   !> Performs the symbolic factorization of the input matrix. It uses
   !> the ssids_analyse from SSIDSto compute the assembly tree.
-  !> @param adata Symbolic factorization data.
-  !> @param fdata Factorization data.
+  !> @param akeep Symbolic factorization data.
+  !> @param fkeep Factorization data.
   !> @param n Order of the input matrix.
   !> @param ptr Column pointers of A.
   !> @param row Row indices of A.
   !> @param order Return ordering to user / allow user to supply order.
   !> @param options User-supplied options. 
   !> @param info Stats/information returned to user.
-  subroutine spllt_analyse(adata, fdata, options, n, ptr, row, info, order)
+  subroutine spllt_analyse(akeep, fkeep, options, n, ptr, row, info, order)
     use spllt_data_mod
     use spral_ssids_datatypes, only: ssids_options
     use spral_ssids_akeep, only: ssids_akeep
@@ -28,17 +28,18 @@ contains
     use spral_ssids, only: ssids_analyse
     implicit none
 
-    type(spllt_adata), intent(inout) :: adata ! data related to the analysis
-    type(spllt_fdata), intent(inout) :: fdata ! data related to the factorization
+    type(spllt_akeep), intent(inout) :: akeep ! data related to the analysis
+    type(spllt_fkeep), intent(inout) :: fkeep ! data related to the factorization
     type(spllt_options), intent(in) :: options ! User-supplied options
     integer, intent(in) :: n ! order of A
     integer, intent(in) :: row(:) ! row indices of lower triangular part
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
+    type(spllt_inform), intent(inout) :: info
+    ! Optional parameters:
     integer, dimension(:), optional, intent(inout) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
-    type(spllt_inform), intent(inout) :: info
 
     integer, allocatable :: amap(:) ! map from user a to reordered a
     integer(long), allocatable :: aptr(:) ! column pointers of expanded matrix
@@ -85,7 +86,7 @@ contains
     ! SSIDS data
     type(ssids_options) :: ssids_opt ! SSIDS options
     ! type(ssids_inform) :: inform ! SSDIS stats
-    type(ssids_akeep), target :: akeep   ! analysis data from SSIDS
+    type(ssids_akeep), target :: super_akeep   ! analysis data from SSIDS
 
     ! Setup options for analysis in SSIDS
     ssids_opt%ordering = 1 ! use Metis ordering
@@ -103,7 +104,8 @@ contains
     ! else
     !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform)
     ! end if
-    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order=order)
+    call ssids_analyse(&
+         .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, order=order)
     if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN
@@ -118,19 +120,19 @@ contains
     info%maxdepth = 0
     info%stat = 0
 
-    fdata%n = n
-    adata%n = n
+    fkeep%n = n
+    akeep%n = n
     ne = ptr(n+1) - 1
     nz = ptr(n+1) - 1
-    num_nodes = akeep%nnodes
+    num_nodes = super_akeep%nnodes
 
     ! immediate return if n = 0
     if (n == 0) return
 
-    sptr => akeep%sptr
-    sparent => akeep%sparent
-    rlist => akeep%rlist 
-    rptr => akeep%rptr
+    sptr => super_akeep%sptr
+    sparent => super_akeep%sparent
+    rlist => super_akeep%rlist 
+    rptr => super_akeep%rptr
     
     ! expand the matrix
     
@@ -178,50 +180,50 @@ contains
     ! control78%sort = .true.
     ! control78%lopt = .true.
     ! call mc78_analyse(n, aptr, arow, order, num_nodes, &
-    !      sptr, sparent, rptr, rlist, control78, info78, nfact=adata%num_factor, &
-    !      nflops=adata%num_flops)
+    !      sptr, sparent, rptr, rlist, control78, info78, nfact=akeep%num_factor, &
+    !      nflops=akeep%num_flops)
     ! ! print *, "sz sparent:", size(sparent)
     
-    adata%nnodes = num_nodes
+    akeep%nnodes = num_nodes
 
     ! perform symbolic factorization
-    call spllt_symbolic(adata, num_nodes, sptr, sparent, rptr)
+    call spllt_symbolic(akeep, num_nodes, sptr, sparent, rptr)
 
     info%num_nodes = num_nodes
     !**************************************
     ! Set up nodal data structures
     ! For each node, hold data in keep%nodes(node) 
-    deallocate(fdata%nodes, stat=st)    
-    allocate(fdata%nodes(-1:num_nodes+1),stat=st)
+    deallocate(fkeep%nodes, stat=st)    
+    allocate(fkeep%nodes(-1:num_nodes+1),stat=st)
     if (st /= 0) goto 100
 
-    deallocate(fdata%nodes, stat=st)
-    allocate(fdata%nodes(-1:num_nodes+1),stat=st)
+    deallocate(fkeep%nodes, stat=st)
+    allocate(fkeep%nodes(-1:num_nodes+1),stat=st)
     if (st /= 0) goto 100
 
-    fdata%nodes(0)%blk_en = 0
-    fdata%nodes(1)%blk_sa = 1
-    fdata%nodes(1)%sa = 1
+    fkeep%nodes(0)%blk_en = 0
+    fkeep%nodes(1)%blk_sa = 1
+    fkeep%nodes(1)%sa = 1
     
     ! loop over root nodes
-    fdata%nodes(:)%nchild = 0
+    fkeep%nodes(:)%nchild = 0
     ! setup nchild and child info
     ! print *, "sz sparent:", size(akeep%sparent)
     ! print *, "num_nodes:", num_nodes
     do node = 1, num_nodes+1
 
-       ! print *, "node: ", node, ", nchild: ", fdata%nodes(node)%nchild
+       ! print *, "node: ", node, ", nchild: ", fkeep%nodes(node)%nchild
        if (node.le.num_nodes) then
           par = sparent(node)
-          fdata%nodes(node)%parent = par 
-          fdata%nodes(par)%nchild = fdata%nodes(par)%nchild + 1
+          fkeep%nodes(node)%parent = par 
+          fkeep%nodes(par)%nchild = fkeep%nodes(par)%nchild + 1
        else
-          fdata%nodes(node)%parent = -1 ! virutal root node: no parent node
+          fkeep%nodes(node)%parent = -1 ! virutal root node: no parent node
        end if
 
        ! Allocate space to store child nodes
-       ! print *, "node:", node, ", nchild:", fdata%nodes(node)%nchild
-       allocate(fdata%nodes(node)%child(fdata%nodes(node)%nchild), stat=st)
+       ! print *, "node:", node, ", nchild:", fkeep%nodes(node)%nchild
+       allocate(fkeep%nodes(node)%child(fkeep%nodes(node)%nchild), stat=st)
        if(st.ne.0) goto 100
     end do
 
@@ -232,14 +234,14 @@ contains
     nchild(:) = 0
     do node = 1, num_nodes+1
        ! par = sparent(node)
-       par = fdata%nodes(node)%parent
+       par = fkeep%nodes(node)%parent
        !    ! if(par.gt.num_nodes) cycle
        !    print *, "par: ", par
        if (par .gt. 0) then
           nchild(par) = nchild(par) + 1
-          ! print *, "node:", node, "par:", par, "nchild(par):", nchild(par), "sz child:", size(fdata%nodes(par)%child)
+          ! print *, "node:", node, "par:", par, "nchild(par):", nchild(par), "sz child:", size(fkeep%nodes(par)%child)
           ! nchild(par) = 0
-          fdata%nodes(par)%child(nchild(par)) = node
+          fkeep%nodes(par)%child(nchild(par)) = node
        end if
     end do
 
@@ -247,41 +249,41 @@ contains
     ! Setup least descendants, to allow easy walk of subtrees
     do node = -1, num_nodes
        ! initialise least descendat to self
-       fdata%nodes(node)%least_desc = node
+       fkeep%nodes(node)%least_desc = node
     end do
     do node = 1, num_nodes
        ! walk up tree from leaves. A parent's least descendant is either this
        ! nodes least descendant (itself in case of a leaf), or its existing
        ! one if that is smaller.
-       anode = fdata%nodes(node)%parent
-       fdata%nodes(anode)%least_desc = &
-            min(fdata%nodes(node)%least_desc, fdata%nodes(anode)%least_desc)
+       anode = fkeep%nodes(node)%parent
+       fkeep%nodes(anode)%least_desc = &
+            min(fkeep%nodes(node)%least_desc, fkeep%nodes(anode)%least_desc)
     end do
 
     ! prune tree
-    allocate(adata%small(adata%nnodes))
+    allocate(akeep%small(akeep%nnodes))
     if (st /= 0) goto 100
-    adata%small = 0
+    akeep%small = 0
     if (options%prune_tree) then
-       call spllt_prune_tree(adata, sparent, options%ncpu, fdata)
-       ! call spllt_prune_tree(adata, sparent, 1, fdata) ! TESTS sequential
-       ! call spllt_prune_tree(adata, sparent, 2, fdata) ! TESTS
-       ! call spllt_prune_tree(adata, sparent, 4, fdata) ! TESTS
-       ! call spllt_prune_tree(adata, sparent, 16, fdata) ! TESTS
+       call spllt_prune_tree(akeep, sparent, options%ncpu, fkeep)
+       ! call spllt_prune_tree(akeep, sparent, 1, fkeep) ! TESTS sequential
+       ! call spllt_prune_tree(akeep, sparent, 2, fkeep) ! TESTS
+       ! call spllt_prune_tree(akeep, sparent, 4, fkeep) ! TESTS
+       ! call spllt_prune_tree(akeep, sparent, 16, fkeep) ! TESTS
     end if
 
     ! set up blocking info
     do node = 1, num_nodes
-       fdata%nodes(node)%sa = sptr(node)
-       fdata%nodes(node)%en = sptr(node+1)-1
+       fkeep%nodes(node)%sa = sptr(node)
+       fkeep%nodes(node)%en = sptr(node+1)-1
        ! set node id 
-       ! fdata%nodes(node)%node => fdata%nodes(node)
-       fdata%nodes(node)%num = node
+       ! fkeep%nodes(node)%node => fkeep%nodes(node)
+       fkeep%nodes(node)%num = node
        
        ! determine and record the block size for node
        ! note we are careful in case l_nb**2 overflows (in fact 1+l_nb must
        ! not overflow at the end), and limit the answer to huge(l_nb)/2
-       ! if (adata%small(node) .eq. 0) then
+       ! if (akeep%small(node) .eq. 0) then
        l_nb = options%nb
        if (l_nb < 1) l_nb = nb_default
        ! l_nb = min(huge(l_nb)/2_long, &
@@ -293,53 +295,53 @@ contains
        ! else
        ! l_nb = max(rptr(node+1)-rptr(node), sptr(node+1)-sptr(node))
        ! end if
-       fdata%nodes(node)%nb = l_nb
+       fkeep%nodes(node)%nb = l_nb
 
-       ! Copy row list into fdata%nodes
-       allocate(fdata%nodes(node)%index(rptr(node+1)-rptr(node)),stat=st)
+       ! Copy row list into fkeep%nodes
+       allocate(fkeep%nodes(node)%index(rptr(node+1)-rptr(node)),stat=st)
        if (st /= 0) goto 100
        j = 1
        do ii = rptr(node), rptr(node+1)-1
-          fdata%nodes(node)%index(j) = rlist(ii)
+          fkeep%nodes(node)%index(j) = rlist(ii)
           j = j + 1
        end do
 
        ! Calculate number j of blocks in node and set
-       ! fdata%nodes(node)%blk_en
+       ! fkeep%nodes(node)%blk_en
        sz = int(rptr(node+1)-rptr(node) - 1) / l_nb + 1
        j = 0
-       do i = fdata%nodes(node)%sa, fdata%nodes(node)%en, l_nb
+       do i = fkeep%nodes(node)%sa, fkeep%nodes(node)%en, l_nb
           j = j + sz
           sz = sz - 1
        end do
-       fdata%nodes(node)%blk_en = fdata%nodes(node-1)%blk_en + j
+       fkeep%nodes(node)%blk_en = fkeep%nodes(node-1)%blk_en + j
 
        ! if node is not the final node, record first block
        ! for the next node (node+1)
        if (node < num_nodes)  &
-            fdata%nodes(node+1)%blk_sa = fdata%nodes(node)%blk_en + 1
+            fkeep%nodes(node+1)%blk_sa = fkeep%nodes(node)%blk_en + 1
 
        ! if(options%prune_tree) then
-       !    fdata%nodes(node)%subtree_root = subtree_root(node)
+       !    fkeep%nodes(node)%subtree_root = subtree_root(node)
        ! else
-       !    fdata%nodes(node)%subtree_root = -1
+       !    fkeep%nodes(node)%subtree_root = -1
        ! endif
     end do
 
-    ! set fdata%final_blk to hold total number of blocks.
-    fdata%final_blk = fdata%nodes(num_nodes)%blk_en
+    ! set fkeep%final_blk to hold total number of blocks.
+    fkeep%final_blk = fkeep%nodes(num_nodes)%blk_en
 
     !**************************************   
     ! Fill out block information.    
-    deallocate(fdata%bc,stat=st)
-    allocate(fdata%bc(fdata%final_blk),stat=st)
+    deallocate(fkeep%bc,stat=st)
+    allocate(fkeep%bc(fkeep%final_blk),stat=st)
     if(st.ne.0) goto 100
     ! if(st.ne.0) go to 9999
 
 #if defined(SPLLT_USE_PARSEC)
-    ! allocate diag in fdata
-    deallocate(fdata%diags,stat=st)
-    allocate(fdata%diags(fdata%final_blk),stat=st) ! large over-estimation of array size
+    ! allocate diag in fkeep
+    deallocate(fkeep%diags,stat=st)
+    allocate(fkeep%diags(fkeep%final_blk),stat=st) ! large over-estimation of array size
 #endif
 
     ! Loop over the nodes. Number the blocks in the first node
@@ -348,22 +350,22 @@ contains
     ! each block column are numbered contiguously.
     ! Also add up the number of block columns and store largest block dimension.
     blk = 1
-    fdata%nbcol = 0
-    fdata%maxmn = 0
+    fkeep%nbcol = 0
+    fkeep%maxmn = 0
     do node = 1, num_nodes
 
-       sa = fdata%nodes(node)%sa
-       en = fdata%nodes(node)%en
+       sa = fkeep%nodes(node)%sa
+       en = fkeep%nodes(node)%en
        numcol = en - sa + 1
-       numrow = size(fdata%nodes(node)%index)
+       numrow = size(fkeep%nodes(node)%index)
 
        ! l_nb is the size of the blocks
-       l_nb = fdata%nodes(node)%nb
+       l_nb = fkeep%nodes(node)%nb
 
        ! sz is number of blocks in the current block column
        sz = (numrow - 1) / l_nb + 1
 
-       ! if (adata%small(node) .ge. 0) then
+       ! if (akeep%small(node) .ge. 0) then
 
        ! cb is the index of the block col. within node
        cb = 0
@@ -373,7 +375,7 @@ contains
        do ci = sa, en, l_nb
           k = 1 ! use k to hold position of block within block column
           ! increment count of block columns
-          fdata%nbcol = fdata%nbcol + 1
+          fkeep%nbcol = fkeep%nbcol + 1
 
           cb = cb + 1
 
@@ -385,52 +387,52 @@ contains
           dblk = blk
 
 #if defined(SPLLT_USE_PARSEC)
-          fdata%diags(fdata%nbcol) = dblk
+          fkeep%diags(fkeep%nbcol) = dblk
 #endif
           ! loop over the row blocks (that is, loop over blocks in block col)
           row_used = 0 
           do blk = dblk, dblk+sz-1
              ! store identity of block
-             fdata%bc(blk)%id       = blk
+             fkeep%bc(blk)%id       = blk
              !print *, "node ", node, "=> blk", blk
 
              ! store number of rows in the block.
              ! For all but the last block, the number of rows is l_nb
-             fdata%bc(blk)%blkm     = min(l_nb, numrow-row_used)
-             row_used = row_used + fdata%bc(blk)%blkm
+             fkeep%bc(blk)%blkm     = min(l_nb, numrow-row_used)
+             row_used = row_used + fkeep%bc(blk)%blkm
 
              ! store number of columns in the block.
-             fdata%bc(blk)%blkn     = blkn
+             fkeep%bc(blk)%blkn     = blkn
 
-             fdata%maxmn = max(fdata%maxmn, &
-                  fdata%bc(blk)%blkm,  fdata%bc(blk)%blkn)
+             fkeep%maxmn = max(fkeep%maxmn, &
+                  fkeep%bc(blk)%blkm,  fkeep%bc(blk)%blkn)
 
              ! store position of the first entry of the block within the
              ! block column of L
-             fdata%bc(blk)%sa       = k
+             fkeep%bc(blk)%sa       = k
 
              ! store identity of diagonal block within current block column
-             fdata%bc(blk)%dblk     = dblk
+             fkeep%bc(blk)%dblk     = dblk
 
              ! store identity of last block within current block column
-             fdata%bc(blk)%last_blk = dblk + sz - 1
+             fkeep%bc(blk)%last_blk = dblk + sz - 1
 
              ! store node the blk belongs to
-             fdata%bc(blk)%node     = node
+             fkeep%bc(blk)%node     = node
 
              ! initialise dependency count
-             fdata%bc(blk)%dep_initial = cb
+             fkeep%bc(blk)%dep_initial = cb
 
              ! store identity of block column that blk belongs to
-             fdata%bc(blk)%bcol     = fdata%nbcol
+             fkeep%bc(blk)%bcol     = fkeep%nbcol
 
              ! increment k by number of entries in block
-             k = k + fdata%bc(blk)%blkm * fdata%bc(blk)%blkn
+             k = k + fkeep%bc(blk)%blkm * fkeep%bc(blk)%blkn
 
           end do
 
           ! Diagonal block has no dependency for factor(dblk)
-          fdata%bc(dblk)%dep_initial = cb - 1 
+          fkeep%bc(dblk)%dep_initial = cb - 1 
 
           ! decrement number of row blocks and rows in next block column
           sz = sz - 1
@@ -445,20 +447,20 @@ contains
        !       stop -1
        !    endif
 
-       !    if (adata%small(node) .eq. 1) then 
+       !    if (akeep%small(node) .eq. 1) then 
        !       root_node = node ! the root is the node himself when small equal to 1
        !    else
-       !       root_node = -adata%small(node)
+       !       root_node = -akeep%small(node)
        !    end if
 
-       !    if(node .eq. fdata%nodes(root_node)%least_desc) then
+       !    if(node .eq. fkeep%nodes(root_node)%least_desc) then
        !       ! First node of subtree, all to be in the same bcol array space
        !       k = 1 ! Position within lfact(bcol)%lcol array for start of node
        !    endif
 
        !    ! increment count of block columns
        !    k = 1 ! FIXME delete (+repoint at lcol, not a subsection, FIXME below)
-       !    fdata%nbcol = fdata%nbcol + 1
+       !    fkeep%nbcol = fkeep%nbcol + 1
 
        !    ! blkn is the number of columns in the block column.
        !    ! For all but the last block col. blkn = l_nb.
@@ -467,41 +469,41 @@ contains
        !    dblk = blk
 
        !    ! store identity of block
-       !    fdata%blocks(blk)%id       = blk
+       !    fkeep%blocks(blk)%id       = blk
 
        !    ! store number of rows in the block.
        !    ! For all but the last block, the number of rows is l_nb
-       !    fdata%blocks(blk)%blkm     = numrow
+       !    fkeep%blocks(blk)%blkm     = numrow
 
        !    ! store number of columns in the block.
-       !    fdata%blocks(blk)%blkn     = blkn
+       !    fkeep%blocks(blk)%blkn     = blkn
 
-       !    fdata%maxmn = max(fdata%maxmn, &
-       !         fdata%blocks(blk)%blkm,  fdata%blocks(blk)%blkn)
+       !    fkeep%maxmn = max(fkeep%maxmn, &
+       !         fkeep%blocks(blk)%blkm,  fkeep%blocks(blk)%blkn)
 
        !    ! store position of the first entry of the block within the
        !    ! block column of L
-       !    fdata%blocks(blk)%sa       = k
+       !    fkeep%blocks(blk)%sa       = k
 
        !    ! store identity of diagonal block within current block column
-       !    fdata%blocks(blk)%dblk     = dblk
+       !    fkeep%blocks(blk)%dblk     = dblk
 
        !    ! store identity of last block within current block column
-       !    fdata%blocks(blk)%last_blk = dblk + sz - 1
+       !    fkeep%blocks(blk)%last_blk = dblk + sz - 1
 
        !    ! store node the blk belongs to
-       !    fdata%blocks(blk)%node     = node
+       !    fkeep%blocks(blk)%node     = node
 
        !    ! store identity of block column that blk belongs to
-       !    fdata%blocks(blk)%bcol     = fdata%nbcol
+       !    fkeep%blocks(blk)%bcol     = fkeep%nbcol
 
        !    ! increment k by number of entries in block
-       !    k = k + fdata%blocks(blk)%blkm * fdata%blocks(blk)%blkn
+       !    k = k + fkeep%blocks(blk)%blkm * fkeep%blocks(blk)%blkn
 
        !    blk = dblk + 1
 
        !    ! Diagonal block has no dependency for factor(dblk)
-       !    fdata%blocks(dblk)%dep_initial = 0
+       !    fkeep%blocks(dblk)%dep_initial = 0
 
        ! end if
 
@@ -512,25 +514,25 @@ contains
 
     ! Note: following two functions could probably be combined with mc34 call
     ! above, but have been left as is to ease maintenance
-    allocate(fdata%lmap(fdata%nbcol),stat=st)
+    allocate(fkeep%lmap(fkeep%nbcol),stat=st)
     if(st.ne.0) goto 100
     call spllt_make_map(n, order, ptr64, row, aptr, arow, amap)
     ! call spllt_make_map(n, order, ptr, row, aptr, arow, amap)
-    call spllt_lcol_map(aptr, arow, num_nodes, fdata%nodes, fdata%bc, &
-         fdata%lmap, map, amap, st)
+    call spllt_lcol_map(aptr, arow, num_nodes, fkeep%nodes, fkeep%bc, &
+         fkeep%lmap, map, amap, st)
     if(st.ne.0) goto 100
 
 #if defined(SPLLT_USE_PARSEC)
-    call spllt_compute_dep(adata, fdata, fdata, map)
+    call spllt_compute_dep(akeep, fkeep, fkeep, map)
 #endif
 
     ! before returning take copy of components of info set by MA87_analyse
-    fdata%info%flag         = info%flag
-    fdata%info%num_factor   = info%num_factor
-    fdata%info%num_flops    = info%num_flops
-    fdata%info%num_nodes    = info%num_nodes
-    fdata%info%maxdepth     = info%maxdepth
-    fdata%info%stat         = info%stat
+    fkeep%info%flag         = info%flag
+    fkeep%info%num_factor   = info%num_factor
+    fkeep%info%num_flops    = info%num_flops
+    fkeep%info%num_nodes    = info%num_nodes
+    fkeep%info%maxdepth     = info%maxdepth
+    fkeep%info%stat         = info%stat
 
     deallocate (ptr64,stat=st)
     deallocate (arow,stat=st)
@@ -550,11 +552,11 @@ contains
   end subroutine spllt_analyse
 
 #if defined(SPLLT_USE_PARSEC)
-  subroutine spllt_compute_upd_bet_add(fdata, node, cptr, cptr2, rptr, rptr2, dest_blk)
+  subroutine spllt_compute_upd_bet_add(fkeep, node, cptr, cptr2, rptr, rptr2, dest_blk)
     use spllt_data_mod
     implicit none
 
-    type(spllt_fdata), target, intent(inout) :: fdata ! data related to the factorization
+    type(spllt_fkeep), target, intent(inout) :: fkeep ! data related to the factorization
     type(spllt_node)     :: node
     integer :: cptr, cptr2, rptr, rptr2
     integer(long)     :: dest_blk
@@ -605,16 +607,16 @@ contains
              id_ik = dblk + i - (c-1)
 
              ! compute first row of Ljk block
-             n1 = fdata%bc(dblk)%blkn
+             n1 = fkeep%bc(dblk)%blkn
              csrc  = 1 + (mod(cptr-1, s_nb))*n1
              rsrc  = 1 + (mod(rptr-1, s_nb))*n1
 
              ! write(*,*)'[spllt_analyse_mod][compute_dep] add upd_bet, id_jk: ', &
              !      & id_jk, ', id_ik: ', id_ik, ', id_ij: ', dest_blk
              
-             bc_jk => fdata%bc(id_jk)
-             bc_ik => fdata%bc(id_ik)
-             bc_ij => fdata%bc(dest_blk)
+             bc_jk => fkeep%bc(id_jk)
+             bc_ik => fkeep%bc(id_ik)
+             bc_ij => fkeep%bc(dest_blk)
 
              if ((j .eq. ljk_sa) .and. (i .eq. lik_sa)) sync = .false.
              ! sync = .false.
@@ -633,19 +635,19 @@ contains
           end do
        end do
 
-       dblk = fdata%bc(dblk)%last_blk + 1
+       dblk = fkeep%bc(dblk)%last_blk + 1
     end do
 
     return
   end subroutine spllt_compute_upd_bet_add
 
-  subroutine spllt_compute_dep(adata, fdata, map)
+  subroutine spllt_compute_dep(akeep, fkeep, map)
     use spllt_data_mod
     use spllt_kernels_mod
     implicit none
 
-    type(spllt_adata), intent(inout) :: adata ! data related to the analysis
-    type(spllt_fdata), target, intent(inout) :: fdata ! data related to the factorization
+    type(spllt_akeep), intent(inout) :: akeep ! data related to the analysis
+    type(spllt_fkeep), target, intent(inout) :: fkeep ! data related to the factorization
     ! type(spllt_keep), target, intent(in) :: keep
     integer, allocatable :: map(:)
 
@@ -667,13 +669,13 @@ contains
 
     write(*,*)'[spllt_analyse_mod][compute_dep]'
 
-    num_nodes = adata%nnodes
+    num_nodes = akeep%nnodes
 
     ! print *, "[compute_dep] num_nodes: ", num_nodes
 
     do snum = 1, num_nodes
 
-       node => fdata%nodes(snum)
+       node => fkeep%nodes(snum)
 
        ! parent node
        anum = node%parent
@@ -692,7 +694,7 @@ contains
 
        ! loop over ancestors of node
        do while(anum.gt.0)
-          anode => fdata%nodes(anum)
+          anode => fkeep%nodes(anum)
 
           ! Skip columns that come from other children
           do cptr = cptr, numrow
@@ -712,7 +714,7 @@ contains
              cb = (node%index(cptr) - anode%sa)/anode%nb + 1
              a_dblk = anode%blk_sa
              do jb = 2, cb
-                a_dblk = fdata%bc(a_dblk)%last_blk + 1
+                a_dblk = fkeep%bc(a_dblk)%last_blk + 1
              end do
 
              ! Find cptr2
@@ -739,7 +741,7 @@ contains
 
                    a_blk = a_dblk + ii - cb
                    ! add dep for updating a_blk block 
-                   call spllt_compute_upd_bet_add(fdata, node, cptr, cptr2, ilast, i-1, a_blk)
+                   call spllt_compute_upd_bet_add(fkeep, node, cptr, cptr2, ilast, i-1, a_blk)
                    
                    ii = k
                    ilast = i ! Update start of current block
@@ -748,14 +750,14 @@ contains
 
              a_blk = a_dblk + ii - cb
              ! add dep for updating a_blk block 
-             call spllt_compute_upd_bet_add(fdata, node, cptr, cptr2, ilast, i-1, a_blk)
+             call spllt_compute_upd_bet_add(fkeep, node, cptr, cptr2, ilast, i-1, a_blk)
 
              ! Move cptr down, ready for next block column of anode
              cptr = cptr2 + 1
           end do bcols
           
           ! Move up the tree to the parent of anode
-          anum = fdata%nodes(anum)%parent
+          anum = fkeep%nodes(anum)%parent
        end do
 
     end do
@@ -766,15 +768,15 @@ contains
 
   ! Tree pruning method. Inspired by the strategy employed in qr_mumps
   ! for pruning the atree.
-  subroutine spllt_prune_tree(adata, sparent, nth, fdata)
+  subroutine spllt_prune_tree(akeep, sparent, nth, fkeep)
     use spllt_data_mod
     use spllt_utils_mod
     implicit none
     
-    type(spllt_adata), intent(inout) :: adata
+    type(spllt_akeep), intent(inout) :: akeep
     integer, dimension(:), intent(in) :: sparent ! atree
     integer :: nth ! number of workers
-    type(spllt_fdata), target, intent(in) :: fdata
+    type(spllt_fkeep), target, intent(in) :: fkeep
 
     integer                         :: i, j
     integer                         :: c
@@ -789,49 +791,49 @@ contains
 
     write(*,*)'[analysis][prune_tree] nth: ', nth
     
-    allocate(lzero_w (adata%nnodes))
-    allocate(lzero   (adata%nnodes))
+    allocate(lzero_w (akeep%nnodes))
+    allocate(lzero   (akeep%nnodes))
     allocate(proc_w  (nth))
 
     smallth = 0.01
 
 10 continue
     totleaves = 0
-    adata%small = 0
+    akeep%small = 0
     
-    totflops = adata%weight(adata%nnodes+1)
+    totflops = akeep%weight(akeep%nnodes+1)
     ! write(*,*)'totflops: ', totflops
-    ! write(*,*)'weights: ', adata%weight 
-    ! write(*,*)'nnodes: ', adata%nnodes
+    ! write(*,*)'weights: ', akeep%weight 
+    ! write(*,*)'nnodes: ', akeep%nnodes
     ! write(*,*)'root: ', sparent(1)
     ! initialize the l0 layer with the root nodes
     nlz = 0
 
-    ! do node = 1, adata%nnodes+1
-    !    write(*,*) 'node: ', node, ', weight: ', adata%weight(node)
-    !    if (sparent(node) .gt. adata%nnodes) then
+    ! do node = 1, akeep%nnodes+1
+    !    write(*,*) 'node: ', node, ', weight: ', akeep%weight(node)
+    !    if (sparent(node) .gt. akeep%nnodes) then
     !    ! if (sparent(node) .le. 0) then
-    !       ! write(*,*) 'weight: ', real(adata%weight(node), kind(1.d0))
+    !       ! write(*,*) 'weight: ', real(akeep%weight(node), kind(1.d0))
     !       ! write(*,*) 'thresh: ', smallth*real(totflops, kind(1.d0))
-    !       if(real(adata%weight(node), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
+    !       if(real(akeep%weight(node), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
     !          nlz = nlz+1
     !          lzero(nlz) = node
-    !          lzero_w(nlz) = -adata%weight(node)
-    !          write(*,*) 'node: ', node,', weight: ', adata%weight(node)
+    !          lzero_w(nlz) = -akeep%weight(node)
+    !          write(*,*) 'node: ', node,', weight: ', akeep%weight(node)
     !       else
-    !          adata%small(node) = 1 ! node is too small; mark it
+    !          akeep%small(node) = 1 ! node is too small; mark it
     !       end if
     !    end if
     !    if(keep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1
     ! end do
 
-    node = adata%nnodes+1 ! root node (symbolic)
+    node = akeep%nnodes+1 ! root node (symbolic)
     nlz = nlz+1
     lzero(nlz) = node
-    lzero_w(nlz) = -adata%weight(node)
+    lzero_w(nlz) = -akeep%weight(node)
     ! count leaf nodes
-    do node = 1, adata%nnodes+1
-       if(fdata%nodes(node)%nchild .eq. 0) totleaves = totleaves+1       
+    do node = 1, akeep%nnodes+1
+       if(fkeep%nodes(node)%nchild .eq. 0) totleaves = totleaves+1       
     end do
     
     leaves = 0
@@ -877,22 +879,22 @@ contains
              end if
           end if
           n = lzero(leaves+1) ! n is the node that must be replaced
-          ! print *, "n:", n, ", nchild:", fdata%nodes(n)%nchild, ", sz:", size(fdata%nodes(n)%child)
-          ! print *, "children:", fdata%nodes(n)%child
+          ! print *, "n:", n, ", nchild:", fkeep%nodes(n)%nchild, ", sz:", size(fkeep%nodes(n)%child)
+          ! print *, "children:", fkeep%nodes(n)%child
           ! append children of n
-          do i=1, size(fdata%nodes(n)%child) ! fdata%nodes(n)%nchild
-             c = fdata%nodes(n)%child(i)
+          do i=1, size(fkeep%nodes(n)%child) ! fkeep%nodes(n)%nchild
+             c = fkeep%nodes(n)%child(i)
              ! print *, "c:", c             
-             if(real(adata%weight(c), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
+             if(real(akeep%weight(c), kind(1.d0)) .gt. smallth*real(totflops, kind(1.d0))) then
                 ! this child is big enough, add it
                 found = .true.
                 nlz = nlz+1
                 lzero  (nlz) = c
-                lzero_w(nlz) = -adata%weight(c)
+                lzero_w(nlz) = -akeep%weight(c)
              else
                 ! print *, "TETET"
-                adata%small(fdata%nodes(c)%least_desc:c) = -c
-                adata%small(c) = 1 ! node is too smal; mark it
+                akeep%small(fkeep%nodes(c)%least_desc:c) = -c
+                akeep%small(c) = 1 ! node is too smal; mark it
              end if
 
           end do
@@ -912,7 +914,7 @@ contains
     ! write(*,*)'final lzero: ', lzero(1:nlz)
 
     ! DEBUG
-    ! adata%small = 0
+    ! akeep%small = 0
     ! nlz = 1
     ! lzero(1) = 1
 
@@ -920,27 +922,27 @@ contains
     do i=1, nlz
        n = lzero(i)
        ! write(*,*)'n: ', n
-       ! print *, "n:", n, ", nchild:", fdata%nodes(n)%nchild, ", sz:", size(fdata%nodes(n)%child) 
-       do j=1, size(fdata%nodes(n)%child) ! fdata%nodes(n)%nchild
-          c = fdata%nodes(n)%child(j)
+       ! print *, "n:", n, ", nchild:", fkeep%nodes(n)%nchild, ", sz:", size(fkeep%nodes(n)%child) 
+       do j=1, size(fkeep%nodes(n)%child) ! fkeep%nodes(n)%nchild
+          c = fkeep%nodes(n)%child(j)
           ! print *, "c: ", c
-          ! write(*,*)'desc: ', fdata%nodes(c)%least_desc
-          adata%small(fdata%nodes(c)%least_desc:c) = -c
-          adata%small(c) = 1
+          ! write(*,*)'desc: ', fkeep%nodes(c)%least_desc
+          akeep%small(fkeep%nodes(c)%least_desc:c) = -c
+          akeep%small(c) = 1
        end do
     end do
 
     ! print *, "TETETET"
 
     ! DEBUG
-    ! adata%small = 0
+    ! akeep%small = 0
     ! c = 703
-    ! adata%small(fdata%nodes(c)%least_desc:c) = -c
-    ! adata%small(c) = 1
+    ! akeep%small(fkeep%nodes(c)%least_desc:c) = -c
+    ! akeep%small(c) = 1
 
     ! c = 668
-    ! adata%small(fdata%nodes(c)%least_desc:c) = -c
-    ! adata%small(c) = 1
+    ! akeep%small(fkeep%nodes(c)%least_desc:c) = -c
+    ! akeep%small(c) = 1
 
     deallocate(lzero_w)
     deallocate(lzero)
@@ -950,11 +952,11 @@ contains
   end subroutine spllt_prune_tree
 
   ! Performs the symbolic factorization of the assembly tree.
-  subroutine spllt_symbolic(adata, nnodes, sptr, sparent, rptr)
+  subroutine spllt_symbolic(akeep, nnodes, sptr, sparent, rptr)
     use spllt_data_mod
     implicit none
 
-    type(spllt_adata), intent(inout) :: adata
+    type(spllt_akeep), intent(inout) :: akeep
     integer, intent(in) :: nnodes ! number of nodes if the atree
     integer, dimension(:), intent(in) :: sptr, sparent
     integer(long), dimension(:), intent(in) :: rptr
@@ -963,9 +965,9 @@ contains
     integer(long) :: mm, m, n, j
     integer(long) :: nflops
     
-    allocate(adata%weight(nnodes+1))
+    allocate(akeep%weight(nnodes+1))
 
-    adata%weight = 0 
+    akeep%weight = 0 
 
     do node = 1,nnodes
 
@@ -980,13 +982,13 @@ contains
           nflops = nflops + (mm+j)**2
        end do
        ! write(*,*) 'nflops: ', nflops
-       adata%weight(node) = adata%weight(node) + nflops
-       adata%weight(parent) = adata%weight(parent) + adata%weight(node)
+       akeep%weight(node) = akeep%weight(node) + nflops
+       akeep%weight(parent) = akeep%weight(parent) + akeep%weight(node)
 
     end do
-    ! write(*,*) 'symbolic totflops: ', adata%weight(nnodes+1)
+    ! write(*,*) 'symbolic totflops: ', akeep%weight(nnodes+1)
 
-    ! print *, "root weight: ", adata%weight(nnodes+1)
+    ! print *, "root weight: ", akeep%weight(nnodes+1)
 
     return
   end subroutine spllt_symbolic
@@ -1073,16 +1075,16 @@ contains
     integer :: bcol ! block column
     integer :: cb ! Temporary variable
     integer :: col ! do loop index
-    integer(long) :: dblk ! set to fdata%nodes(snode)%blk_sa (first block
+    integer(long) :: dblk ! set to fkeep%nodes(snode)%blk_sa (first block
     ! in snode which is, of course, a diagonal block)
-    integer :: en ! set fdata%nodes(snode)%en
+    integer :: en ! set fkeep%nodes(snode)%en
     integer(long) :: i ! Temporary variable. global row index
     integer(long) :: j ! Temporary variable
-    integer :: l_nb ! set to fdata%nodes(snode)%nb
+    integer :: l_nb ! set to fkeep%nodes(snode)%nb
     integer(long) :: offset
-    integer :: sa ! set fdata%nodes(snode)%sa
+    integer :: sa ! set fkeep%nodes(snode)%sa
     integer :: snode ! node
-    integer :: swidth ! set to fdata%blocks(dblk)%blkn (number of columns
+    integer :: swidth ! set to fkeep%blocks(dblk)%blkn (number of columns
     ! in block column to which dblk belongs)
 
     integer :: k

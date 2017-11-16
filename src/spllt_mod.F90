@@ -138,7 +138,7 @@ contains
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Factorizes the input matrix.
-  subroutine spllt_factor(adata, fdata, options, val, info)
+  subroutine spllt_factor(akeep, fkeep, options, val, info)
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
     use spllt_stf_mod
 #elif defined(SPLLT_USE_PARSEC)
@@ -146,8 +146,8 @@ contains
 #endif    
     implicit none
 
-    type(spllt_adata), intent(in)    :: adata
-    type(spllt_fdata), intent(inout) :: fdata
+    type(spllt_akeep), intent(in)    :: akeep
+    type(spllt_fkeep), intent(inout) :: fkeep
     type(spllt_options), intent(in)  :: options ! User-supplied options
     real(wp), intent(in)             :: val(:) ! Matrix values
     type(spllt_inform), intent(out)  :: info 
@@ -156,12 +156,12 @@ contains
 #if defined(SPLLT_USE_STF) || defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_OMP)
 
     ! Call the STF-based factorize routine.
-    call spllt_stf_factorize(adata, fdata, options, val, info)
+    call spllt_stf_factorize(akeep, fkeep, options, val, info)
 
 #elif defined(SPLLT_USE_PARSEC)
 
     ! Call the PTG-based factorize routine.
-    call spllt_ptg_factorize(adata, fdata, options, val, info)
+    call spllt_ptg_factorize(akeep, fkeep, options, val, info)
 
 #endif
 
@@ -184,22 +184,22 @@ contains
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !> @brief Prints the assemlby tree.  
   !>
-  !> @param adata Symbolic factorization data.
-  !> @param fdata Factorization data.
+  !> @param akeep Symbolic factorization data.
+  !> @param fkeep Factorization data.
   !> @param options User-supplied options. 
-  subroutine spllt_print_atree(adata, fdata, options)
+  subroutine spllt_print_atree(akeep, fkeep, options)
     use spllt_data_mod
     implicit none    
 
-    type(spllt_adata), intent(in)  :: adata
-    type(spllt_fdata), target, intent(in) :: fdata
+    type(spllt_akeep), intent(in)  :: akeep
+    type(spllt_fkeep), target, intent(in) :: fkeep
     type(spllt_options), intent(in) :: options
 
     integer :: snode, num_nodes
     type(spllt_node), pointer     :: node ! node in the atree
     integer :: m, n
 
-    num_nodes = fdata%info%num_nodes
+    num_nodes = fkeep%info%num_nodes
 
     open(2, file="atree.dot")
 
@@ -210,7 +210,7 @@ contains
     
     do snode=1,num_nodes
 
-       node => fdata%nodes(snode)
+       node => fkeep%nodes(snode)
        m = size(node%index)
        n = node%en - node%sa + 1
 
@@ -218,7 +218,7 @@ contains
        write(2, '(" ")', advance="no")
        write(2, '("[")', advance="no")
        if (options%prune_tree) then
-          if (adata%small(snode) .eq. 1) then
+          if (akeep%small(snode) .eq. 1) then
              write(2, '("fillcolor=grey ")', advance="no")
           else
              write(2, '("fillcolor=white ")', advance="no")
@@ -231,15 +231,15 @@ contains
        write(2, '("m:", i5,"\n")', advance="no")m
        write(2, '("n:", i5,"\n")', advance="no")n
        if (options%prune_tree) then
-          write(2, '("small:", i5,"\n")', advance="no")adata%small(snode)
+          write(2, '("small:", i5,"\n")', advance="no")akeep%small(snode)
           write(2, '("weight:", f5.1,"\n")', advance="no") &
-               & 100.0 * (real(adata%weight(snode), kind(1d0)) / real(adata%weight(num_nodes+1), kind(1d0)))
+               & 100.0 * (real(akeep%weight(snode), kind(1d0)) / real(akeep%weight(num_nodes+1), kind(1d0)))
        end if
        write(2, '("""")', advance="no")         
        write(2, '("]")', advance="no")
        write(2, '(" ")')
 
-       if(fdata%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')fdata%nodes(snode)%parent, snode
+       if(fkeep%nodes(snode)%parent .ne. -1) write(2, '(i10, "--", i10)')fkeep%nodes(snode)%parent, snode
     end do
 
     write(2, '("}")')
