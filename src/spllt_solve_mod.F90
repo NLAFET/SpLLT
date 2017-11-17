@@ -16,7 +16,7 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(spllt_fkeep), intent(inout) :: fkeep ! Facotrization data
+    type(spllt_fkeep), intent(in) :: fkeep ! Facotrization data
     type(spllt_options), intent(in) :: options ! User-supplied options
     integer, intent(in) :: order(:) ! pivot order. must be unchanged
     ! For details of fkeep, control, info : see derived type description        
@@ -106,7 +106,7 @@ contains
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_fkeep), intent(inout) :: fkeep
+    type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
@@ -197,7 +197,7 @@ contains
     use spllt_solve_kernels_mod
     implicit none
 
-    type(spllt_fkeep), intent(inout) :: fkeep
+    type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
     real(wp), intent(inout) :: rhs(ldr)
