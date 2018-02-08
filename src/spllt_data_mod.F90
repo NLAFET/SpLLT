@@ -21,6 +21,7 @@ module spllt_data_mod
   ! Error flags
   integer, parameter :: SPLLT_SUCCESS              = 0 
   integer, parameter :: SPLLT_ERROR_ALLOCATION     = -1
+  integer, parameter :: SPLLT_WARNING_PARAM_VALUE  = -10
   integer, parameter :: SPLLT_ERROR_UNIMPLEMENTED  = -98
   integer, parameter :: SPLLT_ERROR_UNKNOWN        = -99 
 
