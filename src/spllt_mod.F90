@@ -326,7 +326,7 @@ contains
 
     type(spllt_options), intent(inout) :: options
     character(len=200), intent(inout) :: matfile
-    integer, intent(inout) :: nrhs ! Numebr of right-hand side
+    integer, intent(inout) :: nrhs ! Number of right-hand side
     
     integer :: argnum, narg
     character(len=200) :: argval
