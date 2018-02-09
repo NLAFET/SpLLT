@@ -3,6 +3,7 @@ module spllt_solve_mod
 
    interface spllt_solve
       module procedure spllt_solve_one_double
+      module procedure spllt_solve_mult_double
    end interface
 
 contains
@@ -16,31 +17,68 @@ contains
     use spllt_data_mod
     implicit none
 
-    type(spllt_fkeep), intent(in) :: fkeep ! Facotrization data
-    type(spllt_options), intent(in) :: options ! User-supplied options
-    integer, intent(in) :: order(:) ! pivot order. must be unchanged
+    type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
+    type(spllt_options),  intent(in)  :: options        ! User-supplied options
+    integer,              intent(in)  :: order(fkeep%n) ! pivot order
     ! For details of fkeep, control, info : see derived type description        
-    real(wp), intent(inout) :: x(fkeep%n) ! On entry, x must
+    real(wp),           intent(inout) :: x(fkeep%n)     ! On entry, x must
     ! be set so that if i has been used to index a variable,
     ! x(i) is the corresponding component of the right-hand side.
     ! On exit, if i has been used to index a variable,
     ! x(i) holds solution for variable i.
-    type(spllt_inform), intent(out) :: info
-    integer, optional, intent(in) :: job  ! used to indicate whether
+    type(spllt_inform),   intent(out) :: info
+    integer, optional,    intent(in)  :: job  ! used to indicate whether
     ! partial solution required
     ! job = 0 or absent: complete solve performed
     ! job = 1 : forward eliminations only (PLx = b)
     ! job = 2 : backsubs only ((PL)^Tx = b)
 
-    integer :: j ! Iterator
-    integer :: n ! Order of the system/First dimension of RHS
-    integer :: nrhs = 1 ! Number of RHS
-    real(wp), dimension(:), allocatable :: soln ! allocated to have
-    ! size n*nrhs.  used to hold reordered rhs and then overwritten by
-    ! reorder solution.
-    integer :: st ! stat parameter
+    integer :: step ! Step selector in solve phase
+
+    ! immediate return if n = 0
+    if (fkeep%n == 0) return
+
+    ! Get the step of the solve to perform
+    if(present(job)) then
+      step = job
+    else
+      step = 0
+    end if
+    
+    call spllt_solve_mult_double(fkeep, options, order, 1, x, info, step)
+
+  end subroutine spllt_solve_one_double
+
+  subroutine spllt_solve_mult_double(fkeep, options, order, nrhs, x, info, job)
+    use spllt_data_mod
+    implicit none
+
+    type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
+    type(spllt_options),  intent(in)  :: options        ! User-supplied options
+    integer,              intent(in)  :: order(fkeep%n) ! pivot order
+    integer,              intent(in)  :: nrhs           ! Number of RHS
+    ! For details of fkeep, control, info : see derived type description        
+    real(wp),           intent(inout) :: x(fkeep%n,nrhs)! On entry, x must
+    ! be set so that if i has been used to index a variable,
+    ! x(i, j) is the corresponding component of the j-th right-hand side.
+    ! On exit, if i has been used to index a variable,
+    ! x(i, j) holds solution for variable i of rhs-th right-hand side
+    type(spllt_inform),   intent(out) :: info
+    integer, optional,    intent(in)  :: job  ! used to indicate whether
+    ! partial solution required
+    ! job = 0 or absent: complete solve performed
+    ! job = 1 : forward eliminations only (PLx = b)
+    ! job = 2 : backsubs only ((PL)^Tx = b)
+
+    integer           :: j    ! Iterator
+    integer           :: n    ! Order of the system
+    integer           :: st   ! stat parameter
+    integer           :: step ! Step selector in solve phase
+    character(len=30) :: context
+    real(wp), dimension(:, :), allocatable :: soln
 
     n = fkeep%n
+    context = 'spllt_solve_mult_double'
 
     ! immediate return if n = 0
     if (n == 0) return
@@ -68,8 +106,8 @@ contains
     !
     ! Reorder rhs
     !
-    deallocate(soln,stat=st)
-    allocate(soln(n*nrhs),stat=st)
+   !deallocate(soln,stat=st)
+    allocate(soln(n, nrhs), stat = st)
     
     ! do i = 1, nrhs
     !    do j = 1, n
@@ -77,25 +115,63 @@ contains
     !    end do
     ! end do
 
-    do j = 1, n
-       soln(order(j)) = x(j)
-    end do
-
-    ! Forward solve
-    !
-    call solve_fwd(nrhs, soln, n, fkeep)
+    ! Get the step of the solve to perform
+    if(present(job)) then
+      step = job
+    else
+      step = 0
+    end if
     
-    ! Backward solve
-    call solve_bwd(nrhs, soln, n, fkeep)
+    select case(step)
+      case(0)
+       !
+       ! Reorder x
+       !
+        do j = 1, n
+           soln(order(j),:) = x(j,:)
+        end do
 
-   !
-   ! Reorder soln
-   !
-    do j = 1, n
-       x(j) = soln(order(j))
-    end do
+        ! Forward solve
+        call solve_fwd(nrhs, soln, n, fkeep)
 
-  end subroutine spllt_solve_one_double
+        ! Backward solve
+        call solve_bwd(nrhs, soln, n, fkeep)
+
+       !
+       ! Reorder soln
+       !
+        do j = 1, n
+           x(j,:) = soln(order(j),:)
+        end do
+
+      case(1)
+        do j = 1, n
+           soln(order(j),:) = x(j,:)
+        end do
+
+        call solve_fwd(nrhs, soln, n, fkeep)
+
+        x = soln
+      
+      case(2)
+        soln = x
+
+        call solve_bwd(nrhs, soln, n, fkeep)
+
+        do j = 1, n
+           x(j,:) = soln(order(j),:)
+        end do
+
+      case default
+        info%flag = SPLLT_WARNING_PARAM_VALUE
+        write (0, '(a, i2, a, i4)') "Unknown requested job = ", step, &
+          " returned code : ", info%flag
+        return
+    end select
+
+    deallocate(soln)
+
+  end subroutine spllt_solve_mult_double
 
   !*************************************************
   !
