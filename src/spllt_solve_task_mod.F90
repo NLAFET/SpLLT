@@ -13,7 +13,7 @@ contains
     integer, intent(in) :: dblk ! Index of block on the diagonal
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
-    real(wp), intent(inout) :: rhs(ldr)
+    real(wp), intent(inout) :: rhs(ldr, nrhs)
     real(wp), dimension(:), intent(inout) :: xlocal
     type(spllt_fkeep), intent(in) :: fkeep
     
