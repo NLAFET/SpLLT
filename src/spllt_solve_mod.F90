@@ -204,14 +204,12 @@ contains
     integer :: blk            ! Block index
     real(wp), dimension(:,:), allocatable :: xlocal ! update_buffer workspace
     integer :: st             ! Stat parameter
-    integer :: nthread        ! Number of threads 
 
     print *, "[spllt_solve_mod] solve_fwd"
 
-    nthread = omp_get_num_threads()
-
     ! Allocate workspace
-    allocate(xlocal(fkeep%maxmn*nrhs, 0 : nthread - 1), stat=st) !May reduce 
+    allocate(xlocal(fkeep%maxmn*nrhs, 0 : omp_get_num_threads() - 1), &
+      stat=st) !May reduce 
     xlocal = zero 
 
     num_node = fkeep%info%num_nodes
@@ -240,7 +238,7 @@ contains
           !$omp depend(inout : xlocal(:, omp_get_thread_num()))         &
           !$omp firstprivate(dblk, nrhs, ldr)                           &
           !$omp shared(fkeep, xlocal, rhs)
-!         print *, "[SOLVE ] Thread id ", omp_get_thread_num()
+!         print *, "[FW SOLVE ] Thread id ", omp_get_thread_num()
           call spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, &
             xlocal(:, omp_get_thread_num()), fkeep)
           !$omp end task
@@ -269,7 +267,7 @@ contains
              !$omp firstprivate(m, n, col, offset, node, bcol)              &
              !$omp firstprivate(blk_sa, nrhs, ldr)                          &
              !$omp shared(fkeep, xlocal, rhs)
-!            print *, "[UPDATE] Thread id ", omp_get_thread_num()
+!            print *, "[FW UPDATE] Thread id ", omp_get_thread_num()
              call slv_fwd_update(m, n, col, offset, fkeep%nodes(node)%index, &
                   fkeep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
                   ldr, rhs, ldr, xlocal(:, omp_get_thread_num()))
@@ -298,7 +296,7 @@ contains
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
-    real(wp), intent(inout) :: rhs(ldr)
+    real(wp), intent(inout) :: rhs(ldr, nrhs)
 
     integer :: num_node
     ! Node info
@@ -315,13 +313,13 @@ contains
     integer :: bcol ! Global block-column index
     integer :: dcol, col, offset
     integer :: blk ! Block index
-    real(wp), dimension(:), allocatable :: xlocal ! update_buffer workspace
+    real(wp), dimension(:,:), allocatable :: xlocal ! update_buffer workspace
     integer :: st ! Stat parameter
     
     print *, "[spllt_solve_mod] solve_bwd"
 
     ! Allocate workspace
-    allocate(xlocal(fkeep%maxmn*nrhs), stat=st)
+    allocate(xlocal(fkeep%maxmn*nrhs, 0 : omp_get_num_threads() - 1), stat=st)
 
     num_node = fkeep%info%num_nodes
     ! print *, "num_node: ", num_node
@@ -365,16 +363,30 @@ contains
              offset   = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
              offset   = offset + (blk-fkeep%bc(blk)%dblk) * fkeep%nodes(node)%nb ! this blk
 
+             !$omp task depend(out: xlocal(:, omp_get_thread_num()))        &
+             !$omp depend(inout: rhs(offset : offset + m - 1, :))           &
+             !$omp firstprivate(m, n, col, offset, node, bcol)              &
+             !$omp firstprivate(blk_sa, nrhs, ldr)                          &
+             !$omp shared(fkeep, xlocal, rhs)
+!            print *, "[BW UPDATE] Thread id ", omp_get_thread_num()
              call slv_bwd_update(m, n, col, offset, fkeep%nodes(node)%index, &
                   fkeep%lfact(bcol)%lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
-                  rhs, ldr, xlocal)
+                  rhs, ldr, xlocal(:, omp_get_thread_num()))
+             !$omp end task
              
           end do
 
           !
           ! Backward solve with block on diagoanl
           !
-          call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fkeep)
+          !$omp task depend(inout: rhs(offset : offset + m - 1, :))     &
+          !$omp depend(inout : xlocal(:, omp_get_thread_num()))         &
+          !$omp firstprivate(dblk, nrhs, ldr)                           &
+          !$omp shared(fkeep, xlocal, rhs)
+!         print *, "[BW SOLVE ] Thread id ", omp_get_thread_num()
+          call spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, &
+            xlocal(:, omp_get_thread_num()), fkeep)
+          !$omp end task
           
           ! Update diag block in node       
           if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
@@ -383,6 +395,7 @@ contains
     end do
 
     ! Deallocate workspace
+    !$omp taskwait
     deallocate(xlocal)
 
   end subroutine solve_bwd
