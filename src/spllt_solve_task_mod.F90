@@ -8,6 +8,7 @@ contains
   subroutine spllt_solve_fwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fkeep)
     use spllt_data_mod
     use spllt_solve_kernels_mod
+    use omp_lib, ONLY : omp_get_thread_num
     implicit none
     
     integer, intent(in) :: dblk ! Index of block on the diagonal
@@ -27,29 +28,42 @@ contains
     integer :: node
         
     ! Get block info
-    node = fkeep%bc(dblk)%node
-    m = fkeep%bc(dblk)%blkm
-    n = fkeep%bc(dblk)%blkn
-    sa = fkeep%bc(dblk)%sa
-    bcol = fkeep%bc(dblk)%bcol ! Current block column
-    dcol     = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
-    col      = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
-    offset   = col - fkeep%nodes(node)%sa + 1
+    node    = fkeep%bc(dblk)%node
+    m       = fkeep%bc(dblk)%blkm
+    n       = fkeep%bc(dblk)%blkn
+    sa      = fkeep%bc(dblk)%sa
+    bcol    = fkeep%bc(dblk)%bcol ! Current block column
+    dcol    = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
+    col     = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
+    offset  = col - fkeep%nodes(node)%sa + 1
     
     ! Perform triangular solve
+    !$omp task depend(inout: rhs(col : col + n * nrhs, :))  &
+    !$omp firstprivate(n, col, bcol, sa, nrhs, ldr)         &
+    !$omp shared(fkeep, rhs)
+!   print *, "[slv_solve] solved by ", omp_get_thread_num()
     call slv_solve(n, n, col, fkeep%lfact(bcol)%lcol(sa:sa+n*n-1), &
          'Transpose    ', 'Non-unit', nrhs, rhs, ldr)
+    !$omp end task
     offset = offset + n
 
     ! Deal with any left over trapezoidal part of diagonal block
     m = m - n
     if(m.gt.0) then
        sa = sa + n*n
+       !$omp task depend(out: xlocal)                                 &
+       !$omp depend(inout: rhs(col : col + n * nrhs,:))               &
+       !$omp firstprivate(m, n, col, offset, node, bcol)              &
+       !$omp firstprivate(sa, nrhs, ldr)                              &
+       !$omp shared(fkeep, xlocal, rhs)
+!      print *, "[slv_fwd_update] solved by ", omp_get_thread_num()
        call slv_fwd_update(m, n, col, offset, fkeep%nodes(node)%index, &
             fkeep%lfact(bcol)%lcol(sa:sa+n*m-1), n, nrhs, &
             rhs, ldr, rhs, ldr, xlocal)
+       !$omp end task
     endif
 
+    !$omp taskwait
   end subroutine spllt_solve_fwd_block_task
 
   !*************************************************  
@@ -59,12 +73,13 @@ contains
   subroutine spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, fkeep)
     use spllt_data_mod
     use spllt_solve_kernels_mod
+    use omp_lib, ONLY : omp_get_thread_num
     implicit none
 
     integer, intent(in) :: dblk ! Index of block on the diagonal
     integer, intent(in) :: nrhs ! Number of RHS
     integer, intent(in) :: ldr ! Leading dimension of RHS
-    real(wp), intent(inout) :: rhs(ldr)
+    real(wp), intent(inout) :: rhs(ldr, nrhs)
     real(wp), dimension(:), intent(inout) :: xlocal
     type(spllt_fkeep), intent(in) :: fkeep
     
@@ -97,16 +112,28 @@ contains
 
     ! Perform and retangular update from diagonal block
     if(m.gt.n) then
+       !$omp task depend(out: xlocal)                                 &
+       !$omp depend(inout: rhs(col : col + n * nrhs,:))               &
+       !$omp firstprivate(m, n, col, offset, node, bcol)              &
+       !$omp firstprivate(sa, nrhs, ldr)                              &
+       !$omp shared(fkeep, xlocal, rhs)
+!      print *, "[slv_bwd_update] solved by ", omp_get_thread_num()
        call slv_bwd_update(m-n, n, col, offset+n, fkeep%nodes(node)%index, &
             fkeep%lfact(bcol)%lcol(sa+n*n:sa+n*m-1), n, nrhs, rhs, &
             rhs, ldr, xlocal)
+       !$omp end task
     endif
 
     ! Perform triangular solve
+    !$omp task depend(inout: rhs(col : col + n * nrhs, :))  &
+    !$omp firstprivate(n, col, bcol, sa, nrhs, ldr)         &
+    !$omp shared(fkeep, rhs)
+!   print *, "[slv_solve] solved by ", omp_get_thread_num()
     call slv_solve(n, n, col, fkeep%lfact(bcol)%lcol(sa:sa+n*n-1), &
          'Non-Transpose', 'Non-unit', nrhs, rhs, ldr)
+    !$omp end task
 
-
+    !$omp taskwait
   end subroutine spllt_solve_bwd_block_task
 
   !*************************************************
