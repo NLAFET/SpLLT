@@ -39,7 +39,7 @@ contains
     ttimes(:)   = 0
     allocate(events(0:trace_nth-1,maxevents))
     colors(1:7) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', '#ac9d93', '#bcd35f'/)
-    timezero = get_wtime()
+    timezero = omp_get_wtime()
     return
 
   end subroutine trace_init
@@ -67,7 +67,7 @@ contains
        return
     end if
     pendings(thn) = .true.
-    starts(thn) = get_wtime()
+    starts(thn) = omp_get_wtime()
     return
   end subroutine trace_event_start
 
@@ -77,7 +77,7 @@ contains
 
     integer :: id, thn
     
-    stops(thn) = get_wtime()
+    stops(thn) = omp_get_wtime()
     nevents(thn) = nevents(thn)+1
     events(thn, min(nevents(thn),maxevents)) = event_type(id, thn, starts(thn)-timezero, stops(thn)-timezero)
     ttimes(id) = ttimes(id)+stops(thn)-starts(thn)
