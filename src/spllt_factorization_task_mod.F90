@@ -169,6 +169,7 @@ contains
     p_fkeep => fkeep
     p_cntl => cntl
 
+    if(size(buffer_c).ne.0) then
 !$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
 !$omp & firstprivate(root, p_fkeep, p_cntl, p_map) &
 !$omp & private(work, rlst, clst) &
@@ -186,7 +187,24 @@ contains
          & rlst, clst, work)
     
 !$omp end task
+    else
+!$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
+!$omp & firstprivate(root, p_fkeep, p_cntl, p_map) &
+!$omp & private(work, rlst, clst) &
+!$omp & private(th_id)
 
+    th_id = omp_get_thread_num()
+
+    work => p_workspace(th_id)%c
+
+    rlst => p_rlst(th_id)%c
+    clst => p_clst(th_id)%c
+
+    call spllt_subtree_factorize(root, p_val, p_fkeep, buffer_c, p_cntl, p_map(th_id)%c, &
+         & rlst, clst, work)
+    
+!$omp end task
+    end if
 #else
     
     call spllt_subtree_factorize(root, val, fkeep, buffer%c, cntl, map, &
