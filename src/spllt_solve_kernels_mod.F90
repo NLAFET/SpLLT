@@ -145,7 +145,7 @@ contains
     integer, intent(in) :: ldr  ! leading extent of rhs
     real(wp), intent(inout) :: rhs(ldr*nrhs)
     real(wp), intent(inout) :: upd(ldr*nrhs)
-    real(wp), dimension(*), intent(out) :: xlocal
+    real(wp), dimension(:), intent(out) :: xlocal
 
     integer :: i
     integer :: j
@@ -189,11 +189,19 @@ contains
 
        ! Copy xlocal in
        j = 1
-       do i = offset, offset+m-1
-          do r = 0, nrhs-1
-             xlocal(j+r*m) = rhs(index(i)+r*ldr)
+!      do i = offset, offset+m-1
+!         do r = 0, nrhs-1
+!            xlocal(j+r*m) = rhs(index(i)+r*ldr)
+!         end do
+!         j = j + 1
+!      end do
+       !Test change order of loop
+       do r = 0, nrhs-1
+          j = 1
+          do i = offset, offset+m-1
+            xlocal(j+r*m) = rhs(index(i)+r*ldr)
+            j = j + 1
           end do
-          j = j + 1
        end do
 
        call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, m, &
