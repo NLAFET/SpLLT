@@ -214,11 +214,13 @@ contains
     integer :: blk            ! Block index
     integer :: st             ! Stat parameter
     integer :: fwd_update_id, fwd_block_id
-    integer :: nthread
+    integer :: nthread, threadID
     real(wp), allocatable :: xlocal(:,:)    ! update_buffer workspace
     real(wp), allocatable :: rhs_local(:,:) ! update_buffer workspace
 
-    nthread = omp_get_num_threads()
+    nthread   = omp_get_num_threads()
+    threadID  = omp_get_thread_num()
+    print *, "nthreads = ", nthread
 
    !call trace_init(nthread)
 
@@ -234,7 +236,7 @@ contains
 
     ! initialise rhs_local
     xlocal    = zero 
-    rhs_local = zero
+    rhs_local(:,:) = zero
 
     num_node = fkeep%info%num_nodes
     
@@ -258,8 +260,14 @@ contains
           !
           ! Forward solve with block on diagoanl
           !
+!         call print_darray("rhs_local before fwd block task",  &
+!           ldr * nrhs, rhs_local(:, threadID + 1))
+
           call spllt_solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
             xlocal, fkeep, fwd_block_id)
+
+!         call print_darray("rhs_local after fwd block task",   &
+!           ldr * nrhs, rhs_local(:, threadID + 1))
           
           do ii = jj+1, nr
 
@@ -268,14 +276,21 @@ contains
              !
              ! Forward update with off-diagonal
              !
+!            call print_darray("rhs_local before fwd update task",  &
+!              ldr * nrhs, rhs_local(:, threadID + 1))
+
              call spllt_solve_fwd_update_task(blk, node, nrhs, rhs_local, &
                rhs, ldr, xlocal, fkeep, fwd_update_id)
+
+!            call print_darray("rhs_local after fwd update task",   &
+!              ldr * nrhs, rhs_local(:, threadID + 1))
 
           end do
           
           ! Update diag block in node          
           dblk = fkeep%bc(dblk)%last_blk + 1
        end do
+       !$omp taskwait
               
     end do
 
@@ -283,7 +298,7 @@ contains
     !$omp taskwait
     deallocate(xlocal, rhs_local)
 
-!   call trace_log_dump_paje('trace_fwd.out')
+   !call trace_log_dump_paje('trace_fwd.out')
 
   end subroutine solve_fwd
 
