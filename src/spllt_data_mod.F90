@@ -127,14 +127,14 @@ module spllt_data_mod
      ! type(spllt_dep_list), pointer :: dep_out => null()
      type(spllt_dep_upd_out), pointer :: dep_out(:) => null()
 #endif
-     ! Static info, which is set in ma87_analayse
+     ! Static info, which is set in ma87_analyse
      integer :: bcol            ! block column that blk belongs to
      integer :: blkm            ! height of block (number of rows in blk)
      integer :: blkn            ! width of block (number of columns in blk)
      integer(long) :: dblk      ! id of the block on the diagonal within the 
      ! block column to which blk belongs
      integer :: dep_initial     ! initial dependency count for block,
-     integer(long) :: id        ! The block identitifier (ie, its number blk)
+     integer(long) :: id        ! The block identifier (ie, its number blk)
      integer(long) :: last_blk  ! id of the last block within the
      ! block column to which blk belongs
      integer :: node            ! node to which blk belongs
@@ -330,6 +330,11 @@ module spllt_data_mod
 
 !   end type spllt_control
 
+  interface print_array
+    module procedure print_darray
+    module procedure print_iarray
+  end interface print_array
+
 contains
 
   !*************************************************  
@@ -357,5 +362,33 @@ contains
     get_dest_block = get_dest_block + src2%id - src1%id
 
   end function get_dest_block
+
+!!!!! TMP subroutine !!! TO move from it
+
+  subroutine print_darray(array_name, n, val)
+  ! use spllt_data_mod
+    character(len=*)                      :: array_name
+    integer,                intent(in)    :: n
+    real(wp), dimension(n), intent(in)    :: val
+
+    integer :: i
+    print '(a)', array_name
+    do i = 1, n
+     !print '(f20.8)', val(i)
+      print *, val(i)
+    end do
+  end subroutine print_darray
+
+  subroutine print_iarray(array_name, n, val)
+    character(len=*)                      :: array_name
+    integer,                intent(in)    :: n
+    integer, dimension(n),  intent(in)    :: val
+
+    integer :: i
+    print '(a)', array_name
+    do i = 1, n
+      print '(i9)', val(i)
+    end do
+  end subroutine print_iarray
 
 end module spllt_data_mod
