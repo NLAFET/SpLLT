@@ -81,10 +81,10 @@ contains
 !   call trace_event_start(trace_id, omp_get_thread_num())
 
     threadID  = omp_get_thread_num()
-    print "(a, i3, a, i4, a, i4, a, f20.2, a, f20.2)", "th :",            &
-      threadID, " dblk :", dblk,  " has a dependency with ",              &
-      blk_dep_update, " using [in: ", p_lcol_update(p_blk_dep_update%sa), &
-      " and [inout: ", p_lcol(sa)
+!   print "(a, i3, a, i4, a, i4, a, f20.2, a, f20.2)", "th :",            &
+!     threadID, " dblk :", dblk,  " has a dependency with ",              &
+!     blk_dep_update, " using [in: ", p_lcol_update(p_blk_dep_update%sa), &
+!     " and [inout: ", p_lcol(sa)
 
     ! Sum contributions to rhs
     do r = 0, nrhs-1
@@ -196,16 +196,15 @@ contains
     !$omp depend(inout: p_lcol(blk_sa))                            
 
 !   print *, "[spllt_solve_fwd_update_task] solved by ", omp_get_thread_num()
-!   !$omp depend(out: upd(:, threadID + 1))
 !   call trace_event_start(trace_id, omp_get_thread_num())
     
     threadID  = omp_get_thread_num()
 
-    print '(a, i3, a, i4, a, i4, a, i4, a, f20.2, a, f20.2, a, f20.2)',   &
-      "th :", threadID, "  blk :", blk, " has a dependency with ",        &
-      blk_dep_update, " and ", blk_dep_solve, " using [in: ",             &
-      p_lcol_solve(p_blk_dep_solve%sa), ", ",                             &
-      p_lcol_update(p_blk_dep_update%sa), " and [inout: ", p_lcol(blk_sa)
+!   print '(a, i3, a, i4, a, i4, a, i4, a, f20.2, a, f20.2, a, f20.2)',   &
+!     "th :", threadID, "  blk :", blk, " has a dependency with ",        &
+!     blk_dep_update, " and ", blk_dep_solve, " using [in: ",             &
+!     p_lcol_solve(p_blk_dep_solve%sa), ", ",                             &
+!     p_lcol_update(p_blk_dep_update%sa), " and [inout: ", p_lcol(blk_sa)
 
 !   call print_darray("upd before update", ldr * nrhs, p_upd(:, threadID + 1))
 
@@ -224,7 +223,7 @@ contains
   !
   ! Backward solve with block on diagoanl
   !         
-  subroutine spllt_solve_bwd_block_task(dblk, nrhs, rhs, ldr, xlocal, &
+  subroutine spllt_solve_bwd_block_task(dblk, nrhs, upd, rhs, ldr, xlocal, &
       fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
@@ -235,30 +234,36 @@ contains
     integer, intent(in)                     :: dblk ! Index of diagonal block
     integer, intent(in)                     :: nrhs ! Number of RHS
     integer, intent(in)                     :: ldr  ! Leading dimension of RHS
-    real(wp), intent(inout)                 :: rhs(ldr, nrhs)
-    real(wp), dimension(:,:), intent(inout) :: xlocal
+    real(wp), target, intent(inout)         :: upd(:, :)
+    real(wp), target, intent(inout)         :: rhs(ldr * nrhs)
+    real(wp), target, intent(inout)         :: xlocal(:, :)
     type(spllt_fkeep), target, intent(in)   :: fkeep
     integer, intent(in)                     :: trace_id
     
     ! Node info
-    integer                         :: sa
+    integer                     :: sa
     ! Block info
-    integer                         :: m, n ! Block dimension
-    integer                         :: blk_sa
-    integer                         :: bcol, dcol, col
-    integer                         :: offset
-    integer                         :: node
-    integer                         :: threadID, nthread
-    integer                         :: blk_dep_update
-    integer, dimension(:), pointer  :: p_index
-    real(wp), dimension(:), pointer :: p_lcol
-
-    nthread   = omp_get_num_threads()
-    threadID  = omp_get_thread_num()
+    integer                     :: m, n ! Block dimension
+    integer                     :: blk_sa
+    integer                     :: bcol, dcol, col
+    integer                     :: offset
+    integer                     :: node
+    integer                     :: i, j, r
+    integer                     :: threadID, nthread
+    integer                     :: blk_dep_update
+    real(wp), pointer           :: p_lcol_update(:)
+    type(spllt_block), pointer  :: p_blk_dep_update
+    integer, pointer            :: p_index(:)
+    real(wp), pointer           :: p_lcol(:)
+    real(wp), pointer           :: p_upd(:,:)
+    real(wp), pointer           :: p_xlocal(:,:)
+    real(wp), pointer           :: p_rhs(:)
 
     node = fkeep%bc(dblk)%node
 
     ! print *, "[spllt_solve_bwd_block_task] node = ", node
+
+    nthread = omp_get_num_threads()
 
     ! Get block info
     n       = fkeep%bc(dblk)%blkn
@@ -271,33 +276,55 @@ contains
     p_index => fkeep%nodes(node)%index
     p_lcol  => fkeep%lfact(bcol)%lcol
 
+    p_upd     => upd
+    p_xlocal  => xlocal
+    p_rhs     => rhs
+
     blk_dep_update    = bwd_update_dependency(fkeep, dblk)
-   !p_lcol_update     => fkeep%lfact(fkeep%bc(blk_dep_update)%bcol)%lcol
-   !p_blk_dep_update  => fkeep%bc(blk_dep_update)   
+    p_lcol_update     => fkeep%lfact(fkeep%bc(blk_dep_update)%bcol)%lcol
+    p_blk_dep_update  => fkeep%bc(blk_dep_update)   
 
     !$omp task                                                    &
     !$omp firstprivate(m, n, col, offset, node, bcol)             &
     !$omp firstprivate(sa, nrhs, ldr, p_index, p_lcol)            &
-    !$omp shared(fkeep, xlocal, rhs)
+    !$omp firstprivate(p_xlocal, p_rhs, p_upd)                    &
+    !$omp firstprivate(p_lcol_update, p_blk_dep_update)           &
+    !$omp firstprivate(blk_dep_update, nthread)                   &
+    !$omp private(threadID, r, j, i)                              &
+    !$omp depend(in: p_lcol_update(p_blk_dep_update%sa))          &
+    !$omp depend(inout: p_lcol(sa))                                  
+
 !   print *, "[spllt_solve_bwd_block_task] treated by ", omp_get_thread_num()
 !   print *, "work on dblk ", dblk, "which belongs to block column ", & 
 !     fkeep%bc(dblk)%bcol
 !   call trace_event_start(trace_id, omp_get_thread_num())
 
-    print "(a, i3, a, i4, a, i4)", "th :", threadID, " dblk :", dblk, &
-      " has a dependency with ", blk_dep_update
+    threadID = omp_get_thread_num()
+!   print "(a, i3, a, i4, a, i4)", "th :", threadID, " dblk :", dblk, &
+!     " has a dependency with ", blk_dep_update
 
     ! Perform retangular update from diagonal block
     if(m .gt. n) then
-       call slv_bwd_update(m - n, n, col, offset + n, p_index, &
-            p_lcol(sa + n * n : sa + n * m - 1), n, nrhs, rhs, &
-            rhs, ldr, xlocal(:, omp_get_thread_num() + 1))
+       call slv_bwd_update(m - n, n, col, offset + n, p_index,      &
+            p_lcol(sa + n * n : sa + n * m - 1), n, nrhs, p_rhs,    &
+            p_upd(:, threadID + 1), ldr, p_xlocal(:, threadID + 1))
     endif
 
+    ! Sum contributions to rhs
+    do r = 0, nrhs-1
+      do j = 1, nthread
+!       call print_darray("use upd ", n, &
+!         p_upd(col + r * ldr : col + n - 1 + r * ldr, j))
+        do i = col + r*ldr, col+n-1 + r*ldr
+          p_rhs(i)    = p_rhs(i) + p_upd(i, j)
+!         p_upd(i,j)  = zero ! Reset in case of bwd solve
+        end do
+      end do
+    end do
 
     ! Perform triangular solve
     call slv_solve(n, n, col, p_lcol(sa : sa + n * n - 1), &
-         'Non-Transpose', 'Non-unit', nrhs, rhs, ldr)
+         'Non-Transpose', 'Non-unit', nrhs, p_rhs, ldr)
     
 !   call trace_event_stop (trace_id, omp_get_thread_num())
     !$omp end task
@@ -308,8 +335,8 @@ contains
   !
   ! Backward solve with block on diagoanl
   !         
-  subroutine spllt_solve_bwd_udpate_task(blk, node, nrhs, rhs, ldr, xlocal, &
-      fkeep, trace_id)
+  subroutine spllt_solve_bwd_udpate_task(blk, node, nrhs, upd, rhs, ldr, &
+      xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
@@ -320,26 +347,34 @@ contains
     integer, intent(in)                     :: node 
     integer, intent(in)                     :: nrhs ! Number of RHS
     integer, intent(in)                     :: ldr  ! Leading dimension of RHS
-    real(wp), intent(inout)                 :: rhs(ldr, nrhs)
-    real(wp), dimension(:,:), intent(inout) :: xlocal
+    real(wp), target, intent(inout)         :: upd(:,:)
+    real(wp), target, intent(inout)         :: rhs(ldr * nrhs)
+    real(wp), target, intent(inout)         :: xlocal(:,:)
     type(spllt_fkeep), target, intent(in)   :: fkeep
     integer, intent(in)                     :: trace_id
     
     ! Block info
-    integer                         :: m, n         ! Block dimension
-    integer                         :: blk_sa
-    integer                         :: bcol, dcol, col
-    integer                         :: offset
-    integer                         :: threadID, nthread
-    integer                         :: blk_dep_update
-    integer                         :: blk_dep_solve
-    integer, dimension(:), pointer  :: p_index
-    real(wp), dimension(:), pointer :: p_lcol
-
-    nthread   = omp_get_num_threads()
-    threadID  = omp_get_thread_num()
+    integer                     :: m, n         ! Block dimension
+    integer                     :: blk_sa
+    integer                     :: bcol, dcol, col
+    integer                     :: offset
+    integer                     :: threadID, nthread
+    integer, pointer            :: p_index(:)
+    real(wp), pointer           :: p_lcol(:)
+    real(wp), pointer           :: p_lcol_update(:)
+    real(wp), pointer           :: p_lcol_solve(:)
+    integer                     :: blk_dep_update
+    integer                     :: blk_dep_solve
+    type(spllt_block), pointer  :: p_blk_dep_update
+    type(spllt_block), pointer  :: p_blk_dep_solve
+    type(spllt_block), pointer  :: p_blk 
+    real(wp)         , pointer  :: p_upd(:,:)
+    real(wp)         , pointer  :: p_xlocal(:,:)
+    real(wp)         , pointer  :: p_rhs(:)
 
     ! print *, "[spllt_solve_bwd_udpate_task] node = ", node
+
+    nthread = omp_get_num_threads()
 
     !
     ! Backward update with block on diagoanl
@@ -357,31 +392,47 @@ contains
     p_index => fkeep%nodes(node)%index
     p_lcol  => fkeep%lfact(bcol)%lcol
 
+    p_upd     => upd
+    p_xlocal  => xlocal
+    p_rhs     => rhs
+
     blk_dep_update = bwd_update_dependency(fkeep, blk)
     blk_dep_solve  = bwd_solve_dependency(fkeep, blk)
 
-   !p_lcol_update => fkeep%lfact(fkeep%bc(blk_dep_update)%bcol)%lcol
-   !p_lcol_solve  => fkeep%lfact(fkeep%bc(blk_dep_solve )%bcol)%lcol
+    p_lcol_update => fkeep%lfact(fkeep%bc(blk_dep_update)%bcol)%lcol
+    p_lcol_solve  => fkeep%lfact(fkeep%bc(blk_dep_solve )%bcol)%lcol
 
-   !p_blk_dep_update  => fkeep%bc(blk_dep_update)
-   !p_blk_dep_solve   => fkeep%bc(blk_dep_solve)
+    p_blk_dep_update  => fkeep%bc(blk_dep_update)
+    p_blk_dep_solve   => fkeep%bc(blk_dep_solve)
 
     !$omp task                                                    &
     !$omp firstprivate(m, n, col, offset, node, bcol)             &
     !$omp firstprivate(blk_sa, nrhs, ldr, p_index, p_lcol)        &
-    !$omp shared(fkeep, xlocal, rhs)
+    !$omp firstprivate(p_blk_dep_update, p_blk_dep_solve)         &
+    !$omp firstprivate(p_blk)                                     &
+    !$omp firstprivate(blk, blk_dep_update, blk_dep_solve)        &
+    !$omp firstprivate(p_lcol_update, p_lcol_solve)               &
+    !$omp private(threadID)                                       &
+    !$omp firstprivate(p_xlocal, p_rhs, p_upd)                    &
+    !$omp depend(in: p_lcol_solve(p_blk_dep_solve%sa))            &
+    !$omp depend(in: p_lcol_update(p_blk_dep_update%sa))          &
+    !$omp depend(inout: p_lcol(blk_sa))                            
+
 !   print *, "[spllt_solve_bwd_udpate_task] Thread id ", omp_get_thread_num()
-!   print *, "work on blk  ", blk, " which belongs to ", fkeep%bc(blk)%bcol, &
-!     ", and depends on ", fkeep%bc(blk)%dblk
-!   print *, "last_blk ", fkeep%bc(blk)%last_blk
 !   call trace_event_start(trace_id, omp_get_thread_num())
 
-    print '(a, i3, a, i4, a, i4, a, i4)', "th :", threadID, "  blk :", blk, &
-      " has a dependency with ", blk_dep_update, " and ", blk_dep_solve
+    threadID  = omp_get_thread_num()
+!   print '(a, i3, a, i4, a, i4, a, i4)', "th :", threadID, "  blk :", blk, &
+!     " has a dependency with ", blk_dep_update, " and ", blk_dep_solve
 
-    call  slv_bwd_update(m, n, col, offset, p_index, &
-          p_lcol(blk_sa:blk_sa+n*m-1), n, nrhs, rhs, &
-          rhs, ldr, xlocal(:, omp_get_thread_num() + 1))
+!   call print_darray("upd before update", ldr * nrhs, p_upd(:, threadID + 1))
+
+    call  slv_bwd_update(m, n, col, offset, p_index,      &
+          p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,   &
+          p_rhs, p_upd(:, threadID + 1), ldr,             &
+          xlocal(:, omp_get_thread_num() + 1))
+
+!   call print_darray("upd after  update", ldr * nrhs, p_upd(:, threadID + 1))
 
 !   call trace_event_stop (trace_id, omp_get_thread_num())
     !$omp end task
