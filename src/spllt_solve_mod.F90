@@ -222,7 +222,7 @@ contains
     threadID  = omp_get_thread_num()
     print *, "nthreads = ", nthread
 
-   !call trace_init(nthread)
+    call trace_init(nthread)
 
     call trace_create_event("fwd_update", fwd_update_id)
     call trace_create_event("fwd_block", fwd_block_id)
@@ -240,6 +240,10 @@ contains
 
     num_node = fkeep%info%num_nodes
     
+!   do node = 1, num_node
+!     print '(a, i3, a, i3, a, i3)', "Node ", node, " blk_sa ", &
+!       fkeep%nodes(node)%blk_sa, " blk_en ", fkeep%nodes(node)%blk_en  
+!   end do
     do node = 1, num_node
 
        ! Get node info
@@ -290,7 +294,7 @@ contains
           ! Update diag block in node          
           dblk = fkeep%bc(dblk)%last_blk + 1
        end do
-       !$omp taskwait
+!      !$omp taskwait
 !      print *, "End of treatment of node ", node
               
     end do
@@ -299,7 +303,7 @@ contains
     !$omp taskwait
     deallocate(xlocal, rhs_local)
 
-   !call trace_log_dump_paje('trace_fwd.out')
+    call trace_log_dump_paje('trace_fwd.out')
 
   end subroutine solve_fwd
 

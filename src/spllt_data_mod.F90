@@ -391,4 +391,215 @@ contains
     end do
   end subroutine print_iarray
 
+  !Return the position in child_node of the rows of node that are 
+  ! in child_node
+  subroutine get_update_dep(fkeep, child_node, node, pos)
+    
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: child_node
+    integer, intent(in)                   :: node
+    integer, allocatable, intent(out)     :: pos(:)
+
+    integer :: node_index
+    integer :: child_node_index
+    integer :: i, j, k
+    integer, pointer, dimension(:) :: p_node_index, p_child_node_index
+
+    p_node_index        => fkeep%nodes(node)%index
+    p_child_node_index  => fkeep%nodes(child_node)%index
+
+
+    i = 1
+    j = 1
+    k = 1
+    do while(j .le. size(p_node_index) .and. k .le. size(p_child_node_index))
+      if(p_node_index(j) .lt. p_child_node_index(k)) then
+        j = j + 1
+      else if(p_node_index(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+        i = i + 1
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+    allocate(pos(i - 1))
+
+    if( i .eq. 1 )then
+      return
+    end if
+
+    !Reiterate to copy the position into pos
+    i = 1
+    j = 1
+    k = 1
+    do while(j .le. size(p_node_index) .and. k .le. size(p_child_node_index))
+      if(p_node_index(j) .lt. p_child_node_index(k)) then
+        j = j + 1
+      else if(p_node_index(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+        pos(i) = j
+        i = i + 1
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+  end subroutine get_update_dep
+
+  subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: child_node
+    integer, intent(in)                   :: blk_index(:)
+    integer, intent(out)                  :: nblk
+
+    integer :: child_node_index
+    integer :: i, j, k
+!   integer :: nb
+    integer, pointer :: p_child_node_index(:)
+    integer :: cur_blk_dep, tmp
+!   integer :: lblk, nlblk, diff
+
+    p_child_node_index  => fkeep%nodes(child_node)%index
+!   nb          = fkeep%nodes(child_node)%nb
+    cur_blk_dep = 0 !Impossible value but used as initialization
+
+    nblk  = 0
+    j     = 1
+    k     = 1
+    do while(j .le. size(blk_index) .and. k .le. size(p_child_node_index))
+      if(blk_index(j) .lt. p_child_node_index(k)) then
+        j = j + 1
+      else if(blk_index(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+!       tmp = fkeep%nodes(child_node)%blk_en  -      &
+!         ceiling(0.0 + size(p_child_node_index)/nb) +  &
+!         ceiling(0.0 + (k - 1) / nb)
+!       tmp   = fkeep%nodes(child_node)%blk_sa
+!       lblk  = ceiling(0.0 + (k - 1) / nb)
+!       nlblk = ceiling(0.0 + (size(p_child_node_index) - 1)/nb)
+!       diff  = (fkeep%nodes(child_node)%blk_en - &
+!         fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk)
+!       if(lblk .lt. diff) then
+!         tmp = tmp + lblk * (nlblk - 1) + 1
+!       else
+!         tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + diff
+!       end if
+
+        tmp = get_child_dep_blk_id(fkeep, child_node, k, &
+          size(p_child_node_index))
+
+        if(cur_blk_dep .lt. tmp) then
+          cur_blk_dep = tmp
+          nblk = nblk + 1
+        end if
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+  end subroutine get_update_nblk
+
+  subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: child_node
+    integer, intent(in)                   :: blk_index(:)
+    integer, intent(out)                  :: pos(:)
+
+    integer :: child_node_index
+    integer :: i, j, k
+    integer :: nb
+    integer, pointer :: p_child_node_index(:)
+    integer :: cur_blk_dep, tmp
+    integer :: lblk, nlblk, diff
+
+    p_child_node_index  => fkeep%nodes(child_node)%index
+    nb = fkeep%nodes(child_node)%nb
+    cur_blk_dep = 0 !Impossible value but used as initialization
+
+!   print *, " in child node : ", child_node
+    !Set variables
+    cur_blk_dep = 0
+    i           = 1
+    j           = 1
+    k           = 1
+!   if(child_node .eq. 2) then
+!     print *, "Index child : ", p_child_node_index
+!     print *, "Ref index   : ", blk_index
+!   end if
+    do while(j .le. size(blk_index) .and. k .le. size(p_child_node_index))
+      if(blk_index(j) .lt. p_child_node_index(k)) then
+        j = j + 1
+      else if(blk_index(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+!       tmp = fkeep%nodes(child_node)%blk_en  -      &
+!         ceiling(0.0 + size(p_child_node_index)/nb) +  &
+!         ceiling(0.0 + (k - 1) / nb)
+!       pos(i) = fkeep%nodes(child_node)%blk_en  -      &
+!         (size(p_child_node_index) - k)/nb
+!       print *, "computed blk = ", pos(i)
+        
+        tmp = get_child_dep_blk_id(fkeep, child_node, k, &
+          size(p_child_node_index))
+
+   !    if(child_node .eq. 2) then
+   !      print *, "Found row ", p_child_node_index(k), " in both"
+   !      print *, "Size child_index ", size(p_child_node_index),             &
+   !        "pos in child_index ", k
+!  !      print *, "diff ", size(p_child_node_index) - k
+!  !      print *, "offset local_blk ", (size(p_child_node_index) - k)/nb
+   !      print *, "Child_node, last_blk ", fkeep%nodes(child_node)%blk_en,   &
+   !        "max ncolBlk ", ceiling((size(p_child_node_index) + 0.0)/nb),       &
+   !        "current colBlk", ceiling((k + 0.0) / nb)
+   !      print *, "=> blk_dep : ", tmp
+   !    end if
+
+        if(cur_blk_dep .lt. tmp) then
+          cur_blk_dep = tmp
+          pos(i) = tmp
+          i = i + 1
+        end if
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+  end subroutine get_update_dep_blk
+
+  function get_child_dep_blk_id(fkeep, child_node, row, nrow)
+    integer                               :: get_child_dep_blk_id
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: child_node
+    integer, intent(in)                   :: row
+    integer, intent(in)                   :: nrow
+
+    integer :: lblk, nlblk, diff, tmp, nb
+
+    nb    = fkeep%nodes(child_node)%nb
+    tmp   = fkeep%nodes(child_node)%blk_sa
+    lblk  = ceiling((row + 0.0) / nb)
+    nlblk = ceiling((nrow + 0.0)/nb)
+    diff  = (fkeep%nodes(child_node)%blk_en - &
+      fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk)
+    if(lblk .le. (nlblk - diff)) then
+!     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " <= (", nlblk, &
+!       " - ", diff, ") = ", (nlblk - diff)
+     !tmp = tmp + (lblk - 1) * (nlblk - 1) + 1
+      tmp = tmp + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
+    else
+!     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " > (", nlblk, &
+!       " - ", diff, ") = ", (nlblk - diff)
+      tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + diff
+    end if
+    
+    get_child_dep_blk_id = tmp
+
+  end function get_child_dep_blk_id
+
 end module spllt_data_mod
+
+
