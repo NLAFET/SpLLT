@@ -152,7 +152,6 @@ module spllt_data_mod
 
   ! node type
   type spllt_node
-     ! type(node_type), pointer :: node
      integer :: num ! node id
 #if defined(SPLLT_USE_STARPU)
      type(c_ptr)    :: hdl  ! StarPU handle
@@ -290,6 +289,18 @@ module spllt_data_mod
      ! holds mapping from matrix values into lfact
   end type spllt_fkeep
 
+  type spllt_omp_task
+    integer :: ntask_run
+  end type spllt_omp_task
+
+  type spllt_omp_scheduler
+    integer :: ntask_insert
+    integer :: nfake_task_insert
+    integer :: nthread_max
+    integer :: nworker
+    type(spllt_omp_task), pointer :: info_thread(:)
+  end type spllt_omp_scheduler
+
   !*************************************************
   !  
 !   ! Data type for user controls
@@ -379,16 +390,33 @@ contains
     end do
   end subroutine print_darray
 
-  subroutine print_iarray(array_name, n, val)
+  subroutine print_iarray(array_name, n, val, display)
     character(len=*)                      :: array_name
     integer,                intent(in)    :: n
     integer, dimension(n),  intent(in)    :: val
+    integer, optional,      intent(in)    :: display  ! 0 = Vertical,
+                                                      ! 1 = Horizontal
 
     integer :: i
+    integer :: disp
+
+    if(present(display))then
+      disp = display
+    else
+      disp = 0 ! Vertical
+    end if
+
     print '(a)', array_name
-    do i = 1, n
-      print '(i9)', val(i)
-    end do
+    if(disp .eq. 0) then
+      do i = 1, n
+        print '(i9)', val(i)
+      end do
+    else
+      do i = 1, n
+        write(*, fmt="(i9)", advance="no") val(i)
+      end do
+      write(*,*) ""
+    end if
   end subroutine print_iarray
 
   !Return the position in child_node of the rows of node that are 
@@ -452,7 +480,7 @@ contains
   subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
-    integer, intent(in)                   :: blk_index(:)
+    integer, intent(inout)                :: blk_index(:)
     integer, intent(out)                  :: nblk
 
     integer :: child_node_index
@@ -492,6 +520,8 @@ contains
         tmp = get_child_dep_blk_id(fkeep, child_node, k, &
           size(p_child_node_index))
 
+!       blk_index(j) = - blk_index(j)
+
         if(cur_blk_dep .lt. tmp) then
           cur_blk_dep = tmp
           nblk = nblk + 1
@@ -506,7 +536,7 @@ contains
   subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
-    integer, intent(in)                   :: blk_index(:)
+    integer, intent(inout)                :: blk_index(:)
     integer, intent(out)                  :: pos(:)
 
     integer :: child_node_index
@@ -545,6 +575,12 @@ contains
         
         tmp = get_child_dep_blk_id(fkeep, child_node, k, &
           size(p_child_node_index))
+
+!       if(tmp .eq. 131) then
+!         print *, " j = ", j, " => blk_index(j) = ", blk_index(j), &
+!           " , ", p_child_node_index(k)
+!       end if
+!       blk_index(j) = - blk_index(j)
 
    !    if(child_node .eq. 2) then
    !      print *, "Found row ", p_child_node_index(k), " in both"
@@ -599,6 +635,374 @@ contains
     get_child_dep_blk_id = tmp
 
   end function get_child_dep_blk_id
+
+  subroutine reduce_ind_and_get_ndep(fkeep, ind, nind, child_node, ndep)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(inout)                :: ind(:)
+    integer, intent(inout)                :: nind       ! #elmt in ind
+    integer, intent(in)                   :: child_node
+    integer, intent(out)                  :: ndep       ! #block dep
+
+    integer :: i, j, k
+    integer :: nb, nval
+    integer, pointer :: p_child_node_index(:)
+    integer :: cur_blk_dep, tmp
+    integer :: lblk, nlblk, diff
+
+    p_child_node_index  => fkeep%nodes(child_node)%index
+    nb                  = fkeep%nodes(child_node)%nb
+    cur_blk_dep         = 0 !Impossible value but used as initialization
+    ndep                = 0
+
+    !Set variables
+    cur_blk_dep = 0
+    i           = 1
+    j           = 1
+    k           = 1
+    nval        = 0
+    do while(j .le. nind .and. k .le. size(p_child_node_index))
+      if(ind(j) .lt. p_child_node_index(k)) then
+        nval = nval + 1
+        ind(nval) = ind(j)
+        j = j + 1
+      else if(ind(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+        
+        tmp = get_child_dep_blk_id(fkeep, child_node, k, &
+          size(p_child_node_index))
+        
+        if(cur_blk_dep .lt. tmp) then
+          print *, "Dep with blk ", tmp
+          cur_blk_dep = tmp
+          ndep = ndep + 1
+          i = i + 1
+        end if
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+    if(j .lt. nind) then
+      nval = nval + 1
+      ind(nval: nval + nind - j) = ind(j : nind)
+      nind = nval + nind - j
+    else 
+      nind = nval
+    end if
+
+
+  end subroutine reduce_ind_and_get_ndep
+
+  recursive subroutine getUpdateNDep(fkeep, node, ind, nind, ndep, lvl)
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node
+    integer, intent(inout)        :: ind(:)
+    integer, intent(inout)        :: nind
+    integer, intent(inout)        :: ndep(:)
+    integer, intent(in), optional :: lvl
+
+    integer :: child, dep, nldep, offset, i, nsubind, nchild
+    integer, allocatable :: subind(:)
+    integer :: rlvl
+
+    if(present(lvl)) then
+      rlvl = lvl
+    else
+      rlvl = 1
+    end if
+
+!   print *, "[", rlvl, "] Get #dep of node ", node
+!   call print_iarray("Starting Ind =   ", nind, ind, 1)
+    
+    nchild = fkeep%nodes(node)%nchild
+
+    if(nind .eq. 0) then
+      ndep(1) = 0
+      return
+    end if
+
+    if(nchild .eq. 0) then
+      return
+    end if
+
+    offset = 1
+    allocate(subind(nind))
+
+    do i = 1, nchild
+      child = fkeep%nodes(node)%child(i)
+      nldep = 0
+
+      subind = ind
+      nsubind = nind
+
+!     print '(a, i3)', "Intersect with child node number : ", child
+      call reduce_ind_and_get_ndep(fkeep, subind, nsubind, child, nldep)
+!     print '(a, i2, a, i2)', "[", rlvl, "] nldep = ", nldep
+!     call print_iarray("Updated ind", nsubind, subind, 1)
+      ndep(offset) = nldep
+      offset = offset + 1
+
+      if(fkeep%nodes(child)%nchild .gt. 0) then
+!       print '(a, i2, a, i2, a, i2)', "Call getUpdateNDep on child ",  &
+!         child, " with a ndep space ",                                 &
+!         offset, " to ", offset + fkeep%nodes(child)%nchild - 1
+
+        call getUpdateNDep(fkeep, child, subind, nsubind,                 &
+          ndep(offset : offset + fkeep%nodes(child)%nchild - 1),  &
+          rlvl + 1)
+
+!       print '(a, i2, a)', "[", rlvl, "] RAW ndep "
+!       print *, ndep
+!       print '(a, i2, a, i2, a)', "[", rlvl, "] #dep of child ", child, " are"
+!       print *,  ndep(offset : offset + fkeep%nodes(child)%nchild - 1)
+
+        offset = offset + fkeep%nodes(child)%nchild
+      end if
+    end do
+
+!   print *, "[", rlvl, "] #Dep found ", ndep
+    deallocate(subind)
+
+  end subroutine getUpdateNDep
+
+  !Get the dependencies after counting its number
+  subroutine reduce_ind_and_get_dep(fkeep, ind, nind, child_node, dep)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(inout)                :: ind(:)
+    integer, intent(inout)                :: nind       ! #elmt in ind
+    integer, intent(in)                   :: child_node
+    integer, intent(out)                  :: dep(:)     ! List of block dep
+
+    integer :: i, j, k
+    integer :: nb, nval
+    integer, pointer :: p_child_node_index(:)
+    integer :: cur_blk_dep, tmp
+    integer :: lblk, nlblk, diff, ndep
+
+    p_child_node_index  => fkeep%nodes(child_node)%index
+    nb                  = fkeep%nodes(child_node)%nb
+    cur_blk_dep         = 0 !Impossible value but used as initialization
+    ndep                = 1
+
+    !Set variables
+    cur_blk_dep = 0
+    i           = 1
+    j           = 1
+    k           = 1
+    nval        = 0
+    do while(j .le. nind .and. k .le. size(p_child_node_index))
+      if(ind(j) .lt. p_child_node_index(k)) then
+        nval = nval + 1
+        ind(nval) = ind(j)
+        j = j + 1
+      else if(ind(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+        
+        tmp = get_child_dep_blk_id(fkeep, child_node, k, &
+          size(p_child_node_index))
+        
+        if(cur_blk_dep .lt. tmp) then
+          print *, "Dep with blk ", tmp
+          cur_blk_dep = tmp
+          dep(ndep) = tmp
+          ndep = ndep + 1
+          i = i + 1
+        end if
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+    if(j .lt. nind) then
+      nval = nval + 1
+      ind(nval: nval + nind - j) = ind(j : nind)
+      nind = nval + nind - j
+    else 
+      nind = nval
+    end if
+
+
+  end subroutine reduce_ind_and_get_dep
+
+  recursive subroutine getUpdateDep(fkeep, node, ind, nind, dep, ndep, lvl)
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node
+    integer, intent(inout)        :: ind(:)
+    integer, intent(inout)        :: nind
+    integer, intent(inout)        :: dep(:)
+    integer, intent(in)           :: ndep(:)
+    integer, intent(in), optional :: lvl
+
+    integer :: child, nldep, offset, i, nsubind, nchild
+    integer, allocatable :: subind(:)
+    integer :: rlvl
+
+    if(present(lvl)) then
+      rlvl = lvl
+    else
+      rlvl = 1
+    end if
+
+    print *, "[", rlvl, "] Get #dep of node ", node
+!   call print_iarray("Starting Ind =   ", nind, ind, 1)
+    
+    nchild = fkeep%nodes(node)%nchild
+
+    if(nind .eq. 0) then
+      return
+    end if
+
+    if(nchild .eq. 0) then
+      return
+    end if
+
+    offset = 1
+    allocate(subind(nind))
+
+    do i = 1, nchild
+      child = fkeep%nodes(node)%child(i)
+      nldep = 0
+
+      subind = ind
+      nsubind = nind
+
+      if(ndep(i+1) .gt. ndep(i)) then
+
+        print '(a, i3)', "Intersect with child node number : ", child
+
+        call reduce_ind_and_get_dep(fkeep, subind, nsubind, child, &
+!         dep(offset : offset + ndep(i+1) -ndep(i) - 1))
+          dep(ndep(i) : ndep(i + 1) - 1))
+        print '(a, i2, a, i2)', "[", rlvl, "] ldep = "
+!       print *, dep(offset : offset + ndep(i+1) - ndep(i) - 1)
+        print *, dep(ndep(i) : ndep(i + 1) - 1)
+  !     call print_iarray("Updated ind", nsubind, subind, 1)
+  !     ndep(offset) = nldep
+!       offset = offset + ndep(i)
+
+        if(fkeep%nodes(child)%nchild .gt. 0) then
+!         print '(a, i2, a, i2, a, i2)', "Call getUpdateNDep on child ",  &
+!           child, " with a ndep space ",                                 &
+!           offset, " to ", offset + fkeep%nodes(child)%nchild - 1
+          
+          nldep = ndep(i + 1 + fkeep%nodes(child)%nchild) - ndep(i + 1)
+
+          if(nldep .gt. 0) then
+!           call getUpdateDep(fkeep, child, subind, nsubind,      &
+!             dep(offset : offset + nldep - 1),                   &
+!             ndep(offset : offset + nldep - 1),                  &
+!             rlvl + 1)
+            call getUpdateDep(fkeep, child, subind, nsubind,      &
+              dep(ndep(i+1) : ndep(i+1) + nldep - 1),             &
+              ndep(ndep(i+1) : ndep(i+1) + nldep - 1),            &
+              rlvl + 1)
+
+            print '(a, i2, a)', "[", rlvl, "] RAW dep "
+            print *, dep
+            print '(a, i2, a, i2, a)', "[", rlvl, "] block dep of child ", child, " are"
+!           print *,  dep(offset : offset + fkeep%nodes(child)%nchild - 1)
+            print *,  dep(ndep(i+1) : ndep(i+1) + nldep - 1)
+          end if
+!         offset = offset + fkeep%nodes(child)%nchild
+        end if
+      end if
+    end do
+
+    print *, "[", rlvl, "] Blk Dep found ", dep
+
+    deallocate(subind)
+
+  end subroutine getUpdateDep
+
+  subroutine reduce_ind_and_get_dep_blk(fkeep, ind, nind, child_node, blk_dep)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(inout)                :: ind(:)
+    integer, intent(inout)                :: nind       ! #elmt in ind
+    integer, intent(in)                   :: child_node
+    integer, intent(out)                  :: blk_dep(:) ! Dep of the block
+
+    integer :: i, j, k
+    integer :: nb, nval
+    integer, pointer :: p_child_node_index(:)
+    integer :: cur_blk_dep, tmp
+    integer :: lblk, nlblk, diff
+
+    p_child_node_index  => fkeep%nodes(child_node)%index
+    nb = fkeep%nodes(child_node)%nb
+    cur_blk_dep = 0 !Impossible value but used as initialization
+!   print *, "Original index", ind
+!   print *, "Filtered by ", p_child_node_index
+
+    !Set variables
+    cur_blk_dep = 0
+    i           = 1
+    j           = 1
+    k           = 1
+    nval        = 0
+    do while(j .le. nind .and. k .le. size(p_child_node_index))
+      if(ind(j) .lt. p_child_node_index(k)) then
+        nval = nval + 1
+        ind(nval) = ind(j)
+!       print *, "Copy ", ind(j), "into position ", nval
+        j = j + 1
+      else if(ind(j) .gt. p_child_node_index(k)) then
+        k = k + 1
+      else
+        
+        tmp = get_child_dep_blk_id(fkeep, child_node, k, &
+          size(p_child_node_index))
+        
+        if(cur_blk_dep .lt. tmp) then
+          cur_blk_dep = tmp
+          blk_dep(i) = tmp
+          i = i + 1
+        end if
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+    if(j .lt. nind) then
+!     print *," Remain elements to copy ", ind(j : nind)
+      nval = nval + 1
+      ind(nval: nval + nind - j) = ind(j : nind)
+      nind = nval + nind - j
+    else 
+      nind = nval
+    end if
+
+!   call print_iarray("... lead to ", nind, ind)
+
+  end subroutine reduce_ind_and_get_dep_blk
+
+! subroutine getUpdateDep(fkeep, node, ind, nind, dep)
+!   type(spllt_fkeep), intent(in) :: fkeep
+!   integer, intent(in)           :: node
+!   integer, intent(inout)        :: ind
+!   integer, intent(inout)        :: nind
+!   integer, intent(inout)        :: dep(:)
+
+!   integer :: child
+!   integer, allocatable :: subind(:)
+
+!   if(nind .eq. 0) then
+!     return
+!   end if
+
+!   do i = 1, fkeep%nodes(node)%nchild
+!     child = fkeep%nodes(node)%child(i)
+
+!     allocate(subind(nind))
+!     subind = ind
+!     nsubind = nind
+
+!     call reduce_ind_and_get_dep_blk(fkeep, ind, size(ind), child, dep)
+!     call getUpdateDep(fkeep, child, subind, nsubind)
+
+!   end do
+! end subroutine getUpdateDep
 
 end module spllt_data_mod
 
