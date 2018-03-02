@@ -419,6 +419,48 @@ contains
     end if
   end subroutine print_iarray
 
+  subroutine print_blk_index(array_name, n, val, display)
+    character(len=*)                      :: array_name
+    integer,                intent(in)    :: n
+    integer, dimension(n),  intent(in)    :: val
+    integer, optional,      intent(in)    :: display  ! 0 = Vertical,
+                                                      ! 1 = Horizontal
+
+    integer :: i
+    integer :: disp
+
+    if(present(display))then
+      disp = display
+    else
+      disp = 0 ! Vertical
+    end if
+
+    print '(a)', array_name
+    if(disp .eq. 0) then
+      write(*, fmt="(i9)", advance="no") val(1)
+      do i = 1, n - 1
+        if(val(i+1) - val(i) .gt. 1) then
+          print '(a,i9)', " : ", val(i)
+          if(i + 1 .lt. n) then
+            write(*, fmt="(i9)", advance="no") val(i+1)
+          end if
+        end if
+      end do
+      print '(a,i9)', ":", val(n)
+    else
+      write(*, fmt="(i9)", advance="no") val(1)
+      do i = 1, n - 1
+        if(val(i+1) - val(i) .gt. 1) then
+          write(*, fmt='(a,i9,a)', advance="no") " : ", val(i), ","
+          if(i + 1 .lt. n) then
+            write(*, fmt="(i9)", advance="no") val(i+1)
+          end if
+        end if
+      end do
+      print '(a,i9)', ":", val(n)
+    end if
+  end subroutine print_blk_index
+
   !Return the position in child_node of the rows of node that are 
   ! in child_node
   subroutine get_update_dep(fkeep, child_node, node, pos)
@@ -620,8 +662,8 @@ contains
     lblk  = ceiling((row + 0.0) / nb)
     nlblk = ceiling((nrow + 0.0)/nb)
     diff  = (fkeep%nodes(child_node)%blk_en - &
-      fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk)
-    if(lblk .le. (nlblk - diff)) then
+      fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + 1) ! #blk on the last nbol
+    if(lblk .lt. (nlblk - diff)) then
 !     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " <= (", nlblk, &
 !       " - ", diff, ") = ", (nlblk - diff)
      !tmp = tmp + (lblk - 1) * (nlblk - 1) + 1
@@ -629,8 +671,14 @@ contains
     else
 !     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " > (", nlblk, &
 !       " - ", diff, ") = ", (nlblk - diff)
-      tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + diff
+      tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + lblk - (nlblk - diff) - 1
     end if
+
+!   if(tmp .eq. 18) then
+!     print *, "child_node ", child_node, " row ", row, " nrow ", nrow
+!     print *, "nb ", nb, " blk_sa ", fkeep%nodes(child_node)%blk_sa, " lblk ",&
+!       lblk, " nlblk ", nlblk, " diff ", diff, " ====> result : ", tmp
+!   end if
     
     get_child_dep_blk_id = tmp
 
@@ -648,6 +696,7 @@ contains
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
     integer :: lblk, nlblk, diff
+    integer, pointer :: p_child_blk_index(:)
 
     p_child_node_index  => fkeep%nodes(child_node)%index
     nb                  = fkeep%nodes(child_node)%nb
@@ -671,12 +720,25 @@ contains
         
         tmp = get_child_dep_blk_id(fkeep, child_node, k, &
           size(p_child_node_index))
+
         
         if(cur_blk_dep .lt. tmp) then
-          print *, "Dep with blk ", tmp
+!         print '(a, i2, a, i4, a, i2, a, i4)', "ind(", j, ") ", ind(j), &
+!           " == p_child_node_index(", k, ") ", p_child_node_index(k)
+!         print *, "Dep with blk ", tmp
           cur_blk_dep = tmp
           ndep = ndep + 1
           i = i + 1
+        ! if(child_node .eq. 14) then
+        !   print *, "$$$$$$$$$    ASSUME : Dep with blk ", tmp
+        !   if(.not. contain(fkeep, 39, tmp)) then
+        !     print '(a, i3, a, i3)', "ERROR   !!! Child_blk ", &
+        !       tmp, " does not intersect with ", 39
+        !     call getPointerBlkIndex(fkeep, tmp, p_child_blk_index)
+        !     call print_blk_index("blk_index", size(p_child_blk_index), &
+        !       p_child_blk_index, 1)
+        !   end if
+        ! end if
         end if
         j = j + 1
         k = k + 1
@@ -712,7 +774,7 @@ contains
       rlvl = 1
     end if
 
-!   print *, "[", rlvl, "] Get #dep of node ", node
+  ! print *, "[", rlvl, "] Get #dep of node ", node
 !   call print_iarray("Starting Ind =   ", nind, ind, 1)
     
     nchild = fkeep%nodes(node)%nchild
@@ -726,7 +788,7 @@ contains
       return
     end if
 
-    offset = 1
+    offset = nchild + 1
     allocate(subind(nind))
 
     do i = 1, nchild
@@ -736,20 +798,20 @@ contains
       subind = ind
       nsubind = nind
 
-!     print '(a, i3)', "Intersect with child node number : ", child
+  !   print '(a, i3)', "Intersect with child node number : ", child
       call reduce_ind_and_get_ndep(fkeep, subind, nsubind, child, nldep)
-!     print '(a, i2, a, i2)', "[", rlvl, "] nldep = ", nldep
+  !   print '(a, i2, a, i2)', "[", rlvl, "] nldep = ", nldep
 !     call print_iarray("Updated ind", nsubind, subind, 1)
-      ndep(offset) = nldep
-      offset = offset + 1
+      ndep(i) = nldep
+     !offset = offset + 1
 
       if(fkeep%nodes(child)%nchild .gt. 0) then
-!       print '(a, i2, a, i2, a, i2)', "Call getUpdateNDep on child ",  &
-!         child, " with a ndep space ",                                 &
-!         offset, " to ", offset + fkeep%nodes(child)%nchild - 1
+  !     print '(a, i2, a, i2, a, i2)', "Call getUpdateNDep on child ",  &
+  !       child, " with a ndep space ",                                 &
+  !       offset, " to ", offset + child - fkeep%nodes(child)%least_desc - 1
 
-        call getUpdateNDep(fkeep, child, subind, nsubind,                 &
-          ndep(offset : offset + fkeep%nodes(child)%nchild - 1),  &
+        call getUpdateNDep(fkeep, child, subind, nsubind, ndep(offset :       &
+          offset + child - fkeep%nodes(child)%least_desc - 1), &
           rlvl + 1)
 
 !       print '(a, i2, a)', "[", rlvl, "] RAW ndep "
@@ -761,7 +823,7 @@ contains
       end if
     end do
 
-!   print *, "[", rlvl, "] #Dep found ", ndep
+  ! print *, "[", rlvl, "] #Dep found ", ndep
     deallocate(subind)
 
   end subroutine getUpdateNDep
@@ -804,7 +866,7 @@ contains
           size(p_child_node_index))
         
         if(cur_blk_dep .lt. tmp) then
-          print *, "Dep with blk ", tmp
+  !       print *, "Dep with blk ", tmp
           cur_blk_dep = tmp
           dep(ndep) = tmp
           ndep = ndep + 1
@@ -845,7 +907,7 @@ contains
       rlvl = 1
     end if
 
-    print *, "[", rlvl, "] Get #dep of node ", node
+  ! print *, "[", rlvl, "] Get #dep of node ", node
 !   call print_iarray("Starting Ind =   ", nind, ind, 1)
     
     nchild = fkeep%nodes(node)%nchild
@@ -858,7 +920,7 @@ contains
       return
     end if
 
-    offset = 1
+    offset = nchild + 1
     allocate(subind(nind))
 
     do i = 1, nchild
@@ -870,16 +932,16 @@ contains
 
       if(ndep(i+1) .gt. ndep(i)) then
 
-        print '(a, i3)', "Intersect with child node number : ", child
+  !     print '(a, i3)', "Intersect with child node number : ", child
 
         call reduce_ind_and_get_dep(fkeep, subind, nsubind, child, &
 !         dep(offset : offset + ndep(i+1) -ndep(i) - 1))
           dep(ndep(i) : ndep(i + 1) - 1))
-        print '(a, i2, a, i2)', "[", rlvl, "] ldep = "
+  !     print '(a, i2, a, i2)', "[", rlvl, "] ldep = "
 !       print *, dep(offset : offset + ndep(i+1) - ndep(i) - 1)
-        print *, dep(ndep(i) : ndep(i + 1) - 1)
-  !     call print_iarray("Updated ind", nsubind, subind, 1)
-  !     ndep(offset) = nldep
+  !     print *, dep(ndep(i) : ndep(i + 1) - 1)
+ !      call print_iarray("Updated ind", nsubind, subind, 1)
+ !      ndep(offset) = nldep
 !       offset = offset + ndep(i)
 
         if(fkeep%nodes(child)%nchild .gt. 0) then
@@ -887,30 +949,36 @@ contains
 !           child, " with a ndep space ",                                 &
 !           offset, " to ", offset + fkeep%nodes(child)%nchild - 1
           
-          nldep = ndep(i + 1 + fkeep%nodes(child)%nchild) - ndep(i + 1)
+          nldep = ndep(offset + child - fkeep%nodes(child)%least_desc ) - &
+            ndep(offset)
 
           if(nldep .gt. 0) then
 !           call getUpdateDep(fkeep, child, subind, nsubind,      &
 !             dep(offset : offset + nldep - 1),                   &
 !             ndep(offset : offset + nldep - 1),                  &
 !             rlvl + 1)
+        !   call getUpdateDep(fkeep, child, subind, nsubind,      &
+        !     dep(ndep(i+1) : ndep(i+1) + nldep - 1),             &
+        !     ndep(ndep(i+1) : ndep(i+1) + nldep - 1),            &
+        !     rlvl + 1)
             call getUpdateDep(fkeep, child, subind, nsubind,      &
-              dep(ndep(i+1) : ndep(i+1) + nldep - 1),             &
-              ndep(ndep(i+1) : ndep(i+1) + nldep - 1),            &
+              dep(ndep(offset)  : ndep(offset) + nldep - 1),      &
+              ndep(ndep(offset) : ndep(offset) + nldep - 1),      &
               rlvl + 1)
 
-            print '(a, i2, a)', "[", rlvl, "] RAW dep "
-            print *, dep
-            print '(a, i2, a, i2, a)', "[", rlvl, "] block dep of child ", child, " are"
+            offset = offset + nldep
+  !         print '(a, i2, a)', "[", rlvl, "] RAW dep "
+  !         print *, dep
+  !         print '(a, i2, a, i2, a)', "[", rlvl, "] block dep of child ", child, " are"
 !           print *,  dep(offset : offset + fkeep%nodes(child)%nchild - 1)
-            print *,  dep(ndep(i+1) : ndep(i+1) + nldep - 1)
+  !         print *,  dep(ndep(i+1) : ndep(i+1) + nldep - 1)
           end if
 !         offset = offset + fkeep%nodes(child)%nchild
         end if
       end if
     end do
 
-    print *, "[", rlvl, "] Blk Dep found ", dep
+  ! print *, "[", rlvl, "] Blk Dep found ", dep
 
     deallocate(subind)
 
@@ -1003,6 +1071,83 @@ contains
 
 !   end do
 ! end subroutine getUpdateDep
+
+  subroutine print_node(fkeep, node_num)
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node_num
+
+    integer :: ncol, last_blk, first_blk, i, j, nrow
+
+    first_blk = fkeep%nodes(node_num)%blk_sa
+    last_blk  = fkeep%nodes(node_num)%blk_en
+    ncol      = fkeep%bc(last_blk)%bcol - fkeep%bc(first_blk)%bcol + 1
+    nrow      = fkeep%bc(first_blk)%last_blk - first_blk + 1
+    do i = 1, nrow
+      do j = 1, min(i, ncol)
+        write(*, fmt="(i9)", advance="no") &
+          first_blk + int((j - 1) * ( nrow + 1 - 0.5 * j )) + (i - j)
+      end do
+      write (*,*) ""
+    end do
+  end subroutine print_node
+
+  subroutine getPointerBlkIndex(fkeep, blk, p)
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: blk
+    integer, pointer, intent(out)         :: p(:)
+
+    integer :: node        
+    integer :: nb          
+    integer :: blkm        
+    integer :: blk_sa      
+    integer :: bcol_blk_sa 
+    integer :: bcol        
+    integer :: local_blk   
+    integer :: blk_ind_sa  
+
+    node        = fkeep%bc(blk)%node
+    nb          = fkeep%nodes(node)%nb    
+    blkm        = fkeep%bc(blk)%blkm
+    blk_sa      = fkeep%nodes(node)%blk_sa
+    bcol_blk_sa = fkeep%bc(blk_sa)%bcol
+    bcol        = fkeep%bc(blk)%bcol
+    local_blk   = blk - fkeep%bc(blk)%dblk ! In the bcol
+    blk_ind_sa  = nb * (local_blk + (bcol - bcol_blk_sa)) + 1
+    p           => fkeep%nodes(node)%index(blk_ind_sa : blk_ind_sa + blkm - 1)
+
+  end subroutine getPointerBlkIndex
+
+  function contain(fkeep, blk1, blk2) result(isIn)
+    
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: blk1
+    integer, intent(in)                   :: blk2
+
+    integer :: j, k
+    integer, pointer :: p_blk1_index(:), p_blk2_index(:)
+    logical :: isIn
+
+    j = 1
+    k = 1
+    isIn = .false.
+
+    call getPointerBlkIndex(fkeep, blk1, p_blk1_index)
+    call getPointerBlkIndex(fkeep, blk2, p_blk2_index)
+
+    do while(j .le. size(p_blk1_index) .and. k .le. size(p_blk2_index))
+      if(p_blk1_index(j) .lt. p_blk2_index(k)) then
+        j = j + 1
+      else if(p_blk1_index(j) .gt. p_blk2_index(k)) then
+        k = k + 1
+      else
+        isIn = .true.
+        return
+!       j = j + 1
+!       k = k + 1
+      end if
+    end do
+
+  end function contain
 
 end module spllt_data_mod
 
