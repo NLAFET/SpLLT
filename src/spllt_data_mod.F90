@@ -374,7 +374,11 @@ contains
 
   end function get_dest_block
 
-!!!!! TMP subroutine !!! TO move from it
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!! TMP subroutine of Sebastien !!! TO move from it
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   subroutine print_darray(array_name, n, val)
   ! use spllt_data_mod
@@ -527,13 +531,10 @@ contains
 
     integer :: child_node_index
     integer :: i, j, k
-!   integer :: nb
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
-!   integer :: lblk, nlblk, diff
 
     p_child_node_index  => fkeep%nodes(child_node)%index
-!   nb          = fkeep%nodes(child_node)%nb
     cur_blk_dep = 0 !Impossible value but used as initialization
 
     nblk  = 0
@@ -545,24 +546,9 @@ contains
       else if(blk_index(j) .gt. p_child_node_index(k)) then
         k = k + 1
       else
-!       tmp = fkeep%nodes(child_node)%blk_en  -      &
-!         ceiling(0.0 + size(p_child_node_index)/nb) +  &
-!         ceiling(0.0 + (k - 1) / nb)
-!       tmp   = fkeep%nodes(child_node)%blk_sa
-!       lblk  = ceiling(0.0 + (k - 1) / nb)
-!       nlblk = ceiling(0.0 + (size(p_child_node_index) - 1)/nb)
-!       diff  = (fkeep%nodes(child_node)%blk_en - &
-!         fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk)
-!       if(lblk .lt. diff) then
-!         tmp = tmp + lblk * (nlblk - 1) + 1
-!       else
-!         tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + diff
-!       end if
 
         tmp = get_child_dep_blk_id(fkeep, child_node, k, &
           size(p_child_node_index))
-
-!       blk_index(j) = - blk_index(j)
 
         if(cur_blk_dep .lt. tmp) then
           cur_blk_dep = tmp
@@ -592,49 +578,20 @@ contains
     nb = fkeep%nodes(child_node)%nb
     cur_blk_dep = 0 !Impossible value but used as initialization
 
-!   print *, " in child node : ", child_node
     !Set variables
     cur_blk_dep = 0
     i           = 1
     j           = 1
     k           = 1
-!   if(child_node .eq. 2) then
-!     print *, "Index child : ", p_child_node_index
-!     print *, "Ref index   : ", blk_index
-!   end if
     do while(j .le. size(blk_index) .and. k .le. size(p_child_node_index))
       if(blk_index(j) .lt. p_child_node_index(k)) then
         j = j + 1
       else if(blk_index(j) .gt. p_child_node_index(k)) then
         k = k + 1
       else
-!       tmp = fkeep%nodes(child_node)%blk_en  -      &
-!         ceiling(0.0 + size(p_child_node_index)/nb) +  &
-!         ceiling(0.0 + (k - 1) / nb)
-!       pos(i) = fkeep%nodes(child_node)%blk_en  -      &
-!         (size(p_child_node_index) - k)/nb
-!       print *, "computed blk = ", pos(i)
         
         tmp = get_child_dep_blk_id(fkeep, child_node, k, &
           size(p_child_node_index))
-
-!       if(tmp .eq. 131) then
-!         print *, " j = ", j, " => blk_index(j) = ", blk_index(j), &
-!           " , ", p_child_node_index(k)
-!       end if
-!       blk_index(j) = - blk_index(j)
-
-   !    if(child_node .eq. 2) then
-   !      print *, "Found row ", p_child_node_index(k), " in both"
-   !      print *, "Size child_index ", size(p_child_node_index),             &
-   !        "pos in child_index ", k
-!  !      print *, "diff ", size(p_child_node_index) - k
-!  !      print *, "offset local_blk ", (size(p_child_node_index) - k)/nb
-   !      print *, "Child_node, last_blk ", fkeep%nodes(child_node)%blk_en,   &
-   !        "max ncolBlk ", ceiling((size(p_child_node_index) + 0.0)/nb),       &
-   !        "current colBlk", ceiling((k + 0.0) / nb)
-   !      print *, "=> blk_dep : ", tmp
-   !    end if
 
         if(cur_blk_dep .lt. tmp) then
           cur_blk_dep = tmp
@@ -662,24 +619,19 @@ contains
     lblk  = ceiling((row + 0.0) / nb)
     nlblk = ceiling((nrow + 0.0)/nb)
     diff  = (fkeep%nodes(child_node)%blk_en - &
-      fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + 1) ! #blk on the last nbol
-    if(lblk .lt. (nlblk - diff)) then
-!     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " <= (", nlblk, &
-!       " - ", diff, ") = ", (nlblk - diff)
-     !tmp = tmp + (lblk - 1) * (nlblk - 1) + 1
+      fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + 0) ! #blk on the last nbol
+    if(lblk .le. (nlblk - diff)) then
       tmp = tmp + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
     else
-!     print '(a, i2, a, i2, a, i2, a, i2)', "lblk ", lblk, " > (", nlblk, &
-!       " - ", diff, ") = ", (nlblk - diff)
-      tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + lblk - (nlblk - diff) - 1
+      tmp = fkeep%bc(fkeep%nodes(child_node)%blk_en)%dblk + lblk - &
+        (nlblk - diff) - 0
     end if
 
-!   if(tmp .eq. 18) then
-!     print *, "child_node ", child_node, " row ", row, " nrow ", nrow
-!     print *, "nb ", nb, " blk_sa ", fkeep%nodes(child_node)%blk_sa, " lblk ",&
-!       lblk, " nlblk ", nlblk, " diff ", diff, " ====> result : ", tmp
+!   if(tmp .eq. 33) then
+!     print '(a, i3, a, i3, a, i3, a, i3, a, i3)', "row ", row, " lblk = ", &
+!       lblk, " nlblk ", nlblk, " diff ", diff, " LEADS to ", tmp
 !   end if
-    
+
     get_child_dep_blk_id = tmp
 
   end function get_child_dep_blk_id
@@ -723,22 +675,10 @@ contains
 
         
         if(cur_blk_dep .lt. tmp) then
-!         print '(a, i2, a, i4, a, i2, a, i4)', "ind(", j, ") ", ind(j), &
-!           " == p_child_node_index(", k, ") ", p_child_node_index(k)
 !         print *, "Dep with blk ", tmp
           cur_blk_dep = tmp
           ndep = ndep + 1
           i = i + 1
-        ! if(child_node .eq. 14) then
-        !   print *, "$$$$$$$$$    ASSUME : Dep with blk ", tmp
-        !   if(.not. contain(fkeep, 39, tmp)) then
-        !     print '(a, i3, a, i3)', "ERROR   !!! Child_blk ", &
-        !       tmp, " does not intersect with ", 39
-        !     call getPointerBlkIndex(fkeep, tmp, p_child_blk_index)
-        !     call print_blk_index("blk_index", size(p_child_blk_index), &
-        !       p_child_blk_index, 1)
-        !   end if
-        ! end if
         end if
         j = j + 1
         k = k + 1
@@ -866,7 +806,7 @@ contains
           size(p_child_node_index))
         
         if(cur_blk_dep .lt. tmp) then
-  !       print *, "Dep with blk ", tmp
+!         print *, "Dep with blk ", tmp
           cur_blk_dep = tmp
           dep(ndep) = tmp
           ndep = ndep + 1
@@ -1148,6 +1088,75 @@ contains
     end do
 
   end function contain
+
+  subroutine getSolveNDep(fkeep, node, ind, nind, ndep)
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node
+    integer, intent(inout)        :: ind(:)
+    integer, intent(inout)        :: nind
+    integer, intent(inout)        :: ndep(:)
+
+    integer :: nldep, i
+    integer :: parent, nparent
+
+    parent = node
+    nparent = 0
+    do while(parent .lt. fkeep%info%num_nodes)
+      nparent = nparent + 1
+      parent = fkeep%nodes(parent)%parent
+    end do
+
+    if(nparent .eq. 0) then
+      ndep(1) = 0
+      return
+    end if
+
+    parent = node
+
+    do i = 1, nparent
+      parent = fkeep%nodes(parent)%parent
+      nldep = 0
+
+      if(parent .le. fkeep%info%num_nodes) then
+        call reduce_ind_and_get_ndep(fkeep, ind, nind, parent, nldep)
+        ndep(i) = nldep
+      end if
+    end do
+
+  end subroutine getSolveNDep
+
+  subroutine getSolveDep(fkeep, node, ind, nind, dep, ndep)
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node
+    integer, intent(inout)        :: ind(:)
+    integer, intent(inout)        :: nind
+    integer, intent(inout)        :: dep(:)
+    integer, intent(in)           :: ndep(:)
+
+    integer :: i
+    integer :: parent, nparent
+
+    parent = node
+    nparent = 0
+
+    do while(parent .lt. fkeep%info%num_nodes)
+      nparent = nparent + 1
+      parent = fkeep%nodes(parent)%parent
+    end do
+
+    parent = node
+
+    do i = 1, nparent
+      parent = fkeep%nodes(parent)%parent
+
+      if(parent .le. fkeep%info%num_nodes) then
+        call reduce_ind_and_get_dep(fkeep, ind, nind, parent, &
+          dep(ndep(i) : ndep(i + 1) - 1))
+      end if
+
+    end do
+
+  end subroutine getSolveDep
 
 end module spllt_data_mod
 
