@@ -169,6 +169,8 @@ contains
     p_fkeep => fkeep
     p_cntl => cntl
 
+    th_id = 0
+
     if(size(buffer_c).ne.0) then
 !$omp task firstprivate(p_val, buffer_c, p_workspace, p_rlst, p_clst) & 
 !$omp & firstprivate(root, p_fkeep, p_cntl, p_map) &
@@ -176,7 +178,7 @@ contains
 !$omp & private(th_id) &
 !$omp & depend(out:buffer_c(1))
 
-    th_id = omp_get_thread_num()
+!$ th_id = omp_get_thread_num()
 
     work => p_workspace(th_id)%c
 
@@ -193,7 +195,7 @@ contains
 !$omp & private(work, rlst, clst) &
 !$omp & private(th_id)
 
-    th_id = omp_get_thread_num()
+!$ th_id = omp_get_thread_num()
 
     work => p_workspace(th_id)%c
 
@@ -1303,7 +1305,7 @@ contains
     rsrc  = 1 + (rptr-(scol-1)*s_nb-1)*n1
     rsrc2 = (rptr2 - rptr + 1)*n1
 
-    call spllt_update_between(m, n, a_bc, dcol, anode%node, &
+    call spllt_update_between(m, n, a_bc, dcol, anode, &
          & n1, scol, snode, &
          & lfact(bcol)%lcol(sa:sa+m*n-1), &
          & lfact(bcol1)%lcol(csrc:csrc+csrc2-1), &
