@@ -44,7 +44,9 @@ program spllt_omp
 ! real                                :: smanal, smfact, smaflop, smafact
   integer, dimension(:), allocatable    :: order ! Matrix permutation array
   real(wp), dimension(:,:), allocatable :: work  ! Workspace
-  double precision                      :: normInfA
+  double precision                      :: norm1A
+  double precision, allocatable         :: normRes(:), normRHS(:)
+  double precision, allocatable         :: errNorm(:), solNorm(:)
 
 ! integer                             :: nthreads, threadId
 
@@ -150,7 +152,7 @@ program spllt_omp
 ! smaflop = real(info%ssids_inform%num_flops)
 ! smafact = real(info%ssids_inform%num_factor)
   ! Print elimination tree
-! call spllt_print_atree(akeep, fkeep, options)
+  call spllt_print_atree(akeep, fkeep, options)
 
   !Numerical Factorization
   !$omp parallel
@@ -207,20 +209,33 @@ program spllt_omp
   !
 
   ! Compute infinite matrix norm
-  call matrix_norm_inf(n, ptr, row, val, normInfA)
-  print '(a, es10.2)', "Computed norm infinite of A ", normInfA
+  call matrix_norm_1(n, ptr, row, val, norm1A)
+  print '(a, es10.2)', "Computed norm_1 of A ", norm1A
 
   !Compute the residual for each rhs
-  allocate(res(n, nrhs))
+  allocate(res(n, nrhs), normRes(nrhs), normRHS(nrhs), &
+    errNorm(nrhs), solNorm(nrhs))
+
   call compute_residual(n, ptr, row, val, nrhs, &
     sol_computed, rhs, res)
 
-  print '(a, 3Xa, 5Xa)', "rhs_id", "||x_comp - x_sol ||_inf", &
-    "||Ax_comp - rhs ||_inf / ||A||_inf"
+! print '(a, 3Xa, 5Xa)', "rhs_id", "||x_comp - x_sol ||_inf", &
+!   "||Ax_comp - rhs ||_inf / ||A||_inf"
+  print '(a, 3Xa, 5Xa)', "rhs_id", "||x_comp - x_sol ||_2 / || x_sol ||_2", &
+    "||Ax_comp - rhs ||_2 / ||rhs||_2"
+
+  call vector_norm_2(n, res, normRes)
+  call vector_norm_2(n, rhs, normRHS)
+  call vector_norm_2(n, abs(sol_computed - sol), errNorm)
+  call vector_norm_2(n, sol, solNorm)
+
   do i = 1, nrhs
     print '(i3, 5Xes10.2, 18Xes10.2)', i,           &
-      maxval(abs(sol_computed(:, i) - sol(:, i))),  &
-      maxval(abs(res(:, i))) / normInfA
+      errNorm(i) / solNorm(i),                      &
+      normRes(i) / normRHS(i)
+!     maxval(abs(sol_computed(:, i) - sol(:, i))),  &
+!     maxval(abs(res(:, i))) / maxval(abs(rhs(:,i)))
+!     maxval(abs(res(:, i))) / normInfA
   end do
 ! call trace_log_dump_paje('trace.out')
 
@@ -273,7 +288,42 @@ contains
     end do
   end subroutine compute_Ax
 
-  subroutine matrix_norm_inf(n, ptr, row, val, norm)
+  subroutine matrix_norm_1(n, ptr, row, val, norm)
+!   use spllt_data_mod
+    integer, intent(in)                         :: n
+    integer, dimension(n+1), intent(in)         :: ptr
+    integer, dimension(ptr(n+1)-1), intent(in)  :: row    ! Unused
+    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
+    real(wp), intent(out)                       :: norm
+
+    real(wp) :: i, j, sum_col
+
+    norm = 0
+    do i = 1, n
+      sum_col = 0
+      do j =  ptr(i), ptr(i + 1) - 1
+        sum_col = sum_col + abs(val(j))
+      end do
+      norm = merge(norm, sum_col, norm > sum_col)
+    end do
+  end subroutine matrix_norm_1
+
+  subroutine vector_norm_2(n, val, norm)
+    integer,  intent(in)  :: n
+    real(wp), intent(in)  :: val(:,:)
+    real(wp), intent(out) :: norm(:)
+    
+    integer :: i
+    norm = 0
+  
+    do i = 1, n
+      norm(:) = norm(:) + val(i,:) * val(i, :)
+    end do
+    norm = sqrt(norm)
+
+  end subroutine vector_norm_2
+
+  subroutine matrix_norm_max(n, ptr, row, val, norm)
 !   use spllt_data_mod
     integer, intent(in)                         :: n
     integer, dimension(n+1), intent(in)         :: ptr
@@ -285,9 +335,9 @@ contains
 
     norm = 0
     do i = 1, ptr(n+1)-1
-    norm = merge(norm, abs(val(i)), norm > abs(val(i)))
+      norm = merge(norm, abs(val(i)), norm > abs(val(i)))
     end do
-  end subroutine matrix_norm_inf
+  end subroutine matrix_norm_max
   
 ! subroutine permute_darray(n, val, perm, val_perm, trans)
 !   integer,                intent(in)      :: n
