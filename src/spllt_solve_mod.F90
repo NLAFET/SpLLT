@@ -1,11 +1,10 @@
 module spllt_solve_mod
-  ! use hsl_ma87_double
-! integer, external :: omp_get_thread_num, omp_get_num_threads
-   use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
+  !$ use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
 
    interface spllt_solve
       module procedure spllt_solve_one_double
       module procedure spllt_solve_mult_double
+      module procedure spllt_solve_mult_double_worker
    end interface
 
 contains
@@ -15,7 +14,8 @@ contains
   !
   ! Solve phase. simplified interface for a single rhs
   !
-  subroutine spllt_solve_one_double(fkeep, options, order, x, info, job)
+  subroutine spllt_solve_one_double(fkeep, options, order, x, info, job, &
+      scheduler)
     use spllt_data_mod
     implicit none
 
@@ -34,25 +34,63 @@ contains
     ! job = 0 or absent: complete solve performed
     ! job = 1 : forward eliminations only (PLx = b)
     ! job = 2 : backsubs only ((PL)^Tx = b)
+    type(spllt_omp_scheduler), intent(inout), optional, target  :: scheduler
 
-    integer :: step ! Step selector in solve phase
+    integer                             :: n            ! #rows
+    integer                             :: solve_step   ! Selector step
+    integer                             :: st           ! stat parameter
+    real(wp),                  pointer  :: work(:)
+    type(spllt_omp_scheduler), pointer  :: sched
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
 
-    ! Get the step of the solve to perform
+    n = fkeep%n
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Check optional parameters
+    !
     if(present(job)) then
-      step = job
+      solve_step = job
     else
-      step = 0
+      solve_step = 0
+    end if
+
+    if(.not.present(scheduler)) then
+      allocate(sched)
+      call spllt_omp_init_scheduler(sched, st)
+    else
+      sched => scheduler
     end if
     
-    call spllt_solve_mult_double(fkeep, options, order, 1, x, info, step)
+    !!!!!!!!!!!!!!!!!!!!!
+    ! worker
+    !
+    allocate(work(n), stat = st)
 
+    sched%narray_allocated = sched%narray_allocated + 1
+
+    call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
+      solve_step, work, sched)
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Desallocation
+    !
+    deallocate(work)
+
+    if(.not.present(scheduler)) then
+      deallocate(sched%info_thread)
+      deallocate(sched)
+    end if
+    
   end subroutine spllt_solve_one_double
 
+  
+
+
+
   subroutine spllt_solve_mult_double(fkeep, options, order, nrhs, x, info, &
-      job, work, scheduler)
+      job, scheduler)
     use spllt_data_mod
     implicit none
 
@@ -72,132 +110,147 @@ contains
     ! job = 0 or absent: complete solve performed
     ! job = 1 : forward eliminations only (PLx = b)
     ! job = 2 : backsubs only ((PL)^Tx = b)
-    real(wp), optional, target, dimension(fkeep%n, nrhs)        :: work
     type(spllt_omp_scheduler), intent(inout), optional, target  :: scheduler
-
-    integer           :: j        ! Iterator
-    integer           :: n        ! Order of the system
-    integer           :: st       ! stat parameter
-    integer           :: step     ! Step selector in solve phase
-    character(len=30) :: context  ! Name of the subroutine
-    real(wp), dimension(:, :), pointer  :: soln
+  
+    integer                             :: n            ! #rows
+    integer                             :: solve_step   ! Selector step
+    integer                             :: st           ! stat parameter
+    real(wp),                  pointer  :: work(:,:)
     type(spllt_omp_scheduler), pointer  :: sched
-   !real(wp), dimension(:, :), allocatable :: soln
-
-    n = fkeep%n
-    context = 'spllt_solve_mult_double'
 
     ! immediate return if n = 0
-    if (n == 0) return
+    if (fkeep%n == 0) return
 
-    ! ma87
-    ! type(ma87_control) :: ma_control
-    ! type(ma87_keep) :: ma_keep
-    ! type(ma87_info) :: ma_info
-    
-    ! Set control for HSL_MA87
-    ! ma_control%nb = options%nb
+    n = fkeep%n
 
-    ! Set keep for HSL_MA87
-    ! ma_keep%n = keep%n
-    ! allocate(keep%nodes(-1:info%num_nodes+1))
-
-    ! ma_keep = keep
-
-    ! call spllt_solve_mult_double(1, keep%n, x, order, keep, &
-    !      control, info, job)
-    ! TODO Use ssids solve ?
-    ! call MA87_solve(x, order, ma_keep, ma_control, ma_info, job)
-    ! call MA87_solve(nrhs, n, soln, order, ma_keep, ma_control, ma_info)
-
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Check optional parameters
     !
-    ! Reorder rhs
-    !
-   !deallocate(soln,stat=st)
-
-    if(.not.present(work)) then
-      allocate(soln(n, nrhs), stat = st)
+    if(present(job)) then
+      solve_step = job
     else
-      soln => work
+      solve_step = 0
     end if
 
     if(.not.present(scheduler)) then
       allocate(sched)
-      sched%ntask_insert      = 0
-      sched%nfake_task_insert = 0
-      sched%nworker           = omp_get_num_threads()
-      sched%nthread_max       = sched%nworker
-      allocate(sched%info_thread(sched%nthread_max))
-!     print *, "CREATE OMP_SCHEDULER ENV : nworker ", sched%nworker
+      call spllt_omp_init_scheduler(sched, st)
     else
       sched => scheduler
     end if
     
-    ! do i = 1, nrhs
-    !    do j = 1, n
-    !       soln((i-1)*n + order(j)) = x(j, i)
-    !    end do
-    ! end do
+    !!!!!!!!!!!!!!!!!!!!!
+    ! worker
+    !
 
-    ! Get the step of the solve to perform
-    if(present(job)) then
-      step = job
-    else
-      step = 0
-    end if
+    allocate(work(n, nrhs), stat = st)
     
-    select case(step)
+    sched%narray_allocated = sched%narray_allocated + 1
+
+    call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
+      info, solve_step, work, sched)
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Desallocation
+    !
+    deallocate(work)
+
+    if(.not.present(scheduler)) then
+      deallocate(sched%info_thread)
+      deallocate(sched)
+    end if
+  end subroutine spllt_solve_mult_double
+
+
+
+
+
+  subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
+      info, job, work, scheduler)
+    use spllt_data_mod
+    implicit none
+
+    type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
+    type(spllt_options),  intent(in)  :: options        ! User-supplied options
+    integer,              intent(in)  :: order(fkeep%n) ! pivot order
+    integer,              intent(in)  :: nrhs           ! Number of RHS
+    ! For details of fkeep, control, info : see derived type description        
+    real(wp),           intent(inout) :: x(fkeep%n,nrhs)! On entry, x must
+    ! be set so that if i has been used to index a variable,
+    ! x(i, j) is the corresponding component of the j-th right-hand side.
+    ! On exit, if i has been used to index a variable,
+    ! x(i, j) holds solution for variable i of rhs-th right-hand side
+    type(spllt_inform),   intent(out) :: info
+    integer, intent(in)  :: job  ! used to indicate whether
+    ! partial solution required
+    ! job = 0 or absent: complete solve performed
+    ! job = 1 : forward eliminations only (PLx = b)
+    ! job = 2 : backsubs only ((PL)^Tx = b)
+    real(wp), dimension(fkeep%n, nrhs)                :: work
+    type(spllt_omp_scheduler), intent(inout), target  :: scheduler
+
+    integer           :: j        ! Iterator
+    integer           :: n        ! Order of the system
+    character(len=30) :: context  ! Name of the subroutine
+
+    ! immediate return if n = 0
+    if (fkeep%n == 0) return
+
+    n = fkeep%n
+    context = 'spllt_solve_mult_double_worker'
+
+    select case(job)
       case(0)
        !
        ! Reorder x
        !
         do j = 1, n
-           soln(order(j),:) = x(j,:)
+           work(order(j),:) = x(j,:)
         end do
 
         ! Forward solve
-        call solve_fwd(nrhs, soln, n, fkeep, sched)
+        call solve_fwd(nrhs, work, n, fkeep, scheduler)
 
         ! Backward solve
-        call solve_bwd(nrhs, soln, n, fkeep, sched)
+        call solve_bwd(nrhs, work, n, fkeep, scheduler)
 
        !
        ! Reorder soln
        !
         do j = 1, n
-           x(j,:) = soln(order(j),:)
+           x(j,:) = work(order(j),:)
         end do
 
       case(1)
         do j = 1, n
-           soln(order(j),:) = x(j,:)
+           work(order(j),:) = x(j,:)
         end do
 
-        call solve_fwd(nrhs, soln, n, fkeep, sched)
+        call solve_fwd(nrhs, work, n, fkeep, scheduler)
 
-        x = soln
+        x = work
       
       case(2)
-        soln = x
+        work = x
 
-        call solve_bwd(nrhs, soln, n, fkeep, sched)
+        call solve_bwd(nrhs, work, n, fkeep, scheduler)
 
         do j = 1, n
-           x(j,:) = soln(order(j),:)
+           x(j,:) = work(order(j),:)
         end do
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
-        write (0, '(a, i2, a, i4)') "Unknown requested job = ", step, &
+        write (0, '(a, i2, a, i4)') "Unknown requested job = ", job, &
           " returned code : ", info%flag
         return
     end select
 
-    if(.not.present(work)) then
-      deallocate(soln)
-    end if
+  end subroutine spllt_solve_mult_double_worker
 
-  end subroutine spllt_solve_mult_double
+
+
+
 
   !*************************************************
   !
@@ -216,21 +269,18 @@ contains
     type(spllt_omp_scheduler)     :: scheduler
 
     ! real(wp) :: xlocal(keep%n)
-    integer :: num_node
-    integer :: node
-    integer :: i, j
-    integer :: sa, en, blk_sa
-    integer :: numcol, numrow ! Number of column/row in node 
-    integer :: nc, nr         ! Number of block-column/block-row in node
-    integer :: jj, ii
-    integer :: bcol, dcol, col, offset
-    integer :: dblk           ! Diagonal index 
-    integer :: s_nb           ! Block size in node
-    integer :: m, n           ! Block dimension 
-    integer :: blk            ! Block index
-    integer :: st             ! Stat parameter
-    integer :: fwd_update_id, fwd_block_id
-    integer :: nworker
+    integer       :: num_node
+    integer       :: node
+    integer       :: sa, en
+    integer       :: numcol, numrow ! Number of column/row in node 
+    integer       :: nc, nr         ! Number of block-column/block-row in node
+    integer       :: jj, ii
+    integer       :: dblk           ! Diagonal index 
+    integer       :: s_nb           ! Block size in node
+    integer       :: blk            ! Block index
+    integer       :: st             ! Stat parameter
+    integer       :: fwd_update_id, fwd_block_id
+    integer       :: nworker
     real(wp), allocatable :: xlocal(:,:)    ! update_buffer workspace
     real(wp), allocatable :: rhs_local(:,:) ! update_buffer workspace
 
@@ -329,10 +379,6 @@ contains
     integer               :: jj, ii
     integer               :: dblk
     ! Block info
-    integer               :: m, n ! Block dimension
-    integer               :: blk_sa 
-    integer               :: bcol ! Global block-column index
-    integer               :: dcol, col, offset
     integer               :: blk ! Block index
     integer               :: bwd_update_id, bwd_block_id
     real(wp), allocatable :: xlocal(:, :) ! update_buffer workspace

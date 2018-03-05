@@ -546,6 +546,7 @@ contains
 
   subroutine fwd_update_dependency(fkeep, blk, dep)
     use spllt_data_mod
+    use spllt_solve_dep_mod
 
     type(spllt_fkeep), intent(in)     :: fkeep
     integer, intent(in)               :: blk    ! Index of block 
@@ -766,6 +767,7 @@ contains
 
   subroutine bwd_solve_dependency(fkeep, blk, dep)
     use spllt_data_mod
+    use spllt_solve_dep_mod
 
     type(spllt_fkeep), intent(in)     :: fkeep
     integer, intent(in)               :: blk    ! Index of block 

@@ -4,59 +4,53 @@ program spllt_omp
   use spral_matrix_util, only : cscl_verify, SPRAL_MATRIX_REAL_SYM_PSDEF
   use spllt_mod
   use spllt_solve_mod
+  use utils_mod
 ! use trace_mod
   implicit none
 
 ! integer, external :: omp_get_thread_num, omp_get_num_threads
 
-  type(spllt_options) :: options ! User-supplied options 
-  type(spllt_inform) :: info
+  type(spllt_options)                 :: options ! User-supplied options 
+  type(spllt_inform)                  :: info
+  integer                             :: st
 
   ! matrix reader options (Rutherford Boeing)
-  type(rb_read_options) :: rb_options
-  integer :: rb_flag
+  type(rb_read_options)               :: rb_options
+  integer                             :: rb_flag
   ! Matrix description (Rutherford Boeing)
-  character(len=200) :: matfile = ''
-  integer :: m, n
-  integer, dimension(:), allocatable :: ptr, row
+  character(len=200)                  :: matfile = ''
+  integer                             :: m, n
+  integer, dimension(:), allocatable  :: ptr, row
   real(wp), dimension(:), allocatable :: val
   ! Matrix reader options (Matrix Market)
-  integer :: mm_flag
-  integer :: nnz
+  integer                             :: mm_flag
+  integer                             :: nnz
   ! Matrix description (Rutherford Boeing)
-  integer, dimension(:), allocatable :: indx, jndx
+  integer, dimension(:), allocatable  :: indx, jndx
   real(wp), dimension(:), allocatable :: val_in
 
   ! right-hand side and solution
-  integer :: nrhs = 1 ! Number of right-hand side
-  double precision, dimension(:, :), allocatable :: rhs, sol 
-  double precision, dimension(:, :), allocatable :: sol_computed
-  double precision, dimension(:, :), allocatable :: res
-  integer :: i, j, k, r
-  integer :: flag, more
-  type(spllt_akeep) :: akeep ! Symbolic factorization data
-  type(spllt_fkeep), target  :: fkeep ! Factorization data
+  integer                             :: nrhs = 1 ! Number of right-hand side
+  double precision, allocatable       :: rhs(:,:)
+  double precision, allocatable       :: sol(:,:) 
+  double precision, allocatable       :: sol_computed(:,:)
+  double precision, allocatable       :: res(:,:)
+  integer                             :: i, j, k, r
+  integer                             :: flag, more
+  type(spllt_akeep)                   :: akeep ! Symbolic factorization data
+  type(spllt_fkeep), target           :: fkeep ! Factorization data
 
   ! timing
-  integer :: start_t, stop_t, rate_t
+  integer                             :: start_t, stop_t, rate_t
 
   ! stats
-! real                                :: smanal, smfact, smaflop, smafact
-  integer, dimension(:), allocatable    :: order ! Matrix permutation array
-  real(wp), dimension(:,:), allocatable :: work  ! Workspace
-  double precision                      :: norm1A
-  double precision, allocatable         :: normRes(:), normRHS(:)
-  double precision, allocatable         :: errNorm(:), solNorm(:)
+  integer,          allocatable       :: order(:)   ! Matrix permutation array
+  real(wp),         allocatable       :: work(:,:)  ! Workspace
+  double precision                    :: norm1A
+  double precision, allocatable       :: normRes(:), normRHS(:)
+  double precision, allocatable       :: errNorm(:), solNorm(:)
 
-! integer                             :: nthreads, threadId
-
-! !$omp parallel 
-! !$omp single
-! nthreads = omp_get_num_threads()
-! threadId = omp_get_thread_num()
-! print *, "Total number of threads ", nthreads
-! !$omp end single
-! !$omp end parallel
+  type(spllt_omp_scheduler)           :: scheduler
 
 ! call trace_init(nthreads)
 
@@ -107,14 +101,29 @@ program spllt_omp
   end select
   write(*, "(a)") "ok"
 
+
+  !$omp parallel 
+  !$omp single
+
+  call spllt_omp_init_scheduler(scheduler, st)
+
+  !$omp end single
+  !$omp end parallel
+
+  !!!!!!!!!!!!!!!!!!!!
+  ! Create RHS
+  !
   ! Make up a rhs associated with the solution x = 1.0
-  allocate(sol(n, nrhs), sol_computed(n, nrhs))
-  allocate(rhs(n, nrhs))
+  allocate(sol(n, nrhs), stat=st)
+  allocate(sol_computed(n, nrhs), stat=st)
+  allocate(rhs(n, nrhs), stat=st)
+
   rhs = 0
   ! Set up solution to constant vector equals to its index in sol array
   do r = 1, nrhs
     sol(:,r) = r
   end do
+
   do r = 1, nrhs
      do i = 1, n
         do j = ptr(i), ptr(i+1)-1
@@ -136,7 +145,9 @@ program spllt_omp
   
   allocate(order(n), work(n, nrhs))
 
+  !!!!!!!!!!!!!!!!!!!!
   ! Analyse SpLLT
+  !
   write(*, "(a)") "Analyse..."
   call system_clock(start_t, rate_t)
   call spllt_analyse(akeep, fkeep, options, n, ptr, row, info, order)
@@ -151,10 +162,13 @@ program spllt_omp
   print "(a,es10.2)", "Predict nflop = ", real(info%ssids_inform%num_flops)
 ! smaflop = real(info%ssids_inform%num_flops)
 ! smafact = real(info%ssids_inform%num_factor)
+
   ! Print elimination tree
   call spllt_print_atree(akeep, fkeep, options)
 
-  !Numerical Factorization
+  !!!!!!!!!!!!!!!!!!!!
+  ! Numerical Factorization
+  !
   !$omp parallel
   !$omp single
   write(*, "(a)") "Numerical factorization..."
@@ -171,12 +185,14 @@ program spllt_omp
   ! the subroutine
   sol_computed = rhs
 
-  !Forward substitution
+  !!!!!!!!!!!!!!!!!!!!
+  ! Forward substitution
+  !
   !$omp parallel
   !$omp single
   print '(a)', "Forward substitution..."
   call system_clock(start_t, rate_t)
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, work=work)
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1)
   call system_clock(stop_t)
   print '(a)', "ok"
   print *, "Forward substitution took ", (stop_t - start_t)/real(rate_t)
@@ -188,7 +204,9 @@ program spllt_omp
 ! end if
 
 
-  !Backward substitution
+  !!!!!!!!!!!!!!!!!!!!
+  ! Backward substitution
+  !
   !$omp parallel
   !$omp single
   write(*, "(a)") "Backward substitution..."
@@ -204,7 +222,7 @@ program spllt_omp
 !   return
 ! end if
 
-  !
+  !!!!!!!!!!!!!!!!!!!!
   ! STATISTICS
   !
 
@@ -219,8 +237,6 @@ program spllt_omp
   call compute_residual(n, ptr, row, val, nrhs, &
     sol_computed, rhs, res)
 
-! print '(a, 3Xa, 5Xa)', "rhs_id", "||x_comp - x_sol ||_inf", &
-!   "||Ax_comp - rhs ||_inf / ||A||_inf"
   print '(a, 3Xa, 5Xa)', "rhs_id", "||x_comp - x_sol ||_2 / || x_sol ||_2", &
     "||Ax_comp - rhs ||_2 / ||rhs||_2"
 
@@ -233,174 +249,9 @@ program spllt_omp
     print '(i3, 5Xes10.2, 18Xes10.2)', i,           &
       errNorm(i) / solNorm(i),                      &
       normRes(i) / normRHS(i)
-!     maxval(abs(sol_computed(:, i) - sol(:, i))),  &
-!     maxval(abs(res(:, i))) / maxval(abs(rhs(:,i)))
-!     maxval(abs(res(:, i))) / normInfA
   end do
 ! call trace_log_dump_paje('trace.out')
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val, work)
-
-  stop
-
-contains
-
-  !Compute res = b - Ax 
-  subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
-    integer, intent(in) :: n
-    integer, dimension(n+1), intent(in) :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in) :: row
-    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    integer, intent(in) :: nrhs
-    real(wp), dimension(n,nrhs), intent(in) :: x
-    real(wp), dimension(n,nrhs), intent(in) :: b
-    real(wp), dimension(n,nrhs), intent(inout) :: res
-
-    integer :: i, j, k, r
-    ! Find the residual
-    !allocate(res(n,nrhs))
-    res(:,:) = 0
-    call compute_Ax(n, ptr, row, val, nrhs, x, res)
-    res = b - res
-  end subroutine compute_residual
-  
-  !Compute Ax
-  subroutine compute_Ax(n, ptr, row, val, nrhs, x, res)
-    integer, intent(in) :: n
-    integer, dimension(n+1), intent(in) :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in) :: row
-    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    integer, intent(in) :: nrhs
-    real(wp), dimension(n,nrhs), intent(in) :: x
-    real(wp), dimension(n,nrhs), intent(inout) :: res
-
-    integer :: i, j, k, r
-    res = 0
-    do i = 1, n
-      do j = ptr(i), ptr(i+1)-1
-        r = row(j)
-        do k = 1, nrhs
-          res(r, k) = res(r, k) + val(j) * x(i, k)
-          if(r .eq. i) cycle
-          res(i, k) = res(i, k) + val(j) * x(r, k)
-        end do
-      end do
-    end do
-  end subroutine compute_Ax
-
-  subroutine matrix_norm_1(n, ptr, row, val, norm)
-!   use spllt_data_mod
-    integer, intent(in)                         :: n
-    integer, dimension(n+1), intent(in)         :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in)  :: row    ! Unused
-    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    real(wp), intent(out)                       :: norm
-
-    real(wp) :: i, j, sum_col
-
-    norm = 0
-    do i = 1, n
-      sum_col = 0
-      do j =  ptr(i), ptr(i + 1) - 1
-        sum_col = sum_col + abs(val(j))
-      end do
-      norm = merge(norm, sum_col, norm > sum_col)
-    end do
-  end subroutine matrix_norm_1
-
-  subroutine vector_norm_2(n, val, norm)
-    integer,  intent(in)  :: n
-    real(wp), intent(in)  :: val(:,:)
-    real(wp), intent(out) :: norm(:)
-    
-    integer :: i
-    norm = 0
-  
-    do i = 1, n
-      norm(:) = norm(:) + val(i,:) * val(i, :)
-    end do
-    norm = sqrt(norm)
-
-  end subroutine vector_norm_2
-
-  subroutine matrix_norm_max(n, ptr, row, val, norm)
-!   use spllt_data_mod
-    integer, intent(in)                         :: n
-    integer, dimension(n+1), intent(in)         :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in)  :: row    ! Unused
-    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    real(wp), intent(out)                       :: norm
-
-    integer :: i
-
-    norm = 0
-    do i = 1, ptr(n+1)-1
-      norm = merge(norm, abs(val(i)), norm > abs(val(i)))
-    end do
-  end subroutine matrix_norm_max
-  
-! subroutine permute_darray(n, val, perm, val_perm, trans)
-!   integer,                intent(in)      :: n
-!   real(wp), dimension(n), intent(in)      :: val
-!   integer,  dimension(n), intent(in)      :: perm
-!   real(wp), dimension(n), intent(out)     :: val_perm
-!   character(len=1), optional, intent(in)  :: trans
-
-!   integer           :: i
-!   character(len=1)  :: permute_type
-
-!   if(.not. present(trans)) then
-!     permute_type = 'N'
-!   else
-!     permute_type = trans
-!   end if
-
-!   if(permute_type == 'T') then
-!     do i = 1, n
-!       val_perm(perm(i)) = val(i)
-!     end do
-!   else
-!     do i = 1, n
-!       val_perm(i) = val(perm(i))
-!     end do
-!   end if
-! end subroutine permute_darray
-
-! subroutine permute_array(n, val, perm, val_perm)
-!   integer,                intent(in)    :: n
-!   real(wp), dimension(n), intent(in)    :: val
-!   integer,  dimension(n), intent(in)    :: perm
-!   real(wp), dimension(n), intent(out)   :: val_perm
-
-!   integer :: i
-
-!   do i = 1, n
-!     val_perm(i) = val(perm(i))
-!   end do
-! end subroutine permute_array
-
-! subroutine print_darray(array_name, n, val)
-!   character(len=*)                      :: array_name
-!   integer,                intent(in)    :: n
-!   real(wp), dimension(n), intent(in)    :: val
-
-!   integer :: i
-!   print '(a)', array_name
-!   do i = 1, n
-!     print '(f20.8)', val(i)
-!   end do
-! end subroutine print_darray
-
-! subroutine print_iarray(array_name, n, val)
-!   character(len=*)                      :: array_name
-!   integer,                intent(in)    :: n
-!   integer, dimension(n),  intent(in)    :: val
-
-!   integer :: i
-!   print '(a)', array_name
-!   do i = 1, n
-!     print '(i9)', val(i)
-!   end do
-! end subroutine print_iarray
 
 end program spllt_omp
