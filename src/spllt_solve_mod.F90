@@ -17,6 +17,7 @@ contains
   subroutine spllt_solve_one_double(fkeep, options, order, x, info, job, &
       scheduler)
     use spllt_data_mod
+    use utils_mod
     implicit none
 
     type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
@@ -68,7 +69,8 @@ contains
     !
     allocate(work(n), stat = st)
 
-    sched%narray_allocated = sched%narray_allocated + 1
+    sched%task_info(sched%workerID)%narray_allocated = &
+      sched%task_info(sched%workerID)%narray_allocated + merge(1, 0, st .eq. 0)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
       solve_step, work, sched)
@@ -79,7 +81,7 @@ contains
     deallocate(work)
 
     if(.not.present(scheduler)) then
-      deallocate(sched%info_thread)
+      deallocate(sched%task_info)
       deallocate(sched)
     end if
     
@@ -92,6 +94,7 @@ contains
   subroutine spllt_solve_mult_double(fkeep, options, order, nrhs, x, info, &
       job, scheduler)
     use spllt_data_mod
+    use utils_mod
     implicit none
 
     type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
@@ -135,6 +138,9 @@ contains
     if(.not.present(scheduler)) then
       allocate(sched)
       call spllt_omp_init_scheduler(sched, st)
+      if(st .ne. 0) then
+        print *, "Error in creation of the scheduler"
+      end if
     else
       sched => scheduler
     end if
@@ -145,7 +151,8 @@ contains
 
     allocate(work(n, nrhs), stat = st)
     
-    sched%narray_allocated = sched%narray_allocated + 1
+    sched%task_info(sched%workerID)%narray_allocated = &
+      sched%task_info(sched%workerID)%narray_allocated + merge(1, 0, st .eq. 0)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, solve_step, work, sched)
@@ -156,7 +163,7 @@ contains
     deallocate(work)
 
     if(.not.present(scheduler)) then
-      deallocate(sched%info_thread)
+      deallocate(sched%task_info)
       deallocate(sched)
     end if
   end subroutine spllt_solve_mult_double
@@ -260,6 +267,7 @@ contains
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
     use trace_mod
+    use utils_mod
     implicit none
 
     type(spllt_fkeep), intent(in) :: fkeep
@@ -349,9 +357,12 @@ contains
     !$omp taskwait
     deallocate(xlocal, rhs_local)
 
-    print *, "FWD SCHEDULER STAT"
-    print '(a, i6)', "#task insert      : ", scheduler%ntask_insert
-    print '(a, i6)', "#fake task insert : ", scheduler%nfake_task_insert
+    call print_task_stat("FWD SCHEDULER STAT", scheduler%masterWorker, &
+      scheduler%task_info(scheduler%masterWorker))
+  ! print *, "FWD SCHEDULER STAT"
+  ! print '(a, i6)', "#task insert        : ", scheduler%ntask_insert
+  ! print '(a, i6)', "#fake task insert   : ", scheduler%nfake_task_insert
+  ! print '(a, i6)', "#blk with fake task : ", scheduler%nblk_require_fake_task
 !   call trace_log_dump_paje('trace_fwd.out')
 
   end subroutine solve_fwd
@@ -361,6 +372,7 @@ contains
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
     use trace_mod
+    use utils_mod
     implicit none
 
     type(spllt_fkeep), intent(in) :: fkeep
@@ -452,9 +464,8 @@ contains
     !$omp taskwait
     deallocate(xlocal, rhs_local)
 
-    print *, "BWD SCHEDULER STAT"
-    print '(a, i6)', "#task insert      : ", scheduler%ntask_insert
-    print '(a, i6)', "#fake task insert : ", scheduler%nfake_task_insert
+    call print_task_stat("BWD SCHEDULER STAT", scheduler%masterWorker, &
+      scheduler%task_info(scheduler%masterWorker))
     call trace_log_dump_paje('trace_fwd_bwd.out')
 
   end subroutine solve_bwd

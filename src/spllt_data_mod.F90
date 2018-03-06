@@ -148,6 +148,18 @@ module spllt_data_mod
      ! for this block.
      ! Note: locks initialised in ma87_analyse and destroyed
      !       in ma87_finalise
+
+     ! Additional components to handle the list of dependencies of the block
+     ! List of blk indices dependencies in :
+     !  - the forward step of the solve
+!    integer, pointer  :: fwd_update_dep(:)
+     integer, allocatable :: fwd_update_dep(:)
+     integer           :: fwd_solve_dep
+     !  - the backward step of the solve
+     integer           :: bwd_update_dep
+!    integer, pointer  :: bwd_solve_dep(:)
+     integer, allocatable :: bwd_solve_dep(:)
+
   end type spllt_block
 
   ! node type
@@ -289,19 +301,21 @@ module spllt_data_mod
      ! holds mapping from matrix values into lfact
   end type spllt_fkeep
 
-  type spllt_omp_task
+  type spllt_omp_task_stat
+    integer :: max_ftask
     integer :: ntask_run
-!   integer :: narray_allocated
-  end type spllt_omp_task
+    integer :: ntask_insert
+    integer :: nblk_require_fake_task
+    integer :: nfake_task_insert
+    integer :: narray_allocated
+  end type spllt_omp_task_stat
 
   type spllt_omp_scheduler
-    integer :: ntask_insert
-    integer :: nfake_task_insert
-    integer :: nthread_max
-    integer :: narray_allocated
+    integer :: workerID
+    integer :: masterWorker
     integer :: nworker
-!   integer :: workerID
-    type(spllt_omp_task), pointer :: info_thread(:)
+    integer :: nthread_max
+    type(spllt_omp_task_stat), pointer :: task_info(:)
   end type spllt_omp_scheduler
 
   !*************************************************
@@ -371,32 +385,6 @@ contains
     get_dest_block = get_dest_block + src2%id - src1%id
 
   end function get_dest_block
-
-  subroutine spllt_omp_init_scheduler(scheduler, stat)
- !$ use omp_lib, only : omp_get_num_threads
-    type(spllt_omp_scheduler), intent(inout)  :: scheduler
-    integer, optional, intent(out)            :: stat
-
-    integer  :: st
-
-    scheduler%ntask_insert      = 0
-    scheduler%nfake_task_insert = 0
-    scheduler%narray_allocated  = 0
-    scheduler%nworker           = 1
- !$ scheduler%nworker           = omp_get_num_threads()
-    scheduler%nthread_max       = scheduler%nworker
-
-    allocate(scheduler%info_thread(scheduler%nthread_max), stat=st)
-
-    if(st .eq. 0) then
-      scheduler%info_thread(:)%ntask_run        = 0
-    end if
-
-    if(present(stat)) then
-      stat = st
-    end if
-
-  end subroutine spllt_omp_init_scheduler
 
 end module spllt_data_mod
 
