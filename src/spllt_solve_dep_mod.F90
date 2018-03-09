@@ -8,12 +8,55 @@ contains
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
 
+    integer :: ndep
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! FWD dep
+    !
     call fwd_update_dependency(fkeep, blk, fkeep%bc(blk)%fwd_update_dep)
     fkeep%bc(blk)%fwd_solve_dep   = fwd_solve_dependency(fkeep, blk)
 
+    ndep = 0
+    if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+      ndep = ndep + size(fkeep%bc(blk)%fwd_update_dep)
+    end if
+    if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+      ndep = ndep + 1
+    end if
+    
+    allocate(fkeep%bc(blk)%fwd_dep(ndep))
+
+    if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+      fkeep%bc(blk)%fwd_dep(1:size(fkeep%bc(blk)%fwd_update_dep)) = &
+        fkeep%bc(blk)%fwd_update_dep
+    end if
+    if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+      fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
+    end if
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! BWD dep
+    !
     fkeep%bc(blk)%bwd_update_dep  = bwd_update_dependency(fkeep, blk)
     call bwd_solve_dependency(fkeep, blk, fkeep%bc(blk)%bwd_solve_dep)
 
+    ndep = 0
+    if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
+      ndep = ndep + size(fkeep%bc(blk)%bwd_solve_dep)
+    end if
+    if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
+      ndep = ndep + 1
+    end if
+    
+    allocate(fkeep%bc(blk)%bwd_dep(ndep))
+
+    if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
+      fkeep%bc(blk)%bwd_dep(1:size(fkeep%bc(blk)%bwd_solve_dep)) = &
+        fkeep%bc(blk)%bwd_solve_dep
+    end if
+    if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
+      fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
+    end if
   end subroutine spllt_compute_blk_solve_dep
 
   subroutine spllt_compute_solve_dep(fkeep)
