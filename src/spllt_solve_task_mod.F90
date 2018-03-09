@@ -63,7 +63,7 @@ contains
     integer :: offset
     integer :: node
     integer :: dep
-    integer :: i, j, r
+    integer :: i, j, r, chunkth
     integer :: threadID, nthread
     integer :: ndep
     integer, pointer            :: p_index(:)
@@ -109,21 +109,16 @@ contains
     ndep = size(p_dep)
 
     if(new_method .eq. 1) then
-      threadID  = omp_get_thread_num()
+
+!     threadID  = omp_get_thread_num()
+      chunk     = 0
+      ndep_lvl  = 0
 
       if(ndep .eq. 0) then
         !$omp task                                &
-        FPRIV_VAR_DECL(sa)                        &
-        FPRIV_ADD_VAR_DECL(nthread)               &
-        FPRIV_PTR_DECL                            &
-        FPRIV_VAR_DEP_DECL                        &
-        FPRIV_VAR_LOOP_DECL                       &
-        RELEASE_BLK(dblk)
+        include 'spllt_solve_fwd_block_omp_decl.F90'
 
-        threadID  = omp_get_thread_num()
-!       print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : ]"
-        call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-          sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
+        include 'spllt_solve_fwd_block_worker.F90'
 
         !$omp end task
       else
@@ -132,236 +127,27 @@ contains
         alpha = 1
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
-!       print *, "================"
-!       print *, "Chunk ", chunk
 
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
-!         print *, "LVL : ", lvl, " #dep ", ndep_lvl, " => #chunk ", nchunk
 
           beta = 1 - alpha
 
-          do j = 1, nchunk
-            chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
-              j * chunk .gt. ndep_lvl)
-!           print *, "chunk id ", j, " with a chunk_size : ", chunk_size
+          do chunkth = 1, nchunk
+            chunk_size = merge(ndep_lvl - (chunkth - 1) * chunk, chunk, &
+              chunkth * chunk .gt. ndep_lvl)
 
-!           print *, "Select case of lvl ", lvl, " with alpha ", alpha, " and beta ", beta
             select case(chunk_size)
 
               case(0)
                 print *, "No dep ??"
 
-              case(1)
-              VARIABLE_OMP_DEP(1,p_bc,p_dep,alpha,beta) &
-              FPRIV_VAR_DECL(sa)                        &
-              FPRIV_ADD_VAR_DECL(nthread)               &
-              FPRIV_PTR_DECL                            &
-              FPRIV_VAR_DEP_DECL                        &
-              FPRIV_VAR_LOOP_DECL                       &
-              RELEASE_BLK(dblk)
+              !
+              !This file contains the remaining cases that are generated through a script
+              !
+              include 'spllt_fwd_block_cases.F90'
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(2)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta) &
-              FPRIV_VAR_DECL(sa)                        &
-              FPRIV_ADD_VAR_DECL(nthread)               &
-              FPRIV_PTR_DECL                            &
-              FPRIV_VAR_DEP_DECL                        &
-              FPRIV_VAR_LOOP_DECL                       &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(3)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+2)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(4)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(5)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+4)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(6)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(7)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+6)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(8)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(9)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+8)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
-
-              case(10)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+8)&
-              FPRIV_VAR_DECL(sa)                          &
-              FPRIV_ADD_VAR_DECL(nthread)                 &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(dblk)
-              
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-!               print *, p_dep
-                call spllt_solve_fwd_block_worker(m, n, nrhs, nthread, col, ldr, &
-                  sa, offset, threadID, p_upd, p_rhs, p_lcol, p_index, p_xlocal)
-              end if
-
-              !$omp end task
             end select
 
             beta = beta + chunk_size
@@ -381,18 +167,10 @@ contains
           end if
         end do
       end if
-!     !$omp taskwait
+
     else
       dep  = ndep
 
-!   allocate(p_lcol_sa(ndep), dep_lcol_sa(ndep))
-!   do dep = 1, ndep
-!     p_lcol_sa(dep)%p => fkeep%lfact(fkeep%bc(p_dep(dep))%bcol)%lcol
-!     dep_lcol_sa(dep) = fkeep%bc(p_dep(dep))%sa
-!   ! (fkeep%bc(p_dep(dep))%sa)
-!   ! p_lcol_sa(dep)%p(fkeep%bc(p_dep(dep))%sa)
-!     print *, p_lcol_sa(dep)%p(dep_lcol_sa(dep))
-!   end do
 
    !do dep = 1, ndep - 1
 
@@ -562,26 +340,26 @@ contains
 
     p_dep  => fkeep%bc(blk)%fwd_dep
     ndep = size(p_dep)
-    dep  = ndep
 
     new_method = 1
 
     if(new_method .eq. 1) then
 
+!     threadID  = omp_get_thread_num()
+      chunk     = 0
+      ndep_lvl  = 0
+
       if(ndep .eq. 0) then
         !$omp task                                &
-        FPRIV_VAR_DECL(blk_sa)                    &
-        FPRIV_PTR_DECL                            &
-        FPRIV_VAR_DEP_DECL                        &
-        FPRIV_VAR_LOOP_DECL                       &
-        RELEASE_BLK(blk)
+        include 'spllt_solve_fwd_update_omp_decl.F90'
 
-        threadID  = omp_get_thread_num()
-!       print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : ]"
-        call slv_fwd_update(m, n, col, offset, p_index,         &
-          p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-          p_upd(:, threadID + 1), ldr, p_rhs,                   &
-          ldr, p_xlocal(:, threadID + 1))
+        include 'spllt_solve_fwd_update_worker.F90'
+   !    threadID  = omp_get_thread_num()
+!  !    print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : ]"
+   !    call slv_fwd_update(m, n, col, offset, p_index,         &
+   !      p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+   !      p_upd(:, threadID + 1), ldr, p_rhs,                   &
+   !      ldr, p_xlocal(:, threadID + 1))
 
         !$omp end task
       else
@@ -612,225 +390,230 @@ contains
               case(0)
                 print *, "No dep ?? "
 
-              case(1)
-              VARIABLE_OMP_DEP(1,p_bc,p_dep,alpha,beta) &
-              FPRIV_VAR_DECL(blk_sa)                    &
-              FPRIV_PTR_DECL                            &
-              FPRIV_VAR_DEP_DECL                        &
-              FPRIV_VAR_LOOP_DECL                       &
-              RELEASE_BLK(blk)
+              !
+              !This file contains the remaining cases that are generated through a script
+              !
+              include 'spllt_fwd_update_cases.F90'
+          !   case(1)
+          !   VARIABLE_OMP_DEP(1,p_bc,p_dep,alpha,beta) &
+          !   include 'spllt_solve_fwd_update_omp_decl.F90'
+          !  !FPRIV_VAR_DECL(blk_sa)                    &
+          !  !FPRIV_PTR_DECL                            &
+          !  !FPRIV_VAR_DEP_DECL                        &
+          !  !FPRIV_VAR_LOOP_DECL                       &
+          !  !RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(2)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta) &
-              FPRIV_VAR_DECL(blk_sa)                    &
-              FPRIV_PTR_DECL                            &
-              FPRIV_VAR_DEP_DECL                        &
-              FPRIV_VAR_LOOP_DECL                       &
-              RELEASE_BLK(blk)
+          !   case(2)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta) &
+          !   FPRIV_VAR_DECL(blk_sa)                    &
+          !   FPRIV_PTR_DECL                            &
+          !   FPRIV_VAR_DEP_DECL                        &
+          !   FPRIV_VAR_LOOP_DECL                       &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(3)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+2)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(3)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+2)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(4)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(4)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(5)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+4)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(5)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+4)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(6)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(6)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(7)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+6)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(7)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
+          !   VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+6)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(8)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(8)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(9)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+8)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(9)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
+          !   VAR_OMP_DEP_CONTD(1,p_bc,p_dep,alpha,beta+8)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
-              case(10)
-              VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
-              VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+8)&
-              FPRIV_VAR_DECL(blk_sa)                      &
-              FPRIV_PTR_DECL                              &
-              FPRIV_VAR_DEP_DECL                          &
-              FPRIV_VAR_LOOP_DECL                         &
-              RELEASE_BLK(blk)
+          !   case(10)
+          !   VARIABLE_OMP_DEP(2,p_bc,p_dep,alpha,beta)   &
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+2)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+4)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+6)&
+          !   VAR_OMP_DEP_CONTD(2,p_bc,p_dep,alpha,beta+8)&
+          !   FPRIV_VAR_DECL(blk_sa)                      &
+          !   FPRIV_PTR_DECL                              &
+          !   FPRIV_VAR_DEP_DECL                          &
+          !   FPRIV_VAR_LOOP_DECL                         &
+          !   RELEASE_BLK(blk)
 
-              threadID  = omp_get_thread_num()
-              if(ndep_lvl .le. chunk) then
-!               print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
-!               print *, p_dep
-                call slv_fwd_update(m, n, col, offset, p_index,         &
-                  p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-                  p_upd(:, threadID + 1), ldr, p_rhs,                   &
-                  ldr, p_xlocal(:, threadID + 1))
-              end if
+          !   threadID  = omp_get_thread_num()
+          !   if(ndep_lvl .le. chunk) then
+!         !     print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+!         !     print *, p_dep
+          !     call slv_fwd_update(m, n, col, offset, p_index,         &
+          !       p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+          !       p_upd(:, threadID + 1), ldr, p_rhs,                   &
+          !       ldr, p_xlocal(:, threadID + 1))
+          !   end if
 
-              !$omp end task
+          !   !$omp end task
 
             end select
             beta = beta + chunk_size
@@ -1287,7 +1070,7 @@ contains
         p_lcol(sa : sa + n * m - 1), n, nrhs,                     &
         p_upd(:, threadID + 1), ldr, p_rhs,                       &
         ldr, p_xlocal(:, threadID + 1))
-      endif
+    endif
 
   end subroutine spllt_solve_fwd_block_worker
 
