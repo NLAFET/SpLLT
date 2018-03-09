@@ -5,6 +5,7 @@ program spllt_omp
   use spllt_mod
   use spllt_solve_mod
   use utils_mod
+  use spllt_solve_dep_mod
 ! use trace_mod
   implicit none
 
@@ -184,6 +185,7 @@ program spllt_omp
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine
   sol_computed = rhs
+  call spllt_compute_solve_dep(fkeep)
 
   !!!!!!!!!!!!!!!!!!!!
   ! Forward substitution
@@ -196,8 +198,8 @@ program spllt_omp
   call system_clock(stop_t)
   print '(a)', "ok"
   print *, "Forward substitution took ", (stop_t - start_t)/real(rate_t)
-  !$omp end single
-  !$omp end parallel
+! !$omp end single
+! !$omp end parallel
 ! if (info%flag .ne. SPLLT_SUCCESS) then
 !   write (0, '(a)') 'Execution aborted'
 !   return
@@ -207,8 +209,8 @@ program spllt_omp
   !!!!!!!!!!!!!!!!!!!!
   ! Backward substitution
   !
-  !$omp parallel
-  !$omp single
+! !$omp parallel
+! !$omp single
   write(*, "(a)") "Backward substitution..."
   call system_clock(start_t, rate_t)
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2)
