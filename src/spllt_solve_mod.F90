@@ -456,7 +456,6 @@ contains
           ! Update diag block in node       
           if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
        end do
-!      !$omp taskwait
        
     end do
 
