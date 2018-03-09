@@ -253,7 +253,7 @@ contains
     print '(a, i6)', "#blk with fake task : ", task%nblk_require_fake_task
     print '(a, i6)', "#task run           : ", task%ntask_run
     print '(a, i6)', "#array allocate     : ", task%narray_allocated
-    print '(a, i6)', "max fake task       : ", task%max_ftask
+    print '(a, i6)', "max #dep            : ", task%max_dep
 
   end subroutine print_task_stat
 
@@ -281,7 +281,7 @@ contains
     task_stat%ntask_run               = 0
     task_stat%ntask_insert            = 0
     task_stat%nfake_task_insert       = 0
-    task_stat%max_ftask               = 0
+    task_stat%max_dep                 = 0
     task_stat%narray_allocated        = 0
     task_stat%nblk_require_fake_task  = 0
     
