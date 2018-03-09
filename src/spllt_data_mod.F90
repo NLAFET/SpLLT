@@ -153,12 +153,14 @@ module spllt_data_mod
      ! List of blk indices dependencies in :
      !  - the forward step of the solve
 !    integer, pointer  :: fwd_update_dep(:)
+     integer, allocatable :: fwd_dep(:)
      integer, allocatable :: fwd_update_dep(:)
      integer           :: fwd_solve_dep
      !  - the backward step of the solve
      integer           :: bwd_update_dep
 !    integer, pointer  :: bwd_solve_dep(:)
      integer, allocatable :: bwd_solve_dep(:)
+     integer, allocatable :: bwd_dep(:)
 
   end type spllt_block
 
@@ -301,8 +303,12 @@ module spllt_data_mod
      ! holds mapping from matrix values into lfact
   end type spllt_fkeep
 
+  type spllt_pointer_wp_array
+    real(wp), pointer :: p(:)
+  end type spllt_pointer_wp_array
+
   type spllt_omp_task_stat
-    integer :: max_ftask
+    integer :: max_dep
     integer :: ntask_run
     integer :: ntask_insert
     integer :: nblk_require_fake_task
