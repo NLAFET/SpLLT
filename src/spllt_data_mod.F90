@@ -8,6 +8,10 @@ module spllt_data_mod
   use spral_ssids_inform, only: ssids_inform
   implicit none
 
+  integer, parameter :: k_dep = 2 ! Upper bound on the number of dep 
+                                  !   of a normal block 
+  logical, parameter ::  use_omp_cases_method = .true.
+
   integer, parameter :: wp = kind(0d0)
 #if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_PARSEC) 
   integer, parameter :: long = c_long
@@ -303,17 +307,14 @@ module spllt_data_mod
      ! holds mapping from matrix values into lfact
   end type spllt_fkeep
 
-  type spllt_pointer_wp_array
-    real(wp), pointer :: p(:)
-  end type spllt_pointer_wp_array
-
   type spllt_omp_task_stat
-    integer :: max_dep
-    integer :: ntask_run
-    integer :: ntask_insert
-    integer :: nblk_require_fake_task
-    integer :: nfake_task_insert
-    integer :: narray_allocated
+    integer :: max_dep                ! max #dep of a task
+    integer :: ntask_run              ! #task run by this thread
+    integer :: ntask_insert           ! #task insert to the runtim
+    integer :: nblk_kdep              ! #block with more than k dep 
+                                      !  (k = 2 by default)
+    integer :: nfake_task_insert      ! #fake task insert
+    integer :: narray_allocated       ! #allocation
   end type spllt_omp_task_stat
 
   type spllt_omp_scheduler
