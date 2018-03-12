@@ -77,8 +77,6 @@ contains
     integer, intent(in)                   :: node
     integer, allocatable, intent(out)     :: pos(:)
 
-    integer :: node_index
-    integer :: child_node_index
     integer :: i, j, k
     integer, pointer, dimension(:) :: p_node_index, p_child_node_index
 
@@ -132,8 +130,7 @@ contains
     integer, intent(inout)                :: blk_index(:)
     integer, intent(out)                  :: nblk
 
-    integer :: child_node_index
-    integer :: i, j, k
+    integer :: j, k
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
 
@@ -170,12 +167,10 @@ contains
     integer, intent(inout)                :: blk_index(:)
     integer, intent(out)                  :: pos(:)
 
-    integer :: child_node_index
     integer :: i, j, k
     integer :: nb
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
-    integer :: lblk, nlblk, diff
 
     p_child_node_index  => fkeep%nodes(child_node)%index
     nb = fkeep%nodes(child_node)%nb
@@ -245,8 +240,6 @@ contains
     integer :: nb, nval
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
-    integer :: lblk, nlblk, diff
-    integer, pointer :: p_child_blk_index(:)
 
     p_child_node_index  => fkeep%nodes(child_node)%index
     nb                  = fkeep%nodes(child_node)%nb
@@ -302,7 +295,7 @@ contains
     integer, intent(inout)        :: ndep(:)
     integer, intent(in), optional :: lvl
 
-    integer :: child, dep, nldep, offset, i, nsubind, nchild
+    integer :: child, nldep, offset, i, nsubind, nchild
     integer, allocatable :: subind(:)
     integer :: rlvl
 
@@ -362,7 +355,7 @@ contains
     integer :: nb, nval
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
-    integer :: lblk, nlblk, diff, ndep
+    integer :: ndep
 
     p_child_node_index  => fkeep%nodes(child_node)%index
     nb                  = fkeep%nodes(child_node)%nb
@@ -486,7 +479,6 @@ contains
     integer :: nb, nval
     integer, pointer :: p_child_node_index(:)
     integer :: cur_blk_dep, tmp
-    integer :: lblk, nlblk, diff
 
     p_child_node_index  => fkeep%nodes(child_node)%index
     nb = fkeep%nodes(child_node)%nb
@@ -642,7 +634,7 @@ contains
     integer :: bcol_blk_sa, bcol
     integer :: blkm, nb, local_blk, offset
     integer :: child_node, i
-    integer :: nblk_dep, nchild, nnode_child, nind
+    integer :: nchild, nnode_child, nind
     integer :: new_method
     integer, allocatable :: nblk_child(:) ! Remove by using a workspace
     integer, allocatable :: node_child(:) ! Remove by using a workspace
@@ -855,10 +847,8 @@ contains
     integer, allocatable, intent(out) :: dep(:) !List of dependencies
 
     integer :: offset
-    integer :: next_dblk    
-    integer :: dist
     integer :: node, parent, max_node, nparent
-    integer :: nb, blkm, blk_sa, blk_en, local_blk_sa
+    integer :: nb, blkm, blk_sa, blk_en
     integer :: bcol_blk_en, bcol_blk_sa, bcol, nbcol
     integer :: lblk, nlblk, dblk
     integer, allocatable :: node_parent(:) ! Remove by using a workspace
@@ -951,16 +941,6 @@ contains
 
       dep(1) = blk_sa + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
       
-     !dist      = blk - dblk
-     !next_dblk = fkeep%bc(blk)%last_blk + 1
-     !allocate(dep(1))
-
-     !if(dist .gt. 0) then
-     !  dep(1) = next_dblk + dist - 1
-     !else
-     !  dep(1) = blk
-     !end if
-
     end if
 
   end subroutine bwd_solve_dependency

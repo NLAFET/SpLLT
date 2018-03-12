@@ -359,10 +359,6 @@ contains
 
     call print_task_stat("FWD SCHEDULER STAT", scheduler%masterWorker, &
       scheduler%task_info(scheduler%masterWorker))
-  ! print *, "FWD SCHEDULER STAT"
-  ! print '(a, i6)', "#task insert        : ", scheduler%ntask_insert
-  ! print '(a, i6)', "#fake task insert   : ", scheduler%nfake_task_insert
-  ! print '(a, i6)', "#blk with fake task : ", scheduler%nblk_require_fake_task
 !   call trace_log_dump_paje('trace_fwd.out')
 
   end subroutine solve_fwd

@@ -147,33 +147,33 @@ contains
   !Compute res = b - Ax 
   subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
     use spllt_data_mod
-    integer, intent(in) :: n
-    integer, dimension(n+1), intent(in) :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in) :: row
+    integer, intent(in)                         :: n
+    integer, dimension(n+1), intent(in)         :: ptr
+    integer, dimension(ptr(n+1)-1), intent(in)  :: row
     real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    integer, intent(in) :: nrhs
-    real(wp), dimension(n,nrhs), intent(in) :: x
-    real(wp), dimension(n,nrhs), intent(in) :: b
-    real(wp), dimension(n,nrhs), intent(inout) :: res
+    integer, intent(in)                         :: nrhs
+    real(wp), dimension(n,nrhs), intent(in)     :: x
+    real(wp), dimension(n,nrhs), intent(in)     :: b
+    real(wp), dimension(n,nrhs), intent(inout)  :: res
 
-    integer :: i, j, k, r
     ! Find the residual
-    !allocate(res(n,nrhs))
-    res(:,:) = 0
+    res = 0
+
     call compute_Ax(n, ptr, row, val, nrhs, x, res)
+
     res = b - res
   end subroutine compute_residual
   
   !Compute Ax
   subroutine compute_Ax(n, ptr, row, val, nrhs, x, res)
     use spllt_data_mod
-    integer, intent(in) :: n
-    integer, dimension(n+1), intent(in) :: ptr
-    integer, dimension(ptr(n+1)-1), intent(in) :: row
+    integer, intent(in)                         :: n
+    integer, dimension(n+1), intent(in)         :: ptr
+    integer, dimension(ptr(n+1)-1), intent(in)  :: row
     real(wp), dimension(ptr(n+1)-1), intent(in) :: val
-    integer, intent(in) :: nrhs
-    real(wp), dimension(n,nrhs), intent(in) :: x
-    real(wp), dimension(n,nrhs), intent(inout) :: res
+    integer, intent(in)                         :: nrhs
+    real(wp), dimension(n,nrhs), intent(in)     :: x
+    real(wp), dimension(n,nrhs), intent(inout)  :: res
 
     integer :: i, j, k, r
     res = 0
@@ -250,10 +250,10 @@ contains
     print *, msg, " : ", task_id
     print '(a, i6)', "#task insert        : ", task%ntask_insert
     print '(a, i6)', "#fake task insert   : ", task%nfake_task_insert
-    print '(a, i6)', "#blk with fake task : ", task%nblk_require_fake_task
     print '(a, i6)', "#task run           : ", task%ntask_run
     print '(a, i6)', "#array allocate     : ", task%narray_allocated
-    print '(a, i6)', "max #dep            : ", task%max_dep
+    print '(a, i6)', "max #dep of a blk   : ", task%max_dep
+    print '(a, i1, a, i6)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
 
   end subroutine print_task_stat
 
@@ -278,12 +278,12 @@ contains
     use spllt_data_mod
     type(spllt_omp_task_stat), intent(out) :: task_stat
 
-    task_stat%ntask_run               = 0
-    task_stat%ntask_insert            = 0
-    task_stat%nfake_task_insert       = 0
-    task_stat%max_dep                 = 0
-    task_stat%narray_allocated        = 0
-    task_stat%nblk_require_fake_task  = 0
+    task_stat%ntask_run         = 0
+    task_stat%ntask_insert      = 0
+    task_stat%nfake_task_insert = 0
+    task_stat%max_dep           = 0
+    task_stat%narray_allocated  = 0
+    task_stat%nblk_kdep         = 0
     
   end subroutine spllt_omp_init_task_info
 
@@ -297,7 +297,8 @@ contains
     type(spllt_omp_task_stat), pointer  :: p_task_info
 
 
-    scheduler%workerID                = 1
+    scheduler%workerID                = 1 ! Has to be at least 1 because of the
+                                          !   task_info array starting at 1
  !$ scheduler%workerID                = omp_get_thread_num() + 1
     scheduler%nworker                 = 1
  !$ scheduler%nworker                 = omp_get_num_threads()
@@ -320,6 +321,22 @@ contains
 !   call print_scheduler(scheduler)
 
   end subroutine spllt_omp_init_scheduler
+
+  subroutine spllt_update_task_info(task_info, ndep, ntask, nftask)
+    use spllt_data_mod
+    type(spllt_omp_task_stat), intent(inout)  :: task_info
+    integer, intent(in)                       :: ndep   ! #dep of the block
+    integer, intent(in)                       :: ntask  ! #task insert
+    integer, intent(in)                       :: nftask ! #fake task
+
+    task_info%nblk_kdep         = task_info%nblk_kdep + &
+      merge(1, 0, ndep .gt. k_dep)
+    task_info%nfake_task_insert = task_info%nfake_task_insert + nftask
+    task_info%ntask_insert      = task_info%ntask_insert + ntask
+    task_info%max_dep           = merge(ndep, task_info%max_dep, &
+      ndep .gt. task_info%max_dep)
+
+  end subroutine spllt_update_task_info
 
 ! subroutine permute_darray(n, val, perm, val_perm, trans)
 !   integer,                intent(in)      :: n
