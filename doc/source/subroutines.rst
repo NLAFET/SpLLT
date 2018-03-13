@@ -68,8 +68,8 @@ Basic subroutines
    :p integer order(n) [out]: permutation array used for matrix
       ordering.
    :p real x(n,nrhs) [inout]: right-hand sides :math:`B` on entry,
-      solutions :math:`X` on exit. `n` represents the order of the
-      system to solve.
+      solutions :math:`X` on exit. `n` represents the order of matrix
+      :math:`A`.
    :p spllt_inform info [out]: exit status.
    :o integer job [in]: specifies equation to solve, as per above table.
 

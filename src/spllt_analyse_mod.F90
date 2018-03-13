@@ -857,7 +857,7 @@ contains
        end do
        ! write(*,*)'nlz: ', nlz       
        ! all the subtrees have been mapped. Evaluate load balance
-       rm = minval(proc_w)/maxval(proc_w)
+       rm = real(minval(proc_w))/real(maxval(proc_w))
        ! print *, "rm: ", rm
        if((rm .gt. 0.9) .and. (nlz .ge. 1*nth)) exit ! if balance is higher than 90%, we're happy
 

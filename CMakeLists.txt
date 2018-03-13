@@ -107,6 +107,8 @@ endif()
 ################################################################################
 # Third-party libraries
 
+set(LIBS)
+
 ########################################
 # SPRAL
 set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
@@ -515,7 +517,7 @@ endforeach()
 
 message("-----------------------------------------")
 message("Configuration of SpLLT done.")
-message("")
+message(" ")
 message(
   "Build type: ${CMAKE_BUILD_TYPE}\n"
   "Fortran compiler: ${CMAKE_Fortran_COMPILER} (${CMAKE_Fortran_COMPILER_ID})\n"
