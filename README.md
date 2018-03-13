@@ -1,4 +1,4 @@
-# SpLLT - sparse Cholesky sovler
+# SpLLT - sparse Cholesky solver
 
 |OpenMP|
 |------|
@@ -21,7 +21,7 @@ the solver can be built as following instructions:
 
 ```bash
 mkdir build # create build directory
-cd build 
+cd build
 cmake <path-to-source>
 ```
 
@@ -29,6 +29,61 @@ This will build the sequential version of the code by default. In
 order to build the parallel code you need to select a runtime system
 using the option `-DRUNTIME` when running the cmake `cmake
 <path-to-source>` command.
+
+# Prerequisites
+
+In order to install properly SpLLT, some libraries are required.
+The analysis of the matrix is performed through
+[SPRAL](http://www.numerical.rl.ac.uk/spral/), where the sources
+are [here](https://github.com/ralna/spral).
+This software requires itself a graph partitioner as
+[Metis](http://glaros.dtc.umn.edu/gkhome/) library, and [HWLOC](https://
+www.open-mpi.org/projects/hwloc/).
+
+## Metis 4.0
+
+During the analyse, a graph partitioner as Metis needs to be linked to SPRAL.
+The latest current version supported by SPRAL is [metis-4.0.3](http://glaros.
+dtc.umn.edu/gkhome/fetch/sw/metis/OLD/metis-4.0.3.tar.gz).
+Download the source code, open Makefile.in, and set the variable CC to gcc.
+Then,
+
+```bash
+make
+mkdir lib_gcc-<compiler_version>
+cp libmetis.a lib_gcc-<compiler_version>
+```
+
+The same installation can be done with Intel compiler (changing CC variable in 
+Makefile.in and adapting the name of the created folder).
+
+## HWLOC 2.0
+
+SPRAL requires Hardware Locality library where the sources are [here](https://
+www.open-mpi.org/software/hwloc/v2.0/).
+
+```bash
+./configure
+make
+mkdir lib_gcc-<compiler_version>
+cp hwloc/.libs/* lib_gcc-6.2.0/
+```
+
+## SPRAL
+
+To install SPRAL, download the sources [here](https://github.com/ralna/spral).
+Then
+
+```bash
+./configure --disable-openmp --disable-gpu --disable-openmp --with-blas="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-lapack="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-metis="-L$METIS_LIB -lmetis"
+make
+mkdir lib_gcc-<compiler_version>
+cp libspral.a lib_gcc-<compiler_version>
+```
+
+# RUNTIME
+
+SpLLT is designed to be used with different runtimes.
 
 ## OMP
 
@@ -61,4 +116,3 @@ be obtained as following:
 cmake -DRUNTIME=Parsec <path-to-source>
 
 ```
-
