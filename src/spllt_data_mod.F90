@@ -10,7 +10,7 @@ module spllt_data_mod
 
   integer, parameter :: k_dep = 2 ! Upper bound on the number of dep 
                                   !   of a normal block 
-  logical, parameter ::  use_omp_cases_method = .true.
+  logical, parameter :: use_omp_cases_method = .true.
 
   integer, parameter :: wp = kind(0d0)
 #if defined(SPLLT_USE_STARPU) || defined(SPLLT_USE_PARSEC) 
