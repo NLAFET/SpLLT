@@ -34,24 +34,21 @@ using the option `-DRUNTIME` when running the cmake `cmake
 
 In order to install properly SpLLT, some libraries are required.
 The analysis of the matrix is performed through
-[SPRAL](http://www.numerical.rl.ac.uk/spral/), where the sources
-are [here](https://github.com/ralna/spral).
+[SPRAL](http://www.numerical.rl.ac.uk/spral/).
 This software requires itself a graph partitioner as
-[Metis](http://glaros.dtc.umn.edu/gkhome/) library, and [HWLOC](https://
-www.open-mpi.org/projects/hwloc/).
+[Metis](http://glaros.dtc.umn.edu/gkhome/) library, 
+and [HWLOC](https://www.open-mpi.org/projects/hwloc/).
 
 ## Metis 4.0
 
 During the analyse, a graph partitioner as Metis needs to be linked to SPRAL.
-The latest current version supported by SPRAL is [metis-4.0.3](http://glaros.
-dtc.umn.edu/gkhome/fetch/sw/metis/OLD/metis-4.0.3.tar.gz).
+The latest current version supported by SPRAL is Metis-4.0 available 
+[here](http://glaros.dtc.umn.edu/gkhome/fsroot/sw/metis/OLD).
 Download the source code, open Makefile.in, and set the variable CC to gcc.
 Then,
 
 ```bash
 make
-mkdir lib_gcc-<compiler_version>
-cp libmetis.a lib_gcc-<compiler_version>
 ```
 
 The same installation can be done with Intel compiler (changing CC variable in 
@@ -59,14 +56,11 @@ Makefile.in and adapting the name of the created folder).
 
 ## HWLOC 2.0
 
-SPRAL requires Hardware Locality library where the sources are [here](https://
-www.open-mpi.org/software/hwloc/v2.0/).
+SPRAL requires Hardware Locality library where the sources are [here](https://www.open-mpi.org/software/hwloc/v2.0/).
 
 ```bash
 ./configure
 make
-mkdir lib_gcc-<compiler_version>
-cp hwloc/.libs/* lib_gcc-6.2.0/
 ```
 
 ## SPRAL
@@ -115,4 +109,51 @@ be obtained as following:
 ```bash
 cmake -DRUNTIME=Parsec <path-to-source>
 
+```
+
+# Examples of installation of SpLLT
+
+To install SpLLT, for each prerequisite you can either use the environment or 
+use defined variables, and provide either the path to the directory or the paths
+to the library and include folders.
+For example, considering GNU compilers and MKL, we can explicitly define to 
+cmake the path of the library and include folders for each prerequisite, 
+assuming that these paths are set in the environment.
+
+```bash
+export SPRAL_LIB=<path_to_spral_library_folder>
+export SPRAL_INC=<path_to_spral_include_folder>
+export METIS_LIB=<path_to_metis_library_folder>
+export METIS_INC=<path_to_metis_include_folder>
+export HWLOC_LIB=<path_to_hwloc_library_folder>
+export HWLOC_INC=<path_to_hwloc_include_folder>
+
+mkdir build
+mkdir build/build_omp
+cd build/build_omp
+
+CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DSPRAL_LIB=${SPRAL_LIB} -DSPRAL_INC=${SPRAL_INC} -DMETIS_LIB=${METIS_LIB} -DMETIS_INC=${METIS_INC} -DHWLOC_LIB=${HWLOC_LIB} -DHWLOC_INC=${HWLOC_INC} -DLBLAS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" -DLLAPACK="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" ../..
+make
+```
+or
+```bash
+mkdir build
+mkdir build/build_omp
+cd build/build_omp
+
+MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${MKL_BLAS_LAPACK_LIBS} ../..
+make
+```
+You can also consider only the directory of each prerequisite, as follow
+```bash
+export SPRAL_DIR=<path_to_spral_folder>
+export METIS_DIR=<path_to_metis_folder>
+export HWLOC_DIR=<path_to_hwloc_folder>
+
+mkdir build
+mkdir build/build_omp
+cd build/build_omp
+
+MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${MKL_BLAS_LAPACK_LIBS} ../..
+make
 ```
