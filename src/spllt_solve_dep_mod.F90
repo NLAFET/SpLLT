@@ -635,6 +635,7 @@ contains
     integer :: blkm, nb, local_blk, offset
     integer :: child_node, i
     integer :: nchild, nnode_child, nind
+    integer :: cur_node
     integer :: new_method
     integer, allocatable :: nblk_child(:) ! Remove by using a workspace
     integer, allocatable :: node_child(:) ! Remove by using a workspace
