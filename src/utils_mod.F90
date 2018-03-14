@@ -197,7 +197,8 @@ contains
     real(wp), dimension(ptr(n+1)-1), intent(in) :: val
     real(wp), intent(out)                       :: norm
 
-    real(wp) :: i, j, sum_col
+    integer   :: i, j
+    real(wp)  :: sum_col
 
     norm = 0
     do i = 1, n
