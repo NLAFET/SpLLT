@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
+include(CheckFunctionExists)
+include(CheckFortranFunctionExists)
 project(SpLLT)
 enable_language(Fortran)
 enable_language(C)
@@ -115,6 +117,7 @@ set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
 include_directories(${SPRAL_DIR})
 message(STATUS "SPRAL Directory: " ${SPRAL_DIR})   
 
+
 ########################################
 # Runtime system
 
@@ -169,9 +172,15 @@ elseif(${RUNTIME} MATCHES "StarPU")
 elseif(${RUNTIME} MATCHES "OMP")
 
   # TODO find_package omp
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
+  elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -qopenmp")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -qopenmp")
+    set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -qopenmp")
+  endif()
 
   # Enable OMP
   add_definitions(-DSPLLT_USE_OMP)
@@ -355,8 +364,10 @@ set(LIBS ${LIBS} ${SPRAL_LIBRARIES})
 
 ########################################
 # Metis
-set(METIS_DIR $ENV{METISDIR} CACHE PATH "Location of Metis Library")
+set(METIS_DIR $ENV{METIS_LIB} CACHE PATH "Location of Metis Library")
+message(STATUS "METISDIR given : ${METIS_DIR}")
 find_library(METIS_LIBRARIES metis PATHS ${METIS_DIR})
+message(STATUS "METIS_LIBRARIES from find : ${METIS_LIBRARIES}")
 set(LIBS ${LIBS} ${METIS_LIBRARIES})
 
 ########################################
@@ -424,6 +435,7 @@ elseif(DEFINED ENV{BLAS_LIB})
 endif()
 
 if(DEFINED BLAS_LIBRARIES)
+  message(STATUS "BLAS : ${BLAS_LIBRARIES}")
   set(CMAKE_REQUIRED_LIBRARIES ${BLAS_LIBRARIES})
   CHECK_FORTRAN_FUNCTION_EXISTS("dgemm" BLAS_FOUND)
   unset(CMAKE_REQUIRED_LIBRARIES)
