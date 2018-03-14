@@ -34,7 +34,7 @@ case(1)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -48,7 +48,7 @@ case(2)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -63,7 +63,7 @@ case(3)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -78,7 +78,7 @@ case(4)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -94,7 +94,7 @@ case(5)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -110,7 +110,7 @@ case(6)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -127,7 +127,7 @@ case(7)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -144,7 +144,7 @@ case(8)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -162,7 +162,7 @@ case(9)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 
@@ -180,106 +180,7 @@ case(10)
 !$omp private(i, j, r, threadID)                                          &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
-include 'spllt_solve_fwd_block_worker.F90'
-
-!$omp end task
-
-case(11)
-!$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+10)))&
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id)                                     &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
-!$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
-!$omp private(i, j, r, threadID)                                          &
-!$omp firstprivate(dblk) depend(inout: p_bc(dblk))
-
-include 'spllt_solve_fwd_block_worker.F90'
-
-!$omp end task
-
-case(12)
-!$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+10)),p_bc(p_dep(alpha*2+beta+10)))&
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id)                                     &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
-!$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
-!$omp private(i, j, r, threadID)                                          &
-!$omp firstprivate(dblk) depend(inout: p_bc(dblk))
-
-include 'spllt_solve_fwd_block_worker.F90'
-
-!$omp end task
-
-case(13)
-!$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+10)),p_bc(p_dep(alpha*2+beta+10)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+12)))&
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id)                                     &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
-!$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
-!$omp private(i, j, r, threadID)                                          &
-!$omp firstprivate(dblk) depend(inout: p_bc(dblk))
-
-include 'spllt_solve_fwd_block_worker.F90'
-
-!$omp end task
-
-case(14)
-!$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+10)),p_bc(p_dep(alpha*2+beta+10)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+12)),p_bc(p_dep(alpha*2+beta+12)))&
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id)                                     &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
-!$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
-!$omp private(i, j, r, threadID)                                          &
-!$omp firstprivate(dblk) depend(inout: p_bc(dblk))
-
-include 'spllt_solve_fwd_block_worker.F90'
-
-!$omp end task
-
-case(15)
-!$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+10)),p_bc(p_dep(alpha*2+beta+10)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+12)),p_bc(p_dep(alpha*2+beta+12)))&
-!$omp depend(in: p_bc(p_dep(alpha*1+beta+14)))&
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id)                                     &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
-!$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
-!$omp private(i, j, r, threadID)                                          &
-!$omp firstprivate(dblk) depend(inout: p_bc(dblk))
-
-include 'spllt_solve_fwd_block_worker.F90'
+include '../src/include/spllt_solve_fwd_block_worker.F90.inc'
 
 !$omp end task
 

@@ -82,9 +82,9 @@ contains
 
       if(ndep .eq. 0) then
         !$omp task                                &
-        include 'spllt_solve_fwd_block_omp_decl.F90'
+        include 'include/spllt_solve_fwd_block_omp_decl.F90.inc'
 
-        include 'spllt_solve_fwd_block_worker.F90'
+        include 'include/spllt_solve_fwd_block_worker.F90.inc'
 
         !$omp end task
       else
@@ -112,7 +112,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'spllt_fwd_block_cases.F90'
+              include 'include/spllt_fwd_block_cases.F90.inc'
 
             end select
 
@@ -279,9 +279,9 @@ contains
 
       if(ndep .eq. 0) then
         !$omp task                                &
-        include 'spllt_solve_fwd_update_omp_decl.F90'
+        include 'include/spllt_solve_fwd_update_omp_decl.F90.inc'
 
-        include 'spllt_solve_fwd_update_worker.F90'
+        include 'include/spllt_solve_fwd_update_worker.F90.inc'
 
         !$omp end task
       else
@@ -309,7 +309,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'spllt_fwd_update_cases.F90'
+              include 'include/spllt_fwd_update_cases.F90.inc'
 
             end select
             beta = beta + chunk_size
@@ -466,9 +466,9 @@ contains
 
       if(ndep .eq. 0) then
         !$omp task                                &
-        include 'spllt_solve_bwd_block_omp_decl.F90'
+        include 'include/spllt_solve_bwd_block_omp_decl.F90.inc'
 
-        include 'spllt_solve_bwd_block_worker.F90'
+        include 'include/spllt_solve_bwd_block_worker.F90.inc'
 
         !$omp end task
       else
@@ -496,7 +496,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'spllt_bwd_block_cases.F90'
+              include 'include/spllt_bwd_block_cases.F90.inc'
 
             end select
 
@@ -676,9 +676,9 @@ contains
 
       if(ndep .eq. 0) then
         !$omp task                                &
-        include 'spllt_solve_bwd_update_omp_decl.F90'
+        include 'include/spllt_solve_bwd_update_omp_decl.F90.inc'
 
-        include 'spllt_solve_bwd_update_worker.F90'
+        include 'include/spllt_solve_bwd_update_worker.F90.inc'
 
         !$omp end task
       else
@@ -706,7 +706,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'spllt_bwd_update_cases.F90'
+              include 'include/spllt_bwd_update_cases.F90.inc'
 
             end select
             beta = beta + chunk_size
