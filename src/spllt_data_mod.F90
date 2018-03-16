@@ -226,6 +226,12 @@ module spllt_data_mod
      character(len=3) :: fmt='csc'
      integer :: min_width_blas  = 8  ! Minimum width of source block
      ! before we use an indirect update_between
+     integer :: nb_min = 32
+     integer :: nb_max = 32
+     integer :: nrhs_min = 1
+     integer :: nrhs_max = 1
+     logical :: nb_linear_comp = .false.
+     logical :: nrhs_linear_comp = .false.
   end type spllt_options
 
   !*************************************************
@@ -322,6 +328,7 @@ module spllt_data_mod
     integer :: masterWorker
     integer :: nworker
     integer :: nthread_max
+    integer, pointer :: trace_ids(:)
     type(spllt_omp_task_stat), pointer :: task_info(:)
   end type spllt_omp_scheduler
 

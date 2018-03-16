@@ -12,7 +12,7 @@ contains
     use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
     use trace_mod
     use spllt_solve_dep_mod
-    use utils_mod, ONLY : spllt_update_task_info
+    use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
     
     integer, intent(in)                       :: dblk !Index of diagonal block
@@ -203,8 +203,8 @@ contains
       !$omp end task
     end if
 
-    call spllt_update_task_info(scheduler%task_info(scheduler%workerID), &
-      ndep, 1, nftask)
+    call spllt_update_omp_task_info(scheduler%task_info(scheduler%workerID), &
+      1, nftask)
   end subroutine spllt_solve_fwd_block_task
 
 
@@ -215,7 +215,7 @@ contains
     use omp_lib, ONLY : omp_get_thread_num
     use trace_mod
     use spllt_solve_dep_mod
-    use utils_mod, ONLY : spllt_update_task_info
+    use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
     
     integer, intent(in)                       :: blk  ! Index of block
@@ -376,8 +376,8 @@ contains
 
     !$omp end task
   end if
-  call spllt_update_task_info(scheduler%task_info(scheduler%workerID), &
-    ndep, 1, nftask)
+  call spllt_update_omp_task_info(scheduler%task_info(scheduler%workerID), &
+    1, nftask)
   end subroutine spllt_solve_fwd_update_task
 
   !*************************************************  
@@ -391,7 +391,7 @@ contains
     use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
     use trace_mod
     use spllt_solve_dep_mod
-    use utils_mod, ONLY : spllt_update_task_info
+    use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
 
     integer, intent(in)                       :: dblk ! Index of diagonal block
@@ -593,8 +593,8 @@ contains
       !$omp end task
     end if
 
-    call spllt_update_task_info(scheduler%task_info(scheduler%workerID), &
-      ndep, 1, nftask)
+    call spllt_update_omp_task_info(scheduler%task_info(scheduler%workerID), &
+      1, nftask)
   end subroutine spllt_solve_bwd_block_task
 
   !*************************************************  
@@ -608,7 +608,7 @@ contains
     use omp_lib, ONLY : omp_get_thread_num, omp_get_num_threads
     use trace_mod
     use spllt_solve_dep_mod
-    use utils_mod, ONLY : spllt_update_task_info
+    use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
 
     integer, intent(in)                       :: blk  ! Index of block 
@@ -786,8 +786,8 @@ contains
       !$omp end task
     end if
 
-    call spllt_update_task_info(scheduler%task_info(scheduler%workerID), &
-      ndep, 1, nftask)
+    call spllt_update_omp_task_info(scheduler%task_info(scheduler%workerID), &
+      1, nftask)
   end subroutine spllt_solve_bwd_udpate_task
 
   !*************************************************

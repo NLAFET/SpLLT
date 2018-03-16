@@ -60,12 +60,24 @@ contains
   end subroutine spllt_compute_blk_solve_dep
 
   subroutine spllt_compute_solve_dep(fkeep)
+    use utils_mod, only : print_task_stat, spllt_update_task_info, &
+      spllt_omp_init_task_info
     type(spllt_fkeep), target, intent(inout)  :: fkeep
 
-    integer :: i
+    integer                   :: i
+    type(spllt_omp_task_stat) :: task_info_fwd
+    type(spllt_omp_task_stat) :: task_info_bwd
+
+    call spllt_omp_init_task_info(task_info_fwd)
+    call spllt_omp_init_task_info(task_info_bwd)
+
     do i = 1, fkeep%nodes(fkeep%info%num_nodes)%blk_en
       call spllt_compute_blk_solve_dep(fkeep, i)
+      call spllt_update_task_info(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
+      call spllt_update_task_info(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
     end do
+    call print_task_stat(task_info_fwd, "FWD STAT")
+    call print_task_stat(task_info_bwd, "BWD STAT")
   end subroutine spllt_compute_solve_dep
 
   !Return the position in child_node of the rows of node that are 
@@ -945,6 +957,36 @@ contains
     end if
 
   end subroutine bwd_solve_dependency
+
+  function contain(fkeep, blk1, blk2) result(isIn)
+    use spllt_data_mod
+    
+    type(spllt_fkeep), target, intent(in) :: fkeep
+    integer, intent(in)                   :: blk1
+    integer, intent(in)                   :: blk2
+
+    integer :: j, k
+    integer, pointer :: p_blk1_index(:), p_blk2_index(:)
+    logical :: isIn
+
+    j = 1
+    k = 1
+    isIn = .false.
+
+    call getPointerBlkIndex(fkeep, blk1, p_blk1_index)
+    call getPointerBlkIndex(fkeep, blk2, p_blk2_index)
+
+    do while(j .le. size(p_blk1_index) .and. k .le. size(p_blk2_index))
+      if(p_blk1_index(j) .lt. p_blk2_index(k)) then
+        j = j + 1
+      else if(p_blk1_index(j) .gt. p_blk2_index(k)) then
+        k = k + 1
+      else
+        isIn = .true.
+        return
+      end if
+    end do
+  end function contain
 
 ! integer function bwd_solve_dependency(fkeep, blk)
 !   use spllt_data_mod
