@@ -370,6 +370,31 @@ contains
           argnum = argnum + 1
           read (argval, *) nrhs
           print *, 'solving for', nrhs, 'right-hand sides'
+       case("--nb-range")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%nb_min
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%nb_max
+       case("--nrhs-range")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read (argval, *) options%nrhs_min
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read (argval, *) options%nrhs_max
+          print *, 'solving from ', options%nrhs_min, &
+            ' to ', options%nrhs_max, ' RHS'
+        case("--nb-linear")
+          options%nb_linear_comp = .true.
+        case("--no-nb-linear")
+          options%nb_linear_comp = .false.
+        case("--nrhs-linear")
+          options%nrhs_linear_comp = .true.
+        case("--no-nrhs-linear")
+          options%nrhs_linear_comp = .false.
+
        case default
           write(*,'("Unrecognised command line argument: ", a20)') argval
        end select

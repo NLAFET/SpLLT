@@ -6,6 +6,10 @@ module utils_mod
     module procedure print_iarray
   end interface print_array
 
+  interface timer_log_dump
+    module procedure timer_log_dump_one
+    module procedure timer_log_dump_mult
+  end interface timer_log_dump
 contains
 
   subroutine print_darray(array_name, n, val)
@@ -113,37 +117,6 @@ contains
     end do
   end subroutine print_node
 
-  function contain(fkeep, blk1, blk2) result(isIn)
-    use spllt_data_mod
-    use spllt_solve_dep_mod, only : getPointerBlkIndex
-    
-    type(spllt_fkeep), target, intent(in) :: fkeep
-    integer, intent(in)                   :: blk1
-    integer, intent(in)                   :: blk2
-
-    integer :: j, k
-    integer, pointer :: p_blk1_index(:), p_blk2_index(:)
-    logical :: isIn
-
-    j = 1
-    k = 1
-    isIn = .false.
-
-    call getPointerBlkIndex(fkeep, blk1, p_blk1_index)
-    call getPointerBlkIndex(fkeep, blk2, p_blk2_index)
-
-    do while(j .le. size(p_blk1_index) .and. k .le. size(p_blk2_index))
-      if(p_blk1_index(j) .lt. p_blk2_index(k)) then
-        j = j + 1
-      else if(p_blk1_index(j) .gt. p_blk2_index(k)) then
-        k = k + 1
-      else
-        isIn = .true.
-        return
-      end if
-    end do
-  end function contain
-
   !Compute res = b - Ax 
   subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
     use spllt_data_mod
@@ -242,7 +215,20 @@ contains
     end do
   end subroutine matrix_norm_max
 
-  subroutine print_task_stat(msg, task_id, task)
+  subroutine print_task_stat(task, msg)
+    use spllt_data_mod
+    type(spllt_omp_task_stat), intent(in)   :: task
+    character(len=*), optional, intent(in)  :: msg
+
+    if(present(msg)) then
+      print *, msg
+    end if
+    print '(a, i6)', "max #dep of a blk   : ", task%max_dep
+    print '(a, i1, a, i6)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
+
+  end subroutine print_task_stat
+
+  subroutine print_omp_task_stat(msg, task_id, task)
     use spllt_data_mod
     character(len=*), intent(in)          :: msg
     integer, intent(in)                   :: task_id
@@ -253,10 +239,8 @@ contains
     print '(a, i6)', "#fake task insert   : ", task%nfake_task_insert
     print '(a, i6)', "#task run           : ", task%ntask_run
     print '(a, i6)', "#array allocate     : ", task%narray_allocated
-    print '(a, i6)', "max #dep of a blk   : ", task%max_dep
-    print '(a, i1, a, i6)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
 
-  end subroutine print_task_stat
+  end subroutine print_omp_task_stat
 
   subroutine print_scheduler(sched)
     use spllt_data_mod
@@ -270,7 +254,8 @@ contains
     print '(a, i3)', "nworker       :", sched%nworker
     print '(a, i3)', "nthread_max   :", sched%nthread_max
     do i = 1, sched%nworker
-      call print_task_stat("Init info task", i, sched%task_info(i))
+      call print_omp_task_stat("Init omp info task", i, sched%task_info(i))
+      call print_task_stat(sched%task_info(i))
     end do
 
   end subroutine print_scheduler
@@ -288,15 +273,19 @@ contains
     
   end subroutine spllt_omp_init_task_info
 
-  subroutine spllt_omp_init_scheduler(scheduler, stat)
+  subroutine spllt_omp_init_scheduler(scheduler, trace_names, stat)
     use spllt_data_mod
+    use trace_mod, only : trace_create_event
  !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
-    type(spllt_omp_scheduler), target, intent(inout)  :: scheduler
-    integer, optional, intent(out)                    :: stat
+    type(spllt_omp_scheduler), target,  intent(inout) :: scheduler
+    character(len=*), optional,         intent(in)    :: trace_names(:)
+    integer, optional,                  intent(out)   :: stat
 
-    integer                             :: st, i
+    integer                             :: st1, st2, i, ntrace_id
     type(spllt_omp_task_stat), pointer  :: p_task_info
 
+    st1 = 0
+    st2 = 0
 
     scheduler%workerID                = 1 ! Has to be at least 1 because of the
                                           !   task_info array starting at 1
@@ -306,39 +295,137 @@ contains
     scheduler%masterWorker            = scheduler%workerID
     scheduler%nthread_max             = scheduler%nworker
 
-    allocate(scheduler%task_info(scheduler%nthread_max), stat=st)
-
-    if(st .eq. 0) then
+    allocate(scheduler%task_info(scheduler%nthread_max), stat=st1)
+    if(st1 .eq. 0) then
       do i = 1, scheduler%nthread_max
         p_task_info => scheduler%task_info(i)
         call spllt_omp_init_task_info(p_task_info)
       end do
     end if
 
+    if(present(trace_names)) then
+      ntrace_id = size(trace_names)
+      allocate(scheduler%trace_ids(ntrace_id), stat=st2)
+      if(st2 .eq. 0) then
+        do i = 1, ntrace_id
+          call trace_create_event(trace_names(i), scheduler%trace_ids(i))
+!         print *, "Create id ", scheduler%trace_ids(i), " for step ", &
+!           trace_names(i)
+        end do
+      end if
+    else
+      scheduler%trace_ids => null()
+    end if
+
     if(present(stat)) then
-      stat = st
+      stat = st1 + st2
     end if
 
 !   call print_scheduler(scheduler)
 
   end subroutine spllt_omp_init_scheduler
 
-  subroutine spllt_update_task_info(task_info, ndep, ntask, nftask)
+  subroutine spllt_scheduler_alloc(scheduler, stat)
+    use spllt_data_mod
+    type(spllt_omp_scheduler), intent(inout)  :: scheduler
+    integer,                   intent(in)     :: stat
+
+    if(stat .ne. 0) then
+      write(0,'(a)') "Error of alloc"
+    end if
+    scheduler%task_info(scheduler%workerID)%narray_allocated =  &
+      scheduler%task_info(scheduler%workerID)%narray_allocated  &
+      + merge(1, 0, stat .eq. 0)
+
+  end subroutine spllt_scheduler_alloc
+
+  subroutine spllt_update_omp_task_info(task_info, ntask, nftask)
     use spllt_data_mod
     type(spllt_omp_task_stat), intent(inout)  :: task_info
-    integer, intent(in)                       :: ndep   ! #dep of the block
     integer, intent(in)                       :: ntask  ! #task insert
     integer, intent(in)                       :: nftask ! #fake task
 
-    task_info%nblk_kdep         = task_info%nblk_kdep + &
-      merge(1, 0, ndep .gt. k_dep)
     task_info%nfake_task_insert = task_info%nfake_task_insert + nftask
     task_info%ntask_insert      = task_info%ntask_insert + ntask
+
+  end subroutine spllt_update_omp_task_info
+
+  subroutine spllt_update_task_info(task_info, ndep)
+    use spllt_data_mod
+    type(spllt_omp_task_stat), intent(inout)  :: task_info
+    integer, intent(in)                       :: ndep   ! #dep of the block
+
+    task_info%nblk_kdep         = task_info%nblk_kdep + &
+      merge(1, 0, ndep .gt. k_dep)
     task_info%max_dep           = merge(ndep, task_info%max_dep, &
       ndep .gt. task_info%max_dep)
 
   end subroutine spllt_update_task_info
 
+  subroutine timer_log_dump_mult(header, timer, ofile)
+
+    character, intent(in)         :: header*(*)
+    double precision, intent(in)  :: timer(:,:)
+    character, intent(in)         :: ofile*(*)
+
+    integer :: n, i
+
+    n = size(timer,1)
+
+    open(4, file="timer_"//ofile//".data", action='write')
+    
+    write(4,'(a, a)') "#", trim(header)
+    do i = 1, n
+      write(4, *) timer(i,:)
+    end do
+
+    close(4)
+  end subroutine timer_log_dump_mult
+
+  subroutine timer_log_dump_one(header, timer, ofile)
+
+    character, intent(in)         :: header*(*)
+    double precision, intent(in)  :: timer(:)
+    character, intent(in)         :: ofile*(*)
+
+    integer :: n, i
+
+    n = size(timer,1)
+
+    open(4, file="timer_"//ofile//".data", action='write')
+    
+    write(4,'(a, a)') "#", trim(header)
+    do i = 1, n
+      write(4, *) timer(i)
+    end do
+
+    close(4)
+  end subroutine timer_log_dump_one
+
+  subroutine compute_range(vmin, vmax, linear_mode, val)
+    integer, intent(in)               :: vmin
+    integer, intent(in)               :: vmax
+    logical, intent(in)               :: linear_mode
+    integer, allocatable, intent(out) :: val(:)
+
+    integer :: nval, offset
+
+    if(linear_mode) then
+      nval = int((vmax + 0.0) / vmin)
+      allocate(val(nval))
+      do i=1, nval
+        val(i) = vmin * i
+      end do
+    else
+      offset = int(log(real(vmin))/log(2.0))
+      nval  = int(log(real(vmax))/log(2.0)) - offset + 1
+      allocate(val(nval))
+      do i=1, nval
+        val(i) = 2 **(i - 1 + offset)
+      end do
+    end if
+
+  end subroutine compute_range
 ! subroutine permute_darray(n, val, perm, val_perm, trans)
 !   integer,                intent(in)      :: n
 !   real(wp), dimension(n), intent(in)      :: val
