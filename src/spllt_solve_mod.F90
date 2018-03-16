@@ -42,6 +42,7 @@ contains
     integer                             :: st           ! stat parameter
     real(wp),                  pointer  :: work(:)
     type(spllt_omp_scheduler), pointer  :: sched
+    real(wp),                  pointer  :: work2(:,:)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -59,7 +60,10 @@ contains
 
     if(.not.present(scheduler)) then
       allocate(sched)
-      call spllt_omp_init_scheduler(sched, st)
+      call spllt_omp_init_scheduler(sched, stat=st)
+      if(st .ne. 0) then
+        print *, "Error in creation of the scheduler"
+      end if
     else
       sched => scheduler
     end if
@@ -68,17 +72,18 @@ contains
     ! worker
     !
     allocate(work(n), stat = st)
-
-    sched%task_info(sched%workerID)%narray_allocated = &
-      sched%task_info(sched%workerID)%narray_allocated + merge(1, 0, st .eq. 0)
+    call spllt_scheduler_alloc(sched, st)
+    allocate(work2(fkeep%maxmn+n, sched%nworker), stat = st)
+    call spllt_scheduler_alloc(sched, st)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
-      solve_step, work, sched)
+      solve_step, work, work2, sched)
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Desallocation
     !
     deallocate(work)
+    deallocate(work2)
 
     if(.not.present(scheduler)) then
       deallocate(sched%task_info)
@@ -120,6 +125,7 @@ contains
     integer                             :: st           ! stat parameter
     real(wp),                  pointer  :: work(:,:)
     type(spllt_omp_scheduler), pointer  :: sched
+    real(wp),                  pointer  :: work2(:,:)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -137,7 +143,7 @@ contains
 
     if(.not.present(scheduler)) then
       allocate(sched)
-      call spllt_omp_init_scheduler(sched, st)
+      call spllt_omp_init_scheduler(sched, stat=st)
       if(st .ne. 0) then
         print *, "Error in creation of the scheduler"
       end if
@@ -150,17 +156,18 @@ contains
     !
 
     allocate(work(n, nrhs), stat = st)
+    call spllt_scheduler_alloc(sched, st)
+    allocate(work2((fkeep%maxmn+n)*nrhs, sched%nworker), stat = st)
+    call spllt_scheduler_alloc(sched, st)
     
-    sched%task_info(sched%workerID)%narray_allocated = &
-      sched%task_info(sched%workerID)%narray_allocated + merge(1, 0, st .eq. 0)
-
     call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
-      info, solve_step, work, sched)
+      info, solve_step, work, work2, sched)
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Desallocation
     !
     deallocate(work)
+    deallocate(work2)
 
     if(.not.present(scheduler)) then
       deallocate(sched%task_info)
@@ -173,7 +180,7 @@ contains
 
 
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
-      info, job, work, scheduler)
+      info, job, work, work2, scheduler)
     use spllt_data_mod
     implicit none
 
@@ -193,8 +200,10 @@ contains
     ! job = 0 or absent: complete solve performed
     ! job = 1 : forward eliminations only (PLx = b)
     ! job = 2 : backsubs only ((PL)^Tx = b)
-    real(wp), dimension(fkeep%n, nrhs)                :: work
-    type(spllt_omp_scheduler), intent(inout), target  :: scheduler
+    real(wp), dimension(fkeep%n, nrhs), intent(out)               :: work
+   !real(wp), dimension((fkeep%maxmn+n)*nrhs, scheduler%nworker)  :: work2
+    real(wp), intent(out)                                         :: work2(:,:)
+    type(spllt_omp_scheduler), intent(inout), target              :: scheduler
 
     integer           :: j        ! Iterator
     integer           :: n        ! Order of the system
@@ -216,7 +225,7 @@ contains
         end do
 
         ! Forward solve
-        call solve_fwd(nrhs, work, n, fkeep, scheduler)
+        call solve_fwd(nrhs, work, n, fkeep, work2, scheduler)
 
         ! Backward solve
         call solve_bwd(nrhs, work, n, fkeep, scheduler)
@@ -233,7 +242,7 @@ contains
            work(order(j),:) = x(j,:)
         end do
 
-        call solve_fwd(nrhs, work, n, fkeep, scheduler)
+        call solve_fwd(nrhs, work, n, fkeep, work2, scheduler)
 
         x = work
       
@@ -262,7 +271,7 @@ contains
   !*************************************************
   !
   ! Forward solve routine
-  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, scheduler)
+  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, work, scheduler)
     use spllt_data_mod
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
@@ -270,11 +279,12 @@ contains
     use utils_mod
     implicit none
 
-    type(spllt_fkeep), intent(in) :: fkeep
-    integer, intent(in)           :: nrhs ! Number of RHS
-    integer, intent(in)           :: ldr  ! Leading dimension of RHS
-    real(wp), intent(inout)       :: rhs(ldr*nrhs)
-    type(spllt_omp_scheduler)     :: scheduler
+    type(spllt_fkeep),          intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    real(wp), target,           intent(out)   :: work(:,:)
+    type(spllt_omp_scheduler),  intent(inout) :: scheduler
 
     ! real(wp) :: xlocal(keep%n)
     integer       :: num_node
@@ -289,21 +299,32 @@ contains
     integer       :: st             ! Stat parameter
     integer       :: fwd_update_id, fwd_block_id
     integer       :: nworker
-    real(wp), allocatable :: xlocal(:,:)    ! update_buffer workspace
-    real(wp), allocatable :: rhs_local(:,:) ! update_buffer workspace
+    real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
+    real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
     nworker   = scheduler%nworker
 
-    call trace_init(nworker)
+!   call trace_init(nworker)
 
-    call trace_create_event("fwd_update", fwd_update_id)
-    call trace_create_event("fwd_block", fwd_block_id)
+    if(associated(scheduler%trace_ids)) then
+      fwd_update_id = scheduler%trace_ids(1)
+      fwd_block_id  = scheduler%trace_ids(2)
+    else
+      call trace_create_event("fwd_update", fwd_update_id)
+      call trace_create_event("fwd_block", fwd_block_id)
+    end if
 
-    print *, "[spllt_solve_mod] solve_fwd"
+!   print *, "[spllt_solve_mod] solve_fwd"
 
     ! Allocate workspace
-    allocate(xlocal(fkeep%maxmn*nrhs, nworker), stat=st) !May reduce 
-    allocate(rhs_local(ldr*nrhs, nworker), stat=st)
+   !allocate(xlocal(fkeep%maxmn*nrhs, nworker), stat=st) !May reduce 
+   !call spllt_scheduler_alloc(scheduler, st)
+   !allocate(rhs_local(ldr*nrhs, nworker), stat=st)
+   !call spllt_scheduler_alloc(scheduler, st)
+
+    xlocal    => work(1 : fkeep%maxmn * nrhs, 1 : nworker)
+    rhs_local => work(fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
+      1 : nworker)
 
     ! initialise rhs_local
     xlocal    = zero 
@@ -355,10 +376,10 @@ contains
 
     ! Deallocate workspace
     !$omp taskwait
-    deallocate(xlocal, rhs_local)
+!   deallocate(xlocal, rhs_local)
 
-    call print_task_stat("FWD SCHEDULER STAT", scheduler%masterWorker, &
-      scheduler%task_info(scheduler%masterWorker))
+!   call print_task_stat("FWD SCHEDULER STAT", scheduler%masterWorker, &
+!     scheduler%task_info(scheduler%masterWorker))
 !   call trace_log_dump_paje('trace_fwd.out')
 
   end subroutine solve_fwd
@@ -398,14 +419,21 @@ contains
 
 !   call trace_init(nworker)
 
-    call trace_create_event("bwd_update", bwd_update_id)
-    call trace_create_event("bwd_block", bwd_block_id)
+    if(associated(scheduler%trace_ids)) then
+      bwd_update_id = scheduler%trace_ids(3)
+      bwd_block_id  = scheduler%trace_ids(4)
+    else
+      call trace_create_event("bwd_update", bwd_update_id)
+      call trace_create_event("bwd_block", bwd_block_id)
+    end if
 
-    print *, "[spllt_solve_mod] solve_bwd"
+!   print *, "[spllt_solve_mod] solve_bwd"
 
     ! Allocate workspace
     allocate(xlocal(fkeep%maxmn*nrhs, nworker), stat=st)
+    call spllt_scheduler_alloc(scheduler, st)
     allocate(rhs_local(ldr*nrhs, nworker), stat=st)
+    call spllt_scheduler_alloc(scheduler, st)
 
     ! initialise rhs_local
     xlocal    = zero 
@@ -459,9 +487,9 @@ contains
     !$omp taskwait
     deallocate(xlocal, rhs_local)
 
-    call print_task_stat("BWD SCHEDULER STAT", scheduler%masterWorker, &
-      scheduler%task_info(scheduler%masterWorker))
-    call trace_log_dump_paje('trace_fwd_bwd.out')
+!   call print_task_stat("BWD SCHEDULER STAT", scheduler%masterWorker, &
+!     scheduler%task_info(scheduler%masterWorker))
+!   call trace_log_dump_paje('trace_fwd_bwd.out')
 
   end subroutine solve_bwd
   
