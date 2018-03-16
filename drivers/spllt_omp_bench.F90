@@ -51,8 +51,8 @@ program spllt_omp
   double precision, allocatable       :: facto_timer(:)
 
   ! stats
-  integer,          allocatable       :: order(:)   ! Matrix permutation array
-  real(wp),         allocatable       :: work(:,:)  ! Workspace
+  integer,          allocatable       :: order(:)     ! Matrix permutation array
+  real(wp),         allocatable       :: workspace(:) ! Workspace
   double precision, allocatable       :: normRes(:), normRHS(:)
   double precision, allocatable       :: errNorm(:), solNorm(:)
   integer                             :: nnrhs, nnb, nb_i, min_nb
@@ -192,7 +192,7 @@ program spllt_omp
      stop
   endif
   
-  allocate(order(n), work(n, nrhs_max))
+  allocate(order(n), stat = st)
   allocate(analyse_timer(nnb), facto_timer(nnb))
   allocate(res(n, nrhs_max), normRes(nrhs_max), normRHS(nrhs_max), &
     errNorm(nrhs_max), solNorm(nrhs_max))
@@ -229,6 +229,10 @@ program spllt_omp
     !$omp end parallel
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
+    if(.not. allocated(workspace)) then
+      allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
+        nrhs_max * scheduler%nworker), stat = st)
+    end if
     !!!!!!!!!!!!!!!!!!!!
     ! Compute dependencies of each blk
     call spllt_compute_solve_dep(fkeep)
@@ -247,7 +251,7 @@ program spllt_omp
       !
       call system_clock(start_t, rate_t)
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
-        scheduler=scheduler)
+        workspace=workspace, scheduler=scheduler)
       call system_clock(stop_t)
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 
@@ -256,7 +260,7 @@ program spllt_omp
       !
       call system_clock(start_t, rate_t)
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
-        scheduler=scheduler)
+        workspace=workspace, scheduler=scheduler)
       call system_clock(stop_t)
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 
@@ -307,7 +311,7 @@ program spllt_omp
 
   call trace_log_dump_paje('trace_bench_full.out')
 
-  deallocate(order, rhs, sol, sol_computed, ptr, row, val, work)
+  deallocate(order, rhs, sol, sol_computed, ptr, row, val, workspace)
   deallocate(fwd_timer, bwd_timer, nrhs_list, facto_timer, analyse_timer)
   deallocate(trace_names)
 

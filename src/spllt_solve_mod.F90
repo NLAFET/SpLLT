@@ -42,7 +42,6 @@ contains
     integer                             :: st           ! stat parameter
     real(wp),                  pointer  :: work(:)
     type(spllt_omp_scheduler), pointer  :: sched
-    real(wp),                  pointer  :: work2(:,:)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -71,19 +70,18 @@ contains
     !!!!!!!!!!!!!!!!!!!!!
     ! worker
     !
-    allocate(work(n), stat = st)
-    call spllt_scheduler_alloc(sched, st)
-    allocate(work2(fkeep%maxmn+n, sched%nworker), stat = st)
-    call spllt_scheduler_alloc(sched, st)
+   !allocate(work(n), stat = st)
+   !call spllt_scheduler_alloc(sched, st)
+    allocate(work(n + (fkeep%maxmn + n) * sched%nworker), stat = st)
+    call spllt_scheduler_alloc(scheduler, st)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
-      solve_step, work, work2, sched)
+      solve_step, work, sched) !TODO
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Desallocation
     !
     deallocate(work)
-    deallocate(work2)
 
     if(.not.present(scheduler)) then
       deallocate(sched%task_info)
@@ -123,9 +121,8 @@ contains
     integer                             :: n            ! #rows
     integer                             :: solve_step   ! Selector step
     integer                             :: st           ! stat parameter
-    real(wp),                  pointer  :: work(:,:)
+    real(wp),                  pointer  :: work(:)
     type(spllt_omp_scheduler), pointer  :: sched
-    real(wp),                  pointer  :: work2(:,:)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -155,19 +152,20 @@ contains
     ! worker
     !
 
-    allocate(work(n, nrhs), stat = st)
-    call spllt_scheduler_alloc(sched, st)
-    allocate(work2((fkeep%maxmn+n)*nrhs, sched%nworker), stat = st)
-    call spllt_scheduler_alloc(sched, st)
+   !allocate(work(n, nrhs), stat = st)
+   !call spllt_scheduler_alloc(sched, st)
+   !allocate(work2((fkeep%maxmn+n)*nrhs, sched%nworker), stat = st)
+   !call spllt_scheduler_alloc(sched, st)
+    allocate(work(n*nrhs + (fkeep%maxmn + n) * nrhs * sched%nworker), stat = st)
+    call spllt_scheduler_alloc(scheduler, st)
     
     call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
-      info, solve_step, work, work2, sched)
+      info, solve_step, work, sched)
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Desallocation
     !
     deallocate(work)
-    deallocate(work2)
 
     if(.not.present(scheduler)) then
       deallocate(sched%task_info)
@@ -180,7 +178,7 @@ contains
 
 
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
-      info, job, work, work2, scheduler)
+      info, job, workspace, scheduler)
     use spllt_data_mod
     implicit none
 
@@ -200,20 +198,26 @@ contains
     ! job = 0 or absent: complete solve performed
     ! job = 1 : forward eliminations only (PLx = b)
     ! job = 2 : backsubs only ((PL)^Tx = b)
-    real(wp), dimension(fkeep%n, nrhs), intent(out)               :: work
-   !real(wp), dimension((fkeep%maxmn+n)*nrhs, scheduler%nworker)  :: work2
-    real(wp), intent(out)                                         :: work2(:,:)
-    type(spllt_omp_scheduler), intent(inout), target              :: scheduler
+!   real(wp), dimension(fkeep%n, nrhs), intent(out)  :: work
+    real(wp), intent(out), target                    :: workspace(:)
+    type(spllt_omp_scheduler), intent(inout), target :: scheduler
 
     integer           :: j        ! Iterator
     integer           :: n        ! Order of the system
     character(len=30) :: context  ! Name of the subroutine
+    real(wp), pointer :: work(:,:)
+    real(wp), pointer :: work2(:)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
 
     n = fkeep%n
     context = 'spllt_solve_mult_double_worker'
+
+    work(1 : n, 1 : nrhs) => workspace(1 : n * nrhs)
+    work2(1 : (fkeep%maxmn + n) * nrhs * scheduler%nworker) =>      &
+      workspace(n * nrhs + 1 : nrhs * (n + (fkeep%maxmn + n) *      &
+      scheduler%nworker))
 
     select case(job)
       case(0)
@@ -228,7 +232,7 @@ contains
         call solve_fwd(nrhs, work, n, fkeep, work2, scheduler)
 
         ! Backward solve
-        call solve_bwd(nrhs, work, n, fkeep, scheduler)
+        call solve_bwd(nrhs, work, n, fkeep, work2, scheduler)
 
        !
        ! Reorder soln
@@ -249,7 +253,7 @@ contains
       case(2)
         work = x
 
-        call solve_bwd(nrhs, work, n, fkeep, scheduler)
+        call solve_bwd(nrhs, work, n, fkeep, work2, scheduler)
 
         do j = 1, n
            x(j,:) = work(order(j),:)
@@ -271,7 +275,7 @@ contains
   !*************************************************
   !
   ! Forward solve routine
-  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, work, scheduler)
+  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, workspace, scheduler)
     use spllt_data_mod
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
@@ -283,22 +287,22 @@ contains
     integer,                    intent(in)    :: nrhs ! Number of RHS
     integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
     real(wp),                   intent(inout) :: rhs(ldr*nrhs)
-    real(wp), target,           intent(out)   :: work(:,:)
+    real(wp), target,           intent(out)   :: workspace(:)
     type(spllt_omp_scheduler),  intent(inout) :: scheduler
 
     ! real(wp) :: xlocal(keep%n)
-    integer       :: num_node
-    integer       :: node
-    integer       :: sa, en
-    integer       :: numcol, numrow ! Number of column/row in node 
-    integer       :: nc, nr         ! Number of block-column/block-row in node
-    integer       :: jj, ii
-    integer       :: dblk           ! Diagonal index 
-    integer       :: s_nb           ! Block size in node
-    integer       :: blk            ! Block index
-    integer       :: st             ! Stat parameter
-    integer       :: fwd_update_id, fwd_block_id
-    integer       :: nworker
+    integer           :: num_node
+    integer           :: node
+    integer           :: sa, en
+    integer           :: numcol, numrow ! #column/row in node 
+    integer           :: nc, nr         ! #block-column/block-row in node
+    integer           :: jj, ii
+    integer           :: dblk           ! Diagonal index 
+    integer           :: s_nb           ! Block size in node
+    integer           :: blk            ! Block index
+    integer           :: st             ! Stat parameter
+    integer           :: fwd_update_id, fwd_block_id
+    integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
@@ -322,9 +326,15 @@ contains
    !allocate(rhs_local(ldr*nrhs, nworker), stat=st)
    !call spllt_scheduler_alloc(scheduler, st)
 
-    xlocal    => work(1 : fkeep%maxmn * nrhs, 1 : nworker)
-    rhs_local => work(fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
-      1 : nworker)
+   !xlocal    => work(1 : fkeep%maxmn * nrhs, 1 : nworker)
+   !rhs_local => work(fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
+   !  1 : nworker)
+    xlocal(1 : fkeep%maxmn * nrhs, 1 : nworker) => workspace(1 : fkeep%maxmn * &
+      nrhs * nworker)
+    rhs_local(1 : ldr * nrhs, 1 : nworker) => workspace(fkeep%maxmn * nrhs * &
+      nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+   !fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
+   !  1 : nworker)
 
     ! initialise rhs_local
     xlocal    = zero 
@@ -337,13 +347,13 @@ contains
 !     print *, "Node ", node
 !     call print_node(fkeep, node)
        ! Get node info
-       s_nb = fkeep%nodes(node)%nb
-       sa = fkeep%nodes(node)%sa
-       en = fkeep%nodes(node)%en
+       s_nb   = fkeep%nodes(node)%nb
+       sa     = fkeep%nodes(node)%sa
+       en     = fkeep%nodes(node)%en
        numcol = en - sa + 1
        numrow = size(fkeep%nodes(node)%index)
-       nc = (numcol-1) / s_nb + 1
-       nr = (numrow-1) / s_nb + 1 
+       nc     = (numcol-1) / s_nb + 1
+       nr     = (numrow-1) / s_nb + 1 
        
        ! Get first diag block in node
        dblk = fkeep%nodes(node)%blk_sa
@@ -384,7 +394,7 @@ contains
 
   end subroutine solve_fwd
 
-  subroutine solve_bwd(nrhs, rhs, ldr, fkeep, scheduler)
+  subroutine solve_bwd(nrhs, rhs, ldr, fkeep, workspace, scheduler)
     use spllt_data_mod
     use spllt_solve_task_mod
     use spllt_solve_kernels_mod
@@ -392,28 +402,29 @@ contains
     use utils_mod
     implicit none
 
-    type(spllt_fkeep), intent(in) :: fkeep
-    integer, intent(in)           :: nrhs   ! Number of RHS
-    integer, intent(in)           :: ldr    ! Leading dimension of RHS
-    real(wp), intent(inout)       :: rhs(ldr, nrhs)
-    type(spllt_omp_scheduler)     :: scheduler
+    type(spllt_fkeep),          intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    real(wp),                   intent(inout) :: rhs(ldr, nrhs)
+    real(wp), target,           intent(out)   :: workspace(:)
+    type(spllt_omp_scheduler),  intent(inout) :: scheduler
 
-    integer :: num_node
+    integer           :: num_node
     ! Node info
-    integer               :: node
-    integer               :: sa, en
-    integer               :: numcol, numrow ! Number of column/row in node 
-    integer               :: nc, nr ! Number of block-column/block-row in node
-    integer               :: s_nb ! Block size in node
-    integer               :: jj, ii
-    integer               :: dblk
+    integer           :: node
+    integer           :: sa, en
+    integer           :: numcol, numrow ! #column/row in node 
+    integer           :: nc, nr         ! #block-column/block-row in node
+    integer           :: s_nb           ! Block size in node
+    integer           :: jj, ii
+    integer           :: dblk
     ! Block info
-    integer               :: blk ! Block index
-    integer               :: bwd_update_id, bwd_block_id
-    real(wp), allocatable :: xlocal(:, :) ! update_buffer workspace
-    real(wp), allocatable :: rhs_local(:, :) ! update_buffer workspace
-    integer :: st ! Stat parameter
-    integer :: nworker
+    integer           :: blk            ! Block index
+    integer           :: bwd_update_id, bwd_block_id
+    integer           :: st             ! Stat parameter
+    integer           :: nworker
+    real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
+    real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
     nworker   = scheduler%nworker
 
@@ -430,10 +441,14 @@ contains
 !   print *, "[spllt_solve_mod] solve_bwd"
 
     ! Allocate workspace
-    allocate(xlocal(fkeep%maxmn*nrhs, nworker), stat=st)
-    call spllt_scheduler_alloc(scheduler, st)
-    allocate(rhs_local(ldr*nrhs, nworker), stat=st)
-    call spllt_scheduler_alloc(scheduler, st)
+   !allocate(xlocal(fkeep%maxmn*nrhs, nworker), stat=st)
+   !call spllt_scheduler_alloc(scheduler, st)
+   !allocate(rhs_local(ldr*nrhs, nworker), stat=st)
+   !call spllt_scheduler_alloc(scheduler, st)
+    xlocal(1 : fkeep%maxmn * nrhs, 1 : nworker) => workspace(1 : fkeep%maxmn * &
+      nrhs * nworker)
+    rhs_local(1 : ldr * nrhs, 1 : nworker) => workspace(fkeep%maxmn * nrhs * &
+      nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
     ! initialise rhs_local
     xlocal    = zero 
@@ -444,13 +459,13 @@ contains
     do node = num_node, 1, -1
 
        ! Get node info
-       s_nb = fkeep%nodes(node)%nb
-       sa = fkeep%nodes(node)%sa
-       en = fkeep%nodes(node)%en
+       s_nb   = fkeep%nodes(node)%nb
+       sa     = fkeep%nodes(node)%sa
+       en     = fkeep%nodes(node)%en
        numcol = en - sa + 1
        numrow = size(fkeep%nodes(node)%index)
-       nc = (numcol-1) / s_nb + 1
-       nr = (numrow-1) / s_nb + 1 
+       nc     = (numcol-1) / s_nb + 1
+       nr     = (numrow-1) / s_nb + 1 
 
        ! Get first diag block in node
        dblk = fkeep%bc(fkeep%nodes(node)%blk_en)%dblk
@@ -485,7 +500,7 @@ contains
 
     ! Deallocate workspace
     !$omp taskwait
-    deallocate(xlocal, rhs_local)
+   !deallocate(xlocal, rhs_local)
 
 !   call print_task_stat("BWD SCHEDULER STAT", scheduler%masterWorker, &
 !     scheduler%task_info(scheduler%masterWorker))
