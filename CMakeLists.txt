@@ -112,13 +112,6 @@ endif()
 set(LIBS)
 
 ########################################
-# SPRAL
-set(SPRAL_DIR $ENV{SPRALDIR} CACHE PATH "Location of Spral Library")
-include_directories(${SPRAL_DIR})
-message(STATUS "SPRAL Directory: " ${SPRAL_DIR})   
-
-
-########################################
 # Runtime system
 
 # add spLLT test driver
@@ -358,24 +351,225 @@ endif()
 set(LIBS ${LIBS} spllt)
 
 ########################################
-# spral
-find_library(SPRAL_LIBRARIES spral PATHS ${SPRAL_DIR})
-set(LIBS ${LIBS} ${SPRAL_LIBRARIES})
+# SPRAL
+
+# Manage env
+if(DEFINED ENV{SPRAL_LIB})
+  set(SPRAL_LIB $ENV{SPRAL_LIB} CACHE PATH "Location of SPRAL library")
+endif()
+if(DEFINED ENV{SPRAL_INC})
+  set(SPRAL_INC $ENV{SPRAL_INC} CACHE PATH "Location of SPRAL include")
+endif()
+if(DEFINED ENV{SPRAL_DIR})
+  set(SPRAL_DIR $ENV{SPRAL_DIR} CACHE PATH "Location of SPRAL directory")
+endif()
+
+# Include
+if(SPRAL_LIB AND SPRAL_INC)
+  message(STATUS "SPRAL_INC used : " ${SPRAL_INC})
+  message(STATUS "SPRAL_LIB used : " ${SPRAL_LIB})
+  include_directories(${SPRAL_INC})
+  set(SPRAL_LIB_PATH CACHE PATH ${SPRAL_LIB} "Location of SPRAL library")
+else(SPRAL_LIB AND SPRAL_INC)
+  if(SPRAL_DIR)
+    include_directories(${SPRAL_DIR})
+    message(STATUS "SPRAL_DIR used: " ${SPRAL_DIR})
+    set(SPRAL_LIB_PATH ${SPRAL_DIR} CACHE PATH "Location of SPRAL library")
+  else(SPRAL_DIR)
+    message(ERROR " You should provide both SPRAL_LIB and SPRAL_INC, "
+      "or SPRAL_DIR.")
+  endif(SPRAL_DIR)
+endif(SPRAL_LIB AND SPRAL_INC)
+
+# Search library
+if(SPRAL_LIB_PATH)
+  set(LIB_TO_FIND "spral")
+
+  find_library(SPRAL_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${SPRAL_LIB_PATH})
+
+  if(SPRAL_LIBRARIES)
+    set(LIBS ${LIBS} ${SPRAL_LIBRARIES})
+  else(SPRAL_LIBRARIES)
+    message(FATAL_ERROR "${SPRAL_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+  endif(SPRAL_LIBRARIES)
+
+  unset(LIB_TO_FIND)
+else(SPRAL_LIB_PATH)
+  message(FATAL_ERROR "No Path for SPRAL library provided. "
+    "Define either both SPRAL_LIB and SPRAL_INC, or SPRAL_DIR.")
+endif(SPRAL_LIB_PATH)
 
 ########################################
 # Metis
-set(METIS_DIR $ENV{METIS_LIB} CACHE PATH "Location of Metis Library")
-message(STATUS "METISDIR given : ${METIS_DIR}")
-find_library(METIS_LIBRARIES metis PATHS ${METIS_DIR})
-message(STATUS "METIS_LIBRARIES from find : ${METIS_LIBRARIES}")
-set(LIBS ${LIBS} ${METIS_LIBRARIES})
+
+# Manage env
+if(DEFINED ENV{METIS_LIB})
+  set(METIS_LIB $ENV{METIS_LIB} CACHE PATH "Location of METIS library")
+endif()
+if(DEFINED ENV{METIS_INC})
+  set(METIS_INC $ENV{METIS_INC} CACHE PATH "Location of METIS include")
+endif()
+if(DEFINED ENV{METIS_DIR})
+  set(METIS_DIR $ENV{METIS_DIR} CACHE PATH "Location of METIS directory")
+endif()
+
+# Include
+if(METIS_LIB AND METIS_INC)
+  message(STATUS "METIS_INC used : " ${METIS_INC})
+  message(STATUS "METIS_LIB used : " ${METIS_LIB})
+  include_directories(${METIS_INC})
+  set(METIS_LIB_PATH CACHE PATH ${METIS_LIB} "Location of METIS library")
+else(METIS_LIB AND METIS_INC)
+  if(METIS_DIR)
+    include_directories(${METIS_DIR}/Lib)
+    message(STATUS "METIS_DIR used: " ${METIS_DIR})
+    set(METIS_LIB_PATH ${METIS_DIR} CACHE PATH "Location of METIS library")
+  else(METIS_DIR)
+    message(ERROR " You should provide both METIS_LIB and METIS_INC, "
+      "or METIS_DIR.")
+  endif(METIS_DIR)
+endif(METIS_LIB AND METIS_INC)
+
+# Search library
+if(METIS_LIB_PATH)
+  set(LIB_TO_FIND "metis")
+
+  find_library(METIS_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${METIS_LIB_PATH})
+
+  if(METIS_LIBRARIES)
+    set(LIBS ${LIBS} ${METIS_LIBRARIES})
+  else(METIS_LIBRARIES)
+    message(FATAL_ERROR "${METIS_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+  endif(METIS_LIBRARIES)
+
+  unset(LIB_TO_FIND)
+else(METIS_LIB_PATH)
+  message(FATAL_ERROR "No Path for METIS library provided. "
+    "Define either both METIS_LIB and METIS_INC, or METIS_DIR.")
+endif(METIS_LIB_PATH)
+
+#if(METIS_LIB)
+#  set(METIS_LIB_PATH CACHE PATH ${METIS_LIB} "Location of METIS library")
+#else(METIS_LIB)
+#  if(DEFINED ENV{METIS_LIB})
+#    set(METIS_LIB_PATH CACHE PATH $ENV{METIS_LIB} "Location of METIS library")
+#  else(DEFINED ENV{METIS_LIB})
+#    set(METIS_DIR $ENV{METIS_DIR} CACHE PATH "Location of METIS directory")
+#    include_directories(${METIS_DIR}/Lib)
+#    message(STATUS "METIS Directory: " ${METIS_DIR})
+#    set(METIS_LIB_PATH ${METIS_DIR} CACHE PATH "Location of METIS library")
+#  endif(DEFINED ENV{METIS_LIB})
+#endif(METIS_LIB)
+#
+#if(METIS_LIB_PATH)
+#  set(LIB_TO_FIND "metis")
+#
+#  find_library(METIS_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${METIS_LIB_PATH})
+#
+#  if(METIS_LIBRARIES)
+#    set(LIBS ${LIBS} ${METIS_LIBRARIES})
+#  else(METIS_LIBRARIES)
+#    message(FATAL_ERROR "${METIS_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+#  endif(METIS_LIBRARIES)
+#
+#  unset(LIB_TO_FIND)
+#else(METIS_LIB_PATH)
+#  message(FATAL_ERROR "No Path for METIS provided. "
+#                      "Define either METIS_DIR or METIS_LIB")
+#endif(METIS_LIB_PATH)
 
 ########################################
 # HWLOC
-set(HWLOC_DIR $ENV{HWLOCDIR} CACHE PATH "Location of HWLOC Library")
-include_directories(${HWLOC_DIR}/include)  
-find_library(HWLOC_LIBRARIES hwloc PATHS ${HWLOC_DIR}/lib)
-set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
+
+# Manage env
+if(DEFINED ENV{HWLOC_LIB})
+  set(HWLOC_LIB $ENV{HWLOC_LIB} CACHE PATH "Location of HWLOC library")
+endif()
+if(DEFINED ENV{HWLOC_INC})
+  set(HWLOC_INC $ENV{HWLOC_INC} CACHE PATH "Location of HWLOC include")
+endif()
+if(DEFINED ENV{HWLOC_DIR})
+  set(HWLOC_DIR $ENV{HWLOC_DIR} CACHE PATH "Location of HWLOC directory")
+endif()
+
+# Include
+if(HWLOC_LIB AND HWLOC_INC)
+  message(STATUS "HWLOC_INC used : " ${HWLOC_INC})
+  message(STATUS "HWLOC_LIB used : " ${HWLOC_LIB})
+  include_directories(${HWLOC_INC})
+  set(HWLOC_LIB_PATH CACHE PATH ${HWLOC_LIB} "Location of HWLOC library")
+else(HWLOC_LIB AND HWLOC_INC)
+  if(HWLOC_DIR)
+    include_directories(${HWLOC_DIR}/include)
+    message(STATUS "HWLOC_DIR used: " ${HWLOC_DIR})
+    set(HWLOC_LIB_PATH ${HWLOC_DIR}/hwloc/.libs CACHE PATH 
+      "Location of HWLOC library")
+  else(HWLOC_DIR)
+    message(ERROR " You should provide both HWLOC_LIB and HWLOC_INC, "
+      "or HWLOC_DIR.")
+  endif(HWLOC_DIR)
+endif(HWLOC_LIB AND HWLOC_INC)
+
+# Search library
+if(HWLOC_LIB_PATH)
+  set(LIB_TO_FIND "hwloc")
+
+  find_library(HWLOC_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${HWLOC_LIB_PATH})
+
+  if(HWLOC_LIBRARIES)
+    set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
+  else(HWLOC_LIBRARIES)
+    message(FATAL_ERROR "${HWLOC_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+  endif(HWLOC_LIBRARIES)
+
+  unset(LIB_TO_FIND)
+else(HWLOC_LIB_PATH)
+  message(FATAL_ERROR "No Path for HWLOC library provided. "
+    "Define either both HWLOC_LIB and HWLOC_INC, or HWLOC_DIR.")
+endif(HWLOC_LIB_PATH)
+
+#if(HWLOC_LIB)
+#  set(HWLOC_LIB_PATH CACHE PATH ${HWLOC_LIB} "Location of HWLOC library")
+#else(HWLOC_LIB)
+#  if(DEFINED ENV{HWLOC_LIB})
+#    set(HWLOC_LIB_PATH CACHE PATH $ENV{HWLOC_LIB} "Location of HWLOC library")
+#  else(DEFINED ENV{HWLOC_LIB})
+#    set(HWLOC_DIR $ENV{HWLOC_DIR} CACHE PATH "Location of HWLOC directory")
+#    include_directories(${HWLOC_DIR}/include)
+#    message(STATUS "HWLOC Directory: " ${HWLOC_DIR})
+#    set(HWLOC_LIB_PATH ${HWLOC_DIR}/hwloc/.libs CACHE PATH 
+#      "Location of HWLOC library")
+#  endif(DEFINED ENV{HWLOC_LIB})
+#endif(HWLOC_LIB)
+#
+#if(HWLOC_LIB_PATH)
+#  set(LIB_TO_FIND "hwloc")
+#
+#  find_library(HWLOC_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${HWLOC_LIB_PATH})
+#
+#  if(HWLOC_LIBRARIES)
+#    set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
+#   #message(STATUS "Found ${HWLOC_LIBRARIES}")
+#   #set(CMAKE_REQUIRED_LIBRARIES ${HWLOC_LIBRARIES})
+#   #CHECK_FUNCTION_EXISTS(${FUNCTION_TO_FIND} HWLOC_FOUND)
+#   #unset(CMAKE_REQUIRED_LIBRARIES)
+#   #message(STATUS "CHECK_FUNCTION_EXISTS on ${FUNCTION_TO_FIND}"
+#   #                " returned : ${HWLOC_FOUND}")
+#
+#   #if(HWLOC_FOUND)
+#   #  set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
+#   #else(HWLOC_FOUND)
+#   #  message(ERROR "${FUNCTION_TO_FIND} can not be found in ${LIB_TO_FIND}")
+#   #endif(HWLOC_FOUND)
+#  else(HWLOC_LIBRARIES)
+#    message(FATAL_ERROR "${HWLOC_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+#  endif(HWLOC_LIBRARIES)
+#
+#  unset(LIB_TO_FIND)
+#else(HWLOC_LIB_PATH)
+#  message(FATAL_ERROR "No Path for HWLOC provided. "
+#                      "Define either HWLOC_DIR or HWLOC_LIB")
+#endif(HWLOC_LIB_PATH)
 
 ########################################
 # if (${BLAS_LAPACK} MATCHES "MKL")
@@ -509,6 +703,7 @@ endif()
 
 if(${RUNTIME} MATCHES "OMP")
   list(APPEND test_drivers "drivers/spllt_omp.F90")
+  list(APPEND test_drivers "drivers/spllt_omp_bench.F90")
 endif()
 
 foreach(test_driver ${test_drivers})
