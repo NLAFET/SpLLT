@@ -8,13 +8,13 @@ module trace_mod
      real(kind(1.d0)) :: start, stop
   end type event_type
 
-  integer, save :: trace_nth
-  logical, allocatable, save :: pendings(:)
-  real(c_double), save :: timezero, start, stop
-  integer, parameter :: maxevents=15000, maxtypes=20
-  real(c_double), save :: ttimes(1:maxtypes)
+  integer, save               :: trace_nth
+  logical, allocatable, save  :: pendings(:)
+  real(c_double), save        :: timezero, start, stop
+  integer, parameter          :: maxevents=15000, maxtypes=20
+  real(c_double), save        :: ttimes(1:maxtypes)
   type(event_type), allocatable, save :: events(:,:)
-  real(c_double), allocatable, save :: starts(:), stops(:)
+  real(c_double), allocatable, save   :: starts(:), stops(:)
 
   character(len=20), save :: labels(maxtypes)
   character(len=7) :: colors(maxtypes)
@@ -171,7 +171,7 @@ contains
        write(4,'("6 ",a20," ST_ThreadState ''",a20,"''  ''",3(f8.6,x),"''")')labels(i),labels(i),r,g,b
     end do
 
-    write(4,'("6 idle ST_ThreadState ''Idle''  ''0 0 0''")')
+    write(4,'("6 idle ST_ThreadState ''Idle''  ''255 255 255''")')
 
     write(4,'("7 0.000000 C_Prog CT_Prog 0 ''Programme''")')
     
