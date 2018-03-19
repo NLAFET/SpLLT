@@ -33,7 +33,7 @@ case(1)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -46,7 +46,7 @@ case(2)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -60,7 +60,7 @@ case(3)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -74,7 +74,7 @@ case(4)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -89,7 +89,7 @@ case(5)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -104,7 +104,7 @@ case(6)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -120,7 +120,7 @@ case(7)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -136,7 +136,7 @@ case(8)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -153,7 +153,7 @@ case(9)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 
@@ -170,7 +170,7 @@ case(10)
 !$omp private(threadID)                                                   &
 !$omp firstprivate(blk) depend(inout: p_bc(blk))
 
-include '../src/include/spllt_solve_fwd_update_worker.F90.inc'
+# include "spllt_solve_fwd_update_worker.F90.inc"
 
 !$omp end task
 

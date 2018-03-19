@@ -84,7 +84,7 @@ contains
         !$omp task                                &
         include 'include/spllt_solve_fwd_block_omp_decl.F90.inc'
 
-        include 'include/spllt_solve_fwd_block_worker.F90.inc'
+#include "include/spllt_solve_fwd_block_worker.F90.inc"
 
         !$omp end task
       else
@@ -112,7 +112,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'include/spllt_fwd_block_cases.F90.inc'
+#include "include/spllt_fwd_block_cases.F90.inc"
 
             end select
 
@@ -281,7 +281,7 @@ contains
         !$omp task                                &
         include 'include/spllt_solve_fwd_update_omp_decl.F90.inc'
 
-        include 'include/spllt_solve_fwd_update_worker.F90.inc'
+#include "include/spllt_solve_fwd_update_worker.F90.inc"
 
         !$omp end task
       else
@@ -309,7 +309,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'include/spllt_fwd_update_cases.F90.inc'
+#include "include/spllt_fwd_update_cases.F90.inc"
 
             end select
             beta = beta + chunk_size
@@ -468,7 +468,7 @@ contains
         !$omp task                                &
         include 'include/spllt_solve_bwd_block_omp_decl.F90.inc'
 
-        include 'include/spllt_solve_bwd_block_worker.F90.inc'
+#include "include/spllt_solve_bwd_block_worker.F90.inc"
 
         !$omp end task
       else
@@ -496,7 +496,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'include/spllt_bwd_block_cases.F90.inc'
+#include "include/spllt_bwd_block_cases.F90.inc"
 
             end select
 
@@ -678,7 +678,7 @@ contains
         !$omp task                                &
         include 'include/spllt_solve_bwd_update_omp_decl.F90.inc'
 
-        include 'include/spllt_solve_bwd_update_worker.F90.inc'
+#include "include/spllt_solve_bwd_update_worker.F90.inc"
 
         !$omp end task
       else
@@ -706,7 +706,7 @@ contains
               !
               !This file contains the remaining cases that are generated through a script
               !
-              include 'include/spllt_bwd_update_cases.F90.inc'
+#include "include/spllt_bwd_update_cases.F90.inc"
 
             end select
             beta = beta + chunk_size
