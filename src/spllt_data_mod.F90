@@ -156,13 +156,11 @@ module spllt_data_mod
      ! Additional components to handle the list of dependencies of the block
      ! List of blk indices dependencies in :
      !  - the forward step of the solve
-!    integer, pointer  :: fwd_update_dep(:)
      integer, allocatable :: fwd_dep(:)
      integer, allocatable :: fwd_update_dep(:)
-     integer           :: fwd_solve_dep
+     integer              :: fwd_solve_dep
      !  - the backward step of the solve
-     integer           :: bwd_update_dep
-!    integer, pointer  :: bwd_solve_dep(:)
+     integer              :: bwd_update_dep
      integer, allocatable :: bwd_solve_dep(:)
      integer, allocatable :: bwd_dep(:)
 
@@ -314,13 +312,14 @@ module spllt_data_mod
   end type spllt_fkeep
 
   type spllt_omp_task_stat
-    integer :: max_dep                ! max #dep of a task
-    integer :: ntask_run              ! #task run by this thread
-    integer :: ntask_insert           ! #task insert to the runtim
-    integer :: nblk_kdep              ! #block with more than k dep 
-                                      !  (k = 2 by default)
-    integer :: nfake_task_insert      ! #fake task insert
-    integer :: narray_allocated       ! #allocation
+    double precision  :: nflop                  ! # flop performed
+    integer           :: max_dep                ! max #dep of a task
+    integer           :: ntask_run              ! #task run by this thread
+    integer           :: ntask_insert           ! #task insert to the runtim
+    integer           :: nblk_kdep              ! #block with more than k dep 
+                                                !  (k = 2 by default)
+    integer           :: nfake_task_insert      ! #fake task insert
+    integer           :: narray_allocated       ! #allocation
   end type spllt_omp_task_stat
 
   type spllt_omp_scheduler
@@ -373,6 +372,180 @@ module spllt_data_mod
 !   end type spllt_control
 
 contains
+
+  !!!!!!!!!!!!!!!!!!!!!
+  ! TODO update for STARPU
+  !
+  subroutine spllt_deallocate_node(node, stat)
+    type(spllt_node), intent(inout) :: node
+    integer,          intent(out)   :: stat
+
+    integer :: st
+
+    stat = 0
+    if(allocated(node%index)) then
+      deallocate(node%index, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(node%child)) then
+      deallocate(node%child, stat=st)
+      stat = stat + st
+    end if
+  end subroutine spllt_deallocate_node
+
+
+
+  !!!!!!!!!!!!!!!!!!!!!
+  ! TODO update for non OMP runtime
+  !
+  subroutine spllt_deallocate_block(blk, stat)
+    type(spllt_block), intent(inout)  :: blk
+    integer,           intent(out)    :: stat
+
+    integer :: st
+
+    stat = 0
+    ! fwd data
+    deallocate(blk%fwd_dep, stat=st)
+    stat = stat + st
+    deallocate(blk%fwd_update_dep, stat=st)
+    stat = stat + st
+    ! bwd data
+    deallocate(blk%bwd_dep, stat=st)
+    stat = stat + st
+    deallocate(blk%bwd_solve_dep, stat=st)
+    stat = stat + st
+  end subroutine spllt_deallocate_block
+
+
+
+  !!!!!!!!!!!!!!!!!!!!!
+  ! TODO update for STARPU
+  !
+  subroutine spllt_deallocate_workspace_i(workspace, stat)
+    type(spllt_workspace_i), intent(inout)  :: workspace
+    integer,                 intent(out)    :: stat
+
+    if(associated(workspace%c)) then
+      deallocate(workspace%c, stat=stat)
+    end if
+  end subroutine spllt_deallocate_workspace_i
+
+
+
+  subroutine spllt_deallocate_lfactor(lfact, stat)
+    type(lfactor), intent(inout)  :: lfact
+    integer,       intent(out)    :: stat
+
+    if(allocated(lfact%lcol)) then
+      deallocate(lfact%lcol, stat=stat)
+    end if
+  end subroutine spllt_deallocate_lfactor
+
+
+
+  subroutine spllt_deallocate_lmap_type(lmap, stat)
+    type(lmap_type), intent(inout)  :: lmap
+    integer,       intent(out)    :: stat
+
+    if(allocated(lmap%map)) then
+      deallocate(lmap%map, stat=stat)
+    end if
+  end subroutine spllt_deallocate_lmap_type
+
+
+
+  !!!!!!!!!!!!!!!!!!!!!
+  ! Deallocation of fkeep
+  ! TODO update for non OMP runtime
+  !
+  subroutine spllt_deallocate_fkeep(fkeep, stat)
+    type(spllt_fkeep), intent(inout)  :: fkeep
+    integer,           intent(out)    :: stat
+
+    integer :: i, st
+
+    stat = 0
+    if(allocated(fkeep%bc)) then
+      do i = lbound(fkeep%bc,1), ubound(fkeep%bc,1)
+        call spllt_deallocate_block(fkeep%bc(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%bc, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%workspace)) then
+      do i = lbound(fkeep%workspace,1), ubound(fkeep%workspace,1)
+        call spllt_deallocate_block(fkeep%workspace(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%workspace, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%row_list)) then
+      do i = lbound(fkeep%row_list,1), ubound(fkeep%row_list,1)
+        call spllt_deallocate_workspace_i(fkeep%row_list(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%row_list, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%col_list)) then
+      do i = lbound(fkeep%col_list,1), ubound(fkeep%col_list,1)
+        call spllt_deallocate_workspace_i(fkeep%col_list(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%col_list, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%map)) then
+      do i = lbound(fkeep%map,1), ubound(fkeep%map,1)
+        call spllt_deallocate_workspace_i(fkeep%map(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%map, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%flag_array)) then
+      deallocate(fkeep%flag_array, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%lfact)) then
+      do i = lbound(fkeep%lfact,1), ubound(fkeep%lfact,1)
+        call spllt_deallocate_lfactor(fkeep%lfact(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%lfact, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%lmap)) then
+      do i = lbound(fkeep%lmap,1), ubound(fkeep%lmap,1)
+        call spllt_deallocate_lmap_type(fkeep%lmap(i), st)
+        stat = stat + st
+      end do
+      deallocate(fkeep%lmap, stat=st)
+      stat = stat + st
+    end if
+  end subroutine spllt_deallocate_fkeep
+
+
+
+  subroutine spllt_deallocate_akeep(akeep, stat)
+    type(spllt_akeep), intent(inout)  :: akeep
+    integer,           intent(out)    :: stat
+
+    integer :: st
+
+    stat = 0
+    if(allocated(akeep%weight)) then
+      deallocate(akeep%weight, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(akeep%small)) then
+      deallocate(akeep%small, stat=st)
+      stat = stat + st
+    end if
+  end subroutine spllt_deallocate_akeep 
 
   !*************************************************  
   !

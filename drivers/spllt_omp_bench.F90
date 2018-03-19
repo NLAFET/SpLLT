@@ -10,8 +10,6 @@ program spllt_omp
     compiler_version, compiler_options
   implicit none
 
-! integer, external :: omp_get_thread_num, omp_get_num_threads
-
   type(spllt_options)                 :: options ! User-supplied options 
   type(spllt_inform)                  :: info
   integer                             :: st
@@ -38,7 +36,7 @@ program spllt_omp
   double precision, allocatable       :: sol(:,:) 
   double precision, allocatable       :: sol_computed(:,:)
   double precision, allocatable       :: res(:,:)
-  integer                             :: i, j, k, r
+  integer                             :: i, j, k, r, th
   integer                             :: flag, more
   type(spllt_akeep)                   :: akeep ! Symbolic factorization data
   type(spllt_fkeep), target           :: fkeep ! Factorization data
@@ -51,19 +49,26 @@ program spllt_omp
   double precision, allocatable       :: facto_timer(:)
 
   ! stats
-  integer,          allocatable       :: order(:)     ! Matrix permutation array
-  real(wp),         allocatable       :: workspace(:) ! Workspace
-  double precision, allocatable       :: normRes(:), normRHS(:)
-  double precision, allocatable       :: errNorm(:), solNorm(:)
-  integer                             :: nnrhs, nnb, nb_i, min_nb
-  integer,          allocatable       :: nrhs_list(:), nb_list(:)
+  integer,           allocatable      :: order(:)     ! Matrix permutation array
+  real(wp),          allocatable      :: workspace(:) ! Workspace
+  double precision,  allocatable      :: normRes(:), normRHS(:)
+  double precision,  allocatable      :: errNorm(:), solNorm(:)
+  integer                             :: nnrhs, nnb, nb_i
+  integer,           allocatable      :: nrhs_list(:), nb_list(:)
   character(len=10), allocatable      :: trace_names(:)
   character(len=1024)                 :: header
+  character(len=10)                   :: time
+  character(len=8)                    :: date
+  double precision, allocatable       :: fwd_flops(:,:), bwd_flops(:,:)
 
+  ! runtime
   type(spllt_omp_scheduler)           :: scheduler
 
-  write( stdout, '(/4a/)') ' This output was compiled using ', &
-    compiler_version(), ' with the options ', compiler_options()
+  call date_and_time(DATE=date, TIME=time)
+
+  write( stdout, '(/8a/)') ' This output was compiled using ', &
+    compiler_version(), ' with the options ', compiler_options(), &
+    ' and executed ', date, ' at ', time
 
   call spllt_parse_args(options, matfile, nrhs)
 
@@ -113,9 +118,13 @@ program spllt_omp
   end select
   write(*, "(a)") "ok"
 
+  !!!!!!!!!!!!!!!!!!!!!
+  ! Init env of test
+  !
   !$omp parallel 
   !$omp single
 
+#if defined(SPLLT_OMP_TRACE)
   call trace_init(omp_get_num_threads())
 
   allocate(trace_names(4))
@@ -123,25 +132,17 @@ program spllt_omp
     "bwd_update", "bwd_block" ]
 
   call spllt_omp_init_scheduler(scheduler, trace_names, st)
+#else
+  call spllt_omp_init_scheduler(scheduler, stat=st)
+#endif
 
-  call compute_range(options%nb_min, options%nb_max, options%nb_linear_comp, &
-    nb_list)
-! print *, "nb_list = ", nb_list
-  call compute_range(options%nrhs_min, options%nrhs_max, options%nrhs_linear_comp, &
-    nrhs_list)
-! print *, "nrhs_list = ", nrhs_list
+  call compute_range(options%nb_min, options%nb_max,      &
+    options%nb_linear_comp, nb_list)
+  call compute_range(options%nrhs_min, options%nrhs_max,  &
+    options%nrhs_linear_comp, nrhs_list)
 
   nnrhs     = size(nrhs_list)
   nnb       = size(nb_list)
-  min_nb    = 5
-! allocate(nrhs_list(nnrhs))
-! do i=1, nnrhs
-!   nrhs_list(i) = 2**(i-1)
-! end do
-! allocate(nb_list(nnb))
-! do nb_i=1, nnb
-!   nb_list(nb_i) = 2**(min_nb + nb_i - 1)
-! end do
   
   write (header, '(a, a, a, a, i4, a, i4, a, a, a, i4, a, i4, a, a, a, i4,    &
     &a, a, i4, a, a, i4)')                                                    &
@@ -197,8 +198,11 @@ program spllt_omp
   allocate(res(n, nrhs_max), normRes(nrhs_max), normRHS(nrhs_max), &
     errNorm(nrhs_max), solNorm(nrhs_max))
   allocate(fwd_timer(nnrhs, nnb), bwd_timer(nnrhs, nnb))
+  allocate(fwd_flops(nnrhs, nnb), bwd_flops(nnrhs, nnb))
 
 
+  !$omp parallel
+  !$omp single
   do nb_i=1, nnb
 
     options%nb = nb_list(nb_i)
@@ -219,24 +223,28 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Numerical Factorization
     !
-    !$omp parallel
-    !$omp single
+   !!$omp parallel
+   !!$omp single
     call system_clock(start_t, rate_t)
     call spllt_factor(akeep, fkeep, options, val, info)
     call spllt_wait()
     call system_clock(stop_t)
-    !$omp end single
-    !$omp end parallel
+   !!$omp end single
+   !!$omp end parallel
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
     allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
       nrhs_max * scheduler%nworker), stat = st)
+    call spllt_scheduler_alloc(scheduler, st)
+    
+
     !!!!!!!!!!!!!!!!!!!!
     ! Compute dependencies of each blk
+    !
     call spllt_compute_solve_dep(fkeep)
 
-    !$omp parallel
-    !$omp single
+   !!$omp parallel
+   !!$omp single
     do j=1, nnrhs
 
       nrhs = nrhs_list(j)
@@ -252,6 +260,13 @@ program spllt_omp
         workspace=workspace, scheduler=scheduler)
       call system_clock(stop_t)
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
+#if defined(SPLLT_PROFILING_FLOP)
+      fwd_flops(j, nb_i) =  0.0
+      do th = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
+        fwd_flops(j,nb_i) = fwd_flops(j,nb_i) + scheduler%task_info(th)%nflop
+        scheduler%task_info(th)%nflop = 0.0
+      end do
+#endif
 
       !!!!!!!!!!!!!!!!!!!!
       ! Backward substitution
@@ -261,7 +276,16 @@ program spllt_omp
         workspace=workspace, scheduler=scheduler)
       call system_clock(stop_t)
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
+#if defined(SPLLT_PROFILING_FLOP)
+      bwd_flops(j, nb_i) =  0.0
+      do th = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
+        bwd_flops(j,nb_i) = bwd_flops(j,nb_i) + scheduler%task_info(th)%nflop
+        scheduler%task_info(th)%nflop = 0.0
+      end do
+#endif
 
+
+#if defined(SPLLT_DRIVER_CHECK_ERROR)
       !!!!!!!!!!!!!!!!!!!!
       ! STATISTICS
       !
@@ -279,13 +303,17 @@ program spllt_omp
           write(0, "(a, i4, a, i4)") "Wrong Bwd error for ", i, "/", nrhs
         end if
       end do
+#endif
     end do
-    !$omp end single
-    !$omp end parallel
-    deallocate(akeep%small, akeep%weight, workspace)
-    deallocate(fkeep%bc, fkeep%workspace, fkeep%nodes, fkeep%row_list, &
-      fkeep%col_list, fkeep%map, fkeep%lfact, fkeep%lmap)
+   !!$omp end single
+   !!$omp end parallel
+
+    call spllt_deallocate_akeep(akeep, st)
+    deallocate(workspace, stat=st)
+    call spllt_deallocate_fkeep(fkeep, st)
   end do
+  !$omp end single
+  !$omp end parallel
 
 
   do i = 1, scheduler%nworker
@@ -300,17 +328,31 @@ program spllt_omp
  !  end do
  !end do
 
-  call timer_log_dump("fwd step"//ACHAR(10)//header, fwd_timer, 'fwd_time.out')
-  call timer_log_dump("bwd step"//ACHAR(10)//header, bwd_timer, 'bwd_time.out')
+  call timer_log_dump("fwd step"//ACHAR(10)//header, fwd_timer, &
+    'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+  call timer_log_dump("bwd step"//ACHAR(10)//header, bwd_timer, &
+    'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
   call timer_log_dump("analyse step"//ACHAR(10)//header, analyse_timer, &
-    'analyse_time.out')
+    'analyse_time_'//trim(matfile)//'.out_'//date//'-'//time)
   call timer_log_dump("facto step"//ACHAR(10)//header, facto_timer, &
-    'facto_time.out')
+    'facto_time_'//trim(matfile)//'.out_'//date//'-'//time)
 
-  call trace_log_dump_paje('trace_bench_full.out')
+#if defined(SPLLT_PROFILING_FLOP)
+  call flop_log_dump("fwd step"//ACHAR(10)//header, fwd_flops, &
+    'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+  call flop_log_dump("bwd step"//ACHAR(10)//header, bwd_flops, &
+    'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+  call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
+    &//date//'-'//time)
+#endif
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val)
   deallocate(fwd_timer, bwd_timer, nrhs_list, facto_timer, analyse_timer)
-  deallocate(trace_names)
+  if(allocated(trace_names)) then
+    deallocate(trace_names)
+  end if
 
 end program spllt_omp
