@@ -229,10 +229,8 @@ program spllt_omp
     !$omp end parallel
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
-    if(.not. allocated(workspace)) then
-      allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
-        nrhs_max * scheduler%nworker), stat = st)
-    end if
+    allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
+      nrhs_max * scheduler%nworker), stat = st)
     !!!!!!!!!!!!!!!!!!!!
     ! Compute dependencies of each blk
     call spllt_compute_solve_dep(fkeep)
@@ -284,7 +282,7 @@ program spllt_omp
     end do
     !$omp end single
     !$omp end parallel
-    deallocate(akeep%small, akeep%weight)
+    deallocate(akeep%small, akeep%weight, workspace)
     deallocate(fkeep%bc, fkeep%workspace, fkeep%nodes, fkeep%row_list, &
       fkeep%col_list, fkeep%map, fkeep%lfact, fkeep%lmap)
   end do
@@ -311,7 +309,7 @@ program spllt_omp
 
   call trace_log_dump_paje('trace_bench_full.out')
 
-  deallocate(order, rhs, sol, sol_computed, ptr, row, val, workspace)
+  deallocate(order, rhs, sol, sol_computed, ptr, row, val)
   deallocate(fwd_timer, bwd_timer, nrhs_list, facto_timer, analyse_timer)
   deallocate(trace_names)
 
