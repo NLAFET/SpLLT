@@ -106,7 +106,7 @@ program spllt_omp
   !$omp parallel 
   !$omp single
 
-  call spllt_omp_init_scheduler(scheduler, st)
+  call spllt_omp_init_scheduler(scheduler, stat=st)
 
   !$omp end single
   !$omp end parallel
