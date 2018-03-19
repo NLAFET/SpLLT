@@ -10,6 +10,11 @@ module utils_mod
     module procedure timer_log_dump_one
     module procedure timer_log_dump_mult
   end interface timer_log_dump
+
+  interface flop_log_dump
+    module procedure flop_log_dump_one
+    module procedure flop_log_dump_mult
+  end interface flop_log_dump
 contains
 
   subroutine print_darray(array_name, n, val)
@@ -235,10 +240,11 @@ contains
     type(spllt_omp_task_stat), intent(in) :: task
 
     print *, msg, " : ", task_id
-    print '(a, i6)', "#task insert        : ", task%ntask_insert
-    print '(a, i6)', "#fake task insert   : ", task%nfake_task_insert
-    print '(a, i6)', "#task run           : ", task%ntask_run
-    print '(a, i6)', "#array allocate     : ", task%narray_allocated
+    print '(a, i6)',    "#task insert        : ", task%ntask_insert
+    print '(a, i6)',    "#fake task insert   : ", task%nfake_task_insert
+    print '(a, i6)',    "#task run           : ", task%ntask_run
+    print '(a, i6)',    "#array allocate     : ", task%narray_allocated
+    print '(a, d12.2)', "#flop               : ", task%nflop
 
   end subroutine print_omp_task_stat
 
@@ -264,6 +270,7 @@ contains
     use spllt_data_mod
     type(spllt_omp_task_stat), intent(out) :: task_stat
 
+    task_stat%nflop             = 0.0
     task_stat%ntask_run         = 0
     task_stat%ntask_insert      = 0
     task_stat%nfake_task_insert = 0
@@ -401,6 +408,52 @@ contains
 
     close(4)
   end subroutine timer_log_dump_one
+
+
+
+  subroutine flop_log_dump_one(header, flop, ofile)
+
+    character, intent(in)         :: header*(*)
+    double precision, intent(in)  :: flop(:)
+    character, intent(in)         :: ofile*(*)
+
+    integer :: n, i
+
+    n = size(flop,1)
+
+    open(4, file="flop_"//ofile//".data", action='write')
+    
+    write(4,'(a, a)') "#", trim(header)
+    do i = 1, n
+      write(4, *) flop(i)
+    end do
+
+    close(4)
+  end subroutine flop_log_dump_one
+
+
+
+  subroutine flop_log_dump_mult(header, flop, ofile)
+
+    character, intent(in)         :: header*(*)
+    double precision, intent(in)  :: flop(:,:)
+    character, intent(in)         :: ofile*(*)
+
+    integer :: n, i
+
+    n = size(flop,1)
+
+    open(4, file="flop_"//ofile//".data", action='write')
+    
+    write(4,'(a, a)') "#", trim(header)
+    do i = 1, n
+      write(4, *) flop(i,:)
+    end do
+
+    close(4)
+  end subroutine flop_log_dump_mult
+
+
 
   subroutine compute_range(vmin, vmax, linear_mode, val)
     integer, intent(in)               :: vmin

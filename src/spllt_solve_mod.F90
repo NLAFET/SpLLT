@@ -76,7 +76,7 @@ contains
     call spllt_scheduler_alloc(scheduler, st)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
-      solve_step, work, sched) !TODO
+      solve_step, work, sched)
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Desallocation
@@ -300,16 +300,17 @@ contains
     integer           :: dblk           ! Diagonal index 
     integer           :: s_nb           ! Block size in node
     integer           :: blk            ! Block index
-    integer           :: st             ! Stat parameter
+!   integer           :: st             ! Stat parameter
     integer           :: fwd_update_id, fwd_block_id
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
-    nworker   = scheduler%nworker
+    fwd_update_id = 0
+    fwd_block_id  = 0
+    nworker       = scheduler%nworker
 
-!   call trace_init(nworker)
-
+#if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
       fwd_update_id = scheduler%trace_ids(1)
       fwd_block_id  = scheduler%trace_ids(2)
@@ -317,6 +318,7 @@ contains
       call trace_create_event("fwd_update", fwd_update_id)
       call trace_create_event("fwd_block", fwd_block_id)
     end if
+#endif
 
 !   print *, "[spllt_solve_mod] solve_fwd"
 
@@ -421,15 +423,16 @@ contains
     ! Block info
     integer           :: blk            ! Block index
     integer           :: bwd_update_id, bwd_block_id
-    integer           :: st             ! Stat parameter
+!   integer           :: st             ! Stat parameter
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
-    nworker   = scheduler%nworker
+    bwd_update_id = 0
+    bwd_block_id  = 0
+    nworker       = scheduler%nworker
 
-!   call trace_init(nworker)
-
+#if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
       bwd_update_id = scheduler%trace_ids(3)
       bwd_block_id  = scheduler%trace_ids(4)
@@ -437,6 +440,7 @@ contains
       call trace_create_event("bwd_update", bwd_update_id)
       call trace_create_event("bwd_block", bwd_block_id)
     end if
+#endif
 
 !   print *, "[spllt_solve_mod] solve_bwd"
 
