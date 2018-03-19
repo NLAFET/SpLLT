@@ -81,10 +81,10 @@ set(default_build_type "RelWithDebInfo")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Using default build type '${default_build_type}' because none was specified")
   set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE
-    STRING "Choose the type of build (Debug, Release, MinSizeRel, RelWithDebInfo)" FORCE)
+    STRING "Choose the type of build (Debug, Release, MinSizeRel, RelWithDebInfo, RelWithProfiling)" FORCE)
   # Set the possible values of build type for cmake-gui
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo" "RelWithProfiling")
 endif()
 
 set(CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS})
@@ -100,7 +100,10 @@ elseif(CMAKE_BUILD_TYPE MATCHES "MinSizeRel")
   list(APPEND CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS_MINSIZEREL})
   list(APPEND CMAKE_C_FLAGS_ALL ${CMAKE_C_FLAGS_MINSIZEREL})
 elseif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")  
-  list(APPEND CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO})
+  list(APPEND CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO} -fcheck=all -Wall)
+  list(APPEND CMAKE_C_FLAGS_ALL ${CMAKE_C_FLAGS_RELWITHDEBINFO})
+elseif(CMAKE_BUILD_TYPE MATCHES "RelWithProfiling")  
+  list(APPEND CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS_RELWITHDEBINFO} -fcheck=all -Wall)
   list(APPEND CMAKE_C_FLAGS_ALL ${CMAKE_C_FLAGS_RELWITHDEBINFO})
 endif()
 
@@ -177,6 +180,16 @@ elseif(${RUNTIME} MATCHES "OMP")
 
   # Enable OMP
   add_definitions(-DSPLLT_USE_OMP)
+  if(${CMAKE_BUILD_TYPE} MATCHES "RelWithProfiling")
+    add_definitions(-DSPLLT_PROFILING_FLOP)
+    message(STATUS "PROFILING_FLOP enabled")
+    if(${USE_TRACE} MATCHES ON)
+      add_definitions(-DSPLLT_OMP_TRACE)
+      message(STATUS "OMP_TRACE enabled")
+    else()
+      message(STATUS "OMP_TRACE disabled")
+    endif()
+  endif()
 
 elseif(${RUNTIME} MATCHES "Parsec")
 
@@ -373,7 +386,7 @@ if(SPRAL_LIB AND SPRAL_INC)
 else(SPRAL_LIB AND SPRAL_INC)
   if(SPRAL_DIR)
     include_directories(${SPRAL_DIR})
-    message(STATUS "SPRAL_DIR used: " ${SPRAL_DIR})
+    message(STATUS "SPRAL_DIR used : " ${SPRAL_DIR})
     set(SPRAL_LIB_PATH ${SPRAL_DIR} CACHE PATH "Location of SPRAL library")
   else(SPRAL_DIR)
     message(ERROR " You should provide both SPRAL_LIB and SPRAL_INC, "
