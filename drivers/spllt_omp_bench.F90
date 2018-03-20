@@ -38,6 +38,7 @@ program spllt_omp
   double precision, allocatable       :: res(:,:)
   integer                             :: i, j, k, r, th
   integer                             :: flag, more
+  logical                             :: bwd_error_ok
   type(spllt_akeep)                   :: akeep ! Symbolic factorization data
   type(spllt_fkeep), target           :: fkeep ! Factorization data
 
@@ -298,11 +299,16 @@ program spllt_omp
       call vector_norm_2(n, abs(sol_computed - sol), errNorm)
       call vector_norm_2(n, sol, solNorm)
 
+      bwd_error_ok = .true.
       do i = 1, nrhs
         if(normRes(i) / normRHS(i) .gt. 1e-14) then
           write(0, "(a, i4, a, i4)") "Wrong Bwd error for ", i, "/", nrhs
+          bwd_error_ok = .false.
         end if
       end do
+      if(bwd_error_ok) then
+        write(0, "(a)") "Backward error... ok"
+      end if
 #endif
     end do
    !!$omp end single
