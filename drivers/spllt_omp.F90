@@ -6,7 +6,9 @@ program spllt_omp
   use spllt_solve_mod
   use utils_mod
   use spllt_solve_dep_mod
-! use trace_mod
+#if defined(SPLLT_OMP_TRACE)
+  use trace_mod
+#endif
   implicit none
 
 ! integer, external :: omp_get_thread_num, omp_get_num_threads
@@ -52,8 +54,6 @@ program spllt_omp
   double precision, allocatable       :: errNorm(:), solNorm(:)
 
   type(spllt_omp_scheduler)           :: scheduler
-
-! call trace_init(nthreads)
 
   call spllt_parse_args(options, matfile, nrhs)
 
@@ -110,6 +110,10 @@ program spllt_omp
 
   !$omp end single
   !$omp end parallel
+
+#if defined(SPLLT_OMP_TRACE)
+  call trace_init(scheduler%nworker)
+#endif
 
   !!!!!!!!!!!!!!!!!!!!
   ! Create RHS
@@ -252,7 +256,10 @@ program spllt_omp
       errNorm(i) / solNorm(i),                      &
       normRes(i) / normRHS(i)
   end do
-! call trace_log_dump_paje('trace.out')
+
+#if defined(SPLLT_OMP_TRACE)
+  call trace_log_dump_paje('trace_driver_omp_'//trim(matfile)//'.out')
+#endif
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val, work)
 
