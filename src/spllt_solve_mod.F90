@@ -73,7 +73,7 @@ contains
    !allocate(work(n), stat = st)
    !call spllt_scheduler_alloc(sched, st)
     allocate(work(n + (fkeep%maxmn + n) * sched%nworker), stat = st)
-    call spllt_scheduler_alloc(scheduler, st)
+    call spllt_scheduler_alloc(sched, st)
 
     call spllt_solve_mult_double_worker(fkeep, options, order, 1, x, info, &
       solve_step, work, sched)
@@ -157,7 +157,7 @@ contains
    !allocate(work2((fkeep%maxmn+n)*nrhs, sched%nworker), stat = st)
    !call spllt_scheduler_alloc(sched, st)
     allocate(work(n*nrhs + (fkeep%maxmn + n) * nrhs * sched%nworker), stat = st)
-    call spllt_scheduler_alloc(scheduler, st)
+    call spllt_scheduler_alloc(sched, st)
     
     call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, solve_step, work, sched)
