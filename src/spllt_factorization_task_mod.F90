@@ -35,7 +35,7 @@ contains
     type(spllt_node), pointer :: p_root
     type(spllt_node), pointer :: p_anode
     real(wp), pointer :: buffer_c(:), dest_c(:)
-    integer :: blkn
+    integer :: blkn, blkm
 #endif
 
 #if defined(SPLLT_USE_STARPU)
@@ -64,21 +64,24 @@ contains
     p_anode => anode 
 
     dest_c => dest%c
+    blkm = dest%blkm
     blkn = dest%blkn
 
-!$omp task firstprivate(m, n, rptr, rptr2, cptr, cptr2, b_sz, blkn) &
+!$omp task firstprivate(m, n, rptr, rptr2, cptr, cptr2, b_sz, blkm, blkn) &
 !$omp      & firstprivate(bsa, ben) &
 !$omp      & firstprivate(a_rptr, a_cptr, p_root, p_anode) &
 !$omp      & firstprivate(buffer_c, dest_c) &
 !$omp      & depend(in:buffer_c(1)) &
 !$omp      & depend(inout:dest_c(1))
 
-    call spllt_scatter_block(m, n, & 
-         p_root%index(rptr:rptr2), &
-         p_root%index(cptr:cptr2), &
+    call spllt_scatter_block(m, n,& 
+         p_root%index(rptr:rptr2),&
+         p_root%index(cptr:cptr2),&
          buffer_c(bsa:ben), b_sz, &
-         p_anode%index(a_rptr), &
-         p_anode%index(a_cptr), &
+         p_anode%index(a_rptr),   &
+         p_anode%index(a_cptr),   &
+         blkm,                    &
+         blkn,                    &
          dest_c, blkn)
 
 !$omp end task

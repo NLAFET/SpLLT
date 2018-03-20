@@ -1077,13 +1077,15 @@ contains
                 bsa = (rsrc(1)-n-1)*lds+csrc(1)-n
                 ben = (rsrc(2)-n-1)*lds+csrc(2)-n
 
-                call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
-                     nodes(root)%index(rsrc(1):rsrc(2)), &
-                     nodes(root)%index(csrc(1):csrc(2)), &
-                     buffer(bsa:ben), lds, &
-                     nodes(anode)%index((jb-1)*a_nb+1), &
-                     nodes(anode)%index((cb-1)*a_nb+1), &
-                     lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
+                call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1,&
+                     nodes(root)%index(rsrc(1):rsrc(2)),                      &
+                     nodes(root)%index(csrc(1):csrc(2)),                      &
+                     buffer(bsa:ben), lds,                                    &
+                     nodes(anode)%index((jb-1)*a_nb+1),                       &
+                     nodes(anode)%index((cb-1)*a_nb+1),                       &
+                     blocks(dest)%blkm,                                       &
+                     blocks(dest)%blkn,                                       &
+                     lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:),         &
                      blocks(dest)%blkn)
                 jb = k
                 ilast = i ! Update start of current block
@@ -1095,13 +1097,15 @@ contains
           bsa = (rsrc(1)-n-1)*lds+csrc(1)-n
           ben = (rsrc(2)-n-1)*lds+csrc(2)-n
 
-          call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1, &
-               nodes(root)%index(rsrc(1):rsrc(2)), &
-               nodes(root)%index(csrc(1):csrc(2)), &
-               buffer(bsa:ben), lds, &
-               nodes(anode)%index((jb-1)*a_nb+1), &
-               nodes(anode)%index((cb-1)*a_nb+1), &
-               lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:), &
+          call spllt_scatter_block(rsrc(2)-rsrc(1)+1, csrc(2)-csrc(1)+1,&
+               nodes(root)%index(rsrc(1):rsrc(2)),                      &
+               nodes(root)%index(csrc(1):csrc(2)),                      &
+               buffer(bsa:ben), lds,                                    &
+               nodes(anode)%index((jb-1)*a_nb+1),                       &
+               nodes(anode)%index((cb-1)*a_nb+1),                       &
+               blocks(dest)%blkm,                                       &
+               blocks(dest)%blkn,                                       &
+               lfact(blocks(dest)%bcol)%lcol(blocks(dest)%sa:),         &
                blocks(dest)%blkn)
 
           ! Move cptr down, ready for next block column of anode
@@ -1114,39 +1118,43 @@ contains
   end subroutine spllt_apply_subtree
 
   ! Scatters buffer src across dest: dest <= dest - src
-  subroutine spllt_scatter_block(m, n, rsrc_index, csrc_index, src, lds, &
-       rdest_index, cdest_index, dest, ldd)
+  subroutine spllt_scatter_block(s_m, s_n, rsrc_index, csrc_index, src, lds, &
+       rdest_index, cdest_index, d_m, d_n, dest, ldd)
     use spllt_data_mod
     implicit none
 
-    integer, intent(in) :: m ! number of rows in source buffer
-    integer, intent(in) :: n ! number of cols in source buffer
-    integer, dimension(n), intent(in) :: rsrc_index ! source col indices
-    integer, dimension(n), intent(in) :: csrc_index ! source col indices
-    real(wp), dimension(*), intent(in) :: src ! source buffer
-    integer, intent(in) :: lds ! leading dimension (row major) or source buffer
-    integer, dimension(n), intent(in) :: rdest_index ! dest col indices
-    integer, dimension(n), intent(in) :: cdest_index ! dest col indices
+    integer, intent(in)                   :: s_m ! #rows in source buffer
+    integer, intent(in)                   :: s_n ! #cols in source buffer
+    integer, dimension(s_m), intent(in)   :: rsrc_index ! source row indices
+    integer, dimension(s_n), intent(in)   :: csrc_index ! source col indices
+    real(wp), dimension(*), intent(in)    :: src ! source buffer
+    integer, intent(in)                   :: lds ! leading dimension (row major)
+                                                 ! of source buffer
+    integer, dimension(d_m), intent(in)   :: rdest_index ! dest row indices
+    integer, dimension(d_n), intent(in)   :: cdest_index ! dest col indices
     real(wp), dimension(*), intent(inout) :: dest ! dest buffer
-    integer, intent(in) :: ldd ! leading dimension (row major) or dest buffer
+    integer, intent(in)                   :: d_m ! #rows in dest buffer
+    integer, intent(in)                   :: d_n ! #cols in dest buffer
+    integer, intent(in)                   :: ldd  ! leading dimension 
+                                                  ! (row major) or dest buffer
 
     integer :: sr, sc, srow, scol
     integer :: dr, dc
 
     dr = 1
-    do sr = 1, m
-       srow = rsrc_index(sr)
-       do while(rdest_index(dr).ne.srow)
-          dr = dr + 1
-       end do
-       dc = 1
-       do sc = 1, n
-          scol = csrc_index(sc)
-          do while(cdest_index(dc).ne.scol)
-             dc = dc + 1
-          end do
-          dest((dr-1)*ldd+dc) = dest((dr-1)*ldd+dc) - src((sr-1)*lds+sc)
-       end do
+    do sr = 1, s_m
+      srow = rsrc_index(sr)
+      do while(rdest_index(dr).ne.srow)
+        dr = dr + 1
+      end do
+      dc = 1
+      do sc = 1, s_n
+        scol = csrc_index(sc)
+        do while(cdest_index(dc).ne.scol)
+          dc = dc + 1
+        end do
+        dest((dr-1)*ldd+dc) = dest((dr-1)*ldd+dc) - src((sr-1)*lds+sc)
+      end do
     end do
   end subroutine spllt_scatter_block
 
