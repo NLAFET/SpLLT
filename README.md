@@ -142,7 +142,7 @@ mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
+export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
 make
 ```
 You can also consider only the directory of each prerequisite, as follow
