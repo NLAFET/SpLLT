@@ -69,6 +69,7 @@ To install SPRAL, download the sources [here](https://github.com/ralna/spral).
 Then
 
 ```bash
+./autogen.sh
 ./configure --disable-openmp --disable-gpu --disable-openmp --with-blas="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-lapack="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-metis="-L$METIS_LIB -lmetis"
 make
 mkdir lib_gcc-<compiler_version>
@@ -141,7 +142,7 @@ mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${MKL_BLAS_LAPACK_LIBS} ../..
+export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
 make
 ```
 You can also consider only the directory of each prerequisite, as follow
@@ -154,6 +155,6 @@ mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-MKL_BLAS_LAPACK_LIBS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${MKL_BLAS_LAPACK_LIBS} ../..
+export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
 make
 ```
