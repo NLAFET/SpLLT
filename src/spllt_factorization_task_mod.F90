@@ -232,7 +232,8 @@ contains
     real(wp), dimension(:), allocatable :: buffer ! update_buffer workspace
 
     type(spllt_node), pointer :: node ! node in the atree    
-    integer :: m, n, blk
+    integer                   :: m, n
+    integer(long)             :: blk
 
     node => fkeep%nodes(root)
     blk = node%blk_sa
@@ -666,7 +667,10 @@ contains
 
     integer :: n1, m1, sa1, n2, m2, sa2, n, m, sa
     integer :: bcol1, bcol, bcol2
-    integer :: p, d
+    integer :: p
+#if defined(SPLLT_USE_STARPU)
+    integer :: d
+#endif
 #if defined(SPLLT_USE_OMP)
     logical :: is_diag
     real(wp), dimension(:), pointer :: lcol1, lcol2, lcol
@@ -947,7 +951,7 @@ contains
     integer :: p
     integer :: m, n, n1, sa
     integer :: bcol, bcol1
-    integer(long) :: id, id1
+!   integer(long) :: id, id1
     integer :: dcol, scol
     integer :: csrc, csrc2, rsrc, rsrc2
     integer :: s_nb
@@ -1290,8 +1294,8 @@ contains
     
     m  = a_bc%blkm
     n  = a_bc%blkn
-    id = a_bc%id
-    sa = a_bc%sa
+   !id = a_bc%id
+   !sa = a_bc%sa
     
     ! write(*,*) "update_between_task"
     ! call update_between(m, n, id, anode, &

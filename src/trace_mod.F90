@@ -38,7 +38,8 @@ contains
     nevents(:)  = 0
     ttimes(:)   = 0
     allocate(events(0:trace_nth-1,maxevents))
-    colors(1:7) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', '#ac9d93', '#bcd35f'/)
+    colors(1:10) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', &
+      '#ac9d93', '#bcd35f', '#a61e22', '#5542d7', '#2F4F4F'/)
     timezero = omp_get_wtime()
     return
 
