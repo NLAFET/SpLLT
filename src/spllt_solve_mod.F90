@@ -301,23 +301,27 @@ contains
     integer           :: s_nb           ! Block size in node
     integer           :: blk            ! Block index
 !   integer           :: st             ! Stat parameter
-    integer           :: fwd_update_id, fwd_block_id
+    integer           :: fwd_update_id, fwd_block_id, fwd_solve_id
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
 
     fwd_update_id = 0
     fwd_block_id  = 0
+    fwd_solve_id  = 0
     nworker       = scheduler%nworker
 
 #if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
       fwd_update_id = scheduler%trace_ids(1)
       fwd_block_id  = scheduler%trace_ids(2)
+      fwd_solve_id  = scheduler%trace_ids(5)
     else
       call trace_create_event("fwd_update", fwd_update_id)
       call trace_create_event("fwd_block", fwd_block_id)
+      call trace_create_event("fwd_submit", fwd_solve_id)
     end if
+    call trace_event_start(fwd_solve_id, scheduler%workerID - 1)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_fwd"
@@ -386,8 +390,11 @@ contains
        end do
     end do
 
-    ! Deallocate workspace
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_solve_id, scheduler%workerID - 1)
+#endif
     !$omp taskwait
+    ! Deallocate workspace
 !   deallocate(xlocal, rhs_local)
 
 !   call print_task_stat("FWD SCHEDULER STAT", scheduler%masterWorker, &
@@ -422,7 +429,7 @@ contains
     integer           :: dblk
     ! Block info
     integer           :: blk            ! Block index
-    integer           :: bwd_update_id, bwd_block_id
+    integer           :: bwd_update_id, bwd_block_id, bwd_solve_id
 !   integer           :: st             ! Stat parameter
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
@@ -430,16 +437,20 @@ contains
 
     bwd_update_id = 0
     bwd_block_id  = 0
+    bwd_solve_id  = 0
     nworker       = scheduler%nworker
 
 #if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
       bwd_update_id = scheduler%trace_ids(3)
       bwd_block_id  = scheduler%trace_ids(4)
+      bwd_solve_id  = scheduler%trace_ids(6)
     else
       call trace_create_event("bwd_update", bwd_update_id)
       call trace_create_event("bwd_block", bwd_block_id)
+      call trace_create_event("bwd_submit", bwd_solve_id)
     end if
+    call trace_event_start(bwd_solve_id, scheduler%workerID - 1)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_bwd"
@@ -502,6 +513,9 @@ contains
        
     end do
 
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(bwd_solve_id, scheduler%workerID - 1)
+#endif
     ! Deallocate workspace
     !$omp taskwait
    !deallocate(xlocal, rhs_local)
