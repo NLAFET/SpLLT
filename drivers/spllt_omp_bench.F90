@@ -126,7 +126,8 @@ program spllt_omp
   !$omp single
 
 #if defined(SPLLT_OMP_TRACE)
-  call trace_init(omp_get_num_threads())
+! call trace_init(omp_get_num_threads())
+  call spllt_init(options)
 
   allocate(trace_names(4))
   trace_names = [character(len=10) :: "fwd_update", "fwd_block", &
@@ -236,6 +237,13 @@ program spllt_omp
 
     allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
       nrhs_max * scheduler%nworker), stat = st)
+    print *, "Allocation of a workspace of size ", & 
+        n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker
+    if(st.ne.0) then
+      write(0,*) "Can not allocate the workspace of size ", &
+        n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker
+      stop
+    end if
     call spllt_scheduler_alloc(scheduler, st)
     
 
