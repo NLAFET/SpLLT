@@ -133,16 +133,18 @@ mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DSPRAL_LIB=${SPRAL_LIB} -DSPRAL_INC=${SPRAL_INC} -DMETIS_LIB=${METIS_LIB} -DMETIS_INC=${METIS_INC} -DHWLOC_LIB=${HWLOC_LIB} -DHWLOC_INC=${HWLOC_INC} -DLBLAS="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" -DLLAPACK="${MKL_LIBS}/libmkl_gf_lp64.a;${MKL_LIBS}/libmkl_sequential.a;${MKL_LIBS}/libmkl_core.a" ../..
+CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DSPRAL_LIB=${SPRAL_LIB} -DSPRAL_INC=${SPRAL_INC} -DMETIS_LIB=${METIS_LIB} -DMETIS_INC=${METIS_INC} -DHWLOC_LIB=${HWLOC_LIB} -DHWLOC_INC=${HWLOC_INC} -DLBLAS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a" -DLLAPACK="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a" ../..
 make
 ```
 or
 ```bash
+export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"
+
 mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
+CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
 make
 ```
 You can also consider only the directory of each prerequisite, as follow
@@ -150,11 +152,12 @@ You can also consider only the directory of each prerequisite, as follow
 export SPRAL_DIR=<path_to_spral_folder>
 export METIS_DIR=<path_to_metis_folder>
 export HWLOC_DIR=<path_to_hwloc_folder>
+export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"
 
 mkdir build
 mkdir build/build_omp
 cd build/build_omp
 
-export SPLLT_MKL_BLAS_LAPACK_LIBS="${MKL_LIB}/libmkl_gf_lp64.a;${MKL_LIB}/libmkl_sequential.a;${MKL_LIB}/libmkl_core.a"; CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
+CC=gcc FC=gfortran CXX=g++ cmake -DRUNTIME=OMP -DLBLAS=${SPLLT_MKL_BLAS_LAPACK_LIBS} -DLLAPACK=${SPLLT_MKL_BLAS_LAPACK_LIBS} ../..
 make
 ```

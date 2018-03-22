@@ -110,12 +110,11 @@ contains
     integer(long) :: dblk ! diagonal block
     integer :: s_nb ! block size
     integer :: ii, jj, kk ! indexes 
-    type(spllt_block), pointer :: bc_kk, bc_ik, bc_jk, bc_ij ! block pointers
     integer(long) :: blk, blk1, blk2 ! block id
 
     integer :: m, n, bcol 
     integer :: m1, n1, sa1, bcol1 
-    integer :: m2, n2, sa2, bcol2 
+    integer :: m2, n2, sa2
     integer :: d_m, d_n, d_sa, d_bcol 
     logical :: is_diag
 
@@ -239,7 +238,7 @@ contains
     integer :: arow ! buffer row
     integer :: acol ! buffer col
     integer :: b_sz ! buffer size
-    integer :: i, j, ii, jj
+    integer :: i, j, ii
     integer :: buf_rptr, buf_ptr
     integer :: buf_ptr0, buf_ptr1, buf_ptr2, buf_ptr3 ! buffer col
     integer :: rls, cls
@@ -369,12 +368,10 @@ contains
     integer :: nc, nr
 
     ! varable for the applying update on buffer
-    integer :: acol, arow ! column and row pointer in the buffer
+    integer :: acol ! column pointer in the buffer
     integer :: am, an ! sizes of root node
     integer :: j
-    real(wp) :: v, a_ik, a_kj
     integer :: b_sz ! sizes of the buffer
-    integer :: p, q
     integer :: buff_col
     integer :: row, rr, rowptr
     logical :: is_diag
@@ -963,34 +960,34 @@ contains
     integer, dimension(:), intent(inout) :: map ! Workarray to hold map from row
     ! indices to block indices in ancestor node. 
 
-    integer :: dest ! target block
-    integer :: rsrc(2), csrc(2) ! specifices block of gen element to act on
+    integer(long) :: dest ! target block
+    integer       :: rsrc(2), csrc(2) ! specifices block of gen element to act on
 
-    integer :: a_nb  ! Block size of anode
-    integer :: anode ! Ancestor of snode
+    integer       :: a_nb  ! Block size of anode
+    integer       :: anode ! Ancestor of snode
     integer(long) :: blk   ! Block id
-    integer :: bsa, ben
-    integer :: cb    ! Local index of column block in anode
-    integer :: cptr  ! Position in snode of the first row 
+    integer       :: bsa, ben
+    integer       :: cb    ! Local index of column block in anode
+    integer       :: cptr  ! Position in snode of the first row 
     ! matching a column of the current block column of anode.
-    integer :: cptr2  ! Position in snode of the last row 
+    integer       :: cptr2  ! Position in snode of the last row 
     ! matching a column of the current block column of anode.
     integer(long) :: dblk ! id of diagonal block of anode
-    integer :: i
-    integer :: ilast
-    integer :: jb ! Block index in anode
-    integer :: jlast ! Last column in the cb-th block column of anode
-    integer :: k
-    integer :: k1
-    integer :: lds ! leading dimension (row width) of generated element buffer
-    logical :: map_done ! True if map has been built for anode.
-    integer :: m ! set to blocks(src)%blkm
-    integer :: n ! set to blocks(src)%blkn
-    integer :: numcol ! number of cols in snode
-    integer :: rb ! Index of block row in snode
-    integer :: size_anode ! size(nodes(anode)%index)
-    integer :: size_snode ! size(nodes(snode)%index)
-    integer :: s_nb   ! Block size of snode
+    integer       :: i
+    integer       :: ilast
+    integer       :: jb ! Block index in anode
+    integer       :: jlast ! Last column in the cb-th block column of anode
+    integer       :: k
+    integer       :: k1
+    integer       :: lds ! leading dimension (row width) of generated element buffer
+    logical       :: map_done ! True if map has been built for anode.
+    integer       :: m ! set to blocks(src)%blkm
+    integer       :: n ! set to blocks(src)%blkn
+    integer       :: numcol ! number of cols in snode
+    integer       :: rb ! Index of block row in snode
+    integer       :: size_anode ! size(nodes(anode)%index)
+    integer       :: size_snode ! size(nodes(snode)%index)
+    integer       :: s_nb   ! Block size of snode
 
     ! cache some values in variables
     size_snode = size(nodes(root)%index)
@@ -1168,14 +1165,13 @@ contains
     use spllt_data_mod
     implicit none
     
-    integer, intent(in) :: m ! number of rows in dest
-    integer, intent(in) :: n ! number of columns in dest
+    integer, intent(in)                   :: m ! number of rows in dest
+    integer, intent(in)                   :: n ! number of columns in dest
     real(wp), dimension(*), intent(inout) :: dest ! holds block
     ! on diagonal of factor L. It may not be square
 
     integer :: dpotrf_info ! error flag for dpotrf
-    integer :: i, j ! Loop indices
-    ! print *, "max dest: ", minval(dest(1:m*n))
+
     call dpotrf('Upper', n, dest, n, dpotrf_info)
     ! check for errors
     if(dpotrf_info.ne.0) return
@@ -1349,35 +1345,35 @@ contains
     real(wp), dimension(:), pointer :: buffer
 
     ! Local
-    logical :: diag ! set to true if blk is the diagonal block
-    integer :: size_dnode ! size(dnode%index)
-    integer :: size_snode ! size(snode%index)
-    integer :: col_list_sz ! initialise to 0. then increment while
+    logical       :: diag ! set to true if blk is the diagonal block
+    integer       :: size_dnode ! size(dnode%index)
+    integer       :: size_snode ! size(snode%index)
+    integer       :: col_list_sz ! initialise to 0. then increment while
     ! rows involed in csrc are recorded, until
     ! holds the number of columns in blk (= number
     ! of rows in csrc)
-    integer :: row_list_sz ! initialise to 0. then increment while
+    integer       :: row_list_sz ! initialise to 0. then increment while
     ! rows involed in rsrc are recorded, until
     ! holds the number of rows in blk (= number of rows in rsrc)
-    integer :: dcen ! index of end column in dcol
+    integer       :: dcen ! index of end column in dcol
     ! integer :: dcol ! index of block column that blk belongs to in dnode
-    integer :: dcsa ! index of first column in dcol
-    integer :: cptr ! used in determining the rows that belong to the
+    integer       :: dcsa ! index of first column in dcol
+    integer(long) :: cptr ! used in determining the rows that belong to the
     ! source block csrc
-    integer :: rptr ! used in determining the rows that belong to the
+    integer(long) :: rptr ! used in determining the rows that belong to the
     ! source block rsrc
-    integer :: drsa, dren ! point to first and last rows of destination
+    integer       :: drsa, dren ! point to first and last rows of destination
     ! block blk
-    integer :: s1sa, s1en ! point to the first and last rows of
+    integer(long) :: s1sa, s1en ! point to the first and last rows of
     ! the block csrc within scol
-    integer :: s2sa, s2en ! point to the first and last rows of
+    integer(long) :: s2sa, s2en ! point to the first and last rows of
     ! the block rsrc within scol
-    integer :: drow, srow
-    integer :: dptr_sa
-    integer :: dptr
-    integer :: ndiag ! set to int(s1en-s1sa+1) if blk is a
+    integer(long) :: drow, srow
+    integer(long) :: dptr_sa
+    integer(long) :: dptr
+    integer       :: ndiag ! set to int(s1en-s1sa+1) if blk is a
     ! block on diagonal and 0 ow. so is number of triangular rows of update
-    integer :: bcptr, brptr
+    integer(long) :: bcptr, brptr
 
     ! TODO error managment
     integer :: st
@@ -1611,10 +1607,10 @@ contains
     implicit none
 
     type(spllt_block), intent(in) :: blk ! destination block
-    integer(c_int), intent(in) :: dcol ! index of block column that blk belongs to in dnode
-    type(spllt_node), intent(in) :: dnode ! destination node
-    integer(c_int), intent(in) :: scol ! index of block column that src belongs to in snode
-    type(spllt_node), intent(in) :: snode ! Node to which src belongs
+    integer(c_int), intent(in)    :: dcol ! index of block column that blk belongs to in dnode
+    type(spllt_node), intent(in)  :: dnode ! destination node
+    integer(c_int), intent(in)    :: scol ! index of block column that src belongs to in snode
+    type(spllt_node), intent(in)  :: snode ! Node to which src belongs
 
     integer(c_int), dimension(:), pointer, intent(inout) :: row_list ! reallocated to min size m
     integer(c_int), dimension(:), pointer, intent(inout) :: col_list ! reallocated to min size n
@@ -1626,20 +1622,20 @@ contains
     ! the block rsrc within scol
 
     ! Local scalars
-    integer :: cptr ! used in determining the rows that belong to the
+    integer       :: cptr ! used in determining the rows that belong to the
     ! source block csrc
-    integer :: rptr ! used in determining the rows that belong to the
+    integer       :: rptr ! used in determining the rows that belong to the
     ! source block rsrc
-    integer :: dcen ! index of end column in dcol
+    integer       :: dcen ! index of end column in dcol
     ! integer :: dcol ! index of block column that blk belongs to in dnode
-    integer :: dcsa ! index of first column in dcol
-    integer :: size_dnode ! size(dnode%index)
-    integer :: size_snode ! size(snode%index)
-    integer :: dptr
-    integer :: dptr_sa
-    integer :: drsa, dren ! point to first and last rows of destination
+    integer       :: dcsa ! index of first column in dcol
+    integer       :: size_dnode ! size(dnode%index)
+    integer       :: size_snode ! size(snode%index)
+    integer(long) :: dptr
+    integer(long) :: dptr_sa
+    integer       :: drsa, dren ! point to first and last rows of destination
     ! block blk
-    integer :: i
+    integer(long) :: i
 
     col_list_sz = 0
     row_list_sz = 0    
@@ -2133,42 +2129,23 @@ contains
     real(wp), dimension(:), pointer :: buffer
     integer, intent(in) :: min_width_blas      ! Minimum width of source block
          ! before we use an indirect update_between    
-    ! type(MA87_control), intent(in) :: control
-    ! integer, intent(inout) :: info   
-    ! integer, intent(inout) :: st
-    
 
     ! Local scalars
-    integer :: cptr ! used in determining the rows that belong to the
     ! source block csrc
     integer :: col_list_sz ! initialise to 0. then increment while
     ! rows involed in csrc are recorded, until
     ! holds the number of columns in blk (= number
     ! of rows in csrc)
-    integer :: dcen ! index of end column in dcol
-    ! integer :: dcol ! index of block column that blk belongs to in dnode
-    integer :: dcsa ! index of first column in dcol
     logical :: diag ! set to true if blk is the diagonal block
-    integer :: dptr
-    integer :: dptr_sa
-    integer :: drsa, dren ! point to first and last rows of destination
-    ! block blk
-    integer :: i
-
     integer :: ndiag ! set to int(s1en-s1sa+1) if blk is a
     ! block on diagonal and 0 ow. so is number of triangular rows of update
     integer :: row_list_sz ! initialise to 0. then increment while
     ! rows involed in rsrc are recorded, until
     ! holds the number of rows in blk (= number of rows in rsrc)
-    integer :: rptr ! used in determining the rows that belong to the
-    ! source block rsrc
-    ! integer :: scol ! index of block column that src belongs to in snode
     integer :: s1sa, s1en ! point to the first and last rows of
     ! the block csrc within scol
     integer :: s2sa, s2en ! point to the first and last rows of
     ! the block rsrc within scol
-    integer :: size_dnode ! size(dnode%index)
-    integer :: size_snode ! size(snode%index)
 
     ! TODO error managment
     integer :: st
@@ -2191,91 +2168,6 @@ contains
        allocate(row_list(m), stat=st)
        ! if (st.ne.0) go to 10
     endif
-
-! 10  if (st.ne.0) then
-!        info = MA87_ERROR_ALLOCATION
-!        call MA87_print_flag(info, control, context='MA87_factor',st=st)
-!        return
-!     end if
-
-    ! col_list_sz = 0
-    ! row_list_sz = 0
-
-    ! size_dnode = size(dnode%index)
-    ! size_snode = size(snode%index)
-
-    ! ! Find block column dcol of dnode that blk belongs to. The block
-    ! ! cols are numbered locally within dnode as 1,2,3,...
-
-    ! ! dcol = blk%bcol - blocks(dnode%blk_sa)%bcol + 1
-
-    ! ! Set dcsa and dcen to hold indices
-    ! ! of start and end columns in dcol (global column indices)
-    ! dcsa = dnode%sa + (dcol-1)*dnode%nb                
-    ! dcen = min(dnode%sa + dcol*dnode%nb-1, dnode%en)
-
-    ! ! Find block column scol of snode that src belongs to. 
-    ! ! scol = blocks(src)%bcol - blocks(snode%blk_sa)%bcol + 1
-
-    ! ! Set cptr to point to the first row in csrc
-    ! cptr = 1 + min(snode%en-snode%sa+1, (scol-1)*snode%nb)
-
-    ! ! loop while row index within scol is less the index
-    ! ! of the first column in blk
-
-    ! do while(snode%index(cptr).lt.dcsa)
-    !    cptr = cptr + 1
-    !    if(cptr.gt.size_snode) return ! No incident columns
-    ! end do
-
-    ! ! Set s1sa to point to first row in csrc
-    ! s1sa = cptr 
-
-    ! ! Now record the rows in csrc. Local row numbers
-    ! ! are held in col_list(1:slen-slsa+1)
-    ! do while(snode%index(cptr).le.dcen)
-    !    col_list_sz = col_list_sz + 1
-    !    col_list(col_list_sz) = snode%index(cptr) - dcsa + 1
-    !    cptr = cptr + 1
-    !    if(cptr.gt.size_snode) exit ! No more rows
-    ! end do
-
-    ! ! Set slen to point to last row in csrc
-    ! s1en = cptr - 1 
-
-    ! ! Loop over rsrc rows, building row list. Identify required data, form
-    ! ! outer product of it into buffer.
-
-    ! ! Find first and last rows of destination block
-    ! i = dcol + blk%id - blk%dblk ! block in snode
-    ! drsa = dnode%index(1 + (i-1)*dnode%nb)
-    ! dren = dnode%index(min(1 + i*dnode%nb - 1, size_dnode))
-
-    ! ! Find first row in rsrc
-    ! rptr = s1sa
-    ! do while(snode%index(rptr).lt.drsa)
-    !    rptr = rptr + 1
-    !    if(rptr.gt.size_snode) return ! No incident row! Shouldn't happen.
-    ! end do
-    ! s2sa = rptr ! Points to first row in rsrc
-
-    ! ! Find the first row of destination block
-    ! i = blk%id - blk%dblk + 1 ! row block of blk column
-    ! dptr_sa = 1 + (dcol-1 + i-1)*dnode%nb
-
-    ! ! Now record the rows in rsrc. Local row numbers
-    ! ! are held in row_list(1:s2en-s2sa+1)
-    ! dptr = dptr_sa ! Pointer for destination block
-
-    ! do rptr = s2sa, size_snode
-    !    if(snode%index(rptr).gt.dren) exit
-    !    do while(dnode%index(dptr).lt.snode%index(rptr))
-    !       dptr = dptr + 1
-    !    end do
-    !    row_list_sz = row_list_sz + 1
-    !    row_list(row_list_sz) = dptr - dptr_sa + 1
-    ! end do
-    ! s2en = rptr - 1 ! Points to last row in rsrc
 
     call spllt_update_between_compute_map(blk, dcol, dnode, scol, snode, &
          & row_list, col_list, row_list_sz, col_list_sz, &
@@ -2418,7 +2310,7 @@ contains
     type(spllt_fkeep), intent(inout) :: fkeep ! on exit, matrix a copied
     ! into relevant part of keep%lfact
 
-    integer(long) :: i, j ! Temporary variable   
+    integer(long) :: i ! Temporary variable   
     integer(long) :: dblk ! set to keep%nodes(snode)%blk_sa (first block
     ! in snode which is, of course, a diagonal block)
     integer :: l_nb ! set to keep%nodes(snode)%nb
@@ -2489,21 +2381,23 @@ contains
     return
   end subroutine spllt_init_node_c
   
+
+
   ! init blk
   ! copy matrix coefficicents into blk
   subroutine spllt_init_blk(id, val, fkeep)
     use spllt_data_mod
     implicit none
 
-    integer(long) :: id
-    real(wp), dimension(*), intent(in) :: val ! user's matrix values
-    type(spllt_fkeep), target, intent(inout) :: fkeep 
+    integer(long),              intent(in)    :: id
+    real(wp), dimension(*),     intent(in)    :: val ! user's matrix values
+    type(spllt_fkeep), target, intent(inout)  :: fkeep 
 
-    type(spllt_block), pointer :: blk
-    integer :: sa
-    integer :: sz
-    integer :: bcol
-    integer :: i, j
+    type(spllt_block), pointer  :: blk
+    integer                     :: sa
+    integer                     :: sz
+    integer                     :: bcol
+    integer(long)               :: i, j
 
     blk => fkeep%bc(id)
     
@@ -2531,7 +2425,7 @@ contains
 
     integer(long), value  :: id
     type(c_ptr), value    :: val_c
-    integer(c_int), value        :: nval
+    integer(c_int), value :: nval
     type(c_ptr), value    :: fkeep_c
 
     real(wp), pointer :: val(:) ! user's matrix values
@@ -2545,7 +2439,7 @@ contains
     return
   end subroutine spllt_init_blk_c
 
-  subroutine spllt_activate_node(snode, fkeep, akeep)
+  subroutine spllt_activate_node(snode, fkeep)
     use iso_c_binding
     use spllt_data_mod
 #if defined(SPLLT_USE_STARPU)
@@ -2554,7 +2448,6 @@ contains
     implicit none
 
     type(spllt_fkeep), target, intent(inout) :: fkeep
-    type(spllt_akeep), intent(in) :: akeep
     integer :: snode
 
     type(spllt_node), pointer :: node ! node in the atree    

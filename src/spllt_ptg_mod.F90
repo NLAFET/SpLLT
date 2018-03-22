@@ -50,7 +50,7 @@ contains
 
     ! Allocate factors
     do snode = 1, nnodes ! loop over nodes
-       call spllt_activate_node(snode, fkeep, akeep)
+       call spllt_activate_node(snode, fkeep)
     end do
 
 #if defined(SPLLT_USE_PARSEC)
