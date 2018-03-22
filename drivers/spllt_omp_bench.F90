@@ -211,8 +211,7 @@ program spllt_omp
 
   !$omp parallel
   !$omp single
-!$ scheduler%masterWorker  = omp_get_thread_num() + 1
-!$ scheduler%workerID      = scheduler%masterWorker
+  call spllt_omp_reset_scheduler(scheduler)
 
   do nb_i=1, nnb
 
@@ -307,7 +306,7 @@ program spllt_omp
       !
       !Compute the residual for each rhs
       call trace_event_start(scheduler%trace_ids(trace_chkerr_id), &
-        scheduler%workerID - 1)
+        scheduler%workerID)
       call compute_residual(n, ptr, row, val, nrhs, &
         sol_computed, rhs, res)
 
@@ -327,7 +326,7 @@ program spllt_omp
         write(0, "(a)") "Backward error... ok"
       end if
       call trace_event_stop(scheduler%trace_ids(trace_chkerr_id), &
-        scheduler%workerID - 1)
+        scheduler%workerID)
 #endif
     end do
 
@@ -339,7 +338,7 @@ program spllt_omp
   !$omp end parallel
 
 
-  do i = 1, scheduler%nworker
+  do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
     call print_omp_task_stat("SCHEDULER STAT", i, scheduler%task_info(i))
   end do
 

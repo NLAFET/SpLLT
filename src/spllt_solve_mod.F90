@@ -321,7 +321,7 @@ contains
       call trace_create_event("fwd_block", fwd_block_id)
       call trace_create_event("fwd_submit", fwd_solve_id)
     end if
-    call trace_event_start(fwd_solve_id, scheduler%workerID - 1)
+    call trace_event_start(fwd_solve_id, scheduler%workerID)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_fwd"
@@ -335,10 +335,10 @@ contains
    !xlocal    => work(1 : fkeep%maxmn * nrhs, 1 : nworker)
    !rhs_local => work(fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
    !  1 : nworker)
-    xlocal(1 : fkeep%maxmn * nrhs, 1 : nworker) => workspace(1 : fkeep%maxmn * &
-      nrhs * nworker)
-    rhs_local(1 : ldr * nrhs, 1 : nworker) => workspace(fkeep%maxmn * nrhs * &
-      nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+    xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
+      fkeep%maxmn * nrhs * nworker)
+    rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
+      * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
    !fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
    !  1 : nworker)
 
@@ -391,7 +391,7 @@ contains
     end do
 
 #if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(fwd_solve_id, scheduler%workerID - 1)
+    call trace_event_stop(fwd_solve_id, scheduler%workerID)
 #endif
     !$omp taskwait
     ! Deallocate workspace
@@ -450,7 +450,7 @@ contains
       call trace_create_event("bwd_block", bwd_block_id)
       call trace_create_event("bwd_submit", bwd_solve_id)
     end if
-    call trace_event_start(bwd_solve_id, scheduler%workerID - 1)
+    call trace_event_start(bwd_solve_id, scheduler%workerID)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_bwd"
@@ -460,10 +460,10 @@ contains
    !call spllt_scheduler_alloc(scheduler, st)
    !allocate(rhs_local(ldr*nrhs, nworker), stat=st)
    !call spllt_scheduler_alloc(scheduler, st)
-    xlocal(1 : fkeep%maxmn * nrhs, 1 : nworker) => workspace(1 : fkeep%maxmn * &
-      nrhs * nworker)
-    rhs_local(1 : ldr * nrhs, 1 : nworker) => workspace(fkeep%maxmn * nrhs * &
-      nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+    xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
+      fkeep%maxmn * nrhs * nworker)
+    rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
+      * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
     ! initialise rhs_local
     xlocal    = zero 
@@ -514,7 +514,7 @@ contains
     end do
 
 #if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(bwd_solve_id, scheduler%workerID - 1)
+    call trace_event_stop(bwd_solve_id, scheduler%workerID)
 #endif
     ! Deallocate workspace
     !$omp taskwait

@@ -15,15 +15,15 @@ contains
     use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
     
-    integer, intent(in)                       :: dblk !Index of diagonal block
-    integer, intent(in)                       :: nrhs !Number of RHS
-    integer, intent(in)                       :: ldr  !Leading dimension of RHS
-    real(wp), target, intent(inout)           :: upd(:, :)
-    real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
-    real(wp), target,  intent(inout)          :: xlocal(:, :)
-    type(spllt_fkeep), target, intent(in)     :: fkeep
-    integer, intent(in)                       :: trace_id
-    type(spllt_omp_scheduler), intent(inout)  :: scheduler
+    integer,                    intent(in)    :: dblk !Index of diagonal block
+    integer,                    intent(in)    :: nrhs !Number of RHS
+    integer,                    intent(in)    :: ldr  !Leading dimension of RHS
+    real(wp), target,           intent(inout) :: upd(:, :)
+    real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
+    real(wp), target,           intent(inout) :: xlocal(:, :)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: trace_id
+    type(spllt_omp_scheduler),  intent(inout) :: scheduler
     
     ! Node info
     integer :: sa
@@ -218,16 +218,16 @@ contains
     use utils_mod, ONLY : spllt_update_omp_task_info
     implicit none
     
-    integer, intent(in)                       :: blk  ! Index of block
-    integer, intent(in)                       :: node
-    integer, intent(in)                       :: nrhs ! Number of RHS
-    integer, intent(in)                       :: ldr  ! Leading dimension of RHS
-    real(wp), target, intent(inout)           :: upd(:,:)        
-    real(wp), target, intent(in)              :: rhs(ldr*nrhs)
-    real(wp), target, intent(out)             :: xlocal(:,:)
-    type(spllt_fkeep), target, intent(in)     :: fkeep
+    integer,                    intent(in)    :: blk  ! Index of block
+    integer,                    intent(in)    :: node
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    real(wp), target,           intent(inout) :: upd(:,:)        
+    real(wp), target,           intent(in)    :: rhs(ldr*nrhs)
+    real(wp), target,           intent(out)   :: xlocal(:,:)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
     integer, intent(in)                       :: trace_id
-    type(spllt_omp_scheduler), intent(inout)  :: scheduler
+    type(spllt_omp_scheduler),  intent(inout) :: scheduler
 
     ! Block info
     integer                     :: m, n         ! Block dimension

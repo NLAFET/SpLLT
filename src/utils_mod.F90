@@ -244,7 +244,7 @@ contains
     print '(a, i6)',    "#fake task insert   : ", task%nfake_task_insert
     print '(a, i6)',    "#task run           : ", task%ntask_run
     print '(a, i6)',    "#array allocate     : ", task%narray_allocated
-    print '(a, d12.2)', "#flop               : ", task%nflop
+    print '(a, es10.2)', "#flop               : ", task%nflop
 
   end subroutine print_omp_task_stat
 
@@ -280,6 +280,20 @@ contains
     
   end subroutine spllt_omp_init_task_info
 
+  subroutine spllt_omp_reset_scheduler(scheduler)
+    use spllt_data_mod
+ !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
+    type(spllt_omp_scheduler), intent(inout) :: scheduler
+
+    scheduler%workerID                = 0
+ !$ scheduler%workerID                = omp_get_thread_num()
+    scheduler%nworker                 = 1
+ !$ scheduler%nworker                 = omp_get_num_threads()
+    scheduler%masterWorker            = scheduler%workerID
+    scheduler%nthread_max             = scheduler%nworker
+
+  end subroutine spllt_omp_reset_scheduler
+
   subroutine spllt_omp_init_scheduler(scheduler, trace_names, stat)
     use spllt_data_mod
     use trace_mod, only : trace_create_event
@@ -294,17 +308,11 @@ contains
     st1 = 0
     st2 = 0
 
-    scheduler%workerID                = 1 ! Has to be at least 1 because of the
-                                          !   task_info array starting at 1
- !$ scheduler%workerID                = omp_get_thread_num() + 1
-    scheduler%nworker                 = 1
- !$ scheduler%nworker                 = omp_get_num_threads()
-    scheduler%masterWorker            = scheduler%workerID
-    scheduler%nthread_max             = scheduler%nworker
+    call spllt_omp_reset_scheduler(scheduler)
 
-    allocate(scheduler%task_info(scheduler%nthread_max), stat=st1)
+    allocate(scheduler%task_info(0:scheduler%nthread_max-1), stat=st1)
     if(st1 .eq. 0) then
-      do i = 1, scheduler%nthread_max
+      do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
         p_task_info => scheduler%task_info(i)
         call spllt_omp_init_task_info(p_task_info)
       end do
