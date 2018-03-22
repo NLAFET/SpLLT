@@ -89,6 +89,7 @@ endif()
 
 set(CMAKE_Fortran_FLAGS_ALL ${CMAKE_Fortran_FLAGS})
 set(CMAKE_C_FLAGS_ALL ${CMAKE_C_FLAGS})
+set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fcheck=all -Wall")
 set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "${CMAKE_Fortran_FLAGS_RELWITHDEBINFO} -fcheck=all -Wall")
 # CACHE STRING "Flags used by the compiler during release builds with debug info." FORCE)
 set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -mtune=native")
