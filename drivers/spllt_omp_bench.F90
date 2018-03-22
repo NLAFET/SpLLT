@@ -61,6 +61,7 @@ program spllt_omp
   character(len=10)                   :: time
   character(len=8)                    :: date
   double precision, allocatable       :: fwd_flops(:,:), bwd_flops(:,:)
+  integer                             :: trace_chkerr_id
 
   ! runtime
   type(spllt_omp_scheduler)           :: scheduler
@@ -129,12 +130,17 @@ program spllt_omp
 ! call trace_init(omp_get_num_threads())
   call spllt_init(options)
 
-  allocate(trace_names(4))
-  trace_names = [character(len=10) :: "fwd_update", "fwd_block", &
-    "bwd_update", "bwd_block" ]
+  allocate(trace_names(7))
+  trace_names = [character(len=10) :: &
+    "fwd_update", "fwd_block",  &
+    "bwd_update", "bwd_block",  &
+    "fwd_submit", "bwd_submit",   &
+    "chk_err" ]
+  trace_chkerr_id = 7
 
   call spllt_omp_init_scheduler(scheduler, trace_names, st)
 #else
+  trace_chkerr_id = 0 ! be sure the trace module fails
   call spllt_omp_init_scheduler(scheduler, stat=st)
 #endif
 
@@ -205,6 +211,9 @@ program spllt_omp
 
   !$omp parallel
   !$omp single
+!$ scheduler%masterWorker  = omp_get_thread_num() + 1
+!$ scheduler%workerID      = scheduler%masterWorker
+
   do nb_i=1, nnb
 
     options%nb = nb_list(nb_i)
@@ -225,23 +234,19 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Numerical Factorization
     !
-   !!$omp parallel
-   !!$omp single
     call system_clock(start_t, rate_t)
     call spllt_factor(akeep, fkeep, options, val, info)
     call spllt_wait()
     call system_clock(stop_t)
-   !!$omp end single
-   !!$omp end parallel
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
     allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
       nrhs_max * scheduler%nworker), stat = st)
-    print *, "Allocation of a workspace of size ", & 
-        n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker
+    print '(a, es10.2)', "Allocation of a workspace of size ", & 
+        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker)
     if(st.ne.0) then
-      write(0,*) "Can not allocate the workspace of size ", &
-        n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker
+      write(0,fmt='(a, es10.2)') "Can not allocate the workspace of size ", &
+        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker)
       stop
     end if
     call spllt_scheduler_alloc(scheduler, st)
@@ -252,8 +257,6 @@ program spllt_omp
     !
     call spllt_compute_solve_dep(fkeep)
 
-   !!$omp parallel
-   !!$omp single
     do j=1, nnrhs
 
       nrhs = nrhs_list(j)
@@ -265,8 +268,10 @@ program spllt_omp
       ! Forward substitution
       !
       call system_clock(start_t, rate_t)
+
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
         workspace=workspace, scheduler=scheduler)
+
       call system_clock(stop_t)
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
@@ -281,8 +286,10 @@ program spllt_omp
       ! Backward substitution
       !
       call system_clock(start_t, rate_t)
+
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
         workspace=workspace, scheduler=scheduler)
+
       call system_clock(stop_t)
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
@@ -299,6 +306,8 @@ program spllt_omp
       ! STATISTICS
       !
       !Compute the residual for each rhs
+      call trace_event_start(scheduler%trace_ids(trace_chkerr_id), &
+        scheduler%workerID - 1)
       call compute_residual(n, ptr, row, val, nrhs, &
         sol_computed, rhs, res)
 
@@ -317,10 +326,10 @@ program spllt_omp
       if(bwd_error_ok) then
         write(0, "(a)") "Backward error... ok"
       end if
+      call trace_event_stop(scheduler%trace_ids(trace_chkerr_id), &
+        scheduler%workerID - 1)
 #endif
     end do
-   !!$omp end single
-   !!$omp end parallel
 
     call spllt_deallocate_akeep(akeep, st)
     deallocate(workspace, stat=st)
