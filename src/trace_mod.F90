@@ -38,8 +38,9 @@ contains
     nevents(:)  = 0
     ttimes(:)   = 0
     allocate(events(0:trace_nth-1,maxevents))
-    colors(1:10) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', &
-      '#ac9d93', '#bcd35f', '#a61e22', '#5542d7', '#2F4F4F'/)
+    colors(1:12) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', &
+      '#ac9d93', '#bcd35f', '#a61e22', '#5542d7', '#2F4F4F',                &
+      '#6600ff', '#ff0066'/)
     timezero = omp_get_wtime()
     return
 
@@ -65,6 +66,7 @@ contains
     integer :: id, thn
     if(pendings(thn)) then
        write(*,'("Tracing error!!! events nesting not supported")')
+       write(*,*) 'Th ', thn, ' already recorded as doing sth'
        return
     end if
     pendings(thn) = .true.
