@@ -248,6 +248,7 @@ contains
     integer :: chunk, chunk_size, ndep_lvl, lvl, nchunk, beta, alpha
     logical :: all_task_submitted
     integer :: nftask
+    integer :: start_t, stop_t, rate_t
 
     ! Establish variables describing block
     n         = fkeep%bc(blk)%blkn
@@ -278,12 +279,19 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+        call system_clock(start_t, rate_t)
         !$omp task                                &
         include 'include/spllt_solve_fwd_update_omp_decl.F90.inc'
 
 #include "include/spllt_solve_fwd_update_worker.F90.inc"
 
         !$omp end task
+        call system_clock(stop_t)
+        scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(0) =  &
+          (stop_t - start_t)/real(rate_t) +                             &
+          scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(0)
+        scheduler%task_info(scheduler%workerID)%task_fwd_case(0)  =   &
+          scheduler%task_info(scheduler%workerID)%task_fwd_case(0) + 1
       else
 
         chunk = 10 ! Do not use chunk = 1 ; a non-sence
@@ -646,6 +654,7 @@ contains
     integer :: chunk, chunk_size, ndep_lvl, lvl, nchunk, beta, alpha
     logical :: all_task_submitted
     integer :: nftask         ! #fake tasks inserted into the runtime
+    integer :: start_t, stop_t, rate_t
 
     ! Establish variables describing block
     n       = fkeep%bc(blk)%blkn
@@ -675,12 +684,19 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+        call system_clock(start_t, rate_t)
         !$omp task                                &
         include 'include/spllt_solve_bwd_update_omp_decl.F90.inc'
 
 #include "include/spllt_solve_bwd_update_worker.F90.inc"
 
         !$omp end task
+        call system_clock(stop_t)
+        scheduler%task_info(scheduler%workerID)%timer_submit_case(0) =  &
+          (stop_t - start_t)/real(rate_t) +                             &
+          scheduler%task_info(scheduler%workerID)%timer_submit_case(0)
+        scheduler%task_info(scheduler%workerID)%task_case(0)  =   &
+          scheduler%task_info(scheduler%workerID)%task_case(0) + 1
       else
 
         chunk = 10 ! Do not use chunk = 1 ; a non-sence
@@ -689,6 +705,7 @@ contains
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
 
+       !call system_clock(start_t, rate_t)
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -698,6 +715,7 @@ contains
           do j = 1, nchunk
             chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
               j * chunk .gt. ndep_lvl)
+            call system_clock(start_t, rate_t)
             select case(chunk_size)
 
               case(0)
@@ -709,6 +727,10 @@ contains
 #include "include/spllt_bwd_update_cases.F90.inc"
 
             end select
+            call system_clock(stop_t)
+            scheduler%task_info(scheduler%workerID)%timer_submit_k_ary =  &
+              (stop_t - start_t)/real(rate_t) +                           &
+              scheduler%task_info(scheduler%workerID)%timer_submit_k_ary
             beta = beta + chunk_size
             if(ndep_lvl .le. chunk) then
               all_task_submitted = .true.
@@ -723,6 +745,10 @@ contains
             alpha = alpha * chunk
           end if
         end do
+       !call system_clock(stop_t)
+       !scheduler%task_info(scheduler%workerID)%timer_submit_k_ary =  &
+       !  (stop_t - start_t)/real(rate_t) +                           &
+       !  scheduler%task_info(scheduler%workerID)%timer_submit_k_ary
       end if
     else
 

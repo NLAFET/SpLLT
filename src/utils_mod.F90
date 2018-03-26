@@ -228,8 +228,8 @@ contains
     if(present(msg)) then
       print *, msg
     end if
-    print '(a, i6)', "max #dep of a blk   : ", task%max_dep
-    print '(a, i1, a, i6)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
+    print '(a, i9)', "max #dep of a blk   : ", task%max_dep
+    print '(a, i1, a, i9)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
 
   end subroutine print_task_stat
 
@@ -240,11 +240,14 @@ contains
     type(spllt_omp_task_stat), intent(in) :: task
 
     print *, msg, " : ", task_id
-    print '(a, i6)',    "#task insert        : ", task%ntask_insert
-    print '(a, i6)',    "#fake task insert   : ", task%nfake_task_insert
-    print '(a, i6)',    "#task run           : ", task%ntask_run
-    print '(a, i6)',    "#array allocate     : ", task%narray_allocated
+    print '(a, i9)',    "#task insert        : ", task%ntask_insert
+    print '(a, i9)',    "#fake task insert   : ", task%nfake_task_insert
+    print '(a, i9)',    "#task run           : ", task%ntask_run
+    print '(a, i9)',    "#array allocate     : ", task%narray_allocated
     print '(a, es10.2)', "#flop               : ", task%nflop
+    print '(a, es10.2)', "Time in tasks       : ", task%timer_task
+    print '(a, es10.2)', "Time in submission  : ", task%timer_submit
+    print '(a, es10.2)', "Time to submit kary : ", task%timer_submit_k_ary
 
   end subroutine print_omp_task_stat
 
@@ -270,13 +273,20 @@ contains
     use spllt_data_mod
     type(spllt_omp_task_stat), intent(out) :: task_stat
 
-    task_stat%nflop             = 0.0
-    task_stat%ntask_run         = 0
-    task_stat%ntask_insert      = 0
-    task_stat%nfake_task_insert = 0
-    task_stat%max_dep           = 0
-    task_stat%narray_allocated  = 0
-    task_stat%nblk_kdep         = 0
+    task_stat%nflop               = 0.0
+    task_stat%ntask_run           = 0
+    task_stat%ntask_insert        = 0
+    task_stat%nfake_task_insert   = 0
+    task_stat%max_dep             = 0
+    task_stat%narray_allocated    = 0
+    task_stat%nblk_kdep           = 0
+    task_stat%timer_task          = 0.0
+    task_stat%timer_submit        = 0.0
+    task_stat%timer_submit_k_ary  = 0.0
+    task_stat%timer_submit_case   = 0.0
+    task_stat%task_case           = 0
+    task_stat%timer_fwd_submit_case   = 0.0
+    task_stat%task_fwd_case           = 0
     
   end subroutine spllt_omp_init_task_info
 
@@ -293,6 +303,8 @@ contains
     scheduler%nthread_max             = scheduler%nworker
 
   end subroutine spllt_omp_reset_scheduler
+
+
 
   subroutine spllt_omp_init_scheduler(scheduler, trace_names, stat)
     use spllt_data_mod
@@ -340,6 +352,8 @@ contains
 
   end subroutine spllt_omp_init_scheduler
 
+
+
   subroutine spllt_scheduler_alloc(scheduler, stat)
     use spllt_data_mod
     type(spllt_omp_scheduler), intent(inout)  :: scheduler
@@ -354,6 +368,8 @@ contains
 
   end subroutine spllt_scheduler_alloc
 
+
+
   subroutine spllt_update_omp_task_info(task_info, ntask, nftask)
     use spllt_data_mod
     type(spllt_omp_task_stat), intent(inout)  :: task_info
@@ -364,6 +380,8 @@ contains
     task_info%ntask_insert      = task_info%ntask_insert + ntask
 
   end subroutine spllt_update_omp_task_info
+
+
 
   subroutine spllt_update_task_info(task_info, ndep)
     use spllt_data_mod
@@ -376,6 +394,8 @@ contains
       ndep .gt. task_info%max_dep)
 
   end subroutine spllt_update_task_info
+
+
 
   subroutine timer_log_dump_mult(header, timer, ofile)
 
