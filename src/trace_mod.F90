@@ -9,12 +9,17 @@ module trace_mod
   end type event_type
 
   integer, save               :: trace_nth
-  logical, allocatable, save  :: pendings(:)
+  logical, allocatable, save  :: pendings(:,:)
+  logical, allocatable, save  :: pauses(:,:)
   real(c_double), save        :: timezero, start, stop
   integer, parameter          :: maxevents=15000, maxtypes=20
   real(c_double), save        :: ttimes(1:maxtypes)
+  integer                     :: trace_cpt
+  integer, save               :: ids(1:maxtypes)=(/(trace_cpt, &
+    trace_cpt=1,maxtypes)/)
   type(event_type), allocatable, save :: events(:,:)
-  real(c_double), allocatable, save   :: starts(:), stops(:)
+  real(c_double), allocatable, save   :: stops(:)
+  real(c_double), allocatable, save   :: starts(:,:)
 
   character(len=20), save :: labels(maxtypes)
   character(len=7) :: colors(maxtypes)
@@ -30,14 +35,16 @@ contains
                    ! execution
     
     trace_nth = nth
-    allocate(pendings(0:trace_nth-1))
-    allocate(nevents(0:trace_nth-1))
-    allocate(starts(0:trace_nth-1), stops(0:trace_nth-1))
-    pendings(:) = .false.
+    allocate(pendings(maxtypes, -1 : trace_nth - 1))
+    allocate(pauses  (maxtypes, -1 : trace_nth - 1))
+    allocate(nevents(-1:trace_nth-1))
+    allocate(stops(-1:trace_nth-1))
+    allocate(starts(maxtypes, -1 : trace_nth - 1))
+    pendings(:,:) = .false.
     nevtype     = 0
     nevents(:)  = 0
     ttimes(:)   = 0
-    allocate(events(0:trace_nth-1,maxevents))
+    allocate(events(-1:trace_nth-1,maxevents))
     colors(1:12) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', &
       '#ac9d93', '#bcd35f', '#a61e22', '#5542d7', '#2F4F4F',                &
       '#6600ff', '#ff0066'/)
@@ -63,14 +70,30 @@ contains
     use get_wtime_mod
     implicit none
 
-    integer :: id, thn
-    if(pendings(thn)) then
-       write(*,'("Tracing error!!! events nesting not supported")')
-       write(*,*) 'Th ', thn, ' already recorded as doing sth'
-       return
+    integer :: id, thn, old_id
+
+    if(pendings(id, thn)) then
+      write(*,'("Tracing error!!! events nesting not supported")')
+      write(*,*) 'Th ', thn, ' already recorded as doing trace ', id
+      return
     end if
-    pendings(thn) = .true.
-    starts(thn) = omp_get_wtime()
+
+    if(any(pendings(:, thn))) then
+      if(count(pendings(:, thn)) .gt. 1) then
+        write(*,'("Tracing error!!! events nesting not supported")')
+        write(*,*) 'Th ', thn, ' already recorded as doing trace ', &
+          sum(ids, mask=pendings(:,thn))
+        return
+      end if
+          
+      old_id = sum(ids, mask=pendings(:,thn))
+      call trace_event_stop(old_id, thn)
+      pauses(old_id,thn) = .true.
+    end if
+
+    pendings(id, thn) = .true.
+    starts(id, thn) = omp_get_wtime()
+
     return
   end subroutine trace_event_start
 
@@ -78,13 +101,26 @@ contains
     use get_wtime_mod
     implicit none
 
-    integer :: id, thn
+    integer :: id, thn, old_id
     
-    stops(thn) = omp_get_wtime()
-    nevents(thn) = nevents(thn)+1
-    events(thn, min(nevents(thn),maxevents)) = event_type(id, thn, starts(thn)-timezero, stops(thn)-timezero)
-    ttimes(id) = ttimes(id)+stops(thn)-starts(thn)
-    pendings(thn) = .false.
+    stops(thn)                                = omp_get_wtime()
+    nevents(thn)                              = nevents(thn)+1
+    events(thn, min(nevents(thn),maxevents))  = event_type(id, thn, starts(id, thn)-timezero, stops(thn)-timezero)
+    ttimes(id)                                = ttimes(id)+stops(thn)-starts(id, thn)
+    pendings(id, thn)                         = .false.
+
+    if(any(pauses(:, thn))) then
+      if(count(pauses(:, thn)) .gt. 1) then
+        write(*,'("Tracing error!!! events nesting not supported")')
+        write(*,*) 'Th ', thn, ' already recorded as doing trace ', &
+          sum(ids, mask=pauses(:,thn))
+        return
+      end if
+          
+      old_id = sum(ids, mask=pauses(:,thn))
+      starts(old_id, thn) = stops(thn)
+      pauses(old_id,thn) = .false.
+    end if
 
     return
   end subroutine trace_event_stop
@@ -178,25 +214,39 @@ contains
 
     write(4,'("7 0.000000 C_Prog CT_Prog 0 ''Programme''")')
     
+    i = -1
+    if(nevents(i) .gt. 0) then
+      write(4,'("7  0.000000 MASTER"," CT_Thread C_Prog ''Master ''")')
+    end if
     do i=0, trace_nth-1
-       if(nevents(i) .gt. 0) then
-          write(4,'("7  0.000000 C_Thread",i3.3," CT_Thread C_Prog ''Thread ",i3,"''")')i,i
-       end if
+      if(nevents(i) .gt. 0) then
+        write(4,'("7  0.000000 C_Thread",i3.3," CT_Thread C_Prog ''Thread ",i3,"''")')i,i
+      end if
     end do
             
  
+    i = -1
+    do j=1, min(nevents(i),maxevents)
+      write(4,'("10 ",f15.6," ST_ThreadState MASTER",x,a20)')events(i,j)%start, labels(events(i,j)%id)
+      write(4,'("10 ",f15.6," ST_ThreadState MASTER idle")')events(i,j)%stop
+    end do
+
     do i=0, trace_nth-1
-       do j=1, min(nevents(i),maxevents)
-          write(4,'("10 ",f15.6," ST_ThreadState C_Thread",i3.3,x,a20)')events(i,j)%start, i, labels(events(i,j)%id)
-          write(4,'("10 ",f15.6," ST_ThreadState C_Thread",i3.3," idle")')events(i,j)%stop, i
-       end do
+      do j=1, min(nevents(i),maxevents)
+        write(4,'("10 ",f15.6," ST_ThreadState C_Thread",i3.3,x,a20)')events(i,j)%start, i, labels(events(i,j)%id)
+        write(4,'("10 ",f15.6," ST_ThreadState C_Thread",i3.3," idle")')events(i,j)%stop, i
+      end do
     end do
 
 
+    i = -1
+    if(nevents(i) .gt. 0) then
+      write(4,'("8 ",f15.6," MASTER CT_Thread")') maxval(events(:,:)%stop)
+    end if
     do i=0, trace_nth-1
-       if(nevents(i) .gt. 0) then
-          write(4,'("8 ",f15.6," C_Thread",i3.3," CT_Thread")')maxval(events(:,:)%stop),i
-       end if
+      if(nevents(i) .gt. 0) then
+        write(4,'("8 ",f15.6," C_Thread",i3.3," CT_Thread")')maxval(events(:,:)%stop),i
+      end if
     end do
     write(4,'("8 ",f15.6," C_Prog CT_Prog")')maxval(events(:,:)%stop)
     

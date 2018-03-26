@@ -305,11 +305,16 @@ contains
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
+    double precision  :: fwd_block_timer, fwd_update_timer, fwd_reset_timer
+    integer           :: start_t, stop_t, rate_t
 
     fwd_update_id = 0
     fwd_block_id  = 0
     fwd_solve_id  = 0
     nworker       = scheduler%nworker
+    fwd_block_timer   = 0.0
+    fwd_update_timer  = 0.0
+    fwd_reset_timer   = 0.0
 
 #if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
@@ -321,7 +326,8 @@ contains
       call trace_create_event("fwd_block", fwd_block_id)
       call trace_create_event("fwd_submit", fwd_solve_id)
     end if
-    call trace_event_start(fwd_solve_id, scheduler%workerID)
+!   call trace_event_start(fwd_solve_id, scheduler%workerID)
+    call trace_event_start(fwd_solve_id, -1)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_fwd"
@@ -335,6 +341,7 @@ contains
    !xlocal    => work(1 : fkeep%maxmn * nrhs, 1 : nworker)
    !rhs_local => work(fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
    !  1 : nworker)
+
     xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
       fkeep%maxmn * nrhs * nworker)
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
@@ -342,9 +349,12 @@ contains
    !fkeep%maxmn*nrhs + 1 : (fkeep%maxmn + ldr)*nrhs, &
    !  1 : nworker)
 
+    call system_clock(start_t, rate_t)
     ! initialise rhs_local
-    xlocal    = zero 
+   !xlocal    = zero 
     rhs_local = zero
+    call system_clock(stop_t)
+    fwd_reset_timer = (stop_t - start_t)/real(rate_t)
 
     num_node = fkeep%info%num_nodes
     
@@ -370,18 +380,25 @@ contains
           !
           ! Forward solve with block on diagoanl
           !
+          call system_clock(start_t, rate_t)
           call spllt_solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
             xlocal, fkeep, fwd_block_id, scheduler)
+          call system_clock(stop_t)
+          fwd_block_timer = fwd_block_timer + (stop_t - start_t)/real(rate_t)
 
           do ii = jj+1, nr
 
-             blk = dblk+ii-jj
+            blk = dblk+ii-jj
 
-             !
-             ! Forward update with off-diagonal
-             !
-             call spllt_solve_fwd_update_task(blk, node, nrhs, rhs_local, &
-               rhs, ldr, xlocal, fkeep, fwd_update_id, scheduler)
+            !
+            ! Forward update with off-diagonal
+            !
+            call system_clock(start_t, rate_t)
+            call spllt_solve_fwd_update_task(blk, node, nrhs, rhs_local, &
+              rhs, ldr, xlocal, fkeep, fwd_update_id, scheduler)
+            call system_clock(stop_t)
+            fwd_update_timer = fwd_update_timer + &
+              (stop_t - start_t)/real(rate_t)
 
           end do
           
@@ -391,8 +408,34 @@ contains
     end do
 
 #if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(fwd_solve_id, scheduler%workerID)
+    call trace_event_stop(fwd_solve_id, -1)
 #endif
+    print *, " === FWD ==="
+    print *, "Time to submit reset work  :", fwd_reset_timer
+    print *, "Time to submit block task  :", fwd_block_timer
+    print *, "Time to submit update task :", fwd_update_timer
+    do ii = 0, 10
+      if(scheduler%task_info(scheduler%workerID)%task_fwd_case(ii) .gt. 0) then
+        print '(a, i6, a, i2, a, es10.2, a, es10.2)', "Time to construct ", &
+          scheduler%task_info(scheduler%workerID)%task_fwd_case(ii), " case( ", &
+          ii, ") : ",                                                       &
+          scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(ii),    &
+          " with a mean of ",                                               &
+          scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(ii) /   &
+          scheduler%task_info(scheduler%workerID)%task_fwd_case(ii)
+      else
+        print '(a, i6, a, i2, a, es10.2, a, es10.2)', "Time to construct ", &
+          scheduler%task_info(scheduler%workerID)%task_fwd_case(ii), " case( ", &
+          ii, ") : ",                                                       &
+          scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(ii),    &
+          " with a mean of ",                                               &
+          scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(ii)
+      end if
+
+      ! Reset
+      scheduler%task_info(scheduler%workerID)%task_fwd_case(ii)         = 0      
+      scheduler%task_info(scheduler%workerID)%timer_fwd_submit_case(ii) = 0.0
+    end do
     !$omp taskwait
     ! Deallocate workspace
 !   deallocate(xlocal, rhs_local)
@@ -434,11 +477,16 @@ contains
     integer           :: nworker
     real(wp), pointer :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer :: rhs_local(:,:) ! update_buffer workspace
+    double precision  :: bwd_block_timer, bwd_update_timer, bwd_reset_timer
+    integer           :: start_t, stop_t, rate_t
 
     bwd_update_id = 0
     bwd_block_id  = 0
     bwd_solve_id  = 0
     nworker       = scheduler%nworker
+    bwd_block_timer   = 0.0
+    bwd_update_timer  = 0.0
+    bwd_reset_timer   = 0.0
 
 #if defined(SPLLT_OMP_TRACE)
     if(associated(scheduler%trace_ids)) then
@@ -450,7 +498,8 @@ contains
       call trace_create_event("bwd_block", bwd_block_id)
       call trace_create_event("bwd_submit", bwd_solve_id)
     end if
-    call trace_event_start(bwd_solve_id, scheduler%workerID)
+!   call trace_event_start(bwd_solve_id, scheduler%workerID)
+    call trace_event_start(bwd_solve_id, -1)
 #endif
 
 !   print *, "[spllt_solve_mod] solve_bwd"
@@ -465,9 +514,12 @@ contains
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
+    call system_clock(start_t, rate_t)
     ! initialise rhs_local
-    xlocal    = zero 
+   !xlocal    = zero 
     rhs_local = zero
+    call system_clock(stop_t)
+    bwd_reset_timer = (stop_t - start_t)/real(rate_t)
 
     num_node = fkeep%info%num_nodes
     
@@ -488,36 +540,72 @@ contains
        ! Loop over block columns
        do jj = nc, 1, -1
 
-          do ii = nr, jj+1, -1
-             
-             blk = dblk+ii-jj ! Block index
+         do ii = nr, jj+1, -1
+           
+           blk = dblk+ii-jj ! Block index
 
-             call spllt_solve_bwd_udpate_task(blk, node, nrhs, rhs_local,   &
-               rhs, ldr, xlocal, fkeep, bwd_update_id, scheduler)
+           call system_clock(start_t, rate_t)
+           call spllt_solve_bwd_udpate_task(blk, node, nrhs, rhs_local,   &
+             rhs, ldr, xlocal, fkeep, bwd_update_id, scheduler)
+          call system_clock(stop_t)
+          bwd_update_timer = bwd_update_timer + (stop_t - start_t)/real(rate_t)
 
-             !
-             ! Backward update with block on diagoanl
-             !
+            !
+            ! Backward update with block on diagoanl
+            !
 
-          end do
+         end do
 
-          !
-          ! Backward solve with block on diagoanl
-          !
-          call spllt_solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
-            xlocal, fkeep, bwd_block_id, scheduler)
-          
-          ! Update diag block in node       
-          if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
+         !
+         ! Backward solve with block on diagoanl
+         !
+         call system_clock(start_t, rate_t)
+         call spllt_solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
+           xlocal, fkeep, bwd_block_id, scheduler)
+         call system_clock(stop_t)
+         bwd_block_timer = bwd_block_timer + &
+           (stop_t - start_t)/real(rate_t)
+         
+         ! Update diag block in node       
+         if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
        end do
        
     end do
 
 #if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(bwd_solve_id, scheduler%workerID)
+    call trace_event_stop(bwd_solve_id, -1)
 #endif
-    ! Deallocate workspace
+    print *, " === BWD ==="
+    print *, "Time to submit reset work  :", bwd_reset_timer
+    print *, "Time to submit block task  :", bwd_block_timer
+    print *, "Time to submit update task :", bwd_update_timer
+    print *, "Time to submit kary task   :", scheduler%task_info( &
+      scheduler%workerID)%timer_submit_k_ary
+    do ii = 0, 10
+      if(scheduler%task_info(scheduler%workerID)%task_case(ii) .gt. 0) then
+        print '(a, i6, a, i2, a, es10.2, a, es10.2)', "Time to construct ", &
+          scheduler%task_info(scheduler%workerID)%task_case(ii), " case( ", &
+          ii, ") : ",                                                       &
+          scheduler%task_info(scheduler%workerID)%timer_submit_case(ii),    &
+          " with a mean of ",                                               &
+          scheduler%task_info(scheduler%workerID)%timer_submit_case(ii) /   &
+          scheduler%task_info(scheduler%workerID)%task_case(ii)
+      else
+        print '(a, i6, a, i2, a, es10.2, a, es10.2)', "Time to construct ", &
+          scheduler%task_info(scheduler%workerID)%task_case(ii), " case( ", &
+          ii, ") : ",                                                       &
+          scheduler%task_info(scheduler%workerID)%timer_submit_case(ii),    &
+          " with a mean of ",                                               &
+          scheduler%task_info(scheduler%workerID)%timer_submit_case(ii)
+      end if
+
+      ! Reset
+      scheduler%task_info(scheduler%workerID)%task_case(ii)         = 0      
+      scheduler%task_info(scheduler%workerID)%timer_submit_case(ii) = 0.0
+    end do
+    scheduler%task_info(scheduler%workerID)%timer_submit_k_ary = 0.0
     !$omp taskwait
+    ! Deallocate workspace
    !deallocate(xlocal, rhs_local)
 
 !   call print_task_stat("BWD SCHEDULER STAT", scheduler%masterWorker, &
