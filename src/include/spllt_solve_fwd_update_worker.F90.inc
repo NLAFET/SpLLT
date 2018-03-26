@@ -9,7 +9,7 @@ if(ndep_lvl .le. chunk) then
 
 #if defined(SPLLT_VERBOSE)
   print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : ]"
-  print p_dep
+  print *, p_dep
 #endif 
   call slv_fwd_update(m, n, col, offset, p_index,         &
     p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
