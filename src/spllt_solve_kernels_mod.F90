@@ -18,18 +18,24 @@ contains
     use spllt_data_mod
     implicit none
 
-    integer, intent(in) :: n ! leading dimension of diag. block
-    integer, intent(in) :: nelim ! number eliminations (immediate return if =0)
-    integer, intent(in) :: col ! start of block column variables in rhs
-    real(wp), dimension(*), intent(in) :: dest ! holds destination block
-    character(len=13), intent(in) :: trans ! set to 
-    ! 'Transpose    ' for forward substitution and to 
-    ! 'Non-Transpose' for back substitution
-    character(len=8), intent(in) :: unit ! set to 
-    ! 'Non-Unit' for positive-definite case
-    integer, intent(in) :: nrhs ! number of right-hand sides
-    integer, intent(in) :: ldr ! leading extent of rhs
-    real(wp), intent(inout) :: rhs(ldr*nrhs)
+    integer,            intent(in)    :: n      ! leading dimension of 
+                                                ! diag. block
+    integer,            intent(in)    :: nelim  ! number eliminations 
+                                                ! (immediate return if =0)
+    integer,            intent(in)    :: col    ! start of block column 
+                                                ! variables in rhs
+    real(wp),           intent(in)    :: dest(*)! holds destination block
+    character(len=13),  intent(in)    :: trans  ! set to :
+                                                ! 'Transpose    ' 
+                                                ! for forward substitution 
+                                                ! 'Non-Transpose' 
+                                                ! for back substitution
+    character(len=8),   intent(in)    :: unit   ! set to 
+                                                ! 'Non-Unit' 
+                                                ! for positive-definite case
+    integer,            intent(in)    :: nrhs   ! number of right-hand sides
+    integer,            intent(in)    :: ldr    ! leading extent of rhs
+    real(wp),           intent(inout) :: rhs(ldr*nrhs)
 
     !%%%   integer :: this_thread
     !%%%   integer :: t_start, t_end
@@ -57,25 +63,27 @@ contains
     use spllt_data_mod
     implicit none
 
-    integer, intent(in) :: m ! number of rows in block
-    integer, intent(in) :: nelim ! number eliminations (immediate return if =0)
-    integer, intent(in) :: col ! start of block column variables in rhs
-    integer, intent(in) :: offset ! offset into index we start at
-    integer, dimension(*), intent(in) :: index
-    integer, intent(in) :: ldd ! leading dimension of block
-    real(wp), dimension(m*ldd), intent(in) :: dest ! holds destination block
-    integer, intent(in) :: nrhs
-    integer, intent(in) :: ldu  ! leading extent of upd
-    real(wp), intent(inout) :: upd(ldu*nrhs) ! vector to update
-    integer, intent(in) :: ldr  ! leading extent of rhs
-    real(wp), intent(in) :: rhs(ldr*nrhs) ! rhs vector
-    real(wp), dimension(*), intent(out) :: xlocal
+    integer,  intent(in)    :: m              ! number of rows in block
+    integer,  intent(in)    :: nelim          ! # eliminations 
+                                              ! (immediate return if =0)
+    integer,  intent(in)    :: col            ! start of block column variables
+                                              ! in rhs
+    integer,  intent(in)    :: offset         ! offset into index we start at
+    integer,  intent(in)    :: index(*)
+    integer,  intent(in)    :: ldd            ! leading dimension of block
+    real(wp), intent(in)    :: dest(m*ldd)    ! holds destination block
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: ldu            ! leading extent of upd
+    real(wp), intent(inout) :: upd(ldu*nrhs)  ! vector to update
+    integer,  intent(in)    :: ldr            ! leading extent of rhs
+    real(wp), intent(in)    :: rhs(ldr*nrhs)  ! rhs vector
+    real(wp), intent(out)   :: xlocal(*)
 
-    integer :: i
-    integer :: j
-    integer :: k
-    integer :: r ! right hand side loop variable
-    real(wp) :: w ! temporary work value
+    integer   :: i
+    integer   :: j
+    integer   :: k
+    integer   :: r ! right hand side loop variable
+    real(wp)  :: w ! temporary work value
     !%%%  integer :: t_start, t_end, this_thread
 
     if(nelim.eq.0) return
