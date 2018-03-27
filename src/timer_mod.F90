@@ -227,6 +227,7 @@ contains
       do i = 1, all_timers%ntimers
         if(all_timers%timers(i)%ncall(0,th) .gt. 0) then
           call spllt_print_timer(th, all_timers%timers(i))
+          print *, ""
         end if
       end do
     end do

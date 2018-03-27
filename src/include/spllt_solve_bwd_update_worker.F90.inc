@@ -11,7 +11,6 @@ if(ndep_lvl .le. chunk) then
   print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
   print *, p_dep
 #endif
-
   call  slv_bwd_update(m, n, col, offset, p_index,      &
         p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,   &
         p_rhs, p_upd(:, threadID + 1), ldr,             &
