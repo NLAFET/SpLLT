@@ -41,6 +41,7 @@ contains
     allocate(stops(-1:trace_nth-1))
     allocate(starts(maxtypes, -1 : trace_nth - 1))
     pendings(:,:) = .false.
+    pauses(:,:)   = .false.
     nevtype     = 0
     nevents(:)  = 0
     ttimes(:)   = 0
@@ -75,12 +76,13 @@ contains
     if(pendings(id, thn)) then
       write(*,'("Tracing error!!! events nesting not supported")')
       write(*,*) 'Th ', thn, ' already recorded as doing trace ', id
+      print *, "PENDINGS : ", pendings(:, thn)
       return
     end if
 
     if(any(pendings(:, thn))) then
       if(count(pendings(:, thn)) .gt. 1) then
-        write(*,'("Tracing error!!! events nesting not supported")')
+        write(*,'("Tracing error!!! count events not supported")')
         write(*,*) 'Th ', thn, ' already recorded as doing trace ', &
           sum(ids, mask=pendings(:,thn))
         return
@@ -114,6 +116,7 @@ contains
         write(*,'("Tracing error!!! events nesting not supported")')
         write(*,*) 'Th ', thn, ' already recorded as doing trace ', &
           sum(ids, mask=pauses(:,thn))
+        print *, "PAUSES : ", pauses(:, thn)
         return
       end if
           
