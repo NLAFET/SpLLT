@@ -6,6 +6,7 @@ program spllt_omp
   use utils_mod
   use spllt_solve_dep_mod
   use trace_mod
+  use timer_mod
   use ISO_Fortran_env, only: stdout => OUTPUT_UNIT, &
     compiler_version, compiler_options
   implicit none
@@ -65,6 +66,7 @@ program spllt_omp
 
   ! runtime
   type(spllt_omp_scheduler)           :: scheduler
+  type(spllt_timer),          save    :: timer
 
   call date_and_time(DATE=date, TIME=time)
 
@@ -166,7 +168,7 @@ program spllt_omp
   !$omp end single
   !$omp end parallel
   
-
+  call spllt_init_timer(st)
 
   !!!!!!!!!!!!!!!!!!!!
   ! Create RHS
@@ -212,6 +214,8 @@ program spllt_omp
   !$omp parallel
   !$omp single
   call spllt_omp_reset_scheduler(scheduler)
+  call spllt_open_timer(scheduler%nworker, scheduler%workerID, "MAIN", &
+    timer)
 
   do nb_i=1, nnb
 
@@ -219,24 +223,32 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Analyse SpLLT
     !
+    call spllt_tic("Analyze", 1, scheduler%workerID, timer)
     call system_clock(start_t, rate_t)
+
     call spllt_analyse(akeep, fkeep, options, n, ptr, row, info, order)
+
+    call system_clock(stop_t)
+    call spllt_tac(1, scheduler%workerID, timer)
+    analyse_timer(nb_i) = (stop_t - start_t)/real(rate_t)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
        stop
     endif
-    call system_clock(stop_t)
-    analyse_timer(nb_i) = (stop_t - start_t)/real(rate_t)
    !print "(a,es10.2)", "Predict nfact = ", real(info%ssids_inform%num_factor)
    !print "(a,es10.2)", "Predict nflop = ", real(info%ssids_inform%num_flops)
 
     !!!!!!!!!!!!!!!!!!!!
     ! Numerical Factorization
     !
+    call spllt_tic("Factorization", 2, scheduler%workerID, timer)
     call system_clock(start_t, rate_t)
+
     call spllt_factor(akeep, fkeep, options, val, info)
     call spllt_wait()
+
     call system_clock(stop_t)
+    call spllt_tac(2, scheduler%workerID, timer)
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
     allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
@@ -254,7 +266,11 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Compute dependencies of each blk
     !
+    call spllt_tic("Compute Dep", 3, scheduler%workerID, timer)
+
     call spllt_compute_solve_dep(fkeep)
+
+    call spllt_tac(3, scheduler%workerID, timer)
 
     do j=1, nnrhs
 
@@ -266,12 +282,14 @@ program spllt_omp
       !!!!!!!!!!!!!!!!!!!!
       ! Forward substitution
       !
+      call spllt_tic("Forward", 4, scheduler%workerID, timer)
       call system_clock(start_t, rate_t)
 
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
         workspace=workspace, scheduler=scheduler)
 
       call system_clock(stop_t)
+      call spllt_tac(4, scheduler%workerID, timer)
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       fwd_flops(j, nb_i) =  0.0
@@ -284,12 +302,14 @@ program spllt_omp
       !!!!!!!!!!!!!!!!!!!!
       ! Backward substitution
       !
+      call spllt_tic("Backward", 5, scheduler%workerID, timer)
       call system_clock(start_t, rate_t)
 
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
         workspace=workspace, scheduler=scheduler)
 
       call system_clock(stop_t)
+      call spllt_tac(5, scheduler%workerID, timer)
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       bwd_flops(j, nb_i) =  0.0
@@ -305,8 +325,10 @@ program spllt_omp
       ! STATISTICS
       !
       !Compute the residual for each rhs
+#if defined(SPLLT_OMP_TRACE)
       call trace_event_start(scheduler%trace_ids(trace_chkerr_id), &
         scheduler%workerID)
+#endif
       call compute_residual(n, ptr, row, val, nrhs, &
         sol_computed, rhs, res)
 
@@ -325,8 +347,10 @@ program spllt_omp
       if(bwd_error_ok) then
         write(0, "(a)") "Backward error... ok"
       end if
+#if defined(SPLLT_OMP_TRACE)
       call trace_event_stop(scheduler%trace_ids(trace_chkerr_id), &
         scheduler%workerID)
+#endif
 #endif
     end do
 
@@ -334,9 +358,12 @@ program spllt_omp
     deallocate(workspace, stat=st)
     call spllt_deallocate_fkeep(fkeep, st)
   end do
+
   !$omp end single
   !$omp end parallel
 
+  call spllt_close_timer(scheduler%workerID, timer)
+  call spllt_print_timers(scheduler%nworker)
 
   do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
     call print_omp_task_stat("SCHEDULER STAT", i, scheduler%task_info(i))
@@ -370,6 +397,7 @@ program spllt_omp
   call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
     &//date//'-'//time)
 #endif
+
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val)
   deallocate(fwd_timer, bwd_timer, nrhs_list, facto_timer, analyse_timer)
