@@ -137,8 +137,8 @@ contains
   ! TASK_BUPD
   ! B_i <- B_i - L_ij^-T B_j
   !
-  subroutine slv_bwd_update(m, nelim, col, offset, index, dest, ldd, nrhs, rhs, &
-       upd, ldr, xlocal)
+  subroutine slv_bwd_update(m, nelim, col, offset, index, dest, ldd, nrhs, &
+      rhs, upd, ldr, xlocal)
     use spllt_data_mod
     implicit none
 

@@ -377,14 +377,14 @@ program spllt_omp
  !  end do
  !end do
 
-  call timer_log_dump("fwd step"//ACHAR(10)//header, fwd_timer, &
-    'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
-  call timer_log_dump("bwd step"//ACHAR(10)//header, bwd_timer, &
-    'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
-  call timer_log_dump("analyse step"//ACHAR(10)//header, analyse_timer, &
-    'analyse_time_'//trim(matfile)//'.out_'//date//'-'//time)
-  call timer_log_dump("facto step"//ACHAR(10)//header, facto_timer, &
-    'facto_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call timer_log_dump("fwd step"//ACHAR(10)//header, fwd_timer, &
+!   'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call timer_log_dump("bwd step"//ACHAR(10)//header, bwd_timer, &
+!   'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call timer_log_dump("analyse step"//ACHAR(10)//header, analyse_timer, &
+!   'analyse_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call timer_log_dump("facto step"//ACHAR(10)//header, facto_timer, &
+!   'facto_time_'//trim(matfile)//'.out_'//date//'-'//time)
 
 #if defined(SPLLT_PROFILING_FLOP)
   call flop_log_dump("fwd step"//ACHAR(10)//header, fwd_flops, &
