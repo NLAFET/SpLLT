@@ -320,13 +320,6 @@ module spllt_data_mod
                                                 !  (k = 2 by default)
     integer           :: nfake_task_insert      ! #fake task insert
     integer           :: narray_allocated       ! #allocation
-    double precision  :: timer_task
-    double precision  :: timer_submit
-    double precision  :: timer_submit_k_ary
-    double precision  :: timer_submit_case(0:10)
-    integer           :: task_case(0:10)
-    double precision  :: timer_fwd_submit_case(0:10)
-    integer           :: task_fwd_case(0:10)
   end type spllt_omp_task_stat
 
   type spllt_omp_scheduler

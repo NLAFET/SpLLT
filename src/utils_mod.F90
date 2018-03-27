@@ -245,9 +245,6 @@ contains
     print '(a, i9)',    "#task run           : ", task%ntask_run
     print '(a, i9)',    "#array allocate     : ", task%narray_allocated
     print '(a, es10.2)', "#flop               : ", task%nflop
-    print '(a, es10.2)', "Time in tasks       : ", task%timer_task
-    print '(a, es10.2)', "Time in submission  : ", task%timer_submit
-    print '(a, es10.2)', "Time to submit kary : ", task%timer_submit_k_ary
 
   end subroutine print_omp_task_stat
 
@@ -280,13 +277,6 @@ contains
     task_stat%max_dep             = 0
     task_stat%narray_allocated    = 0
     task_stat%nblk_kdep           = 0
-    task_stat%timer_task          = 0.0
-    task_stat%timer_submit        = 0.0
-    task_stat%timer_submit_k_ary  = 0.0
-    task_stat%timer_submit_case   = 0.0
-    task_stat%task_case           = 0
-    task_stat%timer_fwd_submit_case   = 0.0
-    task_stat%task_fwd_case           = 0
     
   end subroutine spllt_omp_init_task_info
 
