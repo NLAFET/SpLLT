@@ -1,4 +1,5 @@
 threadID  = omp_get_thread_num()
+call spllt_tic("fwd block task", 13, threadID, timer)
 scheduler%task_info(threadID)%ntask_run = scheduler%task_info(threadID)%&
   &ntask_run + 1
 
@@ -11,6 +12,39 @@ if(ndep_lvl .le. chunk) then
   print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
   print *, p_dep
 #endif
+
+! call spllt_tic("Reset workspace", 13, threadID, timer)
+! ! Reset p_upd if this is the first diagonal block of the node
+! if(dblk .eq. blk_sa) then
+!!  print *, "RReset ", ubound(p_extra_row, 1) - lbound(p_extra_row, 1) + 1, &
+!!    " elts of the workspace of blk ", dblk
+!     do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
+!       if(.not. p_workspace_reset(p_extra_row(i))) then
+!         !!$omp atomic write
+!         p_workspace_reset(p_extra_row(i)) = .true. ! not safe for me ...
+!         !!$omp end atomic
+!         do r = 0, nrhs-1
+!           do j = 1, nthread
+!             p_upd(p_extra_row(i) + r*ldr, j)  = zero
+!           end do
+!         end do
+!       end if
+!     end do
+! end if
+! call spllt_tac(13, threadID, timer)
+
+ !if(dblk .eq. blk_sa) then
+ !  print *, "Check rhs_local for blk ", dblk
+ !  do r = 0, nrhs - 1
+ !    do j = 1, nthread
+ !      do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
+ !        if(p_upd(p_extra_row(i) + r*ldr, j) .ne. 0) then
+ !          print *, "Error ? blk ", dblk, " => row ", p_extra_row(i)
+ !        end if
+ !      end do
+ !    end do
+ !  end do
+ !end if
 
   ! Sum contributions to rhs
   do r = 0, nrhs-1
@@ -51,3 +85,5 @@ if(ndep_lvl .le. chunk) then
   call trace_event_stop (trace_id, threadID)
 #endif
 end if
+
+call spllt_tac(13, threadID, timer)

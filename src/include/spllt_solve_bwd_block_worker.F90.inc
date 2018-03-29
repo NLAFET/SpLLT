@@ -1,4 +1,5 @@
 threadID = omp_get_thread_num()
+call spllt_tic("bwd block task", 13, threadID, timer)
 scheduler%task_info(threadID)%ntask_run = scheduler%task_info(threadID)%&
   &ntask_run + 1
 
@@ -29,6 +30,7 @@ if(ndep_lvl .le. chunk) then
     do j = 1, nthread
       do i = col + r*ldr, col+n-1 + r*ldr
         p_rhs(i)    = p_rhs(i) + p_upd(i, j)
+        p_upd(i,j)  = zero ! Reset in case of next fwd solve
       end do
     end do
   end do
@@ -46,3 +48,4 @@ if(ndep_lvl .le. chunk) then
   call trace_event_stop(trace_id, threadID)
 #endif
 end if
+call spllt_tac(13, threadID, timer)
