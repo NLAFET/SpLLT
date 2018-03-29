@@ -68,6 +68,8 @@ program spllt_omp
   type(spllt_omp_scheduler)           :: scheduler
   type(spllt_timer),          save    :: timer
 
+  integer, allocatable :: check(:)
+
   call date_and_time(DATE=date, TIME=time)
 
   write( stdout, '(/8a/)') ' This output was compiled using ', &
@@ -237,6 +239,8 @@ program spllt_omp
     endif
    !print "(a,es10.2)", "Predict nfact = ", real(info%ssids_inform%num_factor)
    !print "(a,es10.2)", "Predict nflop = ", real(info%ssids_inform%num_flops)
+    ! Print elimination tree
+   !call spllt_print_atree(akeep, fkeep, options)
 
     !!!!!!!!!!!!!!!!!!!!
     ! Numerical Factorization
@@ -261,6 +265,7 @@ program spllt_omp
       stop
     end if
     call spllt_scheduler_alloc(scheduler, st)
+    workspace = zero
     
 
     !!!!!!!!!!!!!!!!!!!!
@@ -271,6 +276,24 @@ program spllt_omp
     call spllt_compute_solve_dep(fkeep)
 
     call spllt_tac(3, scheduler%workerID, timer)
+
+   !call spllt_compute_solve_extra_row(fkeep)
+   !call spllt_prepare_workspace(fkeep, n, st)
+
+   !allocate(check(n))
+   !check = 0
+   !do j = 1, fkeep%info%num_nodes
+   !  print *, "Node ", j
+   !  do k = 1, size(fkeep%nodes(j)%extra_row)
+   !    if(fkeep%nodes(j)%extra_row(k) .eq. 747) then
+   !      print *, "Row 747 belongs to node ", j, " in pos ", k
+   !    end if
+   !    check(fkeep%nodes(j)%extra_row(k)) = check(fkeep%nodes(j)%extra_row(k)) + 1
+   !    if(check(fkeep%nodes(j)%extra_row(k)) .gt. 1) then
+   !      print *, "Error, row ", fkeep%nodes(j)%extra_row(k), " counted ", check(fkeep%nodes(j)%extra_row(k))
+   !    end if
+   !  end do
+   !end do
 
     do j=1, nnrhs
 
@@ -340,7 +363,8 @@ program spllt_omp
       bwd_error_ok = .true.
       do i = 1, nrhs
         if(normRes(i) / normRHS(i) .gt. 1e-14) then
-          write(0, "(a, i4, a, i4)") "Wrong Bwd error for ", i, "/", nrhs
+          write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
+            "/", nrhs, " : ", normRes(i) / normRHS(i)
           bwd_error_ok = .false.
         end if
       end do
