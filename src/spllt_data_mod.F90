@@ -196,6 +196,9 @@ module spllt_data_mod
      integer, allocatable :: child(:) ! holds children of node
      integer :: parent ! Parent of node in assembly tree
      integer :: least_desc ! Least descendant in assembly tree
+
+     ! List of rows of the node that are not present in the children
+     integer, allocatable :: extra_row(:)
   end type spllt_node
 
   type spllt_workspace_i
@@ -309,6 +312,8 @@ module spllt_data_mod
      ! holds block cols of L
      type(lmap_type), dimension(:), allocatable :: lmap
      ! holds mapping from matrix values into lfact
+
+     logical, allocatable :: workspace_reset(:)
   end type spllt_fkeep
 
   type spllt_omp_task_stat
@@ -389,6 +394,10 @@ contains
     end if
     if(allocated(node%child)) then
       deallocate(node%child, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(node%extra_row)) then
+      deallocate(node%extra_row, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_node
@@ -524,6 +533,10 @@ contains
         stat = stat + st
       end do
       deallocate(fkeep%lmap, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%workspace_reset)) then
+      deallocate(fkeep%workspace_reset, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_fkeep

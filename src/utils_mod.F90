@@ -17,18 +17,34 @@ module utils_mod
   end interface flop_log_dump
 contains
 
-  subroutine print_darray(array_name, n, val)
+  subroutine print_darray(array_name, n, val, display)
     use spllt_data_mod
     character(len=*),       intent(in)    :: array_name
     integer,                intent(in)    :: n
     real(wp), dimension(n), intent(in)    :: val
+    integer, optional,      intent(in)    :: display  ! 0 = Vertical,
+                                                      ! 1 = Horizontal
 
     integer :: i
+    integer :: disp
+
+    if(present(display))then
+      disp = display
+    else
+      disp = 0 ! Vertical
+    end if
 
     print '(a)', array_name
-    do i = 1, n
-      print *, val(i)
-    end do
+    if(disp .eq. 0) then
+      do i = 1, n
+        print *, val(i)
+      end do
+    else
+      do i = 1, n
+        write(*, fmt="(es10.2)", advance="no") val(i)
+      end do
+      write(*,*) ""
+    end if
   end subroutine print_darray
 
   subroutine print_iarray(array_name, n, val, display)
