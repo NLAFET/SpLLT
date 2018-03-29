@@ -1,5 +1,21 @@
 module spllt_solve_dep_mod
 
+! subroutine spllt_compute_blk_solve_dep(fkeep, blk)
+! subroutine spllt_compute_solve_dep(fkeep)
+! subroutine get_update_dep(fkeep, child_node, node, pos)
+! subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
+! subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
+! subroutine reduce_ind_and_get_ndep(fkeep, ind, nind, child_node, ndep)
+! recursive subroutine getUpdateNDep(fkeep, node, ind, nind, ndep, lvl)
+! subroutine reduce_ind_and_get_dep(fkeep, ind, nind, child_node, dep)
+! recursive subroutine getUpdateDep(fkeep, node, ind, nind, dep, ndep, lvl)
+! subroutine reduce_ind_and_get_dep_blk(fkeep, ind, nind, child_node, blk_dep)
+! subroutine getPointerBlkIndex(fkeep, blk, p)
+! subroutine getSolveNDep(fkeep, node, ind, nind, ndep)
+! subroutine getSolveDep(fkeep, node, ind, nind, dep, ndep)
+! subroutine fwd_update_dependency(fkeep, blk, dep)
+! subroutine bwd_solve_dependency(fkeep, blk, dep)
+
   use spllt_data_mod
 
 contains
@@ -24,16 +40,21 @@ contains
       ndep = ndep + 1
     end if
     
-    allocate(fkeep%bc(blk)%fwd_dep(ndep))
+    if(ndep .gt. 0) then
+      allocate(fkeep%bc(blk)%fwd_dep(ndep))
 
-    if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
-      fkeep%bc(blk)%fwd_dep(1:size(fkeep%bc(blk)%fwd_update_dep)) = &
-        fkeep%bc(blk)%fwd_update_dep
-    end if
-    if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
-      fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
-    end if
+      if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+        fkeep%bc(blk)%fwd_dep(1:size(fkeep%bc(blk)%fwd_update_dep)) = &
+          fkeep%bc(blk)%fwd_update_dep
+      end if
+      if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+        fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
+      end if
+    else
+      allocate(fkeep%bc(blk)%fwd_dep(1))
 
+      fkeep%bc(blk)%fwd_dep(1) = 1
+    endif
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep
     !
@@ -48,16 +69,24 @@ contains
       ndep = ndep + 1
     end if
     
-    allocate(fkeep%bc(blk)%bwd_dep(ndep))
+    if(ndep .gt. 0) then
+      allocate(fkeep%bc(blk)%bwd_dep(ndep))
 
-    if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
-      fkeep%bc(blk)%bwd_dep(1:size(fkeep%bc(blk)%bwd_solve_dep)) = &
-        fkeep%bc(blk)%bwd_solve_dep
-    end if
-    if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
-      fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
+      if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
+        fkeep%bc(blk)%bwd_dep(1:size(fkeep%bc(blk)%bwd_solve_dep)) = &
+          fkeep%bc(blk)%bwd_solve_dep
+      end if
+      if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
+        fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
+      end if
+    else
+      allocate(fkeep%bc(blk)%bwd_dep(1))
+
+      fkeep%bc(blk)%bwd_dep(1) = fkeep%info%num_nodes
     end if
   end subroutine spllt_compute_blk_solve_dep
+
+
 
   subroutine spllt_compute_solve_dep(fkeep)
     use utils_mod, only : print_task_stat, spllt_update_task_info, &
@@ -79,6 +108,36 @@ contains
     call print_task_stat(task_info_fwd, "FWD STAT")
     call print_task_stat(task_info_bwd, "BWD STAT")
   end subroutine spllt_compute_solve_dep
+
+
+
+  subroutine spllt_compute_solve_extra_row(fkeep)
+    type(spllt_fkeep), intent(inout)  :: fkeep
+
+    integer :: i
+
+    do i = 1, fkeep%info%num_nodes
+      call spllt_compute_extra_row(fkeep, i)
+     !if(i .eq. 8 .or. i .eq. 9) then
+     !  print *, "Extra rows of node ", i
+     !  print *, " ... are ", fkeep%nodes(i)%extra_row
+     !end if
+    end do
+  end subroutine spllt_compute_solve_extra_row
+
+  subroutine spllt_prepare_workspace(fkeep, n, st)
+    type(spllt_fkeep), intent(inout)  :: fkeep
+    integer,            intent(in)    :: n  ! size of the workspace, 
+                                            ! i.e., size(rhs, 1)
+    integer,            intent(out)   :: st
+
+    allocate(fkeep%workspace_reset(n), stat=st)
+    if(st .eq. 0) then
+      fkeep%workspace_reset(:) = .false.
+    end if
+  end subroutine spllt_prepare_workspace
+
+
 
   !Return the position in child_node of the rows of node that are 
   ! in child_node
@@ -136,6 +195,8 @@ contains
 
   end subroutine get_update_dep
 
+
+
   subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
@@ -172,6 +233,8 @@ contains
     end do
 
   end subroutine get_update_nblk
+
+
 
   subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
     type(spllt_fkeep), target, intent(in) :: fkeep
@@ -215,6 +278,8 @@ contains
 
   end subroutine get_update_dep_blk
 
+
+
   function get_child_dep_blk_id(fkeep, child_node, row, nrow)
     integer                               :: get_child_dep_blk_id
     type(spllt_fkeep), target, intent(in) :: fkeep
@@ -240,6 +305,8 @@ contains
     get_child_dep_blk_id = tmp
 
   end function get_child_dep_blk_id
+
+
 
   subroutine reduce_ind_and_get_ndep(fkeep, ind, nind, child_node, ndep)
     type(spllt_fkeep), target, intent(in) :: fkeep
@@ -299,6 +366,8 @@ contains
 
   end subroutine reduce_ind_and_get_ndep
 
+
+
   recursive subroutine getUpdateNDep(fkeep, node, ind, nind, ndep, lvl)
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
@@ -354,6 +423,8 @@ contains
     deallocate(subind)
 
   end subroutine getUpdateNDep
+
+
 
   !Get the dependencies after counting its number
   subroutine reduce_ind_and_get_dep(fkeep, ind, nind, child_node, dep)
@@ -414,6 +485,8 @@ contains
 
 
   end subroutine reduce_ind_and_get_dep
+
+
 
   recursive subroutine getUpdateDep(fkeep, node, ind, nind, dep, ndep, lvl)
     type(spllt_fkeep), intent(in) :: fkeep
@@ -480,6 +553,8 @@ contains
 
   end subroutine getUpdateDep
 
+
+
   subroutine reduce_ind_and_get_dep_blk(fkeep, ind, nind, child_node, blk_dep)
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(inout)                :: ind(:)
@@ -534,6 +609,8 @@ contains
 
   end subroutine reduce_ind_and_get_dep_blk
 
+
+
   subroutine getPointerBlkIndex(fkeep, blk, p)
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: blk
@@ -559,6 +636,8 @@ contains
     p           => fkeep%nodes(node)%index(blk_ind_sa : blk_ind_sa + blkm - 1)
 
   end subroutine getPointerBlkIndex
+
+
 
   subroutine getSolveNDep(fkeep, node, ind, nind, ndep)
     type(spllt_fkeep), intent(in) :: fkeep
@@ -596,6 +675,8 @@ contains
 
   end subroutine getSolveNDep
 
+
+
   subroutine getSolveDep(fkeep, node, ind, nind, dep, ndep)
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
@@ -628,6 +709,8 @@ contains
     end do
 
   end subroutine getSolveDep
+
+
 
   subroutine fwd_update_dependency(fkeep, blk, dep)
     use spllt_data_mod
@@ -823,6 +906,8 @@ contains
 
   end subroutine fwd_update_dependency
 
+
+
   integer function bwd_update_dependency(fkeep, blk)
     use spllt_data_mod
 
@@ -837,6 +922,8 @@ contains
 
   end function bwd_update_dependency
 
+
+
   integer function fwd_solve_dependency(fkeep, blk)
     use spllt_data_mod
 
@@ -850,6 +937,8 @@ contains
     end if
 
   end function fwd_solve_dependency
+
+
 
   subroutine bwd_solve_dependency(fkeep, blk, dep)
     use spllt_data_mod
@@ -958,6 +1047,8 @@ contains
 
   end subroutine bwd_solve_dependency
 
+
+
   function contain(fkeep, blk1, blk2) result(isIn)
     use spllt_data_mod
     
@@ -987,6 +1078,80 @@ contains
       end if
     end do
   end function contain
+
+  
+
+  subroutine spllt_compute_extra_row(fkeep, node)
+    type(spllt_fkeep),  target, intent(inout) :: fkeep
+    integer,            intent(in)            :: node
+
+    integer               :: i, nchild
+    integer               :: blk_sa, last_blk
+    integer               :: nblk
+    integer               :: nrow, nval
+    logical, allocatable  :: is_present(:)
+    integer, pointer      :: p_index(:)
+    integer, pointer      :: p_child_index(:)
+    integer, pointer      :: p_extra_row(:)
+
+    ! Number of nodes to visit
+    nchild    = fkeep%nodes(node)%nchild
+    blk_sa    = fkeep%nodes(node)%blk_sa
+    last_blk  = fkeep%bc(blk_sa)%last_blk
+    nblk      = last_blk - blk_sa + 1
+    nrow      = nblk * fkeep%nodes(node)%nb + fkeep%bc(last_blk)%blkm
+    p_index   => fkeep%nodes(node)%index
+    nrow      = size(p_index, 1)
+
+    if(nchild .eq. 0) then
+      allocate(fkeep%nodes(node)%extra_row(nrow))
+      fkeep%nodes(node)%extra_row(:) = p_index(:)
+      return
+    end if
+
+    allocate(is_present(nrow))
+    is_present(:) = .true.
+
+    nval = nrow
+    do i = 1, nchild
+      child = fkeep%nodes(node)%child(i)
+      j = 1
+      k = 1
+      p_child_index => fkeep%nodes(child)%index
+      nchild_row = size(p_child_index, 1)
+      do while(j .le. nrow .and. k .le. nchild_row .and. nval .gt. 0)
+        if(p_index(j) .lt. p_child_index(k)) then
+          j = j + 1
+        else if(p_index(j) .gt. p_child_index(k)) then
+          k = k + 1
+        else
+          if(is_present(j)) then
+            nval = nval - 1
+            is_present(j) = .false.
+          end if
+          j = j + 1
+          k = k + 1
+        end if
+      end do
+    end do
+
+    allocate(fkeep%nodes(node)%extra_row(nval))
+    j = 1
+    i = 1
+    p_extra_row => fkeep%nodes(node)%extra_row
+    do while(i .le. nval .and. j .le. nrow)
+      if(is_present(j)) then
+        p_extra_row(i) = p_index(j)
+        i = i + 1
+      end if
+      j = j + 1
+    end do
+    deallocate(is_present)
+
+  end subroutine spllt_compute_extra_row
+
+
+
 
 ! integer function bwd_solve_dependency(fkeep, blk)
 !   use spllt_data_mod

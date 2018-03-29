@@ -282,9 +282,10 @@ contains
     use trace_mod
     use utils_mod
     use timer_mod
+    use omp_lib, ONLY : omp_lock_kind
     implicit none
 
-    type(spllt_fkeep),          intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
     integer,                    intent(in)    :: nrhs ! Number of RHS
     integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
     real(wp),                   intent(inout) :: rhs(ldr*nrhs)
@@ -304,7 +305,9 @@ contains
     integer                 :: nworker
     real(wp), pointer       :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer       :: rhs_local(:,:) ! update_buffer workspace
+    type(spllt_block), pointer :: p_bc(:)
     type(spllt_timer), save :: timer
+ !$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(scheduler%nworker, scheduler%workerID, "solve_fwd", &
       timer)
@@ -333,13 +336,31 @@ contains
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
     call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
-    ! initialise rhs_local
-   !xlocal    = zero 
-    rhs_local = zero
-    call spllt_tac(1, scheduler%workerID, timer)
+   !! initialise rhs_local
+   !!$omp parallel
+   !rhs_local(1 : ldr * nrhs, omp_get_thread_num()) = zero
+   !!$omp end parallel
+   !call spllt_tac(1, scheduler%workerID, timer)
 
     num_node = fkeep%info%num_nodes
     
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Lock the execution of the tasks that will then be submitted by the master
+    p_bc => fkeep%bc(:)
+ !$ call omp_init_lock(lock)
+ !$ call omp_set_lock(lock)
+
+    !$omp task depend(inout: p_bc(1))   &
+    !$omp shared(lock)                  &
+    !$omp firstprivate(p_bc)
+
+ !$ call omp_set_lock(lock) 
+    print *, "Lock locked in task"
+ !$ call omp_unset_lock(lock)
+
+    !$omp end task
+
+    call spllt_tic("Submit tasks", 4, scheduler%workerID, timer)
     do node = 1, num_node
 
        ! Get node info
@@ -360,7 +381,7 @@ contains
           !
           ! Forward solve with block on diagoanl
           !
-          call spllt_tic("fwd block", 2, scheduler%workerID, timer)
+          call spllt_tic("submit fwd block", 2, scheduler%workerID, timer)
           call spllt_solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
             xlocal, fkeep, fwd_block_id, scheduler)
           call spllt_tac(2, scheduler%workerID, timer)
@@ -372,7 +393,7 @@ contains
             !
             ! Forward update with off-diagonal
             !
-            call spllt_tic("fwd update", 3, scheduler%workerID, timer)
+            call spllt_tic("submit fwd update", 3, scheduler%workerID, timer)
             call spllt_solve_fwd_update_task(blk, node, nrhs, rhs_local, &
               rhs, ldr, xlocal, fkeep, fwd_update_id, scheduler)
             call spllt_tac(3, scheduler%workerID, timer)
@@ -383,10 +404,13 @@ contains
           dblk = fkeep%bc(dblk)%last_blk + 1
        end do
     end do
+    call spllt_tac(4, scheduler%workerID, timer)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(fwd_solve_id, -1)
 #endif
+ !$ call omp_unset_lock(lock)
+ !$ call omp_destroy_lock(lock)
     
     !$omp taskwait
 
@@ -401,9 +425,10 @@ contains
     use trace_mod
     use utils_mod
     use timer_mod
+    use omp_lib, ONLY : omp_lock_kind
     implicit none
 
-    type(spllt_fkeep),          intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
     integer,                    intent(in)    :: nrhs ! Number of RHS
     integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
     real(wp),                   intent(inout) :: rhs(ldr, nrhs)
@@ -425,7 +450,9 @@ contains
     integer                 :: nworker
     real(wp), pointer       :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer       :: rhs_local(:,:) ! update_buffer workspace
+    type(spllt_block), pointer :: p_bc(:)
     type(spllt_timer), save :: timer
+ !$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(scheduler%nworker, scheduler%workerID, "solve_bwd", &
       timer)
@@ -453,13 +480,30 @@ contains
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
-    call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
-    ! initialise rhs_local
-    rhs_local = zero
-    call spllt_tac(1, scheduler%workerID, timer)
+!   call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
+!   ! initialise rhs_local
+!  !rhs_local = zero
+!   call spllt_tac(1, scheduler%workerID, timer)
 
     num_node = fkeep%info%num_nodes
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Lock the execution of the tasks that will then be submitted by the master
+    p_bc => fkeep%bc(:)
+ !$ call omp_init_lock(lock)
+ !$ call omp_set_lock(lock)
+
+    !$omp task depend(inout: p_bc(num_node))  &
+    !$omp shared(lock)                        &
+    !$omp firstprivate(p_bc, num_node)
+
+ !$ call omp_set_lock(lock) 
+    print *, "[BWD] Lock locked in task"
+ !$ call omp_unset_lock(lock)
+
+    !$omp end task
     
+    call spllt_tic("Submit tasks", 4, scheduler%workerID, timer)
     do node = num_node, 1, -1
 
       ! Get node info
@@ -481,7 +525,7 @@ contains
           
           blk = dblk+ii-jj ! Block index
 
-          call spllt_tic("bwd update", 2, scheduler%workerID, timer)
+          call spllt_tic("submit bwd update", 2, scheduler%workerID, timer)
           call spllt_solve_bwd_udpate_task(blk, node, nrhs, rhs_local,   &
             rhs, ldr, xlocal, fkeep, bwd_update_id, scheduler)
           call spllt_tac(2, scheduler%workerID, timer)
@@ -495,7 +539,7 @@ contains
         !
         ! Backward solve with block on diagoanl
         !
-        call spllt_tic("Bwd block", 3, scheduler%workerID, timer)
+        call spllt_tic("submit bwd block", 3, scheduler%workerID, timer)
         call spllt_solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
           xlocal, fkeep, bwd_block_id, scheduler)
         call spllt_tac(3, scheduler%workerID, timer)
@@ -505,10 +549,13 @@ contains
       end do
       
     end do
+    call spllt_tac(4, scheduler%workerID, timer)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(bwd_solve_id, -1)
 #endif
+ !$ call omp_unset_lock(lock)
+ !$ call omp_destroy_lock(lock)
 
     !$omp taskwait
 
