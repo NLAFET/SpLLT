@@ -25,10 +25,13 @@
                                                                                    
 
 case(1)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(1)',2, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)))   &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -38,12 +41,19 @@ call spllt_tic('CASE(1)',2, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(2, scheduler%workerID, timer)
+# endif
+
 case(2)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(2)',3, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -53,13 +63,20 @@ call spllt_tic('CASE(2)',3, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(3, scheduler%workerID, timer)
+# endif
+
 case(3)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(3)',4, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -69,13 +86,20 @@ call spllt_tic('CASE(3)',4, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(4, scheduler%workerID, timer)
+# endif
+
 case(4)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(4)',5, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -85,14 +109,21 @@ call spllt_tic('CASE(4)',5, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(5, scheduler%workerID, timer)
+# endif
+
 case(5)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(5)',6, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -102,14 +133,21 @@ call spllt_tic('CASE(5)',6, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(6, scheduler%workerID, timer)
+# endif
+
 case(6)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(6)',7, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -119,15 +157,22 @@ call spllt_tic('CASE(6)',7, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(7, scheduler%workerID, timer)
+# endif
+
 case(7)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(7)',8, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -137,15 +182,22 @@ call spllt_tic('CASE(7)',8, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(8, scheduler%workerID, timer)
+# endif
+
 case(8)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(8)',9, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -155,16 +207,23 @@ call spllt_tic('CASE(8)',9, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(9, scheduler%workerID, timer)
+# endif
+
 case(9)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(9)',10, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -174,16 +233,23 @@ call spllt_tic('CASE(9)',10, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(10, scheduler%workerID, timer)
+# endif
+
 case(10)
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tic('CASE(10)',11, scheduler%workerID, timer)
+# endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
-!$omp firstprivate(nthread, trace_id)                         &
+!$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
@@ -193,4 +259,8 @@ call spllt_tic('CASE(10)',11, scheduler%workerID, timer)
 # include "spllt_solve_bwd_block_worker.F90.inc"
 
 !$omp end task
+
+# if defined(SPLLT_TIMER_TASKS_SUBMISSION)
 call spllt_tac(11, scheduler%workerID, timer)
+# endif
+

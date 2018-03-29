@@ -1,5 +1,7 @@
 threadID  = omp_get_thread_num()
+#if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update task", 13, threadID, timer)
+#endif
 scheduler%task_info(threadID)%ntask_run = scheduler%task_info(threadID)%&
   &ntask_run + 1
 
@@ -25,4 +27,7 @@ if(ndep_lvl .le. chunk) then
   call trace_event_stop (trace_id, threadID)
 #endif
 end if
+
+#if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(13, threadID, timer)
+#endif

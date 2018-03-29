@@ -85,14 +85,18 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("CASE(0)", 1, scheduler%workerID, timer)
+#endif
         !$omp task                                &
         include 'include/spllt_solve_fwd_block_omp_decl.F90.inc'
 
 #include "include/spllt_solve_fwd_block_worker.F90.inc"
 
         !$omp end task
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tac(1, scheduler%workerID, timer)
+#endif
       else
         chunk = 10 ! Do not use chunk = 1 ; a non-sence
         lvl   = 1
@@ -100,6 +104,7 @@ contains
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
 
+        call spllt_tic("Submit k-ary tree", 12, scheduler%workerID, timer)
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -136,6 +141,7 @@ contains
             alpha = alpha * chunk
           end if
         end do
+        call spllt_tac(12, scheduler%workerID, timer)
       end if
 
     else
@@ -291,7 +297,9 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("CASE(0)", 1, scheduler%workerID, timer)
+#endif
         !$omp task                                &
         include 'include/spllt_solve_fwd_update_omp_decl.F90.inc'
 
@@ -307,6 +315,7 @@ contains
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
 
+        call spllt_tic("Submit k-ary tree", 12, scheduler%workerID, timer)
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -341,6 +350,7 @@ contains
             alpha = alpha * chunk
           end if
         end do
+        call spllt_tac(12, scheduler%workerID, timer)
       end if
     else
     
@@ -485,7 +495,9 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("CASE(0)", 1, scheduler%workerID, timer)
+#endif
         !$omp task                                &
         include 'include/spllt_solve_bwd_block_omp_decl.F90.inc'
 
@@ -500,6 +512,7 @@ contains
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
 
+        call spllt_tic("Submit k-ary tree", 12, scheduler%workerID, timer)
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -536,6 +549,7 @@ contains
             alpha = alpha * chunk
           end if
         end do
+        call spllt_tac(12, scheduler%workerID, timer)
       end if
     else
 
@@ -704,7 +718,9 @@ contains
       ndep_lvl  = 0
 
       if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("CASE(0)", 1, scheduler%workerID, timer)
+#endif
         !$omp task                                &
         include 'include/spllt_solve_bwd_update_omp_decl.F90.inc'
 
@@ -720,6 +736,7 @@ contains
         ndep_lvl = ndep ! #dep local to the lvl
         all_task_submitted = .false.
 
+        call spllt_tic("Submit k-ary tree", 12, scheduler%workerID, timer)
         do while(.not. all_task_submitted)
         
           nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -730,7 +747,6 @@ contains
             chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
               j * chunk .gt. ndep_lvl)
 
-            call spllt_tic("Submit k-ary tree", 12, scheduler%workerID, timer)
             select case(chunk_size)
 
               case(0)
@@ -742,7 +758,6 @@ contains
 #include "include/spllt_bwd_update_cases.F90.inc"
 
             end select
-            call spllt_tac(12, scheduler%workerID, timer)
 
             beta = beta + chunk_size
             if(ndep_lvl .le. chunk) then
@@ -758,6 +773,7 @@ contains
             alpha = alpha * chunk
           end if
         end do
+        call spllt_tac(12, scheduler%workerID, timer)
       end if
     else
 
