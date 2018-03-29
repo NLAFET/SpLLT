@@ -195,10 +195,14 @@ contains
     i = 0
 !   print *, "i = ", i
 
-    print '(a, i3, a, a20, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
-      "[Th: ", thn, "] ", trim(timer%steps%name(i)), " : ",        &
-      timer%time(i, thn), " s (ncall ", timer%ncall(i, thn), ") [",     &
-      timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]' 
+    if(timer%ncall(i, thn) .gt. 0) then
+      print '(a, i3, a, a20, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
+        "[Th: ", thn, "] ", trim(timer%steps%name(i)), " : ",        &
+        timer%time(i, thn), " s (ncall ", timer%ncall(i, thn), ") [",     &
+        timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]' 
+    else
+      print '(a, i3, a, a20, a)', "[Th: ", thn, "] ", trim('sub steps'), " : "
+    endif
 
     do i = 1, ubound(timer%ncall, 1)
       if(timer%ncall(i, thn) .gt. 0) then
@@ -212,6 +216,7 @@ contains
         end if
       end if
     end do
+    print *, ""
 
   end subroutine spllt_print_timer
 
@@ -225,9 +230,8 @@ contains
     print *, "=========================================="
     do th = 0, thn - 1
       do i = 1, all_timers%ntimers
-        if(all_timers%timers(i)%ncall(0,th) .gt. 0) then
+        if(sum(all_timers%timers(i)%ncall(:, th)) .gt. 0) then
           call spllt_print_timer(th, all_timers%timers(i))
-          print *, ""
         end if
       end do
     end do
