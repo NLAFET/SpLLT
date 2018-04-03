@@ -265,7 +265,11 @@ program spllt_omp
       stop
     end if
     call spllt_scheduler_alloc(scheduler, st)
+
+    call spllt_tic("Reset workspace", 6, scheduler%workerID, timer)
     workspace = zero
+    call spllt_tac(6, scheduler%workerID, timer)
+
     
 
     !!!!!!!!!!!!!!!!!!!!
