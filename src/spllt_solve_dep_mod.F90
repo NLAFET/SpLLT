@@ -40,7 +40,7 @@ contains
       ndep = ndep + 1
     end if
     
-    if(ndep .gt. 0) then
+   !if(ndep .gt. 0) then
       allocate(fkeep%bc(blk)%fwd_dep(ndep))
 
       if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
@@ -50,11 +50,13 @@ contains
       if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
         fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
       end if
-    else
-      allocate(fkeep%bc(blk)%fwd_dep(1))
+   !else
+   !  if(blk .eq. fkeep%bc(blk)%dblk) then
+   !    allocate(fkeep%bc(blk)%fwd_dep(1))
+   !    fkeep%bc(blk)%fwd_dep(1) = 1
+   !  end if
+   !endif
 
-      fkeep%bc(blk)%fwd_dep(1) = 1
-    endif
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep
     !
@@ -69,7 +71,7 @@ contains
       ndep = ndep + 1
     end if
     
-    if(ndep .gt. 0) then
+   !if(ndep .gt. 0) then
       allocate(fkeep%bc(blk)%bwd_dep(ndep))
 
       if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
@@ -79,11 +81,12 @@ contains
       if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
         fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
       end if
-    else
-      allocate(fkeep%bc(blk)%bwd_dep(1))
-
-      fkeep%bc(blk)%bwd_dep(1) = fkeep%info%num_nodes
-    end if
+   !else
+   !  if(blk .eq. fkeep%bc(blk)%dblk) then
+   !    allocate(fkeep%bc(blk)%bwd_dep(1))
+   !    fkeep%bc(blk)%bwd_dep(1) = fkeep%info%num_nodes
+   !  end if
+   !end if
   end subroutine spllt_compute_blk_solve_dep
 
 
@@ -1085,7 +1088,7 @@ contains
     type(spllt_fkeep),  target, intent(inout) :: fkeep
     integer,            intent(in)            :: node
 
-    integer               :: i, nchild
+    integer               :: i, nchild, child
     integer               :: blk_sa, last_blk
     integer               :: nblk
     integer               :: nrow, nval

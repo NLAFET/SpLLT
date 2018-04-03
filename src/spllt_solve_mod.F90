@@ -307,7 +307,7 @@ contains
     real(wp), pointer       :: rhs_local(:,:) ! update_buffer workspace
     type(spllt_block), pointer :: p_bc(:)
     type(spllt_timer), save :: timer
- !$ integer(kind=omp_lock_kind) :: lock
+!!$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(scheduler%nworker, scheduler%workerID, "solve_fwd", &
       timer)
@@ -335,30 +335,36 @@ contains
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
-    call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
-   !! initialise rhs_local
-   !!$omp parallel
-   !rhs_local(1 : ldr * nrhs, omp_get_thread_num()) = zero
-   !!$omp end parallel
-   !call spllt_tac(1, scheduler%workerID, timer)
+!   ! initialise rhs_local
+!   rhs_local(:,:) = zero
+
+!   call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
+!   rhs_local(:,:) = zero
+!   call spllt_tac(1, scheduler%workerID, timer)
+
+!   call spllt_tic("Reset workspace in parallel", 5, scheduler%workerID, timer)
+!   !$omp parallel
+!   rhs_local(1 : ldr * nrhs, omp_get_thread_num()) = zero
+!   !$omp end parallel
+!   call spllt_tac(5, scheduler%workerID, timer)
 
     num_node = fkeep%info%num_nodes
     
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ! Lock the execution of the tasks that will then be submitted by the master
-    p_bc => fkeep%bc(:)
- !$ call omp_init_lock(lock)
- !$ call omp_set_lock(lock)
+!   ! Lock the execution of the tasks that will then be submitted by the master
+!   p_bc => fkeep%bc(:)
+!!$ call omp_init_lock(lock)
+!!$ call omp_set_lock(lock)
 
-    !$omp task depend(inout: p_bc(1))   &
-    !$omp shared(lock)                  &
-    !$omp firstprivate(p_bc)
+!   !$omp task depend(inout: p_bc(1))   &
+!   !$omp shared(lock)                  &
+!   !$omp firstprivate(p_bc)
 
- !$ call omp_set_lock(lock) 
-    print *, "Lock locked in task"
- !$ call omp_unset_lock(lock)
+!!$ call omp_set_lock(lock) 
+!   print *, "Lock locked in task"
+!!$ call omp_unset_lock(lock)
 
-    !$omp end task
+!   !$omp end task
 
     call spllt_tic("Submit tasks", 4, scheduler%workerID, timer)
     do node = 1, num_node
@@ -409,8 +415,8 @@ contains
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(fwd_solve_id, -1)
 #endif
- !$ call omp_unset_lock(lock)
- !$ call omp_destroy_lock(lock)
+!!$ call omp_unset_lock(lock)
+!!$ call omp_destroy_lock(lock)
     
     !$omp taskwait
 
@@ -452,7 +458,7 @@ contains
     real(wp), pointer       :: rhs_local(:,:) ! update_buffer workspace
     type(spllt_block), pointer :: p_bc(:)
     type(spllt_timer), save :: timer
- !$ integer(kind=omp_lock_kind) :: lock
+!!$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(scheduler%nworker, scheduler%workerID, "solve_bwd", &
       timer)
@@ -480,28 +486,23 @@ contains
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
 
-!   call spllt_tic("Reset workspace", 1, scheduler%workerID, timer)
-!   ! initialise rhs_local
-!  !rhs_local = zero
-!   call spllt_tac(1, scheduler%workerID, timer)
-
     num_node = fkeep%info%num_nodes
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Lock the execution of the tasks that will then be submitted by the master
-    p_bc => fkeep%bc(:)
- !$ call omp_init_lock(lock)
- !$ call omp_set_lock(lock)
+!   p_bc => fkeep%bc(:)
+!!$ call omp_init_lock(lock)
+!!$ call omp_set_lock(lock)
 
-    !$omp task depend(inout: p_bc(num_node))  &
-    !$omp shared(lock)                        &
-    !$omp firstprivate(p_bc, num_node)
+!   !$omp task depend(inout: p_bc(num_node))  &
+!   !$omp shared(lock)                        &
+!   !$omp firstprivate(p_bc, num_node)
 
- !$ call omp_set_lock(lock) 
-    print *, "[BWD] Lock locked in task"
- !$ call omp_unset_lock(lock)
+!!$ call omp_set_lock(lock) 
+!   print *, "[BWD] Lock locked in task"
+!!$ call omp_unset_lock(lock)
 
-    !$omp end task
+!   !$omp end task
     
     call spllt_tic("Submit tasks", 4, scheduler%workerID, timer)
     do node = num_node, 1, -1
@@ -554,8 +555,8 @@ contains
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(bwd_solve_id, -1)
 #endif
- !$ call omp_unset_lock(lock)
- !$ call omp_destroy_lock(lock)
+!!$ call omp_unset_lock(lock)
+!!$ call omp_destroy_lock(lock)
 
     !$omp taskwait
 
