@@ -21,9 +21,9 @@ module trace_mod
   real(c_double), allocatable, save   :: stops(:)
   real(c_double), allocatable, save   :: starts(:,:)
 
-  character(len=20), save :: labels(maxtypes)
-  character(len=7) :: colors(maxtypes)
-  integer, save :: nevtype
+  character(len=20), save     :: labels(maxtypes)
+  character(len=7)            :: colors(maxtypes)
+  integer, save               :: nevtype
   integer, allocatable , save :: nevents(:)
 
 contains
@@ -53,6 +53,16 @@ contains
     return
 
   end subroutine trace_init
+
+  integer function trace_create_event_id(label)
+    implicit none
+    character, intent(in) :: label*(*)
+
+    nevtype                       = nevtype+1
+    trace_create_event_id         = nevtype
+    labels(trace_create_event_id) = label
+
+  end function trace_create_event_id
 
   subroutine trace_create_event(label, id)
     implicit none

@@ -196,7 +196,7 @@ contains
 !   print *, "i = ", i
 
     if(timer%ncall(i, thn) .gt. 0) then
-      print '(a, i3, a, a20, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
+      print '(a, i3, a, a30, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
         "[Th: ", thn, "] ", trim(timer%steps%name(i)), " : ",        &
         timer%time(i, thn), " s (ncall ", timer%ncall(i, thn), ") [",     &
         timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]' 

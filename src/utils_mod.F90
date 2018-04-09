@@ -236,170 +236,170 @@ contains
     end do
   end subroutine matrix_norm_max
 
-  subroutine print_task_stat(task, msg)
-    use spllt_data_mod
-    type(spllt_omp_task_stat), intent(in)   :: task
-    character(len=*), optional, intent(in)  :: msg
+! subroutine print_task_stat(task, msg)
+!   use spllt_data_mod
+!   type(spllt_omp_task_stat), intent(in)   :: task
+!   character(len=*), optional, intent(in)  :: msg
 
-    if(present(msg)) then
-      print *, msg
-    end if
-    print '(a, i9)', "max #dep of a blk   : ", task%max_dep
-    print '(a, i1, a, i9)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
+!   if(present(msg)) then
+!     print *, msg
+!   end if
+!   print '(a, i9)', "max #dep of a blk   : ", task%max_dep
+!   print '(a, i1, a, i9)', "#blk with #dep>", k_dep,"    : ", task%nblk_kdep
 
-  end subroutine print_task_stat
+! end subroutine print_task_stat
 
-  subroutine print_omp_task_stat(msg, task_id, task)
-    use spllt_data_mod
-    character(len=*), intent(in)          :: msg
-    integer, intent(in)                   :: task_id
-    type(spllt_omp_task_stat), intent(in) :: task
+! subroutine print_omp_task_stat(msg, task_id, task)
+!   use spllt_data_mod
+!   character(len=*), intent(in)          :: msg
+!   integer, intent(in)                   :: task_id
+!   type(spllt_omp_task_stat), intent(in) :: task
 
-    print *, msg, " : ", task_id
-    print '(a, i9)',    "#task insert        : ", task%ntask_insert
-    print '(a, i9)',    "#fake task insert   : ", task%nfake_task_insert
-    print '(a, i9)',    "#task run           : ", task%ntask_run
-    print '(a, i9)',    "#array allocate     : ", task%narray_allocated
-    print '(a, es10.2)', "#flop               : ", task%nflop
+!   print *, msg, " : ", task_id
+!   print '(a, i9)',    "#task insert        : ", task%ntask_insert
+!   print '(a, i9)',    "#fake task insert   : ", task%nfake_task_insert
+!   print '(a, i9)',    "#task run           : ", task%ntask_run
+!   print '(a, i9)',    "#array allocate     : ", task%narray_allocated
+!   print '(a, es10.2)', "#flop               : ", task%nflop
 
-  end subroutine print_omp_task_stat
+! end subroutine print_omp_task_stat
 
-  subroutine print_scheduler(sched)
-    use spllt_data_mod
-    type(spllt_omp_scheduler), intent(in) :: sched
+! subroutine print_scheduler(sched)
+!   use spllt_data_mod
+!   type(spllt_omp_scheduler), intent(in) :: sched
 
-    integer :: i
+!   integer :: i
 
-    print *, "Scheduler state"
-    print '(a, i3)', "workerID      :", sched%workerID
-    print '(a, i3)', "masterWorker  :", sched%masterWorker
-    print '(a, i3)', "nworker       :", sched%nworker
-    print '(a, i3)', "nthread_max   :", sched%nthread_max
-    do i = 1, sched%nworker
-      call print_omp_task_stat("Init omp info task", i, sched%task_info(i))
-      call print_task_stat(sched%task_info(i))
-    end do
+!   print *, "Scheduler state"
+!   print '(a, i3)', "workerID      :", sched%workerID
+!   print '(a, i3)', "masterWorker  :", sched%masterWorker
+!   print '(a, i3)', "nworker       :", sched%nworker
+!   print '(a, i3)', "nthread_max   :", sched%nthread_max
+!   do i = 1, sched%nworker
+!     call print_omp_task_stat("Init omp info task", i, sched%task_info(i))
+!     call print_task_stat(sched%task_info(i))
+!   end do
 
-  end subroutine print_scheduler
-  
-  subroutine spllt_omp_init_task_info(task_stat)
-    use spllt_data_mod
-    type(spllt_omp_task_stat), intent(out) :: task_stat
+! end subroutine print_scheduler
+! 
+! subroutine spllt_omp_init_task_info(task_stat)
+!   use spllt_data_mod
+!   type(spllt_omp_task_stat), intent(out) :: task_stat
 
-    task_stat%nflop               = 0.0
-    task_stat%ntask_run           = 0
-    task_stat%ntask_insert        = 0
-    task_stat%nfake_task_insert   = 0
-    task_stat%max_dep             = 0
-    task_stat%narray_allocated    = 0
-    task_stat%nblk_kdep           = 0
-    
-  end subroutine spllt_omp_init_task_info
+!   task_stat%nflop               = 0.0
+!   task_stat%ntask_run           = 0
+!   task_stat%ntask_insert        = 0
+!   task_stat%nfake_task_insert   = 0
+!   task_stat%max_dep             = 0
+!   task_stat%narray_allocated    = 0
+!   task_stat%nblk_kdep           = 0
+!   
+! end subroutine spllt_omp_init_task_info
 
-  subroutine spllt_omp_reset_scheduler(scheduler)
-    use spllt_data_mod
- !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
-    type(spllt_omp_scheduler), intent(inout) :: scheduler
+! subroutine spllt_omp_reset_scheduler(scheduler)
+!   use spllt_data_mod
+!!$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
+!   type(spllt_omp_scheduler), intent(inout) :: scheduler
 
-    scheduler%workerID                = 0
- !$ scheduler%workerID                = omp_get_thread_num()
-    scheduler%nworker                 = 1
- !$ scheduler%nworker                 = omp_get_num_threads()
-    scheduler%masterWorker            = scheduler%workerID
-    scheduler%nthread_max             = scheduler%nworker
+!   scheduler%workerID                = 0
+!!$ scheduler%workerID                = omp_get_thread_num()
+!   scheduler%nworker                 = 1
+!!$ scheduler%nworker                 = omp_get_num_threads()
+!   scheduler%masterWorker            = scheduler%workerID
+!   scheduler%nthread_max             = scheduler%nworker
 
-  end subroutine spllt_omp_reset_scheduler
+! end subroutine spllt_omp_reset_scheduler
 
 
 
-  subroutine spllt_omp_init_scheduler(scheduler, trace_names, stat)
-    use spllt_data_mod
-    use trace_mod, only : trace_create_event
- !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
-    type(spllt_omp_scheduler), target,  intent(inout) :: scheduler
-    character(len=*), optional,         intent(in)    :: trace_names(:)
-    integer, optional,                  intent(out)   :: stat
+! subroutine spllt_omp_init_scheduler(scheduler, trace_names, stat)
+!   use spllt_data_mod
+!   use trace_mod, only : trace_create_event
+!!$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
+!   type(spllt_omp_scheduler), target,  intent(inout) :: scheduler
+!   character(len=*), optional,         intent(in)    :: trace_names(:)
+!   integer, optional,                  intent(out)   :: stat
 
-    integer                             :: st1, st2, i, ntrace_id
-    type(spllt_omp_task_stat), pointer  :: p_task_info
+!   integer                             :: st1, st2, i, ntrace_id
+!   type(spllt_omp_task_stat), pointer  :: p_task_info
 
-    st1 = 0
-    st2 = 0
+!   st1 = 0
+!   st2 = 0
 
-    call spllt_omp_reset_scheduler(scheduler)
+!   call spllt_omp_reset_scheduler(scheduler)
 
-    allocate(scheduler%task_info(0:scheduler%nthread_max-1), stat=st1)
-    if(st1 .eq. 0) then
-      do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
-        p_task_info => scheduler%task_info(i)
-        call spllt_omp_init_task_info(p_task_info)
-      end do
-    end if
+!   allocate(scheduler%task_info(0:scheduler%nthread_max-1), stat=st1)
+!   if(st1 .eq. 0) then
+!     do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
+!       p_task_info => scheduler%task_info(i)
+!       call spllt_omp_init_task_info(p_task_info)
+!     end do
+!   end if
 
-    if(present(trace_names)) then
-      ntrace_id = size(trace_names)
-      allocate(scheduler%trace_ids(ntrace_id), stat=st2)
-      if(st2 .eq. 0) then
-        do i = 1, ntrace_id
-          call trace_create_event(trace_names(i), scheduler%trace_ids(i))
+!   if(present(trace_names)) then
+!     ntrace_id = size(trace_names)
+!     allocate(scheduler%trace_ids(ntrace_id), stat=st2)
+!     if(st2 .eq. 0) then
+!       do i = 1, ntrace_id
+!         call trace_create_event(trace_names(i), scheduler%trace_ids(i))
 !         print *, "Create id ", scheduler%trace_ids(i), " for step ", &
 !           trace_names(i)
-        end do
-      end if
-    else
-      scheduler%trace_ids => null()
-    end if
+!       end do
+!     end if
+!   else
+!     scheduler%trace_ids => null()
+!   end if
 
-    if(present(stat)) then
-      stat = st1 + st2
-    end if
+!   if(present(stat)) then
+!     stat = st1 + st2
+!   end if
 
-!   call print_scheduler(scheduler)
+!!  call print_scheduler(scheduler)
 
-  end subroutine spllt_omp_init_scheduler
-
-
-
-  subroutine spllt_scheduler_alloc(scheduler, stat)
-    use spllt_data_mod
-    type(spllt_omp_scheduler), intent(inout)  :: scheduler
-    integer,                   intent(in)     :: stat
-
-    if(stat .ne. 0) then
-      write(0,'(a)') "Error of alloc"
-    end if
-    scheduler%task_info(scheduler%workerID)%narray_allocated =  &
-      scheduler%task_info(scheduler%workerID)%narray_allocated  &
-      + merge(1, 0, stat .eq. 0)
-
-  end subroutine spllt_scheduler_alloc
+! end subroutine spllt_omp_init_scheduler
 
 
 
-  subroutine spllt_update_omp_task_info(task_info, ntask, nftask)
-    use spllt_data_mod
-    type(spllt_omp_task_stat), intent(inout)  :: task_info
-    integer, intent(in)                       :: ntask  ! #task insert
-    integer, intent(in)                       :: nftask ! #fake task
+! subroutine spllt_scheduler_alloc(scheduler, stat)
+!   use spllt_data_mod
+!   type(spllt_omp_scheduler), intent(inout)  :: scheduler
+!   integer,                   intent(in)     :: stat
 
-    task_info%nfake_task_insert = task_info%nfake_task_insert + nftask
-    task_info%ntask_insert      = task_info%ntask_insert + ntask
+!   if(stat .ne. 0) then
+!     write(0,'(a)') "Error of alloc"
+!   end if
+!   scheduler%task_info(scheduler%workerID)%narray_allocated =  &
+!     scheduler%task_info(scheduler%workerID)%narray_allocated  &
+!     + merge(1, 0, stat .eq. 0)
 
-  end subroutine spllt_update_omp_task_info
+! end subroutine spllt_scheduler_alloc
 
 
 
-  subroutine spllt_update_task_info(task_info, ndep)
-    use spllt_data_mod
-    type(spllt_omp_task_stat), intent(inout)  :: task_info
-    integer, intent(in)                       :: ndep   ! #dep of the block
+! subroutine spllt_update_omp_task_info(task_info, ntask, nftask)
+!   use spllt_data_mod
+!   type(spllt_omp_task_stat), intent(inout)  :: task_info
+!   integer, intent(in)                       :: ntask  ! #task insert
+!   integer, intent(in)                       :: nftask ! #fake task
 
-    task_info%nblk_kdep         = task_info%nblk_kdep + &
-      merge(1, 0, ndep .gt. k_dep)
-    task_info%max_dep           = merge(ndep, task_info%max_dep, &
-      ndep .gt. task_info%max_dep)
+!   task_info%nfake_task_insert = task_info%nfake_task_insert + nftask
+!   task_info%ntask_insert      = task_info%ntask_insert + ntask
 
-  end subroutine spllt_update_task_info
+! end subroutine spllt_update_omp_task_info
+
+
+
+! subroutine spllt_update_task_info(task_info, ndep)
+!   use spllt_data_mod
+!   type(spllt_omp_task_stat), intent(inout)  :: task_info
+!   integer, intent(in)                       :: ndep   ! #dep of the block
+
+!   task_info%nblk_kdep         = task_info%nblk_kdep + &
+!     merge(1, 0, ndep .gt. k_dep)
+!   task_info%max_dep           = merge(ndep, task_info%max_dep, &
+!     ndep .gt. task_info%max_dep)
+
+! end subroutine spllt_update_task_info
 
 
 
@@ -513,6 +513,25 @@ contains
     end if
 
   end subroutine compute_range
+  
+
+
+  !*************************************************
+  !
+  ! This function calculates column of a node we are on  
+  integer function calc_col(node, bc)
+    use spllt_data_mod    
+    implicit none
+
+    type(spllt_node), intent(in) :: node
+    type(spllt_block), intent(in) :: bc
+
+    calc_col = (size(node%index)-1)/node%nb + 1 ! no. row blks for node
+
+    calc_col = calc_col - (bc%last_blk - bc%dblk + 1) + 1 ! column of node
+
+  end function calc_col
+
 ! subroutine permute_darray(n, val, perm, val_perm, trans)
 !   integer,                intent(in)      :: n
 !   real(wp), dimension(n), intent(in)      :: val
