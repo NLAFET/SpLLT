@@ -220,6 +220,12 @@ elseif(${RUNTIME} MATCHES "OMP")
   else()
     message(STATUS "WITH_TIMER_TASK_SUBMIT... no")
   endif()
+  if(${WITH_TASK_LOCK} MATCHES ON)
+    add_definitions(-DSOLVE_TASK_LOCKED)
+    message(STATUS "WITH_TASK_LOCK... yes")
+  else()
+    message(STATUS "WITH_TASK_LOCK... no")
+  endif()
 
 elseif(${RUNTIME} MATCHES "Parsec")
 
