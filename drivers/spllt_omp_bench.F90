@@ -7,6 +7,7 @@ program spllt_omp
   use spllt_solve_dep_mod
   use trace_mod
   use timer_mod
+  use task_manager_omp_mod
   use ISO_Fortran_env, only: stdout => OUTPUT_UNIT, &
     compiler_version, compiler_options
   implicit none
@@ -65,7 +66,7 @@ program spllt_omp
   integer                             :: trace_chkerr_id
 
   ! runtime
-  type(spllt_omp_scheduler)           :: scheduler
+  type(task_manager_omp_t)            :: task_manager
   type(spllt_timer),          save    :: timer
 
   integer, allocatable :: check(:)
@@ -131,21 +132,22 @@ program spllt_omp
   !$omp single
 
 #if defined(SPLLT_OMP_TRACE)
-! call trace_init(omp_get_num_threads())
-  call spllt_init(options)
+  call trace_init(omp_get_num_threads())
+! call spllt_init(options)
 
-  allocate(trace_names(7))
-  trace_names = [character(len=10) :: &
-    "fwd_update", "fwd_block",  &
-    "bwd_update", "bwd_block",  &
-    "fwd_submit", "bwd_submit",   &
-    "chk_err" ]
-  trace_chkerr_id = 7
+ !allocate(trace_names(7))
+ !trace_names = [character(len=10) :: &
+ !  "fwd_update", "fwd_block",  &
+ !  "bwd_update", "bwd_block",  &
+ !  "fwd_submit", "bwd_submit",   &
+ !  "chk_err" ]
+ !trace_chkerr_id = 7
 
-  call spllt_omp_init_scheduler(scheduler, trace_names, st)
+  call task_manager%init(stat=st)
+  trace_chkerr_id = task_manager%trace_ids(trace_chk_err_pos)
 #else
   trace_chkerr_id = 0 ! be sure the trace module fails
-  call spllt_omp_init_scheduler(scheduler, stat=st)
+  call task_manager%init(stat=st)
 #endif
 
   call compute_range(options%nb_min, options%nb_max,      &
@@ -161,7 +163,7 @@ program spllt_omp
     '# matrix   =  ', trim(matfile), ACHAR(10),                               &
     '# nrhs     = [', nrhs_list(1), ',', nrhs_list(nnrhs), ']', ACHAR(10),    &
     '# nb       = [', nb_list(1), ',', nb_list(nnb), ']', ACHAR(10),          &
-    '# nworker  = ', scheduler%nworker, ACHAR(10),                            &
+    '# nworker  = ', task_manager%nworker, ACHAR(10),                            &
     '# ncpu     = ', options%ncpu, ACHAR(10),                                 &
     '# nemin    = ', options%nemin
 
@@ -215,8 +217,9 @@ program spllt_omp
 
   !$omp parallel
   !$omp single
-  call spllt_omp_reset_scheduler(scheduler)
-  call spllt_open_timer(scheduler%nworker, scheduler%workerID, "MAIN", &
+  
+  call task_manager%reset()
+  call spllt_open_timer(task_manager%nworker, task_manager%workerID, "MAIN", &
     timer)
 
   do nb_i=1, nnb
@@ -225,13 +228,13 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Analyse SpLLT
     !
-    call spllt_tic("Analyze", 1, scheduler%workerID, timer)
+    call spllt_tic("Analyze", 1, task_manager%workerID, timer)
     call system_clock(start_t, rate_t)
 
     call spllt_analyse(akeep, fkeep, options, n, ptr, row, info, order)
 
     call system_clock(stop_t)
-    call spllt_tac(1, scheduler%workerID, timer)
+    call spllt_tac(1, task_manager%workerID, timer)
     analyse_timer(nb_i) = (stop_t - start_t)/real(rate_t)
     if(info%flag .lt. spllt_success) then
        write(*, "(a)") "error detected during analysis"
@@ -245,41 +248,41 @@ program spllt_omp
     !!!!!!!!!!!!!!!!!!!!
     ! Numerical Factorization
     !
-    call spllt_tic("Factorization", 2, scheduler%workerID, timer)
+    call spllt_tic("Factorization", 2, task_manager%workerID, timer)
     call system_clock(start_t, rate_t)
 
     call spllt_factor(akeep, fkeep, options, val, info)
     call spllt_wait()
 
     call system_clock(stop_t)
-    call spllt_tac(2, scheduler%workerID, timer)
+    call spllt_tac(2, task_manager%workerID, timer)
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
     allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
-      nrhs_max * scheduler%nworker), stat = st)
+      nrhs_max * task_manager%nworker), stat = st)
     print '(a, es10.2)', "Allocation of a workspace of size ", & 
-        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker)
+        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
     if(st.ne.0) then
       write(0,fmt='(a, es10.2)') "Can not allocate the workspace of size ", &
-        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * scheduler%nworker)
+        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
       stop
     end if
-    call spllt_scheduler_alloc(scheduler, st)
+    call task_manager%incr_alloc(st)
 
-    call spllt_tic("Reset workspace", 6, scheduler%workerID, timer)
+    call spllt_tic("Reset workspace", 6, task_manager%workerID, timer)
     workspace = zero
-    call spllt_tac(6, scheduler%workerID, timer)
+    call spllt_tac(6, task_manager%workerID, timer)
 
     
 
     !!!!!!!!!!!!!!!!!!!!
     ! Compute dependencies of each blk
     !
-    call spllt_tic("Compute Dep", 3, scheduler%workerID, timer)
+    call spllt_tic("Compute Dep", 3, task_manager%workerID, timer)
 
     call spllt_compute_solve_dep(fkeep)
 
-    call spllt_tac(3, scheduler%workerID, timer)
+    call spllt_tac(3, task_manager%workerID, timer)
 
    !call spllt_compute_solve_extra_row(fkeep)
    !call spllt_prepare_workspace(fkeep, n, st)
@@ -309,40 +312,44 @@ program spllt_omp
       !!!!!!!!!!!!!!!!!!!!
       ! Forward substitution
       !
-      call spllt_tic("Forward", 4, scheduler%workerID, timer)
+      call task_manager%nflop_reset_all()
+      call spllt_tic("Forward", 4, task_manager%workerID, timer)
       call system_clock(start_t, rate_t)
 
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
-        workspace=workspace, scheduler=scheduler)
+        workspace=workspace, task_manager=task_manager)
 
       call system_clock(stop_t)
-      call spllt_tac(4, scheduler%workerID, timer)
+      call spllt_tac(4, task_manager%workerID, timer)
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       fwd_flops(j, nb_i) =  0.0
-      do th = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
-        fwd_flops(j,nb_i) = fwd_flops(j,nb_i) + scheduler%task_info(th)%nflop
-        scheduler%task_info(th)%nflop = 0.0
+      do th = lbound(task_manager%thread_task_info, 1), &
+              ubound(task_manager%thread_task_info, 1)
+        fwd_flops(j,nb_i) = fwd_flops(j,nb_i) + task_manager%&
+          &thread_task_info(th)%nflop
       end do
 #endif
 
       !!!!!!!!!!!!!!!!!!!!
       ! Backward substitution
       !
-      call spllt_tic("Backward", 5, scheduler%workerID, timer)
+      call task_manager%nflop_reset_all()
+      call spllt_tic("Backward", 5, task_manager%workerID, timer)
       call system_clock(start_t, rate_t)
 
       call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
-        workspace=workspace, scheduler=scheduler)
+        workspace=workspace, task_manager=task_manager)
 
       call system_clock(stop_t)
-      call spllt_tac(5, scheduler%workerID, timer)
+      call spllt_tac(5, task_manager%workerID, timer)
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       bwd_flops(j, nb_i) =  0.0
-      do th = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
-        bwd_flops(j,nb_i) = bwd_flops(j,nb_i) + scheduler%task_info(th)%nflop
-        scheduler%task_info(th)%nflop = 0.0
+      do th = lbound(task_manager%thread_task_info, 1), &
+              ubound(task_manager%thread_task_info, 1)
+        bwd_flops(j,nb_i) = bwd_flops(j,nb_i) + task_manager%&
+          &thread_task_info(th)%nflop
       end do
 #endif
 
@@ -353,8 +360,8 @@ program spllt_omp
       !
       !Compute the residual for each rhs
 #if defined(SPLLT_OMP_TRACE)
-      call trace_event_start(scheduler%trace_ids(trace_chkerr_id), &
-        scheduler%workerID)
+      call trace_event_start(task_manager%trace_ids(trace_chkerr_id), &
+        task_manager%workerID)
 #endif
       call compute_residual(n, ptr, row, val, nrhs, &
         sol_computed, rhs, res)
@@ -376,8 +383,8 @@ program spllt_omp
         write(0, "(a)") "Backward error... ok"
       end if
 #if defined(SPLLT_OMP_TRACE)
-      call trace_event_stop(scheduler%trace_ids(trace_chkerr_id), &
-        scheduler%workerID)
+      call trace_event_stop(task_manager%trace_ids(trace_chkerr_id), &
+        task_manager%workerID)
 #endif
 #endif
     end do
@@ -390,12 +397,10 @@ program spllt_omp
   !$omp end single
   !$omp end parallel
 
-  call spllt_close_timer(scheduler%workerID, timer)
-  call spllt_print_timers(scheduler%nworker)
+  call spllt_close_timer(task_manager%workerID, timer)
+  call spllt_print_timers(task_manager%nworker)
 
-  do i = lbound(scheduler%task_info, 1), ubound(scheduler%task_info, 1)
-    call print_omp_task_stat("SCHEDULER STAT", i, scheduler%task_info(i))
-  end do
+  call task_manager%print()
 
  !print *, "==========="
  !print *, "SOLVE TIMER"
@@ -415,15 +420,15 @@ program spllt_omp
 !   'facto_time_'//trim(matfile)//'.out_'//date//'-'//time)
 
 #if defined(SPLLT_PROFILING_FLOP)
-  call flop_log_dump("fwd step"//ACHAR(10)//header, fwd_flops, &
-    'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
-  call flop_log_dump("bwd step"//ACHAR(10)//header, bwd_flops, &
-    'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call flop_log_dump("fwd step"//ACHAR(10)//header, fwd_flops, &
+!   'fwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
+! call flop_log_dump("bwd step"//ACHAR(10)//header, bwd_flops, &
+!   'bwd_time_'//trim(matfile)//'.out_'//date//'-'//time)
 #endif
 
 #if defined(SPLLT_OMP_TRACE)
-  call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
-    &//date//'-'//time)
+! call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
+!   &//date//'-'//time)
 #endif
 
 
