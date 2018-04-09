@@ -33,9 +33,9 @@ module spllt_data_mod
   integer, parameter :: nemin_default = 32 ! node amalgamation parameter
   integer, parameter :: nb_default = 256 ! block size with dense kernel
 
-#if defined(SPLLT_USE_OMP) && defined(SPLLT_OMP_TRACE) 
+!#if defined(SPLLT_USE_OMP) && defined(SPLLT_OMP_TRACE) 
   integer, save :: ini_nde_id, fac_blk_id, slv_blk_id, upd_blk_id, upd_btw_id 
-#endif
+!#endif
 
 #if defined(SPLLT_USE_PARSEC)
   type(parsec_context_t) :: ctx
@@ -316,25 +316,25 @@ module spllt_data_mod
      logical, allocatable :: workspace_reset(:)
   end type spllt_fkeep
 
-  type spllt_omp_task_stat
-    double precision  :: nflop                  ! # flop performed
-    integer           :: max_dep                ! max #dep of a task
-    integer           :: ntask_run              ! #task run by this thread
-    integer           :: ntask_insert           ! #task insert to the runtim
-    integer           :: nblk_kdep              ! #block with more than k dep 
-                                                !  (k = 2 by default)
-    integer           :: nfake_task_insert      ! #fake task insert
-    integer           :: narray_allocated       ! #allocation
-  end type spllt_omp_task_stat
+! type spllt_omp_task_stat
+!   double precision  :: nflop                  ! # flop performed
+!   integer           :: max_dep                ! max #dep of a task
+!   integer           :: ntask_run              ! #task run by this thread
+!   integer           :: ntask_insert           ! #task insert to the runtim
+!   integer           :: nblk_kdep              ! #block with more than k dep 
+!                                               !  (k = 2 by default)
+!   integer           :: nfake_task_insert      ! #fake task insert
+!   integer           :: narray_allocated       ! #allocation
+! end type spllt_omp_task_stat
 
-  type spllt_omp_scheduler
-    integer :: workerID
-    integer :: masterWorker
-    integer :: nworker
-    integer :: nthread_max
-    integer, pointer :: trace_ids(:)
-    type(spllt_omp_task_stat), pointer :: task_info(:)
-  end type spllt_omp_scheduler
+! type spllt_omp_scheduler
+!   integer :: workerID
+!   integer :: masterWorker
+!   integer :: nworker
+!   integer :: nthread_max
+!   integer, pointer :: trace_ids(:)
+!   type(spllt_omp_task_stat), pointer :: task_info(:)
+! end type spllt_omp_scheduler
 
   !*************************************************
   !  

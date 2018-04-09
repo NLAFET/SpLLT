@@ -40,7 +40,9 @@ contains
       ndep = ndep + 1
     end if
     
-   !if(ndep .gt. 0) then
+#if defined(SOLVE_TASK_LOCKED)
+    if(ndep .gt. 0) then
+#endif
       allocate(fkeep%bc(blk)%fwd_dep(ndep))
 
       if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
@@ -50,12 +52,14 @@ contains
       if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
         fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
       end if
-   !else
-   !  if(blk .eq. fkeep%bc(blk)%dblk) then
-   !    allocate(fkeep%bc(blk)%fwd_dep(1))
-   !    fkeep%bc(blk)%fwd_dep(1) = 1
-   !  end if
-   !endif
+#if defined(SOLVE_TASK_LOCKED)
+    else
+      if(blk .eq. fkeep%bc(blk)%dblk) then
+        allocate(fkeep%bc(blk)%fwd_dep(1))
+        fkeep%bc(blk)%fwd_dep(1) = 1
+      end if
+    endif
+#endif
 
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep
@@ -71,7 +75,9 @@ contains
       ndep = ndep + 1
     end if
     
-   !if(ndep .gt. 0) then
+#if defined(SOLVE_TASK_LOCKED)
+    if(ndep .gt. 0) then
+#endif
       allocate(fkeep%bc(blk)%bwd_dep(ndep))
 
       if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
@@ -81,35 +87,36 @@ contains
       if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
         fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
       end if
-   !else
-   !  if(blk .eq. fkeep%bc(blk)%dblk) then
-   !    allocate(fkeep%bc(blk)%bwd_dep(1))
-   !    fkeep%bc(blk)%bwd_dep(1) = fkeep%info%num_nodes
-   !  end if
-   !end if
+#if defined(SOLVE_TASK_LOCKED)
+    else
+      if(blk .eq. fkeep%bc(blk)%dblk) then
+        allocate(fkeep%bc(blk)%bwd_dep(1))
+        fkeep%bc(blk)%bwd_dep(1) = fkeep%info%num_nodes
+      end if
+    end if
+#endif
   end subroutine spllt_compute_blk_solve_dep
 
 
 
   subroutine spllt_compute_solve_dep(fkeep)
-    use utils_mod, only : print_task_stat, spllt_update_task_info, &
-      spllt_omp_init_task_info
+    use spllt_tree_stat_mod 
     type(spllt_fkeep), target, intent(inout)  :: fkeep
 
-    integer                   :: i
-    type(spllt_omp_task_stat) :: task_info_fwd
-    type(spllt_omp_task_stat) :: task_info_bwd
+    integer                 :: i
+    type(spllt_tree_stat_t) :: task_info_fwd
+    type(spllt_tree_stat_t) :: task_info_bwd
 
-    call spllt_omp_init_task_info(task_info_fwd)
-    call spllt_omp_init_task_info(task_info_bwd)
+    call spllt_init_tree_stat(task_info_fwd)
+    call spllt_init_tree_stat(task_info_bwd)
 
     do i = 1, fkeep%nodes(fkeep%info%num_nodes)%blk_en
       call spllt_compute_blk_solve_dep(fkeep, i)
-      call spllt_update_task_info(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
-      call spllt_update_task_info(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
+      call spllt_update_tree_stat(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
+      call spllt_update_tree_stat(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
     end do
-    call print_task_stat(task_info_fwd, "FWD STAT")
-    call print_task_stat(task_info_bwd, "BWD STAT")
+    call print_tree_stat(task_info_fwd, "FWD STAT")
+    call print_tree_stat(task_info_bwd, "BWD STAT")
   end subroutine spllt_compute_solve_dep
 
 

@@ -65,11 +65,6 @@ contains
 #if defined(SPLLT_OMP_TRACE)
 
     call trace_init(omp_get_num_threads())
-    call trace_create_event('INIT_NODE', ini_nde_id)
-    call trace_create_event('FACTO_BLK', fac_blk_id)
-    call trace_create_event('SOLVE_BLK', slv_blk_id)
-    call trace_create_event('UPDATE_BLK', upd_blk_id)
-    call trace_create_event('UPDATE_BTW', upd_btw_id)
 
 #endif
 

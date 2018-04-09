@@ -218,4 +218,54 @@ contains
 
   end subroutine slv_bwd_update
 
+
+#if 0
+  subroutine solve_bwd_block_work(m, n, col, offset, index, lcol, sa, nrhs, &
+      upd, threadID, ldr, xlocal, trace_id, task_manager)
+    implicit none
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_start(trace_id, threadID)
+#endif
+
+#if defined(SPLLT_VERBOSE)
+    print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
+    print *, p_dep
+#endif
+
+    ! Perform retangular update from diagonal block
+    if(m .gt. n) then
+      call slv_bwd_update(m - n, n, col, offset + n, p_index,     &
+        lcol(sa + n * n : sa + n * m - 1), n, nrhs, rhs,      &
+        upd(:, threadID + 1), ldr, xlocal(:, threadID + 1))
+
+#if defined(SPLLT_PROFILING_FLOP)
+      call task_manager%nflop_performed(2 * (n * nrhs * (m-n)) + zero)
+#endif
+    endif
+
+    ! Sum contributions to rhs
+    do r = 0, nrhs-1
+      do j = 1, nthread
+        do i = col + r*ldr, col+n-1 + r*ldr
+          p_rhs(i)    = p_rhs(i) + p_upd(i, j)
+          p_upd(i,j)  = zero ! Reset in case of next fwd solve
+        end do
+      end do
+    end do
+
+    ! Perform triangular solve
+    call slv_solve(n, n, col, p_lcol(sa : sa + n * n - 1), &
+         'Non-Transpose', 'Non-unit', nrhs, p_rhs, ldr)
+
+#if defined(SPLLT_PROFILING_FLOP)
+    call task_manager%nflop_performed(n * n * nrhs + zero)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(trace_id, threadID)
+#endif
+  end subroutine solve_fwd_block_work
+#endif
+
 end module spllt_solve_kernels_mod

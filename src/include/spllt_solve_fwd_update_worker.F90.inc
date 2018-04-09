@@ -1,9 +1,10 @@
-threadID  = omp_get_thread_num()
+ call task_manager%refresh_worker()
+ threadID  = task_manager%workerID
+!threadID = omp_get_thread_num()
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update task", 13, threadID, timer)
 #endif
-scheduler%task_info(threadID)%ntask_run = scheduler%task_info(threadID)%&
-  &ntask_run + 1
+call task_manager%incr_nrun()
 
 if(ndep_lvl .le. chunk) then
 #if defined(SPLLT_OMP_TRACE)
@@ -19,8 +20,7 @@ if(ndep_lvl .le. chunk) then
     p_upd(:, threadID + 1), ldr, p_rhs,                   &
     ldr, p_xlocal(:, threadID + 1))
 #if defined(SPLLT_PROFILING_FLOP)
-  scheduler%task_info(threadID)%nflop = scheduler%task_info(threadID)%nflop+&
-    2 * (m * nrhs * n)
+  call task_manager%nflop_performed(2 * (m * nrhs * n) + zero)
 #endif
 
 #if defined(SPLLT_OMP_TRACE)
