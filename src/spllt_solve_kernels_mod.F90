@@ -219,28 +219,41 @@ contains
   end subroutine slv_bwd_update
 
 
-#if 0
+  !!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! Kernel of solve steps
+  !
   subroutine solve_bwd_block_work(m, n, col, offset, index, lcol, sa, nrhs, &
-      upd, threadID, ldr, xlocal, trace_id, task_manager)
+      upd, rhs, threadID, nthread, ldr, xlocal, flops)
+    use spllt_data_mod
     implicit none
+    integer,                  intent(in)    :: m
+    integer,                  intent(in)    :: n
+    integer,                  intent(in)    :: col
+    integer,                  intent(in)    :: offset
+    integer,                  intent(in)    :: sa
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: threadID
+    integer,                  intent(in)    :: nthread
+    integer,                  intent(in)    :: ldr
+    integer,                  intent(inout) :: index(:)
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: upd(:,:)
+    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),                 intent(inout) :: xlocal(:,:)
+    double precision,         intent(out)   :: flops
 
-#if defined(SPLLT_OMP_TRACE)
-    call trace_event_start(trace_id, threadID)
-#endif
+    integer :: i, r, j
 
-#if defined(SPLLT_VERBOSE)
-    print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
-    print *, p_dep
-#endif
+    flops = zero
 
     ! Perform retangular update from diagonal block
     if(m .gt. n) then
-      call slv_bwd_update(m - n, n, col, offset + n, p_index,     &
+      call slv_bwd_update(m - n, n, col, offset + n, index,     &
         lcol(sa + n * n : sa + n * m - 1), n, nrhs, rhs,      &
         upd(:, threadID + 1), ldr, xlocal(:, threadID + 1))
 
 #if defined(SPLLT_PROFILING_FLOP)
-      call task_manager%nflop_performed(2 * (n * nrhs * (m-n)) + zero)
+      flops = flops + 2 * (n * nrhs * (m-n))
 #endif
     endif
 
@@ -248,24 +261,172 @@ contains
     do r = 0, nrhs-1
       do j = 1, nthread
         do i = col + r*ldr, col+n-1 + r*ldr
-          p_rhs(i)    = p_rhs(i) + p_upd(i, j)
-          p_upd(i,j)  = zero ! Reset in case of next fwd solve
+          rhs(i)    = rhs(i) + upd(i, j)
+          upd(i,j)  = zero ! Reset in case of next fwd solve
         end do
       end do
     end do
 
     ! Perform triangular solve
-    call slv_solve(n, n, col, p_lcol(sa : sa + n * n - 1), &
-         'Non-Transpose', 'Non-unit', nrhs, p_rhs, ldr)
+    call slv_solve(n, n, col, lcol(sa : sa + n * n - 1), &
+         'Non-Transpose', 'Non-unit', nrhs, rhs, ldr)
 
 #if defined(SPLLT_PROFILING_FLOP)
-    call task_manager%nflop_performed(n * n * nrhs + zero)
+    flops = flops + n * n * nrhs
 #endif
 
-#if defined(SPLLT_OMP_TRACE)
-    call trace_event_stop(trace_id, threadID)
+  end subroutine solve_bwd_block_work
+
+
+
+  subroutine solve_bwd_update_work(m, n, col, offset, index, lcol, blk_sa, &
+      nrhs, upd, rhs, threadID, ldr, xlocal, flops)
+    use spllt_data_mod
+    implicit none
+    integer,                  intent(in)    :: m
+    integer,                  intent(in)    :: n
+    integer,                  intent(in)    :: col
+    integer,                  intent(in)    :: offset
+    integer,                  intent(in)    :: blk_sa
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: threadID
+    integer,                  intent(in)    :: ldr
+    integer,                  intent(inout) :: index(:)
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: upd(:,:)
+    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),                 intent(inout) :: xlocal(:,:)
+    double precision,         intent(out)   :: flops
+
+    call  slv_bwd_update(m, n, col, offset, index,      &
+          lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,   &
+          rhs, upd(:, threadID + 1), ldr,               &
+          xlocal(:, threadID + 1))
+
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = 2 * (n * nrhs * m)
 #endif
+
+  end subroutine solve_bwd_update_work
+
+
+
+  subroutine solve_fwd_update_work(m, n, col, offset, index, lcol, blk_sa, &
+      nrhs, upd, rhs, threadID, ldr, xlocal, flops)
+    use spllt_data_mod
+    implicit none
+    integer,                  intent(in)    :: m
+    integer,                  intent(in)    :: n
+    integer,                  intent(in)    :: col
+    integer,                  intent(in)    :: offset
+    integer,                  intent(in)    :: blk_sa
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: threadID
+    integer,                  intent(in)    :: ldr
+    integer,                  intent(inout) :: index(:)
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: upd(:,:)
+    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),                 intent(inout) :: xlocal(:,:)
+    double precision,         intent(out)   :: flops
+
+    call slv_fwd_update(m, n, col, offset, index,         &
+      lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
+      upd(:, threadID + 1), ldr, rhs,                   &
+      ldr, xlocal(:, threadID + 1))
+
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = 2 * (m * nrhs * n)
+#endif
+
+  end subroutine solve_fwd_update_work
+
+  subroutine solve_fwd_block_work(m, n, col, offset, index, lcol, sa, nrhs, &
+      upd, rhs, threadID, nthread, ldr, xlocal, flops)
+    use spllt_data_mod
+    implicit none
+    integer,                  intent(inout) :: m
+    integer,                  intent(in)    :: n
+    integer,                  intent(in)    :: col
+    integer,                  intent(inout) :: offset
+    integer,                  intent(inout) :: sa
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: threadID
+    integer,                  intent(in)    :: nthread
+    integer,                  intent(in)    :: ldr
+    integer,                  intent(inout) :: index(:)
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: upd(:,:)
+    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),                 intent(inout) :: xlocal(:,:)
+    double precision,         intent(out)   :: flops
+
+    integer :: i, r, j
+
+    flops = zero
+! ! Reset p_upd if this is the first diagonal block of the node
+! if(dblk .eq. blk_sa) then
+!!  print *, "RReset ", ubound(p_extra_row, 1) - lbound(p_extra_row, 1) + 1, &
+!!    " elts of the workspace of blk ", dblk
+!     do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
+!       if(.not. p_workspace_reset(p_extra_row(i))) then
+!         !!$omp atomic write
+!         p_workspace_reset(p_extra_row(i)) = .true. ! not safe for me ...
+!         !!$omp end atomic
+!         do r = 0, nrhs-1
+!           do j = 1, nthread
+!             p_upd(p_extra_row(i) + r*ldr, j)  = zero
+!           end do
+!         end do
+!       end if
+!     end do
+! end if
+! call spllt_tac(13, threadID, timer)
+
+ !if(dblk .eq. blk_sa) then
+ !  print *, "Check rhs_local for blk ", dblk
+ !  do r = 0, nrhs - 1
+ !    do j = 1, nthread
+ !      do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
+ !        if(p_upd(p_extra_row(i) + r*ldr, j) .ne. 0) then
+ !          print *, "Error ? blk ", dblk, " => row ", p_extra_row(i)
+ !        end if
+ !      end do
+ !    end do
+ !  end do
+ !end if
+
+    ! Sum contributions to rhs
+    do r = 0, nrhs - 1
+      do j = 1, nthread
+        do i = col + r*ldr, col+n-1 + r*ldr
+          rhs(i)    = rhs(i) + upd(i, j)
+          upd(i,j)  = zero ! Reset in case of bwd solve
+        end do
+      end do
+    end do
+
+
+    ! Perform triangular solve
+    call slv_solve(n, n, col, lcol(sa:sa+n*n-1),    &
+      'Transpose    ', 'Non-unit', nrhs, rhs, ldr)
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = n * n * nrhs
+#endif
+    offset = offset + n
+
+    ! Deal with any left over trapezoidal part of diagonal block
+    m = m - n
+    if(m .gt. 0) then
+      sa = sa + n * n
+      call slv_fwd_update(m, n, col, offset, index,             &
+        lcol(sa : sa + n * m - 1), n, nrhs,                     &
+        upd(:, threadID + 1), ldr, rhs,                         &
+        ldr, xlocal(:, threadID + 1))
+
+#if defined(SPLLT_PROFILING_FLOP)
+      flops = flops + 2 * (n * nrhs * m)
+#endif
+    endif
   end subroutine solve_fwd_block_work
-#endif
-
 end module spllt_solve_kernels_mod

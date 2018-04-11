@@ -7,8 +7,6 @@ call spllt_tic("bwd block task", 13, threadID, timer)
 call task_manager%incr_nrun()
 
 if(ndep_lvl .le. chunk) then
-! call solve_bwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
-!     p_upd, threadID, ldr, p_xlocal, trace_id, task_manager)
 #if defined(SPLLT_OMP_TRACE)
    call trace_event_start(trace_id, threadID)
 #endif
@@ -18,6 +16,13 @@ if(ndep_lvl .le. chunk) then
    print *, p_dep
 #endif
  
+#if 1
+  call solve_bwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
+      p_upd, p_rhs, threadID, nthread, ldr, p_xlocal, flops)
+#if defined(SPLLT_PROFILING_FLOP)
+     call task_manager%nflop_performed(flops)
+#endif
+#else
    ! Perform retangular update from diagonal block
    if(m .gt. n) then
      call slv_bwd_update(m - n, n, col, offset + n, p_index,     &
@@ -46,10 +51,13 @@ if(ndep_lvl .le. chunk) then
 #if defined(SPLLT_PROFILING_FLOP)
    call task_manager%nflop_performed(n * n * nrhs + zero)
 #endif
+
+#endif
  
 #if defined(SPLLT_OMP_TRACE)
    call trace_event_stop(trace_id, threadID)
 #endif
+
 end if
 
 #if defined(SPLLT_TIMER_TASKS)

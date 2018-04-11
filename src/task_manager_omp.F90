@@ -377,6 +377,7 @@ module task_manager_omp_mod
     integer                     :: beta, alpha
     logical                     :: all_task_submitted
     integer                     :: nftask
+    double precision            :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
     type(spllt_timer), save     :: timer
@@ -535,6 +536,7 @@ module task_manager_omp_mod
     integer                     :: beta, alpha
     logical                     :: all_task_submitted
     integer                     :: nftask
+    double precision            :: flops
 
     type(spllt_timer), save     :: timer
         
@@ -692,6 +694,7 @@ module task_manager_omp_mod
     integer :: chunk, chunk_size, ndep_lvl, lvl, nchunk, beta, alpha
     logical :: all_task_submitted
     integer :: nftask
+    double precision :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
     type(spllt_timer), save     :: timer
@@ -843,10 +846,14 @@ module task_manager_omp_mod
     real(wp)         , pointer  :: p_xlocal(:,:)
     real(wp)         , pointer  :: p_rhs(:)
     type(spllt_block), pointer  :: p_bc(:)
-    integer :: j
-    integer :: chunk, chunk_size, ndep_lvl, lvl, nchunk, beta, alpha
-    logical :: all_task_submitted
-    integer :: nftask         ! #fake tasks inserted into the runtime
+    integer                     :: j
+    integer                     :: chunk, chunk_size
+    integer                     :: ndep_lvl, lvl, nchunk
+    integer                     :: beta, alpha
+    logical                     :: all_task_submitted
+    integer                     :: nftask   ! #fake tasks inserted 
+                                            ! into the runtime
+    double precision            :: flops
 
     type(spllt_timer), save     :: timer
 

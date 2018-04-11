@@ -17,39 +17,13 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif
 
-! call spllt_tic("Reset workspace", 13, threadID, timer)
-! ! Reset p_upd if this is the first diagonal block of the node
-! if(dblk .eq. blk_sa) then
-!!  print *, "RReset ", ubound(p_extra_row, 1) - lbound(p_extra_row, 1) + 1, &
-!!    " elts of the workspace of blk ", dblk
-!     do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
-!       if(.not. p_workspace_reset(p_extra_row(i))) then
-!         !!$omp atomic write
-!         p_workspace_reset(p_extra_row(i)) = .true. ! not safe for me ...
-!         !!$omp end atomic
-!         do r = 0, nrhs-1
-!           do j = 1, nthread
-!             p_upd(p_extra_row(i) + r*ldr, j)  = zero
-!           end do
-!         end do
-!       end if
-!     end do
-! end if
-! call spllt_tac(13, threadID, timer)
 
- !if(dblk .eq. blk_sa) then
- !  print *, "Check rhs_local for blk ", dblk
- !  do r = 0, nrhs - 1
- !    do j = 1, nthread
- !      do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
- !        if(p_upd(p_extra_row(i) + r*ldr, j) .ne. 0) then
- !          print *, "Error ? blk ", dblk, " => row ", p_extra_row(i)
- !        end if
- !      end do
- !    end do
- !  end do
- !end if
+#if 1
+  call solve_fwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
+      p_upd, p_rhs, threadID, nthread, ldr, p_xlocal, flops)
 
+  call task_manager%nflop_performed(flops)
+#else
   ! Sum contributions to rhs
   do r = 0, nrhs-1
     do j = 1, nthread
@@ -82,6 +56,7 @@ if(ndep_lvl .le. chunk) then
     call task_manager%nflop_performed(2 * (n * nrhs * m) + zero)
 #endif
   endif
+#endif
 
 #if defined(SPLLT_OMP_TRACE)
   call trace_event_stop (trace_id, threadID)

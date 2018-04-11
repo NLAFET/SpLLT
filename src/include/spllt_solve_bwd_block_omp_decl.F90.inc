@@ -5,5 +5,5 @@
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))

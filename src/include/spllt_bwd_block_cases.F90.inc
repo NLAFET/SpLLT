@@ -30,14 +30,14 @@ case(1)
 call spllt_tic('CASE(1)',2, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)))   &
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -54,14 +54,14 @@ case(2)
 call spllt_tic('CASE(2)',3, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -79,14 +79,14 @@ call spllt_tic('CASE(3)',4, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -104,14 +104,14 @@ call spllt_tic('CASE(4)',5, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -130,14 +130,14 @@ call spllt_tic('CASE(5)',6, task_manager%workerID, timer)
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -156,14 +156,14 @@ call spllt_tic('CASE(6)',7, task_manager%workerID, timer)
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -183,14 +183,14 @@ call spllt_tic('CASE(7)',8, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -210,14 +210,14 @@ call spllt_tic('CASE(8)',9, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -238,14 +238,14 @@ call spllt_tic('CASE(9)',10, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
@@ -266,14 +266,14 @@ call spllt_tic('CASE(10)',11, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
-!!$omp default(none)                                           &
+!$omp default(none)                                           &
 !$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)          &
 !$omp firstprivate(nthread, trace_id, timer)                  &
 !$omp firstprivate(p_index, p_lcol, p_xlocal, p_rhs, p_upd)   &
 !$omp firstprivate(p_bc, p_dep)                               &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)              &
 !$omp firstprivate(task_manager)                              &
-!$omp private(threadID, r, j, i)                              &
+!$omp private(threadID, r, j, i, flops)                       &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))
 
 # include "spllt_solve_bwd_block_worker.F90.inc"
