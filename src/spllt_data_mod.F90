@@ -235,6 +235,16 @@ module spllt_data_mod
      logical :: nrhs_linear_comp = .false.
   end type spllt_options
 
+  type spllt_tree_t
+    integer :: num      ! Tree id
+    integer :: nnode    ! # nodes in the tree
+    integer :: node_sa  ! First node of the tree
+    integer :: node_en  ! Last node of the tree
+    integer :: nchild   ! #children tree
+    integer, allocatable :: child(:) ! Holds children of the tree
+    integer :: parent   ! Tree id the parent
+  end type spllt_tree_t
+
   !*************************************************
   !
   ! data type for returning information to user.
@@ -314,27 +324,11 @@ module spllt_data_mod
      ! holds mapping from matrix values into lfact
 
      logical, allocatable :: workspace_reset(:)
+     type(spllt_tree_t), allocatable :: trees(:)
+    !type(spllt_akeep), pointer :: p_akeep(:)
+     integer, allocatable :: small(:)
   end type spllt_fkeep
 
-! type spllt_omp_task_stat
-!   double precision  :: nflop                  ! # flop performed
-!   integer           :: max_dep                ! max #dep of a task
-!   integer           :: ntask_run              ! #task run by this thread
-!   integer           :: ntask_insert           ! #task insert to the runtim
-!   integer           :: nblk_kdep              ! #block with more than k dep 
-!                                               !  (k = 2 by default)
-!   integer           :: nfake_task_insert      ! #fake task insert
-!   integer           :: narray_allocated       ! #allocation
-! end type spllt_omp_task_stat
-
-! type spllt_omp_scheduler
-!   integer :: workerID
-!   integer :: masterWorker
-!   integer :: nworker
-!   integer :: nthread_max
-!   integer, pointer :: trace_ids(:)
-!   type(spllt_omp_task_stat), pointer :: task_info(:)
-! end type spllt_omp_scheduler
 
   !*************************************************
   !  
@@ -586,6 +580,97 @@ contains
 
   end function get_dest_block
 
+  !*************************************************  
+  !
+  subroutine spllt_print_subtree(tree)
+    implicit none
+    type(spllt_tree_t), intent(in) :: tree
+
+    print *, "Tree id : ", tree%num
+    print *, "#node   : ", tree%nnode
+    print *, "Node    : [", tree%node_sa, " , ", tree%node_en, "]"
+    print *, "#child  : ", tree%nchild
+
+  end subroutine spllt_print_subtree
+
+
+  
+  subroutine spllt_print_trees(fkeep)
+    implicit none
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+
+    integer :: i
+
+    do i = 0, size(fkeep%trees)
+      call spllt_print_subtree(fkeep%trees(i))
+    end do
+  end subroutine spllt_print_trees
+
+
+
+  subroutine spllt_init_tree(tree, num)
+    implicit none
+    type(spllt_tree_t), intent(inout) :: tree
+    integer,            intent(in)    :: num
+
+    tree%num      = num
+    tree%nnode    = 0
+    tree%node_sa  = 0
+    tree%node_en  = 0
+    tree%nchild   = 0
+    tree%parent   = 0
+  end subroutine spllt_init_tree
+
+
+
+  subroutine spllt_create_subtree(akeep, fkeep)
+  ! use utils_mod, ONLY : print_iarray
+    implicit none
+    type(spllt_akeep),          intent(in)    :: akeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+
+    integer :: ntree, num
+    integer :: i, nnode
+    integer :: st
+    type(spllt_tree_t), pointer :: p_tree
+
+    allocate(fkeep%small(akeep%nnodes))
+    fkeep%small = akeep%small
+
+  ! call print_iarray("Small", size(fkeep%small), fkeep%small, 1)
+
+    ntree = count(akeep%small .eq. 1)
+
+    allocate(fkeep%trees(ntree), stat=st)
+
+    print *, "#tree : ", ntree
+
+    nnode   = akeep%nnodes
+    num     = 1
+    p_tree  => fkeep%trees(num)
+    call spllt_init_tree(p_tree, num)
+
+    do i = 1, nnode
+      if( akeep%small(i) .lt. 0 .or. akeep%small(i) .eq. 1) then
+        if( p_tree%nnode .eq. 0) then
+          p_tree%node_en  = merge(-akeep%small(i), i, akeep%small(i) .ne. 1)
+          p_tree%node_sa  = i
+          p_tree%nnode    = p_tree%node_en - p_tree%node_sa + 1
+          p_tree%nchild   = 0   ! none yet
+          p_tree%parent   = num ! itself
+        end if
+        if(akeep%small(i) .eq. 1) then
+  !       call spllt_print_subtree(p_tree)
+          num     = num + 1
+          if( num .le. ntree) then
+            p_tree  => fkeep%trees(num)
+            call spllt_init_tree(p_tree, num)
+          end if
+        end if
+      end if
+    end do
+
+  end subroutine spllt_create_subtree
 end module spllt_data_mod
 
 
