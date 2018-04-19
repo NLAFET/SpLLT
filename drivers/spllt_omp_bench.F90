@@ -8,6 +8,7 @@ program spllt_omp
   use trace_mod
   use timer_mod
   use task_manager_omp_mod
+ !use task_manager_seq_mod
   use ISO_Fortran_env, only: stdout => OUTPUT_UNIT, &
     compiler_version, compiler_options
   implicit none
@@ -67,6 +68,7 @@ program spllt_omp
 
   ! runtime
   type(task_manager_omp_t)            :: task_manager
+ !type(task_manager_seq_t)            :: task_manager
   type(spllt_timer),          save    :: timer
 
   integer, allocatable :: check(:)
@@ -280,6 +282,7 @@ program spllt_omp
     !
     call spllt_tic("Compute Dep", 3, task_manager%workerID, timer)
 
+    call spllt_create_subtree(akeep, fkeep)
     call spllt_compute_solve_dep(fkeep)
 
     call spllt_tac(3, task_manager%workerID, timer)
@@ -312,7 +315,7 @@ program spllt_omp
       !!!!!!!!!!!!!!!!!!!!
       ! Forward substitution
       !
-      call task_manager%nflop_reset_all()
+      call task_manager%nflop_reset()
       call spllt_tic("Forward", 4, task_manager%workerID, timer)
       call system_clock(start_t, rate_t)
 
@@ -334,7 +337,7 @@ program spllt_omp
       !!!!!!!!!!!!!!!!!!!!
       ! Backward substitution
       !
-      call task_manager%nflop_reset_all()
+      call task_manager%nflop_reset()
       call spllt_tic("Backward", 5, task_manager%workerID, timer)
       call system_clock(start_t, rate_t)
 
@@ -427,8 +430,8 @@ program spllt_omp
 #endif
 
 #if defined(SPLLT_OMP_TRACE)
-! call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
-!   &//date//'-'//time)
+  call trace_log_dump_paje('trace_bench_full_'//trim(matfile)//'.out_'&
+    &//date//'-'//time)
 #endif
 
 

@@ -28,7 +28,6 @@ module task_manager_omp_mod
       procedure :: ntask_submitted
       procedure :: nflop_performed
       procedure :: nflop_reset
-      procedure :: nflop_reset_all
 
       procedure :: solve_fwd_block_task
       procedure :: solve_fwd_update_task
@@ -58,25 +57,18 @@ module task_manager_omp_mod
 
 
 
-  subroutine nflop_reset_all(self)
+  subroutine nflop_reset(self, threadID)
     implicit none
     class(task_manager_omp_t),  intent(inout) :: self
+    integer, optional,          intent(in)    :: threadID
 
-    integer :: i
-
-    do i = 0, self%nworker - 1
-      self%thread_task_info(i)%nflop = 0.0
-    end do
-
-  end subroutine nflop_reset_all
-
-
-
-  subroutine nflop_reset(self)
-    implicit none
-    class(task_manager_omp_t),  intent(inout) :: self
-
-    self%thread_task_info(self%workerID)%nflop = 0.0
+    if(present(thread_id)) then
+      self%thread_task_info(threadID)%nflop = 0.0
+    else
+      do i = 0, self%nworker - 1
+        self%thread_task_info(i)%nflop = 0.0
+      end do
+    end if
 
   end subroutine nflop_reset
 
