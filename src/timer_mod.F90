@@ -26,7 +26,7 @@ module timer_mod
 
   ! Record the timer of all functions used
   type spllt_timers
-    integer                         :: max_ntimers  = 10
+    integer                         :: max_ntimers  = 20
     integer                         :: ntimers      = 0
     type(spllt_timer), allocatable  :: timers(:)
   end type spllt_timers

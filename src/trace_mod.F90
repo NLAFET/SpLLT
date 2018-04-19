@@ -9,6 +9,7 @@ module trace_mod
   end type event_type
 
   integer, save               :: trace_nth
+  integer, parameter          :: trace_nstep=2
   logical, allocatable, save  :: pendings(:,:)
   logical, allocatable, save  :: pauses(:,:)
   real(c_double), save        :: timezero, start, stop
@@ -35,20 +36,25 @@ contains
                    ! execution
     
     trace_nth = nth
-    allocate(pendings(maxtypes, -1 : trace_nth - 1))
-    allocate(pauses  (maxtypes, -1 : trace_nth - 1))
-    allocate(nevents(-1:trace_nth-1))
-    allocate(stops(-1:trace_nth-1))
-    allocate(starts(maxtypes, -1 : trace_nth - 1))
+    allocate(pendings(maxtypes, -trace_nstep : trace_nth - 1))
+    allocate(pauses  (maxtypes, -trace_nstep : trace_nth - 1))
+    allocate(nevents(           -trace_nstep : trace_nth - 1))
+    allocate(stops(             -trace_nstep : trace_nth - 1))
+    allocate(starts(maxtypes,   -trace_nstep : trace_nth - 1))
     pendings(:,:) = .false.
     pauses(:,:)   = .false.
     nevtype     = 0
     nevents(:)  = 0
     ttimes(:)   = 0
-    allocate(events(-1:trace_nth-1,maxevents))
-    colors(1:12) = (/'#d38d5f', '#ffdd55', '#8dd35f', '#80b3ff', '#e580ff', &
-      '#ac9d93', '#bcd35f', '#a61e22', '#5542d7', '#2F4F4F',                &
-      '#6600ff', '#ff0066'/)
+    allocate(events(            -trace_nstep : trace_nth - 1, maxevents))
+    colors(1:(trace_nth+trace_nstep))= (/'#d38d5f', '#ffdd55', &
+      '#8dd35f', '#80b3ff', &
+      '#e580ff', '#ac9d93', &
+      '#bcd35f', '#a61e22', &
+      '#5542d7', '#2F4F4F', &
+      '#6600ff', '#ff0066', &
+      '#ff00ff'             &
+      /)
     timezero = omp_get_wtime()
     return
 
@@ -58,7 +64,7 @@ contains
     implicit none
     character, intent(in) :: label*(*)
 
-    nevtype                       = nevtype+1
+    nevtype                       = nevtype + 1
     trace_create_event_id         = nevtype
     labels(trace_create_event_id) = label
 
@@ -69,7 +75,7 @@ contains
     character :: label*(*)
     integer   :: id
 
-    nevtype = nevtype+1
+    nevtype = nevtype + 1
     id      = nevtype
     labels(id) = label
 
@@ -116,7 +122,7 @@ contains
     integer :: id, thn, old_id
     
     stops(thn)                                = omp_get_wtime()
-    nevents(thn)                              = nevents(thn)+1
+    nevents(thn)                              = nevents(thn) + 1
     events(thn, min(nevents(thn),maxevents))  = event_type(id, thn, starts(id, thn)-timezero, stops(thn)-timezero)
     ttimes(id)                                = ttimes(id)+stops(thn)-starts(id, thn)
     pendings(id, thn)                         = .false.
@@ -227,10 +233,11 @@ contains
 
     write(4,'("7 0.000000 C_Prog CT_Prog 0 ''Programme''")')
     
-    i = -1
-    if(nevents(i) .gt. 0) then
-      write(4,'("7  0.000000 MASTER"," CT_Thread C_Prog ''Master ''")')
-    end if
+    do i = -trace_nstep, -1
+      if(nevents(i) .gt. 0) then
+        write(4,'("7  0.000000 MASTER",i3.3," CT_Thread C_Prog ''Master ",i3,"''")')-i,-i
+      end if
+    end do
     do i=0, trace_nth-1
       if(nevents(i) .gt. 0) then
         write(4,'("7  0.000000 C_Thread",i3.3," CT_Thread C_Prog ''Thread ",i3,"''")')i,i
@@ -238,10 +245,11 @@ contains
     end do
             
  
-    i = -1
-    do j=1, min(nevents(i),maxevents)
-      write(4,'("10 ",f15.6," ST_ThreadState MASTER",x,a20)')events(i,j)%start, labels(events(i,j)%id)
-      write(4,'("10 ",f15.6," ST_ThreadState MASTER idle")')events(i,j)%stop
+    do i = -trace_nstep, -1
+      do j=1, min(nevents(i),maxevents)
+        write(4,'("10 ",f15.6," ST_ThreadState MASTER",i3.3,x,a20)')events(i,j)%start, -i, labels(events(i,j)%id)
+        write(4,'("10 ",f15.6," ST_ThreadState MASTER",i3.3," idle")')events(i,j)%stop, -i
+      end do
     end do
 
     do i=0, trace_nth-1
@@ -252,10 +260,11 @@ contains
     end do
 
 
-    i = -1
-    if(nevents(i) .gt. 0) then
-      write(4,'("8 ",f15.6," MASTER CT_Thread")') maxval(events(:,:)%stop)
-    end if
+    do i = -trace_nstep, -1
+      if(nevents(i) .gt. 0) then
+        write(4,'("8 ",f15.6," MASTER",i3.3," CT_Thread")') maxval(events(:,:)%stop), -i
+      end if
+    end do
     do i=0, trace_nth-1
       if(nevents(i) .gt. 0) then
         write(4,'("8 ",f15.6," C_Thread",i3.3," CT_Thread")')maxval(events(:,:)%stop),i
