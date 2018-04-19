@@ -21,10 +21,15 @@ module spllt_solve_dep_mod
 contains
 
   subroutine spllt_compute_blk_solve_dep(fkeep, blk)
+   !use utils_mod
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
 
-    integer :: ndep
+    integer :: ndep, nldep, repr, old_node, cpt
+    integer :: dep_blk, dep_node
+    integer, pointer :: p_small(:)
+
+    p_small => fkeep%small
 
     !!!!!!!!!!!!!!!!!!!!!
     ! FWD dep
@@ -32,25 +37,115 @@ contains
     call fwd_update_dependency(fkeep, blk, fkeep%bc(blk)%fwd_update_dep)
     fkeep%bc(blk)%fwd_solve_dep   = fwd_solve_dependency(fkeep, blk)
 
-    ndep = 0
-    if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
-      ndep = ndep + size(fkeep%bc(blk)%fwd_update_dep)
-    end if
-    if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
-      ndep = ndep + 1
+    ndep  = 0
+
+    if(p_small(fkeep%bc(blk)%node) .eq. 0) then
+
+      nldep = 0
+      old_node  = 0
+      if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+        do i = 1, size(fkeep%bc(blk)%fwd_update_dep)
+          dep_blk   = fkeep%bc(blk)%fwd_update_dep(i)
+          dep_node  = fkeep%bc(dep_blk)%node
+          repr      = p_small(dep_node)
+          ! If the blk index is part of a subtree, count
+          if(repr .lt. 0) then 
+            repr = -repr
+            if(repr .gt. old_node) then
+              nldep = nldep + 1
+              old_node = repr
+            end if
+          else if(repr .eq. 1) then
+            if(dep_node .gt. old_node) then
+              nldep = nldep + 1
+              old_node = dep_node
+            end if
+          else
+            nldep = nldep + 1
+          end if
+        end do
+        ndep = ndep + nldep
+      end if
+      if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+        ndep = ndep + 1
+      end if
+    else
+      if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+        ndep = ndep + size(fkeep%bc(blk)%fwd_update_dep)
+      end if
+      if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+        ndep = ndep + 1
+      end if
     end if
     
+   !if(ndep .gt. 0)then
+   !  print *, "Number of dep ", ndep, " for blk ", blk
+   !  if(size(fkeep%bc(blk)%fwd_update_dep) .gt. 0) then
+   !    call print_array("****Dep_update", size(fkeep%bc(blk)%fwd_update_dep),&
+   !      fkeep%bc(blk)%fwd_update_dep, 1)
+   !  endif
+   !  print *, "****Dep_solve", fkeep%bc(blk)%fwd_solve_dep
+   !end if
+
 #if defined(SOLVE_TASK_LOCKED)
     if(ndep .gt. 0) then
 #endif
       allocate(fkeep%bc(blk)%fwd_dep(ndep))
-
-      if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
-        fkeep%bc(blk)%fwd_dep(1:size(fkeep%bc(blk)%fwd_update_dep)) = &
-          fkeep%bc(blk)%fwd_update_dep
-      end if
-      if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
-        fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
+      if(p_small(fkeep%bc(blk)%node) .eq. 0) then
+        cpt = 1
+        old_node  = 0
+        if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+          do i = 1, size(fkeep%bc(blk)%fwd_update_dep)
+            dep_blk   = fkeep%bc(blk)%fwd_update_dep(i)
+            dep_node  = fkeep%bc(dep_blk)%node
+            repr      = p_small(dep_node)
+            ! If the blk index is part of a subtree, count
+            if(repr .lt. 0) then
+              repr = -repr
+              if(repr .gt. old_node) then
+                fkeep%bc(blk)%fwd_dep(cpt) = fkeep%nodes(repr)%blk_en
+                old_node = repr
+                cpt = cpt + 1
+              end if
+            else if(repr .eq. 1) then
+              if(dep_node .gt. old_node) then
+                fkeep%bc(blk)%fwd_dep(cpt) = fkeep%nodes(dep_node)%blk_en
+                old_node = dep_node
+                cpt = cpt + 1
+              end if
+            else
+              fkeep%bc(blk)%fwd_dep(cpt) = fkeep%bc(blk)%fwd_update_dep(i)
+              cpt = cpt + 1
+            end if
+          end do
+        end if
+        if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+          dep_blk   = fkeep%bc(blk)%fwd_solve_dep
+          dep_node  = fkeep%bc(dep_blk)%node
+          repr      = p_small(dep_node)
+          ! If the blk index is part of a subtree, count
+          if(repr .lt. 0) then
+            repr = -repr
+            if(repr .gt. old_node) then
+              fkeep%bc(blk)%fwd_dep(ndep) = fkeep%nodes(repr)%blk_en
+            end if
+          else if(repr .eq. 1) then
+            if(dep_node .gt. old_node) then
+              fkeep%bc(blk)%fwd_dep(cpt) = fkeep%nodes(dep_node)%blk_en
+              old_node = dep_node
+            end if
+          else
+            fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
+          end if
+        end if
+      else
+        if(fkeep%bc(blk)%fwd_update_dep(1) .ne. blk) then
+          fkeep%bc(blk)%fwd_dep(1:size(fkeep%bc(blk)%fwd_update_dep)) = &
+            fkeep%bc(blk)%fwd_update_dep
+        end if
+        if(fkeep%bc(blk)%fwd_solve_dep .ne. blk) then
+          fkeep%bc(blk)%fwd_dep(ndep) = fkeep%bc(blk)%fwd_solve_dep
+        end if
       end if
 #if defined(SOLVE_TASK_LOCKED)
     else
@@ -60,6 +155,10 @@ contains
       end if
     endif
 #endif
+
+   !if(ndep .gt. 0)then
+   !  call print_array("becomes Dep", ndep, fkeep%bc(blk)%fwd_dep, 1)
+   !end if
 
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep

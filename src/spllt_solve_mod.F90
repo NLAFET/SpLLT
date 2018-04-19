@@ -281,9 +281,52 @@ contains
   !*************************************************
   !
   ! Forward solve routine
-  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, workspace, task_manager)
+
+
+
+  subroutine solve_fwd_subtree(nrhs, rhs, ldr, fkeep, tree, xlocal, rhs_local, &
+      task_manager)
     use spllt_data_mod
     use spllt_solve_task_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_mod
+    implicit none
+
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:,:)
+    type(spllt_tree_t),         intent(in)    :: tree
+    class(task_manager_base ),  intent(inout) :: task_manager
+  
+    integer :: i
+    type(spllt_timer), save :: timer
+
+    print *, "Treate subtree "
+    call spllt_print_subtree(tree)
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_fwd_subtree", timer)
+
+    do i = tree%node_sa, tree%node_en
+      call solve_fwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &
+        rhs_local, task_manager)
+    end do
+
+    call spllt_close_timer(task_manager%workerID, timer)
+
+  end subroutine solve_fwd_subtree
+
+
+
+  subroutine solve_fwd(nrhs, rhs, ldr, fkeep, workspace, task_manager)
+    use spllt_data_mod
+   !use spllt_solve_task_mod
     use spllt_solve_kernels_mod
     use trace_mod
     use utils_mod
@@ -309,8 +352,7 @@ contains
     integer                 :: dblk           ! Diagonal index 
     integer                 :: s_nb           ! Block size in node
     integer                 :: blk            ! Block index
-    integer                 :: fwd_update_id
-    integer                 :: fwd_block_id
+    integer                 :: fwd_submit_tree_id
     integer                 :: fwd_submit_id
     integer                 :: nworker
     real(wp), pointer       :: xlocal(:,:)    ! update_buffer workspace
@@ -318,6 +360,7 @@ contains
     type(spllt_block), pointer :: p_bc(:)
     type(spllt_timer), save :: timer
  !$ integer(kind=omp_lock_kind) :: lock
+    integer                 :: tree_num
 
     call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
       "solve_fwd", timer)
@@ -332,20 +375,6 @@ contains
       fkeep%maxmn * nrhs * nworker)
     rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
       * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
-
-!   ! initialise rhs_local
-!   rhs_local(:,:) = zero
-
-!   call spllt_tic("Reset workspace", 1, task_manager%workerID, timer)
-!   rhs_local(:,:) = zero
-!   call spllt_tac(1, task_manager%workerID, timer)
-
-!   call spllt_tic("Reset workspace in parallel", 5, task_manager%workerID,&
-!     timer)
-!   !$omp parallel
-!   rhs_local(1 : ldr * nrhs, omp_get_thread_num()) = zero
-!   !$omp end parallel
-!   call spllt_tac(5, task_manager%workerID, timer)
 
     num_node = fkeep%info%num_nodes
 
@@ -368,52 +397,73 @@ contains
 #endif
 
     call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+
+#if defined(SPLLT_OMP_TRACE)
+    fwd_submit_tree_id = task_manager%trace_ids(trace_fwd_submit_tree_pos)
+    call trace_event_start(fwd_submit_tree_id, -2)
+#endif
+    do tree_num = 1, size(fkeep%trees)
+     !call solve_fwd_subtree(nrhs, rhs, ldr, fkeep, fkeep%trees(tree_num), &
+     !  xlocal, rhs_local, task_manager)
+      call task_manager%solve_fwd_subtree_task(nrhs, rhs, ldr, fkeep, &
+        fkeep%trees(tree_num), xlocal, rhs_local)
+    end do
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_submit_tree_id, -2)
+#endif
+
     do node = 1, num_node
 
-       ! Get node info
-       s_nb   = fkeep%nodes(node)%nb
-       sa     = fkeep%nodes(node)%sa
-       en     = fkeep%nodes(node)%en
-       numcol = en - sa + 1
-       numrow = size(fkeep%nodes(node)%index)
-       nc     = (numcol-1) / s_nb + 1
-       nr     = (numrow-1) / s_nb + 1 
-       
-       ! Get first diag block in node
-       dblk = fkeep%nodes(node)%blk_sa
+      if(fkeep%small(node) .ne. 0) then
+!       print *, "Do not treat node ", node
+        cycle
+      end if
+#if 1
+!     print *, "Is going to treat node ", node
+      call solve_fwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
+        task_manager)
+#else
+      ! Get node info
+      s_nb   = fkeep%nodes(node)%nb
+      sa     = fkeep%nodes(node)%sa
+      en     = fkeep%nodes(node)%en
+      numcol = en - sa + 1
+      numrow = size(fkeep%nodes(node)%index)
+      nc     = (numcol-1) / s_nb + 1
+      nr     = (numrow-1) / s_nb + 1 
+      
+      ! Get first diag block in node
+      dblk = fkeep%nodes(node)%blk_sa
 
-       ! Loop over block columns
-       do jj = 1, nc
-          
+      ! Loop over block columns
+      do jj = 1, nc
+         
+        !
+        ! Forward solve with block on diagoanl
+        !
+        call spllt_tic("submit fwd block", 2, task_manager%workerID, timer)
+        call task_manager%solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, &
+          ldr, xlocal, fkeep)
+        call spllt_tac(2, task_manager%workerID, timer)
+
+        do ii = jj+1, nr
+
+          blk = dblk+ii-jj
+
           !
-          ! Forward solve with block on diagoanl
+          ! Forward update with off-diagonal
           !
-          call spllt_tic("submit fwd block", 2, task_manager%workerID, timer)
-         !call spllt_solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, ldr, &
-         !  xlocal, fkeep, fwd_block_id, task_manager)
-            call task_manager%solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, &
-              ldr, xlocal, fkeep)
-          call spllt_tac(2, task_manager%workerID, timer)
+          call spllt_tic("submit fwd update", 3, task_manager%workerID, timer)
+          call task_manager%solve_fwd_update_task(blk, node, nrhs, rhs_local,&
+            rhs, ldr, xlocal, fkeep)
+          call spllt_tac(3, task_manager%workerID, timer)
 
-          do ii = jj+1, nr
-
-            blk = dblk+ii-jj
-
-            !
-            ! Forward update with off-diagonal
-            !
-            call spllt_tic("submit fwd update", 3, task_manager%workerID, timer)
-           !call spllt_solve_fwd_update_task(blk, node, nrhs, rhs_local, &
-           !  rhs, ldr, xlocal, fkeep, fwd_update_id, task_manager)
-            call task_manager%solve_fwd_update_task(blk, node, nrhs, rhs_local,&
-              rhs, ldr, xlocal, fkeep)
-            call spllt_tac(3, task_manager%workerID, timer)
-
-          end do
-          
-          ! Update diag block in node          
-          dblk = fkeep%bc(dblk)%last_blk + 1
-       end do
+        end do
+        
+        ! Update diag block in node          
+        dblk = fkeep%bc(dblk)%last_blk + 1
+        end do
+#endif
     end do
     call spllt_tac(4, task_manager%workerID, timer)
 
@@ -427,7 +477,7 @@ call task_manager%print("fwd end of submitted task", 0)
 #endif
     
     !$omp taskwait
-call task_manager%print("fwd end of execution task", 0)
+   !call task_manager%print("fwd end of execution task", 0)
 
     call spllt_close_timer(task_manager%workerID, timer)
 
