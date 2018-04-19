@@ -2,33 +2,36 @@ module task_manager_mod
   use spllt_data_mod
   implicit none
 
-  integer, parameter :: ntrace_id = 12
-  character(len=12), parameter :: task_manager_trace_names(ntrace_id) = &
-    [character(len=10) :: &
-      "INIT_NODE",        &
-      "FACTO_BLK",        &
-      "SOLVE_BLK",        &
-      "UPDATE_BLK",       &
-      "UPDATE_BTW",       &
-      "fwd_update",       &
-      "fwd_block",        &
-      "bwd_update",       &
-      "bwd_block",        &
-      "fwd_submit",       &
-      "bwd_submit",       &
-      "chk_err" ]
-  integer, parameter :: trace_init_node_pos   =  1
-  integer, parameter :: trace_facto_blk_pos   =  2
-  integer, parameter :: trace_solve_blk_pos   =  3
-  integer, parameter :: trace_update_blk_pos  =  4
-  integer, parameter :: trace_update_btw_pos  =  5
-  integer, parameter :: trace_fwd_update_pos  =  6
-  integer, parameter :: trace_fwd_block_pos   =  7
-  integer, parameter :: trace_bwd_update_pos  =  8
-  integer, parameter :: trace_bwd_block_pos   =  9
-  integer, parameter :: trace_fwd_submit_pos  = 10
-  integer, parameter :: trace_bwd_submit_pos  = 11
-  integer, parameter :: trace_chk_err_pos     = 12
+  integer, parameter :: ntrace_id = 13
+  character(len=ntrace_id), parameter :: task_manager_trace_names(ntrace_id) = &
+    [character(len=11) :: &
+      "INIT_NODE"  ,      &
+      "FACTO_BLK"  ,      &
+      "SOLVE_BLK"  ,      &
+      "UPDATE_BLK" ,      &
+      "UPDATE_BTW" ,      &
+      "fwd_update" ,      &
+      "fwd_block"  ,      &
+      "bwd_update" ,      &
+      "bwd_block"  ,      &
+      "fwd_submit" ,      &
+      "bwd_submit" ,      &
+      "chk_err"    ,      &
+      "fwd_subtree"       &
+      ]
+  integer, parameter :: trace_init_node_pos       =  1
+  integer, parameter :: trace_facto_blk_pos       =  2
+  integer, parameter :: trace_solve_blk_pos       =  3
+  integer, parameter :: trace_update_blk_pos      =  4
+  integer, parameter :: trace_update_btw_pos      =  5
+  integer, parameter :: trace_fwd_update_pos      =  6
+  integer, parameter :: trace_fwd_block_pos       =  7
+  integer, parameter :: trace_bwd_update_pos      =  8
+  integer, parameter :: trace_bwd_block_pos       =  9
+  integer, parameter :: trace_fwd_submit_pos      = 10
+  integer, parameter :: trace_bwd_submit_pos      = 11
+  integer, parameter :: trace_chk_err_pos         = 12
+  integer, parameter :: trace_fwd_submit_tree_pos = 13
 
   type, abstract :: task_manager_base
     integer           :: nworker
@@ -49,6 +52,7 @@ module task_manager_mod
     procedure(solve_fwd_update_task_iface), deferred :: solve_fwd_update_task
     procedure(solve_bwd_block_task_iface),  deferred :: solve_bwd_block_task
     procedure(solve_bwd_update_task_iface), deferred :: solve_bwd_update_task
+    procedure(solve_fwd_subtree_task_iface),deferred :: solve_fwd_subtree_task
 
   end type task_manager_base
 
@@ -121,6 +125,7 @@ module task_manager_mod
       rhs, ldr, xlocal, fkeep)
       use spllt_data_mod
       import task_manager_base
+
       class(task_manager_base),   intent(inout) :: task_manager
       integer,                    intent(in)    :: dblk 
       integer,                    intent(in)    :: nrhs
@@ -139,6 +144,7 @@ module task_manager_mod
         rhs, ldr, xlocal, fkeep)
       use spllt_data_mod
       import task_manager_base
+
       class(task_manager_base),   intent(inout) :: task_manager
       integer,                    intent(in)    :: blk
       integer,                    intent(in)    :: node
@@ -157,6 +163,7 @@ module task_manager_mod
         ldr, xlocal, fkeep)
       use spllt_data_mod
       import task_manager_base
+
       class(task_manager_base),   intent(inout) :: task_manager
       integer, intent(in)                       :: dblk
       integer, intent(in)                       :: nrhs
@@ -174,6 +181,7 @@ module task_manager_mod
         rhs, ldr, xlocal, fkeep)
       use spllt_data_mod
       import task_manager_base
+
       class(task_manager_base),   intent(inout) :: task_manager
       integer, intent(in)                       :: blk
       integer, intent(in)                       :: node 
@@ -185,6 +193,21 @@ module task_manager_mod
       type(spllt_fkeep), target, intent(in)     :: fkeep
     end subroutine solve_bwd_update_task_iface
 
+    subroutine solve_fwd_subtree_task_iface(task_manager, nrhs, rhs, ldr, &
+        fkeep, tree, xlocal, rhs_local)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base ),  intent(inout) :: task_manager
+      integer,                    intent(in)    :: nrhs ! Number of RHS
+      real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+      integer,                    intent(in)    :: ldr  ! Leading dimension 
+                                                        ! of RHS
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      type(spllt_tree_t),         intent(in)    :: tree
+      real(wp),                   intent(inout) :: xlocal(:,:)
+      real(wp),                   intent(inout) :: rhs_local(:,:)
+    end subroutine solve_fwd_subtree_task_iface
   end interface
 
 contains

@@ -34,6 +34,7 @@ module task_manager_omp_mod
       procedure :: solve_fwd_update_task
       procedure :: solve_bwd_block_task
       procedure :: solve_bwd_update_task
+      procedure :: solve_fwd_subtree_task
 
   end type task_manager_omp_t
 
@@ -232,7 +233,7 @@ module task_manager_omp_mod
       ntotal_trace = ntrace_id
     end if
 
-    allocate(self%trace_ids(ntrace_id), stat=st2)
+    allocate(self%trace_ids(ntotal_trace), stat=st2)
 
     if(st2 .eq. 0) then
 #if defined(SPLLT_OMP_TRACE)
@@ -947,5 +948,95 @@ module task_manager_omp_mod
     call task_manager%ntask_submitted(1, nftask)
   end subroutine solve_bwd_update_task_worker
 
+
+
+  subroutine solve_fwd_subtree_task(task_manager, nrhs, rhs, ldr, fkeep, &
+      tree, xlocal, rhs_local)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:,:)
+
+    call solve_fwd_subtree_task_worker(task_manager, nrhs, rhs, ldr, &
+      fkeep, tree, xlocal, rhs_local)
+  end subroutine solve_fwd_subtree_task
+
+
+
+  subroutine solve_fwd_subtree_task_worker(task_manager, nrhs, rhs, ldr, &
+      fkeep, tree, xlocal, rhs_local)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),          target,  intent(inout) :: rhs(ldr*nrhs)
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),          target,  intent(inout) :: xlocal(:,:)
+    real(wp),          target,  intent(inout) :: rhs_local(:,:)
+  
+    real(wp), pointer           :: p_rhs_local(:,:)
+    real(wp), pointer           :: p_xlocal(:,:)
+    real(wp), pointer           :: p_rhs(:)
+    type(spllt_block), pointer  :: p_bc(:)
+    integer                     :: i
+    integer                     :: sa, en, blk_en
+    type(task_manager_seq_t)    :: sub_task_manager
+    type(spllt_timer), save     :: timer
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_fwd_subtree", timer)
+
+    p_rhs_local => rhs_local
+    p_xlocal    => xlocal
+    p_rhs       => rhs
+    p_bc        => fkeep%bc
+    sa          = tree%node_sa
+    en          = tree%node_en
+    blk_en      = fkeep%nodes(en)%blk_en
+    call sub_task_manager%init_from(task_manager)
+
+    !$omp task                                        &
+!   !$omp default(none)                               &
+    !$omp depend(inout: p_bc(blk_en))                 &
+    !$omp firstprivate(p_rhs, p_xlocal, p_rhs_local)  &
+    !$omp firstprivate(nrhs, ldr)                     &
+    !$omp firstprivate(sub_task_manager)              &
+    !$omp firstprivate(p_bc, blk_en)                  &
+    !$omp firstprivate(en, sa)                        &
+    !$omp shared(fkeep)                               &
+    !$omp private(i)
+
+    call sub_task_manager%refresh_worker()
+
+    do i = sa, en
+      call solve_fwd_node(nrhs, p_rhs, ldr, fkeep, i, p_xlocal, &
+        p_rhs_local, sub_task_manager)
+    end do
+
+    !$omp end task
+
+    call spllt_close_timer(task_manager%workerID, timer)
+
+  end subroutine solve_fwd_subtree_task_worker
 
 end module task_manager_omp_mod
