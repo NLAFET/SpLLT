@@ -243,6 +243,12 @@ contains
     double precision,         intent(out)   :: flops
 
     integer :: i, r, j
+#if defined(SPLLT_TIMER_TASKS)
+    type(spllt_timer), save :: timer
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_bwd_block_work", timer)
+#endif
 
     flops = zero
 
@@ -257,6 +263,9 @@ contains
 #endif
     endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd block task reduction", 1, threadID, timer)
+#endif
     ! Sum contributions to rhs
     do r = 0, nrhs-1
       do j = 1, nthread
@@ -266,6 +275,9 @@ contains
         end do
       end do
     end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, task_manager%workerID, timer)
+#endif
 
     ! Perform triangular solve
     call slv_solve(n, n, col, lcol(sa : sa + n * n - 1), &
@@ -275,6 +287,9 @@ contains
     flops = flops + n * n * nrhs
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
   end subroutine solve_bwd_block_work
 
 
@@ -362,40 +377,18 @@ contains
     double precision,         intent(out)   :: flops
 
     integer :: i, r, j
+#if defined(SPLLT_TIMER_TASKS)
+    type(spllt_timer), save :: timer
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_fwd_block_work", timer)
+#endif
 
     flops = zero
-! ! Reset p_upd if this is the first diagonal block of the node
-! if(dblk .eq. blk_sa) then
-!!  print *, "RReset ", ubound(p_extra_row, 1) - lbound(p_extra_row, 1) + 1, &
-!!    " elts of the workspace of blk ", dblk
-!     do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
-!       if(.not. p_workspace_reset(p_extra_row(i))) then
-!         !!$omp atomic write
-!         p_workspace_reset(p_extra_row(i)) = .true. ! not safe for me ...
-!         !!$omp end atomic
-!         do r = 0, nrhs-1
-!           do j = 1, nthread
-!             p_upd(p_extra_row(i) + r*ldr, j)  = zero
-!           end do
-!         end do
-!       end if
-!     end do
-! end if
-! call spllt_tac(13, threadID, timer)
 
- !if(dblk .eq. blk_sa) then
- !  print *, "Check rhs_local for blk ", dblk
- !  do r = 0, nrhs - 1
- !    do j = 1, nthread
- !      do i = lbound(p_extra_row, 1), ubound(p_extra_row, 1)
- !        if(p_upd(p_extra_row(i) + r*ldr, j) .ne. 0) then
- !          print *, "Error ? blk ", dblk, " => row ", p_extra_row(i)
- !        end if
- !      end do
- !    end do
- !  end do
- !end if
-
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd block task reduction", 1, threadID, timer)
+#endif
     ! Sum contributions to rhs
     do r = 0, nrhs - 1
       do j = 1, nthread
@@ -405,6 +398,9 @@ contains
         end do
       end do
     end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, task_manager%workerID, timer)
+#endif
 
 
     ! Perform triangular solve
@@ -428,6 +424,10 @@ contains
       flops = flops + 2 * (n * nrhs * m)
 #endif
     endif
+
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
   end subroutine solve_fwd_block_work
 
 

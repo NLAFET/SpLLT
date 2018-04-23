@@ -213,6 +213,7 @@ contains
     character(len=30) :: context  ! Name of the subroutine
     real(wp), pointer :: work(:,:)
     real(wp), pointer :: work2(:)
+    integer(long)     :: size_nrhs, size_work
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -220,10 +221,19 @@ contains
     n = fkeep%n
     context = 'spllt_solve_mult_double_worker'
 
-    work(1 : n, 1 : nrhs) => workspace(1 : n * nrhs)
-    work2(1 : (fkeep%maxmn + n) * nrhs * task_manager%nworker) =>      &
-      workspace(n * nrhs + 1 : nrhs * (n + (fkeep%maxmn + n) *      &
+   !work(1 : n, 1 : nrhs) => workspace(1 : n * nrhs)
+   !work2(1 : (fkeep%maxmn + n) * nrhs * task_manager%nworker) =>      &
+   !  workspace(n * nrhs + 1 : nrhs * (n + (fkeep%maxmn + n) *      &
+   !  task_manager%nworker))
+
+    size_nrhs = int(n, long) * nrhs
+    size_work = int(fkeep%maxmn + n, long) * int(nrhs, long)
+
+    work(1 : n, 1 : nrhs) => workspace(1 : size_nrhs)
+    work2(1 : size_work * task_manager%nworker) =>                        &
+      workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
       task_manager%nworker))
+
 
     select case(job)
       case(0)
@@ -307,6 +317,7 @@ contains
     type(spllt_timer), save     :: timer
  !$ integer(kind=omp_lock_kind) :: lock
     integer                     :: tree_num
+    integer(long)               :: size_rhs_local, size_xlocal
 
     call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
       "solve_fwd", timer)
@@ -317,10 +328,18 @@ contains
     call trace_event_start(fwd_submit_id, -1)
 #endif
 
-    xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
-      fkeep%maxmn * nrhs * nworker)
-    rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
-      * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+   !xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
+   !  fkeep%maxmn * nrhs * nworker)
+   !rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
+   !  * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+
+    size_xlocal     = int(fkeep%maxmn, long) * nrhs
+    size_rhs_local  = int(fkeep%maxmn + ldr, long) * int(nrhs, long)
+
+    xlocal(1 : size_xlocal, 0 : nworker - 1) => workspace(1 : &
+      size_xlocal * nworker)
+    rhs_local(1 : int(ldr, long) * nrhs, 0 : nworker - 1) =>  &
+      workspace(size_xlocal * nworker + 1 : size_rhs_local * nworker)
 
 #if defined(SOLVE_TASK_LOCKED)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -413,6 +432,7 @@ call task_manager%print("fwd end of submitted task", 0)
     type(spllt_block), pointer  :: p_bc(:)
     integer                     :: tree_num
     type(spllt_timer), save     :: timer
+    integer(long)               :: size_rhs_local, size_xlocal
  !$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
@@ -425,10 +445,18 @@ call task_manager%print("fwd end of submitted task", 0)
     call trace_event_start(bwd_submit_id, -1)
 #endif
 
-    xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
-      fkeep%maxmn * nrhs * nworker)
-    rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
-      * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+   !xlocal(1 : fkeep%maxmn * nrhs, 0 : nworker - 1) => workspace(1 : &
+   !  fkeep%maxmn * nrhs * nworker)
+   !rhs_local(1 : ldr * nrhs, 0 : nworker - 1) => workspace(fkeep%maxmn * nrhs &
+   !  * nworker + 1 : (fkeep%maxmn + ldr) * nrhs * nworker)
+    size_xlocal     = int(fkeep%maxmn, long) * nrhs
+    size_rhs_local  = int(fkeep%maxmn + ldr, long) * int(nrhs, long)
+
+    xlocal(1 : size_xlocal, 0 : nworker - 1) => workspace(1 : &
+      size_xlocal * nworker)
+    rhs_local(1 : int(ldr, long) * nrhs, 0 : nworker - 1) =>  &
+      workspace(size_xlocal * nworker + 1 : size_rhs_local * nworker)
+
 
 #if defined(SOLVE_TASK_LOCKED)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!

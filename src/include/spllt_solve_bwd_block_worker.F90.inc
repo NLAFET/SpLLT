@@ -34,6 +34,9 @@ if(ndep_lvl .le. chunk) then
 #endif
    endif
  
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd block task reduction", 14, threadID, timer)
+#endif
    ! Sum contributions to rhs
    do r = 0, nrhs-1
      do j = 1, nthread
@@ -43,6 +46,9 @@ if(ndep_lvl .le. chunk) then
        end do
      end do
    end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, timer)
+#endif
  
    ! Perform triangular solve
    call slv_solve(n, n, col, p_lcol(sa : sa + n * n - 1), &

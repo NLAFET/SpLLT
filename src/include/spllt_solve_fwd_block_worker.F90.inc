@@ -24,6 +24,10 @@ if(ndep_lvl .le. chunk) then
 
   call task_manager%nflop_performed(flops)
 #else
+
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd block task reduction", 14, threadID, timer)
+#endif
   ! Sum contributions to rhs
   do r = 0, nrhs-1
     do j = 1, nthread
@@ -33,6 +37,9 @@ if(ndep_lvl .le. chunk) then
       end do
     end do
   end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, timer)
+#endif
 
 
   ! Perform triangular solve

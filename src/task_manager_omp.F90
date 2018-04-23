@@ -1032,6 +1032,7 @@ module task_manager_omp_mod
 
     !$omp end task
 
+    call task_manager%ntask_submitted(1, 0)
     call spllt_close_timer(task_manager%workerID, timer)
 
   end subroutine solve_fwd_subtree_task_worker
@@ -1112,6 +1113,7 @@ module task_manager_omp_mod
     blk_en      = fkeep%nodes(en)%blk_en
     call task_manager%semifork(sub_task_manager)
 
+    nftask      = 0
     p_dep       => fkeep%bc(blk_en)%bwd_dep
     ndep        = size(p_dep)
 
@@ -1175,6 +1177,8 @@ module task_manager_omp_mod
       end do
       call spllt_tac(12, task_manager%workerID, timer)
     end if
+
+    call task_manager%ntask_submitted(1, nftask)
     call spllt_close_timer(task_manager%workerID, timer)
 
   end subroutine solve_bwd_subtree_task_worker

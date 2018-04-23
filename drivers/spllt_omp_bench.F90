@@ -260,13 +260,20 @@ program spllt_omp
     call spllt_tac(2, task_manager%workerID, timer)
     facto_timer(nb_i) = (stop_t - start_t)/real(rate_t)
 
-    allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
-      nrhs_max * task_manager%nworker), stat = st)
+   !allocate(workspace(n * nrhs_max + (fkeep%maxmn + n) * &
+   !  nrhs_max * task_manager%nworker), stat = st)
+    allocate(workspace(int(n, long) * int(nrhs_max) +   &
+      int(fkeep%maxmn + n, long) *                      &
+      int(nrhs_max, long) * int(task_manager%nworker, long)), stat = st)
     print '(a, es10.2)', "Allocation of a workspace of size ", & 
-        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
+!       real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
+        real(int(n,long) * nrhs_max + int(fkeep%maxmn + n, long) * &
+        int( nrhs_max, long) * int(task_manager%nworker,long))
     if(st.ne.0) then
       write(0,fmt='(a, es10.2)') "Can not allocate the workspace of size ", &
-        real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
+!       real(n * nrhs_max + (fkeep%maxmn + n) * nrhs_max * task_manager%nworker)
+        real(int(n,long) * nrhs_max + int(fkeep%maxmn + n, long) * &
+        int( nrhs_max, long) * int(task_manager%nworker,long))
       stop
     end if
     call task_manager%incr_alloc(st)
