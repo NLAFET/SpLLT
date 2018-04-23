@@ -327,10 +327,10 @@ program spllt_omp
       fwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       fwd_flops(j, nb_i) =  0.0
-      do th = lbound(task_manager%thread_task_info, 1), &
-              ubound(task_manager%thread_task_info, 1)
+      do th = lbound(task_manager%worker_info, 1), &
+              ubound(task_manager%worker_info, 1)
         fwd_flops(j,nb_i) = fwd_flops(j,nb_i) + task_manager%&
-          &thread_task_info(th)%nflop
+          &worker_info(th)%nflop
       end do
 #endif
 
@@ -349,10 +349,10 @@ program spllt_omp
       bwd_timer(j,nb_i) = (stop_t - start_t)/real(rate_t)
 #if defined(SPLLT_PROFILING_FLOP)
       bwd_flops(j, nb_i) =  0.0
-      do th = lbound(task_manager%thread_task_info, 1), &
-              ubound(task_manager%thread_task_info, 1)
+      do th = lbound(task_manager%worker_info, 1), &
+              ubound(task_manager%worker_info, 1)
         bwd_flops(j,nb_i) = bwd_flops(j,nb_i) + task_manager%&
-          &thread_task_info(th)%nflop
+          &worker_info(th)%nflop
       end do
 #endif
 
