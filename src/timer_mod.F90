@@ -6,22 +6,20 @@ module timer_mod
   integer, parameter  :: max_steps = 15
 
   type spllt_steps
-   !character(len=:), pointer :: p
     character(len=200)        :: name(0 : max_steps)
   end type spllt_steps
 
   ! Contains timers of each step of a subroutine
   type spllt_timer
-   !character(len=200)        :: step_name(0 : max_steps)
-    type(spllt_steps), pointer  :: steps
-    double precision,  pointer  :: start(:,:)
-    double precision,  pointer  :: stop(:,:)
-    double precision,  pointer  :: swap(:)
-    integer,           pointer  :: ncall(:,:)
-    integer                     :: state
-    double precision,  pointer  :: time(:,:)
-    double precision,  pointer  :: time_min(:,:)
-    double precision,  pointer  :: time_max(:,:)
+    type(spllt_steps), pointer  :: steps          => null()
+    double precision,  pointer  :: start(:,:)     => null()
+    double precision,  pointer  :: stop(:,:)      => null()
+    double precision,  pointer  :: swap(:)        => null()
+    integer,           pointer  :: ncall(:,:)     => null()
+    integer                     :: state          = 0
+    double precision,  pointer  :: time(:,:)      => null()
+    double precision,  pointer  :: time_min(:,:)  => null()
+    double precision,  pointer  :: time_max(:,:)  => null()
   end type spllt_timer
 
   ! Record the timer of all functions used
@@ -51,6 +49,8 @@ contains
   subroutine save_timer(local_timer)
     type(spllt_timer), intent(in) :: local_timer
 
+    integer :: timer_pos
+
 !   type(spllt_timer), allocatable :: buf(:)
 
     ! Increase size if necessary
@@ -64,8 +64,11 @@ contains
 !     all_timers%max_ntimers = all_timers%max_ntimers * 2
     end if
 
+  !$omp atomic capture
     all_timers%ntimers = all_timers%ntimers + 1
-    all_timers%timers(all_timers%ntimers) = local_timer
+    timer_pos = all_timers%ntimers
+  !$omp end atomic
+    all_timers%timers(timer_pos) = local_timer
 
   end subroutine save_timer
 
@@ -81,7 +84,9 @@ contains
 
     step_id = 0
 
+    !$omp critical
     if(timer%state .eq. 0) then
+      timer%state = 1
       allocate(timer%start    (0 : max_steps, 0 : nthread - 1))
       allocate(timer%time     (0 : max_steps, 0 : nthread - 1))
       allocate(timer%time_min (0 : max_steps, 0 : nthread - 1))
@@ -89,11 +94,11 @@ contains
       allocate(timer%ncall    (0 : max_steps, 0 : nthread - 1))
       allocate(timer%swap     (0 : nthread - 1))
       allocate(timer%steps)
-      timer%state = 1
       timer%ncall(:, :) = 0
       timer%steps%name(step_id) = fun_name
       call save_timer(timer)
     end if
+    !$omp end critical
 
     timer%start(step_id, thn) = omp_get_wtime()
 
