@@ -1,12 +1,14 @@
 module task_manager_seq_mod
   use task_manager_mod
+  use worker_info_mod
   implicit none
 
 
   type, extends(task_manager_base) :: task_manager_seq_t
-    integer           :: ntask_run
-    double precision  :: nflop                  ! # flop performed
-    integer           :: narray_allocated       ! #allocation
+   !integer           :: ntask_run
+   !double precision  :: nflop                  ! # flop performed
+   !integer           :: narray_allocated       ! #allocation
+    type(worker_info_t), pointer :: p_worker
 
     contains
       procedure :: init       => task_manager_seq_init
@@ -29,7 +31,6 @@ module task_manager_seq_mod
       procedure :: solve_fwd_subtree_task => solve_fwd_subtree
       procedure :: solve_bwd_subtree_task => solve_bwd_subtree
 
-      procedure :: init_from => task_manager_seq_init_from
   end type task_manager_seq_t
 
  contains
@@ -44,7 +45,7 @@ module task_manager_seq_mod
     if(stat .ne. 0) then
       write(0,'(a)') "[>Allocation::Error] can not allocate the memory"
     else
-      self%narray_allocated = self%narray_allocated + 1
+      self%p_worker%narray_allocated = self%p_worker%narray_allocated + 1
     end if
 
   end subroutine task_manager_seq_incr_alloc
@@ -55,7 +56,7 @@ module task_manager_seq_mod
     implicit none
     class(task_manager_seq_t),  intent(inout) :: self
 
-    self%nflop = 0.0
+    self%p_worker%nflop = 0.0
 
   end subroutine nflop_reset
 
@@ -67,7 +68,7 @@ module task_manager_seq_mod
     double precision,           intent(in)    :: nflop
    !integer(long),              intent(in)    :: nflop
 
-    self%nflop = self%nflop + nflop
+    self%p_worker%nflop = self%p_worker%nflop + nflop
 
   end subroutine nflop_performed
 
@@ -77,7 +78,7 @@ module task_manager_seq_mod
     implicit none
     class(task_manager_seq_t), intent(inout)  :: self
 
-    self%ntask_run = self%ntask_run + 1
+    self%p_worker%ntask_run = self%p_worker%ntask_run + 1
 
   end subroutine incr_nrun
 
@@ -96,8 +97,10 @@ module task_manager_seq_mod
     implicit none
     class(task_manager_seq_t), intent(inout)  :: self
 
-    self%workerID            = 0
- !$ self%workerID            = omp_get_thread_num()
+    self%workerID = 0
+ !$ self%workerID = omp_get_thread_num()
+    self%p_worker => self%worker_info(self%workerID)
+
   end subroutine refresh_worker
 
 
@@ -113,9 +116,7 @@ module task_manager_seq_mod
     self%workerID            = 0
  !$ self%workerID            = omp_get_thread_num()
     self%masterWorker        = self%workerID
-    self%nflop               = 0.0
-    self%ntask_run           = 0
-    self%narray_allocated    = 0
+    call self%p_worker%reset()
 
   end subroutine task_manager_seq_reset
 
@@ -128,15 +129,20 @@ module task_manager_seq_mod
     character(len=*), optional,         intent(in)    :: trace_names(:)
     integer,          optional,         intent(out)   :: stat
 
+    integer                           :: st0
     integer                           :: st1
     integer                           :: st2
     integer                           :: i
     integer                           :: ntotal_trace
 
     ! Initialize variables
-    st1 = 0
-    st2 = 0
-    self%trace_ids => null()
+    st0                 = 0
+    st1                 = 0
+    st2                 = 0
+    self%trace_ids      => null()
+    self%worker_info    => null()
+
+    allocate(self%p_worker, stat = st0)
     call self%reset()
 
     ! Get ids of trace
@@ -181,22 +187,6 @@ module task_manager_seq_mod
 
 
 
-  subroutine task_manager_seq_init_from(self, task_manager)
-    use trace_mod, only : trace_create_event
-    implicit none
-    class(task_manager_seq_t), target,  intent(inout) :: self
-    class(task_manager_base),  target,  intent(in)    :: task_manager
-!   character(len=*), optional,         intent(in)    :: trace_names(:)
-!   integer,          optional,         intent(out)   :: stat
-
-    ! Initialize variables
-    self%trace_ids => task_manager%trace_ids
-    call self%reset()
-
-  end subroutine task_manager_seq_init_from
-
-
-
   subroutine task_manager_seq_print(self, msg, option)
     implicit none
     class(task_manager_seq_t), intent(in) :: self
@@ -211,8 +201,7 @@ module task_manager_seq_mod
     print '(a, i3)', "workerID        : ", self%workerID
     print '(a, i3)', "masterWorker    : ", self%masterWorker
     print '(a, i3)', "nworker         : ", self%nworker
-    print '(a, i9)', "#array allocate : ", self%narray_allocated
-    print '(a, es10.2)', "#flop           : ", self%nflop
+    call self%p_worker%print("Seq worker info", self%workerID)
 
   end subroutine task_manager_seq_print
 
@@ -232,24 +221,6 @@ module task_manager_seq_mod
 
   subroutine solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
       ldr, xlocal, fkeep)
-!   use spllt_data_mod
-!   implicit none
-!   
-!   class(task_manager_seq_t),  intent(inout) :: task_manager
-!   integer,                    intent(in)    :: dblk !Index of diagonal block
-!   integer,                    intent(in)    :: nrhs !Number of RHS
-!   integer,                    intent(in)    :: ldr  !Leading dimension of RHS
-!   real(wp), target,           intent(inout) :: upd(:, :)
-!   real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
-!   real(wp), target,           intent(inout) :: xlocal(:, :)
-!   type(spllt_fkeep), target,  intent(in)    :: fkeep
-
-!   call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr, &
-!     xlocal, fkeep, task_manager%trace_ids(trace_fwd_block_pos))
-! end subroutine solve_fwd_block_task
-
-! subroutine solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
-!     ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -265,7 +236,6 @@ module task_manager_seq_mod
     real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
     real(wp), target,           intent(inout) :: xlocal(:, :)
     type(spllt_fkeep), target,  intent(in)    :: fkeep
-!   integer,                    intent(in)    :: trace_id
     
     ! Node info
     integer                     :: sa
@@ -330,25 +300,6 @@ module task_manager_seq_mod
 
   subroutine solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
       rhs, ldr, xlocal, fkeep)
-!   use spllt_data_mod
-!   implicit none
-
-!   class(task_manager_seq_t),  intent(inout) :: task_manager
-!   integer,                    intent(in)    :: blk  ! Index of block
-!   integer,                    intent(in)    :: node
-!   integer,                    intent(in)    :: nrhs ! Number of RHS
-!   integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
-!   real(wp), target,           intent(inout) :: upd(:,:)        
-!   real(wp), target,           intent(in)    :: rhs(ldr*nrhs)
-!   real(wp), target,           intent(out)   :: xlocal(:,:)
-!   type(spllt_fkeep), target,  intent(in)    :: fkeep
-
-!   call solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, rhs,&
-!     ldr, xlocal, fkeep, task_manager%trace_ids(trace_fwd_update_pos))
-! end subroutine solve_fwd_update_task
-
-! subroutine solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
-!     rhs, ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -426,25 +377,6 @@ module task_manager_seq_mod
 
   subroutine solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
       ldr, xlocal, fkeep)
-!   use spllt_data_mod
-!   implicit none
-
-!   class(task_manager_seq_t), intent(inout)  :: task_manager
-!   integer, intent(in)                       :: dblk ! Index of diagonal block
-!   integer, intent(in)                       :: nrhs ! Number of RHS
-!   integer, intent(in)                       :: ldr  ! Leading dimension of RHS
-!   real(wp), target, intent(inout)           :: upd(:, :)
-!   real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
-!   real(wp), target, intent(inout)           :: xlocal(:, :)
-!   type(spllt_fkeep), target, intent(in)     :: fkeep
-!   
-!   call solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr, &
-!     xlocal, fkeep, task_manager%trace_ids(trace_bwd_block_pos))
-
-! end subroutine solve_bwd_block_task
-
-! subroutine solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
-!     ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -526,25 +458,6 @@ module task_manager_seq_mod
 
   subroutine solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
       rhs, ldr, xlocal, fkeep)
-!   use spllt_data_mod
-!   implicit none
-
-!   class(task_manager_seq_t), intent(inout)  :: task_manager
-!   integer, intent(in)                       :: blk  ! Index of block 
-!   integer, intent(in)                       :: node 
-!   integer, intent(in)                       :: nrhs ! Number of RHS
-!   integer, intent(in)                       :: ldr  ! Leading dimension of RHS
-!   real(wp), target, intent(inout)           :: upd(:,:)
-!   real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
-!   real(wp), target, intent(inout)           :: xlocal(:,:)
-!   type(spllt_fkeep), target, intent(in)     :: fkeep
-
-!   call solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, rhs,&
-!     ldr, xlocal, fkeep, task_manager%trace_ids(trace_bwd_update_pos))
-! end subroutine solve_bwd_update_task
-!   
-! subroutine solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
-!     rhs, ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod

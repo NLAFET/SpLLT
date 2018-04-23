@@ -2,24 +2,18 @@ module task_manager_omp_mod
   use task_manager_mod
   implicit none
 
-  type thread_task_info_t
-    double precision  :: nflop                  ! # flop performed
-    integer           :: ntask_run              ! #task run by this thread
-    integer           :: ntask_insert           ! #task insert to the runtim
-    integer           :: nfake_task_insert      ! #fake task insert
-    integer           :: narray_allocated       ! #allocation
-  end type thread_task_info_t
-
   type, extends(task_manager_base) :: task_manager_omp_t
-    integer                           :: nthread_max
-    type(thread_task_info_t), pointer :: thread_task_info(:)
+    integer                       :: nthread_max
+    integer                       :: nfork
 
     contains
       procedure :: init       => task_manager_omp_init
+      procedure :: copy       => task_manager_omp_copy
       procedure :: reset      => task_manager_omp_reset
       procedure :: print      => task_manager_omp_print
       procedure :: incr_alloc => task_manager_omp_incr_alloc
       procedure :: deallocate => task_manager_omp_deallocate
+      procedure :: semifork   => task_manager_omp_semifork
 
       procedure :: refresh_master
       procedure :: refresh_worker
@@ -50,8 +44,8 @@ module task_manager_omp_mod
     if(stat .ne. 0) then
       write(0,'(a)') "[>Allocation::Error] can not allocate the memory"
     else
-      self%thread_task_info(self%workerID)%narray_allocated = 1 + &
-        self%thread_task_info(self%workerID)%narray_allocated
+      self%worker_info(self%workerID)%narray_allocated = 1 + &
+        self%worker_info(self%workerID)%narray_allocated
     end if
 
   end subroutine task_manager_omp_incr_alloc
@@ -66,10 +60,10 @@ module task_manager_omp_mod
     integer :: i
 
     if(present(thn)) then
-      self%thread_task_info(thn)%nflop = 0.0
+      self%worker_info(thn)%nflop = 0.0
     else
       do i = 0, self%nworker - 1
-        self%thread_task_info(i)%nflop = 0.0
+        self%worker_info(i)%nflop = 0.0
       end do
     end if
 
@@ -83,7 +77,7 @@ module task_manager_omp_mod
     double precision,           intent(in)    :: nflop
    !integer(long),              intent(in)    :: nflop
 
-    self%thread_task_info(self%workerID)%nflop = self%thread_task_info&
+    self%worker_info(self%workerID)%nflop = self%worker_info&
       &(self%workerID)%nflop + nflop
 
   end subroutine nflop_performed
@@ -94,7 +88,7 @@ module task_manager_omp_mod
     implicit none
     class(task_manager_omp_t), intent(inout)  :: self
 
-    self%thread_task_info(self%workerID)%ntask_run = self%thread_task_info&
+    self%worker_info(self%workerID)%ntask_run = self%worker_info&
       &(self%workerID)%ntask_run + 1
 
   end subroutine incr_nrun
@@ -132,46 +126,14 @@ module task_manager_omp_mod
     integer,                            intent(in)    :: ntask  ! #task insert
     integer,                            intent(in)    :: nftask ! #fake task
 
-    type(thread_task_info_t), pointer :: p_th_task_info
+    type(worker_info_t), pointer :: p_th_task_info
 
-    p_th_task_info => self%thread_task_info(self%workerID)
+    p_th_task_info => self%worker_info(self%workerID)
 
     p_th_task_info%nfake_task_insert = p_th_task_info%nfake_task_insert + nftask
     p_th_task_info%ntask_insert      = p_th_task_info%ntask_insert + ntask
 
   end subroutine ntask_submitted
-
-
-
-  subroutine print_thread_task_info(msg, thread_id, thread_task_info)
-    implicit none
-    character(len=*),         intent(in)  :: msg
-    integer,                  intent(in)  :: thread_id
-    type(thread_task_info_t), intent(in)  :: thread_task_info
-
-    print *, msg, " : ", thread_id
-    print '(a, i9)', "#task insert        : ", thread_task_info%ntask_insert
-    print '(a, i9)', "#fake task insert   : ", thread_task_info%&
-      &nfake_task_insert
-    print '(a, i9)', "#task run           : ", thread_task_info%ntask_run
-    print '(a, i9)', "#array allocate     : ", thread_task_info%narray_allocated
-    print '(a, es10.2)', "#flop               : ", thread_task_info%nflop
-
-  end subroutine print_thread_task_info
-
-
-
-  subroutine task_manager_omp_init_thread_task_info(thread_task_info)
-    implicit none
-    type(thread_task_info_t), intent(out) :: thread_task_info
-
-    thread_task_info%nflop               = 0.0
-    thread_task_info%ntask_run           = 0
-    thread_task_info%ntask_insert        = 0
-    thread_task_info%nfake_task_insert   = 0
-    thread_task_info%narray_allocated    = 0
-    
-  end subroutine task_manager_omp_init_thread_task_info
 
 
 
@@ -187,16 +149,28 @@ module task_manager_omp_mod
 
     ! Additional variables
     self%nthread_max             = self%nworker
+    self%nfork                   = 0
 
-   !print *, "Reset of the task_manager"
-   !call self%print()
   end subroutine task_manager_omp_reset
+
+
+
+  subroutine task_manager_omp_worker_reset(self)
+ !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
+    implicit none
+    class(task_manager_omp_t), intent(inout) :: self
+
+    integer :: i
+    do i = lbound(self%worker_info, 1), ubound(self%worker_info, 1)
+      call self%worker_info(i)%reset()
+    end do
+
+  end subroutine task_manager_omp_worker_reset
 
 
 
   subroutine task_manager_omp_init(self, trace_names, stat)
     use trace_mod, only : trace_create_event
- !$ use omp_lib, only : omp_get_num_threads, omp_get_thread_num
     implicit none
     class(task_manager_omp_t), target,  intent(inout) :: self
     character(len=*), optional,         intent(in)    :: trace_names(:)
@@ -214,10 +188,10 @@ module task_manager_omp_mod
     call self%reset()
 
     ! Build task info space
-    allocate(self%thread_task_info(0 : self%nthread_max - 1), stat=st1)
+    allocate(self%worker_info(0 : self%nthread_max - 1), stat=st1)
     if(st1 .eq. 0) then
-      do i = lbound(self%thread_task_info, 1), ubound(self%thread_task_info, 1)
-        call task_manager_omp_init_thread_task_info(self%thread_task_info(i))
+      do i = lbound(self%worker_info, 1), ubound(self%worker_info, 1)
+        call self%worker_info(i)%init()
       end do
     end if
 
@@ -259,9 +233,37 @@ module task_manager_omp_mod
       stat = st1 + st2
     end if
 
-   !print *, "Init of the task_manager"
-   !call self%print()
+    print *, "Init of the task_manager"
+    call self%print()
   end subroutine task_manager_omp_init
+
+
+
+  subroutine task_manager_omp_semifork(self, task_manager)
+    implicit none
+    class(task_manager_omp_t), target,  intent(inout) :: self
+    class(task_manager_base),           intent(inout) :: task_manager
+
+    ! Initialize variables
+    call self%copy(task_manager)
+    self%nfork = self%nfork + 1
+
+  end subroutine task_manager_omp_semifork
+
+
+
+  subroutine task_manager_omp_copy(self, task_manager)
+    implicit none
+    class(task_manager_omp_t), target,  intent(in)    :: self
+    class(task_manager_base),           intent(inout) :: task_manager
+
+    task_manager%trace_ids    => self%trace_ids
+    task_manager%worker_info  => self%worker_info
+    task_manager%nworker      =  self%nworker
+    task_manager%masterWorker =  self%masterWorker
+    task_manager%workerID     =  self%workerID
+
+  end subroutine task_manager_omp_copy
 
 
 
@@ -288,11 +290,11 @@ module task_manager_omp_mod
     print '(a, i3)', "masterWorker  :", self%masterWorker
     print '(a, i3)', "nworker       :", self%nworker
     print '(a, i3)', "nthread_max   :", self%nthread_max
+    print '(a, i3)', "nfork         :", self%nfork
     if(print_full .eq. 1) then
-      if(associated(self%thread_task_info)) then
+      if(associated(self%worker_info)) then
         do i = 0, self%nworker - 1
-          call print_thread_task_info("OMP task information", i, &
-            self%thread_task_info(i))
+          call self%worker_info(i)%print("OMP task information", i)
         end do
       end if
     end if
@@ -305,8 +307,8 @@ module task_manager_omp_mod
     implicit none
     class(task_manager_omp_t), intent(inout) :: self
 
-    if(associated(self%thread_task_info)) then
-      deallocate(self%thread_task_info)
+    if(associated(self%worker_info)) then
+      deallocate(self%worker_info)
     end if
 
   end subroutine task_manager_omp_deallocate
@@ -1008,7 +1010,7 @@ module task_manager_omp_mod
     sa          = tree%node_sa
     en          = tree%node_en
     blk_en      = fkeep%nodes(en)%blk_en
-    call sub_task_manager%init_from(task_manager)
+    call task_manager%semifork(sub_task_manager)
 
     !$omp task                                        &
 !   !$omp default(none)                               &
@@ -1108,7 +1110,8 @@ module task_manager_omp_mod
     sa          = tree%node_sa
     en          = tree%node_en
     blk_en      = fkeep%nodes(en)%blk_en
-    call sub_task_manager%init_from(task_manager)
+    call task_manager%semifork(sub_task_manager)
+
     p_dep       => fkeep%bc(blk_en)%bwd_dep
     ndep        = size(p_dep)
 

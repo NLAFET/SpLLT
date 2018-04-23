@@ -1,5 +1,6 @@
 module task_manager_mod
   use spllt_data_mod
+  use worker_info_mod
   implicit none
 
   integer, parameter :: ntrace_id = 14
@@ -36,10 +37,11 @@ module task_manager_mod
   integer, parameter :: trace_bwd_submit_tree_pos = 14
 
   type, abstract :: task_manager_base
-    integer           :: nworker
-    integer           :: masterWorker
-    integer           :: workerID
-    integer, pointer  :: trace_ids(:)
+    integer                       :: nworker
+    integer                       :: masterWorker
+    integer                       :: workerID
+    integer, pointer              :: trace_ids(:)
+    type(worker_info_t), pointer  :: worker_info(:)
   contains
     procedure(task_manager_init_iface),           deferred :: init
     procedure(task_manager_reset_iface),          deferred :: reset
