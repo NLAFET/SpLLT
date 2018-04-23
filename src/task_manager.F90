@@ -2,7 +2,7 @@ module task_manager_mod
   use spllt_data_mod
   implicit none
 
-  integer, parameter :: ntrace_id = 13
+  integer, parameter :: ntrace_id = 14
   character(len=ntrace_id), parameter :: task_manager_trace_names(ntrace_id) = &
     [character(len=11) :: &
       "INIT_NODE"  ,      &
@@ -17,7 +17,8 @@ module task_manager_mod
       "fwd_submit" ,      &
       "bwd_submit" ,      &
       "chk_err"    ,      &
-      "fwd_subtree"       &
+      "fwd_subtree",      &
+      "bwd_subtree"       &
       ]
   integer, parameter :: trace_init_node_pos       =  1
   integer, parameter :: trace_facto_blk_pos       =  2
@@ -32,6 +33,7 @@ module task_manager_mod
   integer, parameter :: trace_bwd_submit_pos      = 11
   integer, parameter :: trace_chk_err_pos         = 12
   integer, parameter :: trace_fwd_submit_tree_pos = 13
+  integer, parameter :: trace_bwd_submit_tree_pos = 14
 
   type, abstract :: task_manager_base
     integer           :: nworker
@@ -53,6 +55,7 @@ module task_manager_mod
     procedure(solve_bwd_block_task_iface),  deferred :: solve_bwd_block_task
     procedure(solve_bwd_update_task_iface), deferred :: solve_bwd_update_task
     procedure(solve_fwd_subtree_task_iface),deferred :: solve_fwd_subtree_task
+    procedure(solve_bwd_subtree_task_iface),deferred :: solve_bwd_subtree_task
 
   end type task_manager_base
 
@@ -208,6 +211,22 @@ module task_manager_mod
       real(wp),                   intent(inout) :: xlocal(:,:)
       real(wp),                   intent(inout) :: rhs_local(:,:)
     end subroutine solve_fwd_subtree_task_iface
+
+    subroutine solve_bwd_subtree_task_iface(task_manager, nrhs, rhs, ldr, &
+        fkeep, tree, xlocal, rhs_local)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base ),  intent(inout) :: task_manager
+      integer,                    intent(in)    :: nrhs ! Number of RHS
+      real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+      integer,                    intent(in)    :: ldr  ! Leading dimension 
+                                                        ! of RHS
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      type(spllt_tree_t),         intent(in)    :: tree
+      real(wp),                   intent(inout) :: xlocal(:,:)
+      real(wp),                   intent(inout) :: rhs_local(:,:)
+    end subroutine solve_bwd_subtree_task_iface
   end interface
 
 contains

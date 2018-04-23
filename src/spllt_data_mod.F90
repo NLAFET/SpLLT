@@ -327,6 +327,7 @@ module spllt_data_mod
      type(spllt_tree_t), allocatable :: trees(:)
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
+     integer, allocatable :: assoc_tree(:)
   end type spllt_fkeep
 
 
@@ -533,6 +534,14 @@ contains
       deallocate(fkeep%workspace_reset, stat=st)
       stat = stat + st
     end if
+    if(allocated(fkeep%small)) then
+      deallocate(fkeep%small, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%assoc_tree)) then
+      deallocate(fkeep%assoc_tree, stat=st)
+      stat = stat + st
+    end if
   end subroutine spllt_deallocate_fkeep
 
 
@@ -642,33 +651,38 @@ contains
     ntree = count(akeep%small .eq. 1)
 
     allocate(fkeep%trees(ntree), stat=st)
+    allocate(fkeep%assoc_tree(akeep%nnodes), stat=st)
 
-    print *, "#tree : ", ntree
+    print *, "#Subtree : ", ntree
 
-    nnode   = akeep%nnodes
-    num     = 1
-    p_tree  => fkeep%trees(num)
-    call spllt_init_tree(p_tree, num)
+    if(ntree .gt. 0) then
 
-    do i = 1, nnode
-      if( akeep%small(i) .lt. 0 .or. akeep%small(i) .eq. 1) then
-        if( p_tree%nnode .eq. 0) then
-          p_tree%node_en  = merge(-akeep%small(i), i, akeep%small(i) .ne. 1)
-          p_tree%node_sa  = i
-          p_tree%nnode    = p_tree%node_en - p_tree%node_sa + 1
-          p_tree%nchild   = 0   ! none yet
-          p_tree%parent   = num ! itself
-        end if
-        if(akeep%small(i) .eq. 1) then
-  !       call spllt_print_subtree(p_tree)
-          num     = num + 1
-          if( num .le. ntree) then
-            p_tree  => fkeep%trees(num)
-            call spllt_init_tree(p_tree, num)
+      nnode   = akeep%nnodes
+      num     = 1
+      p_tree  => fkeep%trees(num)
+      call spllt_init_tree(p_tree, num)
+
+      do i = 1, nnode
+        if( akeep%small(i) .lt. 0 .or. akeep%small(i) .eq. 1) then
+          if( p_tree%nnode .eq. 0) then
+            p_tree%node_en  = merge(-akeep%small(i), i, akeep%small(i) .ne. 1)
+            p_tree%node_sa  = i
+            p_tree%nnode    = p_tree%node_en - p_tree%node_sa + 1
+            p_tree%nchild   = 0   ! none yet
+            p_tree%parent   = num ! itself
+          end if
+          if(akeep%small(i) .eq. 1) then
+            fkeep%assoc_tree(i) = num
+    !       call spllt_print_subtree(p_tree)
+            num     = num + 1
+            if( num .le. ntree) then
+              p_tree  => fkeep%trees(num)
+              call spllt_init_tree(p_tree, num)
+            end if
           end if
         end if
-      end if
-    end do
+      end do
+    end if
 
   end subroutine spllt_create_subtree
 end module spllt_data_mod

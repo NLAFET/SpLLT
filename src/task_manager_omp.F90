@@ -34,6 +34,7 @@ module task_manager_omp_mod
       procedure :: solve_bwd_block_task
       procedure :: solve_bwd_update_task
       procedure :: solve_fwd_subtree_task
+      procedure :: solve_bwd_subtree_task
 
   end type task_manager_omp_t
 
@@ -57,13 +58,15 @@ module task_manager_omp_mod
 
 
 
-  subroutine nflop_reset(self, threadID)
+  subroutine nflop_reset(self, thn)
     implicit none
     class(task_manager_omp_t),  intent(inout) :: self
-    integer, optional,          intent(in)    :: threadID
+    integer, optional,          intent(in)    :: thn
 
-    if(present(thread_id)) then
-      self%thread_task_info(threadID)%nflop = 0.0
+    integer :: i
+
+    if(present(thn)) then
+      self%thread_task_info(thn)%nflop = 0.0
     else
       do i = 0, self%nworker - 1
         self%thread_task_info(i)%nflop = 0.0
@@ -1030,5 +1033,147 @@ module task_manager_omp_mod
     call spllt_close_timer(task_manager%workerID, timer)
 
   end subroutine solve_fwd_subtree_task_worker
+
+
+
+  subroutine solve_bwd_subtree_task(task_manager, nrhs, rhs, ldr, fkeep, &
+      tree, xlocal, rhs_local)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:,:)
+
+    call solve_bwd_subtree_task_worker(task_manager, nrhs, rhs, ldr, &
+      fkeep, tree, xlocal, rhs_local)
+  end subroutine solve_bwd_subtree_task
+
+
+
+  subroutine solve_bwd_subtree_task_worker(task_manager, nrhs, rhs, ldr, &
+      fkeep, tree, xlocal, rhs_local)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),          target,  intent(inout) :: rhs(ldr*nrhs)
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),          target,  intent(inout) :: xlocal(:,:)
+    real(wp),          target,  intent(inout) :: rhs_local(:,:)
+  
+    integer,  pointer           :: p_dep(:)
+    real(wp), pointer           :: p_rhs_local(:,:)
+    real(wp), pointer           :: p_xlocal(:,:)
+    real(wp), pointer           :: p_rhs(:)
+    type(spllt_block), pointer  :: p_bc(:)
+    integer                     :: ndep
+    integer                     :: i
+    integer                     :: sa, en, blk_en
+    integer                     :: j
+    integer                     :: chunk, chunk_size
+    integer                     :: ndep_lvl, lvl, nchunk
+    integer                     :: beta, alpha
+    integer                     :: nftask   ! #fake tasks inserted 
+                                            ! into the runtime
+    logical                     :: all_task_submitted
+    type(task_manager_seq_t)    :: sub_task_manager
+    type(spllt_timer), save     :: timer
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_bwd_subtree", timer)
+
+    p_rhs_local => rhs_local
+    p_xlocal    => xlocal
+    p_rhs       => rhs
+    p_bc        => fkeep%bc
+    sa          = tree%node_sa
+    en          = tree%node_en
+    blk_en      = fkeep%nodes(en)%blk_en
+    call sub_task_manager%init_from(task_manager)
+    p_dep       => fkeep%bc(blk_en)%bwd_dep
+    ndep        = size(p_dep)
+
+    if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
+#endif
+      !$omp task                                &
+      include 'include/spllt_solve_bwd_node_omp_decl.F90.inc'
+
+#include "include/spllt_solve_bwd_node_worker.F90.inc"
+
+      !$omp end task
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(1, task_manager%workerID, timer)
+#endif
+    else
+
+      chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      lvl   = 1
+      alpha = 1
+      ndep_lvl = ndep ! #dep local to the lvl
+      all_task_submitted = .false.
+
+      call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+      do while(.not. all_task_submitted)
+      
+        nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
+
+        beta = 1 - alpha
+
+        do j = 1, nchunk
+          chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
+            j * chunk .gt. ndep_lvl)
+
+          select case(chunk_size)
+
+            case(0)
+              print *, "No dep ?? "
+
+            !
+            !This file contains the remaining cases that are generated through a script
+            !
+#include "include/spllt_bwd_node_cases.F90.inc"
+
+          end select
+
+          beta = beta + chunk_size
+          if(ndep_lvl .le. chunk) then
+            all_task_submitted = .true.
+          else
+            nftask = nftask + 1
+          end if
+
+        end do
+        if(ndep_lvl .gt. chunk) then
+          ndep_lvl = nchunk
+          lvl = lvl + 1
+          alpha = alpha * chunk
+        end if
+      end do
+      call spllt_tac(12, task_manager%workerID, timer)
+    end if
+    call spllt_close_timer(task_manager%workerID, timer)
+
+  end subroutine solve_bwd_subtree_task_worker
 
 end module task_manager_omp_mod

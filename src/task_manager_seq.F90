@@ -27,6 +27,7 @@ module task_manager_seq_mod
       procedure :: solve_bwd_block_task   => solve_bwd_block_task_worker
       procedure :: solve_bwd_update_task  => solve_bwd_update_task_worker
       procedure :: solve_fwd_subtree_task => solve_fwd_subtree
+      procedure :: solve_bwd_subtree_task => solve_bwd_subtree
 
       procedure :: init_from => task_manager_seq_init_from
   end type task_manager_seq_t
@@ -653,5 +654,43 @@ module task_manager_seq_mod
     call spllt_close_timer(task_manager%workerID, timer)
 
   end subroutine solve_fwd_subtree
+
+
+
+  subroutine solve_bwd_subtree(task_manager, nrhs, rhs, ldr, fkeep, &
+      tree, xlocal, rhs_local)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    implicit none
+
+    class(task_manager_seq_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:,:)
+  
+    integer :: i
+    type(spllt_timer), save :: timer
+
+    print *, "Treatment of subtree ", tree%num
+    call spllt_print_subtree(tree)
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_bwd_subtree", timer)
+
+    do i = tree%node_en, tree%node_sa, -1
+      call solve_bwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &
+        rhs_local, task_manager)
+    end do
+
+    call spllt_close_timer(task_manager%workerID, timer)
+
+  end subroutine solve_bwd_subtree
 
 end module task_manager_seq_mod

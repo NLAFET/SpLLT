@@ -432,6 +432,79 @@ contains
 
 
 
+  subroutine solve_bwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
+      task_manager)
+    use spllt_data_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_mod
+    implicit none
+
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    integer,                    intent(in)    :: node 
+    real(wp),                   intent(inout) :: rhs(ldr*nrhs)
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:,:)
+    class(task_manager_base ),  intent(inout) :: task_manager
+
+    integer                 :: sa, en
+    integer                 :: numcol, numrow ! #column/row in node 
+    integer                 :: nc, nr         ! #block-column/block-row in node
+    integer                 :: s_nb           ! Block size in node
+    integer                 :: jj, ii
+    integer                 :: dblk, blk
+    type(spllt_timer), save :: timer
+
+    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+      "solve_bwd_node", timer)
+
+    ! Get node info
+    s_nb   = fkeep%nodes(node)%nb
+    sa     = fkeep%nodes(node)%sa
+    en     = fkeep%nodes(node)%en
+    numcol = en - sa + 1
+    numrow = size(fkeep%nodes(node)%index)
+    nc     = (numcol-1) / s_nb + 1
+    nr     = (numrow-1) / s_nb + 1 
+
+    ! Get first diag block in node
+    dblk = fkeep%bc(fkeep%nodes(node)%blk_en)%dblk
+
+    ! Loop over block columns
+    do jj = nc, 1, -1
+
+      do ii = nr, jj+1, -1
+        
+        blk = dblk+ii-jj ! Block index
+
+        !
+        ! Backward update with block on diagoanl
+        !
+        call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
+        call task_manager%solve_bwd_update_task(blk, node, nrhs, rhs_local, &
+          rhs, ldr, xlocal, fkeep)
+        call spllt_tac(1, task_manager%workerID, timer)
+
+      end do
+
+      !
+      ! Backward solve with block on diagoanl
+      !
+      call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
+      call task_manager%solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr,&
+        xlocal, fkeep)
+      call spllt_tac(2, task_manager%workerID, timer)
+     
+      ! Update diag block in node       
+      if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
+    end do
+  end subroutine solve_bwd_node
+
+
+
   subroutine solve_fwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
       task_manager)
     use spllt_data_mod
@@ -450,7 +523,6 @@ contains
     real(wp),                   intent(inout) :: rhs_local(:,:)
     class(task_manager_base ),  intent(inout) :: task_manager
 
-    integer                 :: num_node
     integer                 :: sa, en
     integer                 :: numcol, numrow ! #column/row in node 
     integer                 :: nc, nr         ! #block-column/block-row in node

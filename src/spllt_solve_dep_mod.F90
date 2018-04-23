@@ -200,6 +200,7 @@ contains
 
   subroutine spllt_compute_solve_dep(fkeep)
     use spllt_tree_stat_mod 
+!   use utils_mod
     type(spllt_fkeep), target, intent(inout)  :: fkeep
 
     integer                 :: i
@@ -213,6 +214,14 @@ contains
       call spllt_compute_blk_solve_dep(fkeep, i)
       call spllt_update_tree_stat(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
       call spllt_update_tree_stat(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
+!     if(i .lt. 41) then
+!       print *, "blk ", i
+!       call print_iarray("bwd_dep", size(fkeep%bc(i)%bwd_dep),&
+!         fkeep%bc(i)%bwd_dep, 1)
+!     end if
+    end do
+    do i=1, size(fkeep%trees)
+      call spllt_update_blk_dep(fkeep, fkeep%trees(i))
     end do
     call print_tree_stat(task_info_fwd, "FWD STAT")
     call print_tree_stat(task_info_bwd, "BWD STAT")
@@ -1261,6 +1270,76 @@ contains
 
 
 
+  subroutine spllt_update_blk_dep(fkeep, tree)
+    use utils_mod
+    type(spllt_fkeep),  intent(inout) :: fkeep
+    type(spllt_tree_t), intent(in)    :: tree
+
+    integer :: blk, i, nblk
+    integer :: blk_sa, blk_en
+    integer :: st, cpt
+    integer :: dep_blk, ndep
+    logical, allocatable :: is_dep(:)
+
+!   print *, "Update tree"
+!   call spllt_print_subtree(tree)
+    nblk = fkeep%nodes(fkeep%info%num_nodes)%blk_en
+    ndep = 0
+    blk_sa = fkeep%nodes(tree%node_sa)%blk_sa
+    blk_en = fkeep%nodes(tree%node_en)%blk_en
+!   print *, "First blk ", blk_sa, " to Last blk ", blk_en
+
+    allocate(is_dep(blk_en + 1 : nblk), stat = st)
+    is_dep(:) = .false.
+
+    if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
+      ndep = ndep + 1
+    end if
+
+    do blk = blk_sa, blk_en
+      do i = 1, size(fkeep%bc(blk)%bwd_solve_dep)
+        dep_blk = fkeep%bc(blk)%bwd_solve_dep(i)
+        if(dep_blk .gt. blk_en) then
+          ndep = ndep + merge(0, 1, is_dep(dep_blk)) ! reverse to count it once
+          is_dep(dep_blk) = .true.
+        end if
+      end do
+    end do
+
+    ! Rebuild the bwd_dep list 
+!   call print_array("Original dep", size(fkeep%bc(blk_en)%bwd_dep), &
+!     fkeep%bc(blk_en)%bwd_dep, 1)
+    deallocate(fkeep%bc(blk_en)%bwd_dep)
+    allocate(fkeep%bc(blk_en)%bwd_dep(ndep))
+
+    cpt = 1
+    do blk = blk_en + 1, nblk
+      if(is_dep(blk)) then
+        fkeep%bc(blk_en)%bwd_dep(cpt) = blk
+        cpt = cpt + 1
+      end if
+    end do
+   !do blk = blk_sa, blk_en
+   !  do i = 1, size(fkeep%bc(blk)%bwd_solve_dep)
+   !    dep_blk = fkeep%bc(blk)%bwd_solve_dep(i)
+   !    if(dep_blk .gt. blk_en) then
+   !      if(is_dep(dep_blk)) then
+   !        fkeep%bc(blk_en)%bwd_dep(cpt) = dep_blk
+   !        cpt = cpt + 1
+   !        is_dep(dep_blk) = .false.
+   !      end if
+   !    end if
+   !  end do
+   !end do
+
+    if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
+      fkeep%bc(blk_en)%bwd_dep(cpt) = fkeep%bc(blk_en)%bwd_update_dep
+    end if
+
+!   call print_array("Updated dep", ndep, fkeep%bc(blk_en)%bwd_dep, 1)
+    deallocate(is_dep)
+
+  end subroutine spllt_update_blk_dep
 
 ! integer function bwd_solve_dependency(fkeep, blk)
 !   use spllt_data_mod
