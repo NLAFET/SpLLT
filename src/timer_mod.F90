@@ -3,102 +3,125 @@ module timer_mod
   use iso_c_binding
   implicit none
 
-  integer, parameter  :: max_steps = 15
+  integer, parameter  :: max_steps      = 15
+  integer, parameter  :: max_thread     = 64
+  integer, parameter  :: max_ntimer_th  = 20
 
   type spllt_steps
     character(len=200)        :: name(0 : max_steps)
   end type spllt_steps
 
   ! Contains timers of each step of a subroutine
-  type spllt_timer
-    type(spllt_steps), pointer  :: steps          => null()
-    double precision,  pointer  :: start(:,:)     => null()
-    double precision,  pointer  :: stop(:,:)      => null()
-    double precision,  pointer  :: swap(:)        => null()
-    integer,           pointer  :: ncall(:,:)     => null()
-    integer                     :: state          = 0
-    double precision,  pointer  :: time(:,:)      => null()
-    double precision,  pointer  :: time_min(:,:)  => null()
-    double precision,  pointer  :: time_max(:,:)  => null()
-  end type spllt_timer
+ !type spllt_timer
+ !  type(spllt_steps), pointer  :: steps          => null()
+ !  double precision,  pointer  :: start(:,:)     => null()
+ !  double precision,  pointer  :: stop(:,:)      => null()
+ !  double precision,  pointer  :: swap(:)        => null()
+ !  integer,           pointer  :: ncall(:,:)     => null()
+ !  integer                     :: state          = 0
+ !  double precision,  pointer  :: time(:,:)      => null()
+ !  double precision,  pointer  :: time_min(:,:)  => null()
+ !  double precision,  pointer  :: time_max(:,:)  => null()
+ !end type spllt_timer
+
+  type spllt_p_timer_t
+    type(spllt_timer_t), pointer :: p => null()
+  end type spllt_p_timer_t
+
+  type spllt_timer_t
+    type(spllt_steps) :: steps
+    double precision  :: start(   0 : max_steps, 0 : max_thread - 1)
+    double precision  :: stop(    0 : max_steps, 0 : max_thread - 1)
+    double precision  :: swap(    0 : max_thread - 1)
+    integer           :: ncall(   0 : max_steps, 0 : max_thread - 1)  = 0
+    double precision  :: time(    0 : max_steps, 0 : max_thread - 1)  = 0.0
+    double precision  :: time_min(0 : max_steps, 0 : max_thread - 1)
+    double precision  :: time_max(0 : max_steps, 0 : max_thread - 1)
+    integer           :: status(  0 : max_thread - 1)
+  end type spllt_timer_t
 
   ! Record the timer of all functions used
-  type spllt_timers
-    integer                         :: max_ntimers  = 20
-    integer                         :: ntimers      = 0
-    type(spllt_timer), allocatable  :: timers(:)
-  end type spllt_timers
+  type spllt_timers_t
+    integer                             :: ntimer_th
+    integer                             :: nthread
+    integer              , allocatable  :: ntimer(:) 
+    type(spllt_p_timer_t), allocatable  :: timers(:,:)
+  end type spllt_timers_t
 
-  type(spllt_timers), target, save :: all_timers
+  type(spllt_timers_t), target, save :: all_timers
 
 contains
 
-  subroutine spllt_init_timer(stat)
+  subroutine spllt_init_timer(stat, nthread, ntimer_th)
 
-    integer, intent(out) :: stat
+    integer,            intent(out) :: stat
+    integer, optional,  intent(in)  :: nthread
+    integer, optional,  intent(in)  :: ntimer_th
 
-    allocate(all_timers%timers(all_timers%max_ntimers), stat = stat)
-    if(stat .ne. 0) then
-      print *, "Error, can not allocate the timers"
+    if(present(ntimer_th)) then
+      all_timers%ntimer_th = ntimer_th
+    else
+      all_timers%ntimer_th = max_ntimer_th
     end if
+
+    if(present(nthread)) then
+      all_timers%nthread = nthread
+    else
+      all_timers%nthread = max_thread
+    end if
+
+    allocate(all_timers%timers(all_timers%ntimer_th, &
+      0 : all_timers%nthread - 1), &
+      stat = stat)
+
+    if(stat .ne. 0) then
+      write (0,*) "Error, can not allocate the timers"
+    end if
+  
+    allocate(all_timers%ntimer(0 : all_timers%nthread - 1), stat = stat)
+
+    if(stat .ne. 0) then
+      write (0,*) "Error, can not allocate the timers"
+    end if
+
+    all_timers%ntimer(:) = 0.0
 
   end subroutine spllt_init_timer
 
 
 
-  subroutine save_timer(local_timer)
-    type(spllt_timer), intent(in) :: local_timer
+  subroutine save_timer(local_timer, thn)
+    implicit none
+    type(spllt_timer_t),  target, intent(in)  :: local_timer
+    integer,                      intent(in)  :: thn
 
-    integer :: timer_pos
-
-!   type(spllt_timer), allocatable :: buf(:)
-
-    ! Increase size if necessary
-    if(all_timers%ntimers .eq. all_timers%max_ntimers) then
-      print *, "Error, can not get a new timer, no more space"
+    ! Can not increase size if necessary
+    if(all_timers%ntimer(thn) .eq. all_timers%ntimer_th) then
+      write (0,*) "Error, can not add a new timer, no more space"
       stop
-!     allocate(buf(2 * all_timers%max_ntimers))
-!     buf(1 : all_timers%max_ntimers) = all_timers%timers
-!     deallocate(all_timers%timers)
-!     call move_alloc(buf, all_timers%timers)
-!     all_timers%max_ntimers = all_timers%max_ntimers * 2
     end if
 
-  !$omp atomic capture
-    all_timers%ntimers = all_timers%ntimers + 1
-    timer_pos = all_timers%ntimers
-  !$omp end atomic
-    all_timers%timers(timer_pos) = local_timer
+    all_timers%ntimer(thn) = all_timers%ntimer(thn) + 1
+    all_timers%timers(all_timers%ntimer(thn), thn)%p => local_timer
 
   end subroutine save_timer
 
 
 
-  subroutine spllt_open_timer(nthread, thn, fun_name, timer)
-    integer,                    intent(in)    :: nthread
+  subroutine spllt_open_timer(thn, fun_name, timer)
     integer,                    intent(in)    :: thn
     character(len=*),           intent(in)    :: fun_name
-    type(spllt_timer),          intent(inout) :: timer
+    type(spllt_timer_t),        intent(inout) :: timer
     
     integer :: step_id
 
     step_id = 0
 
-    !$omp critical
-    if(timer%state .eq. 0) then
-      timer%state = 1
-      allocate(timer%start    (0 : max_steps, 0 : nthread - 1))
-      allocate(timer%time     (0 : max_steps, 0 : nthread - 1))
-      allocate(timer%time_min (0 : max_steps, 0 : nthread - 1))
-      allocate(timer%time_max (0 : max_steps, 0 : nthread - 1))
-      allocate(timer%ncall    (0 : max_steps, 0 : nthread - 1))
-      allocate(timer%swap     (0 : nthread - 1))
-      allocate(timer%steps)
-      timer%ncall(:, :) = 0
+    if(timer%status(thn) .eq. 0) then
+      timer%status(thn) = 1
       timer%steps%name(step_id) = fun_name
-      call save_timer(timer)
+      call save_timer(timer, thn)
     end if
-    !$omp end critical
 
     timer%start(step_id, thn) = omp_get_wtime()
 
@@ -110,7 +133,7 @@ contains
     character(len=*),           intent(in)    :: step_name
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
-    type(spllt_timer),          intent(inout) :: timer
+    type(spllt_timer_t),        intent(inout) :: timer
 
     timer%start(step_id, thn) = omp_get_wtime()
     timer%steps%name(step_id)  = step_name
@@ -122,7 +145,7 @@ contains
   subroutine spllt_tac(step_id, thn, timer)
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
-    type(spllt_timer),          intent(inout) :: timer
+    type(spllt_timer_t),        intent(inout) :: timer
 
 
     timer%swap(thn) = omp_get_wtime()
@@ -154,16 +177,37 @@ contains
 
 
 
+  subroutine spllt_ftac(step_id, thn, timer)
+    integer,                    intent(in)    :: step_id
+    integer,                    intent(in)    :: thn
+    type(spllt_timer_t),        intent(inout) :: timer
+
+
+    timer%swap(thn) = omp_get_wtime()
+    timer%start(step_id, thn)  = timer%swap(thn) - timer%start(step_id, thn)
+
+    ! Compute elapsed time
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    ! Counter
+    timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+    ! Prepare in case of another call to tac
+    timer%start(step_id, thn) = timer%swap(thn)
+
+  end subroutine spllt_ftac
+
+
+
   subroutine spllt_close_timer(thn, timer)
     integer,                    intent(in)    :: thn
-    type(spllt_timer),          intent(inout) :: timer
+    type(spllt_timer_t),        intent(inout) :: timer
     
     integer :: step_id
 
     step_id = 0
 
-    timer%swap(thn) = omp_get_wtime()
-    timer%start(step_id, thn)  = timer%swap(thn) - timer%start(step_id, thn)
+    timer%swap(thn)           = omp_get_wtime()
+    timer%start(step_id, thn) = timer%swap(thn) - timer%start(step_id, thn)
 
     ! Compute elapsed time
     ! Compute min/max
@@ -184,21 +228,17 @@ contains
     ! Counter
     timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
     
-   !print *, "[th ", thn, "] Timer of ", trim(timer%step_name(0)), &
-   !  " with ncall = ", timer%ncall(0,thn), " is ", timer%time(0, thn)
-
   end subroutine spllt_close_timer
 
 
 
   subroutine spllt_print_timer(thn, timer)
-    integer,            intent(in) :: thn
-    type(spllt_timer),  intent(in) :: timer
+    integer,              intent(in) :: thn
+    type(spllt_timer_t),  intent(in) :: timer
 
-    integer :: i != 0
+    integer :: i
 
     i = 0
-!   print *, "i = ", i
 
     if(timer%ncall(i, thn) .gt. 0) then
       print '(a, i3, a, a30, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
@@ -225,18 +265,35 @@ contains
 
   end subroutine spllt_print_timer
 
-  subroutine spllt_print_timers(thn)
-    integer, intent(in) :: thn
 
-    integer :: i, th
+
+  subroutine spllt_print_timers(thn)
+    integer, optional, intent(in) :: thn
+
+    integer :: t
+    integer :: th, th_min, th_max
+    type(spllt_p_timer_t), pointer :: p_timer
+
+    if(present(thn)) then
+      th_min = thn
+      th_max = thn
+    else
+      th_min = 0
+      th_max = all_timers%nthread - 1
+    end if
 
     print *, "=========================================="
     print *, "                  TIMER"
     print *, "=========================================="
-    do th = 0, thn - 1
-      do i = 1, all_timers%ntimers
-        if(sum(all_timers%timers(i)%ncall(:, th)) .gt. 0) then
-          call spllt_print_timer(th, all_timers%timers(i))
+    do th = th_min, th_max
+      do t = 1, all_timers%ntimer_th
+        if(associated(all_timers%timers(t, th)%p)) then
+          p_timer => all_timers%timers(t, th)
+          if(p_timer%p%status(th) .eq. 1) then
+            if(sum(p_timer%p%ncall(:, th)) .gt. 0) then
+              call spllt_print_timer(th, p_timer%p)
+            end if
+          end if
         end if
       end do
     end do

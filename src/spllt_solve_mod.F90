@@ -314,13 +314,12 @@ contains
     real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer           :: rhs_local(:,:) ! update_buffer workspace
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
  !$ integer(kind=omp_lock_kind) :: lock
     integer                     :: tree_num
     integer(long)               :: size_rhs_local, size_xlocal
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_fwd", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd", timer)
 
     nworker       = task_manager%nworker
 #if defined(SPLLT_OMP_TRACE)
@@ -431,12 +430,11 @@ call task_manager%print("fwd end of submitted task", 0)
     real(wp), pointer           :: rhs_local(:,:) ! update_buffer workspace
     type(spllt_block), pointer  :: p_bc(:)
     integer                     :: tree_num
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
     integer(long)               :: size_rhs_local, size_xlocal
  !$ integer(kind=omp_lock_kind) :: lock
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_bwd", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd", timer)
 
     nworker       = task_manager%nworker
 

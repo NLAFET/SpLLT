@@ -69,7 +69,7 @@ program spllt_omp
   ! runtime
   type(task_manager_omp_t)            :: task_manager
  !type(task_manager_seq_t)            :: task_manager
-  type(spllt_timer),          save    :: timer
+  type(spllt_timer_t),        save    :: timer
 
   integer, allocatable :: check(:)
 
@@ -221,8 +221,7 @@ program spllt_omp
   !$omp single
   
   call task_manager%reset()
-  call spllt_open_timer(task_manager%nworker, task_manager%workerID, "MAIN", &
-    timer)
+  call spllt_open_timer(task_manager%workerID, "MAIN", timer)
 
   do nb_i=1, nnb
 
@@ -408,7 +407,7 @@ program spllt_omp
   !$omp end parallel
 
   call spllt_close_timer(task_manager%workerID, timer)
-  call spllt_print_timers(task_manager%nworker)
+  call spllt_print_timers()
 
   call task_manager%print()
 

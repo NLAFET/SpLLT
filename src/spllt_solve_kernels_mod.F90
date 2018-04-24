@@ -244,10 +244,9 @@ contains
 
     integer :: i, r, j
 #if defined(SPLLT_TIMER_TASKS)
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_bwd_block_work", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_block_work", timer)
 #endif
 
     flops = zero
@@ -378,10 +377,9 @@ call spllt_tac(1, task_manager%workerID, timer)
 
     integer :: i, r, j
 #if defined(SPLLT_TIMER_TASKS)
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_fwd_block_work", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_block_work", timer)
 #endif
 
     flops = zero
@@ -456,10 +454,9 @@ call spllt_tac(1, task_manager%workerID, timer)
     integer                 :: s_nb           ! Block size in node
     integer                 :: jj, ii
     integer                 :: dblk, blk
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_bwd_node", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_node", timer)
 
     ! Get node info
     s_nb   = fkeep%nodes(node)%nb
@@ -530,11 +527,10 @@ call spllt_tac(1, task_manager%workerID, timer)
     integer                 :: dblk           ! Diagonal index 
     integer                 :: s_nb           ! Block size in node
     integer                 :: blk            ! Block index
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
 !   print *, "Submit node ", node
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_fwd_node", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_node", timer)
 
     ! Get node info
     s_nb   = fkeep%nodes(node)%nb

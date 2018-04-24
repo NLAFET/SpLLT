@@ -254,9 +254,9 @@ module task_manager_seq_mod
     double precision            :: flops
     integer                     :: trace_id
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_task_worker", timer)
 
     nthread   = task_manager%nworker
@@ -330,9 +330,9 @@ module task_manager_seq_mod
     double precision            :: flops
     integer                     :: trace_id
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_task_worker", timer)
 
     trace_id = task_manager%trace_ids(trace_fwd_update_pos)
@@ -413,9 +413,9 @@ module task_manager_seq_mod
     integer           :: trace_id
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_task_worker", timer)
 
     threadID  = task_manager%workerID
@@ -490,9 +490,9 @@ module task_manager_seq_mod
     double precision            :: flops
     integer                     :: trace_id
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_task_worker", timer)
 
     threadID  = task_manager%workerID
@@ -551,13 +551,12 @@ module task_manager_seq_mod
     real(wp),                   intent(inout) :: rhs_local(:,:)
   
     integer :: i
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
     print *, "Treatment of subtree ", tree%num
     call spllt_print_subtree(tree)
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_fwd_subtree", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_subtree", timer)
 
     do i = tree%node_sa, tree%node_en
       call solve_fwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &
@@ -589,13 +588,12 @@ module task_manager_seq_mod
     real(wp),                   intent(inout) :: rhs_local(:,:)
   
     integer :: i
-    type(spllt_timer), save :: timer
+    type(spllt_timer_t), save :: timer
 
     print *, "Treatment of subtree ", tree%num
     call spllt_print_subtree(tree)
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_bwd_subtree", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
 
     do i = tree%node_en, tree%node_sa, -1
       call solve_bwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &

@@ -378,11 +378,11 @@ module task_manager_omp_mod
     double precision            :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
    !nthread   = omp_get_num_threads()
     nthread = task_manager%nworker
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_task_worker", timer)
 
     ! Get block info
@@ -536,9 +536,9 @@ module task_manager_omp_mod
     integer                     :: nftask
     double precision            :: flops
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_task_worker", timer)
 
     ! Establish variables describing block
@@ -695,11 +695,11 @@ module task_manager_omp_mod
     double precision :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
    !nthread = omp_get_num_threads()
     nthread = task_manager%nworker
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_task_worker", timer)
 
     ! Get block info
@@ -853,9 +853,9 @@ module task_manager_omp_mod
                                             ! into the runtime
     double precision            :: flops
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_task_worker", timer)
 
     ! Establish variables describing block
@@ -998,9 +998,9 @@ module task_manager_omp_mod
     integer                     :: i
     integer                     :: sa, en, blk_en
     type(task_manager_seq_t)    :: sub_task_manager
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_subtree", timer)
 
     p_rhs_local => rhs_local
@@ -1099,10 +1099,9 @@ module task_manager_omp_mod
                                             ! into the runtime
     logical                     :: all_task_submitted
     type(task_manager_seq_t)    :: sub_task_manager
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
-      "solve_bwd_subtree", timer)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
 
     p_rhs_local => rhs_local
     p_xlocal    => xlocal

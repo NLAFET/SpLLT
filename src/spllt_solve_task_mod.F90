@@ -49,10 +49,10 @@ contains
     integer                     :: nftask
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
     nthread   = omp_get_num_threads()
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "spllt_solve_fwd_block_task_with_ftask", timer)
 
     ! Get block info
@@ -196,9 +196,9 @@ contains
     type(spllt_block), pointer  :: p_bc(:)
     integer                     :: nftask
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
         
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "spllt_solve_fwd_update_task_with_ftask", timer)
 
     ! Establish variables describing block
@@ -332,10 +332,10 @@ contains
     integer                     :: nftask
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
     nthread = omp_get_num_threads()
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "spllt_solve_bwd_block_task_with_ftask", timer)
 
     ! Get block info
@@ -498,9 +498,9 @@ contains
     logical :: all_task_submitted
     integer :: nftask         ! #fake tasks inserted into the runtime
 
-    type(spllt_timer), save     :: timer
+    type(spllt_timer_t), save   :: timer
 
-    call spllt_open_timer(task_manager%nworker, task_manager%workerID, &
+    call spllt_open_timer(task_manager%workerID, &
       "spllt_solve_bwd_update_task_with_ftask", timer)
 
     ! Establish variables describing block
