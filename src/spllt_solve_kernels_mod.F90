@@ -225,6 +225,7 @@ contains
   subroutine solve_bwd_block_work(m, n, col, offset, index, lcol, sa, nrhs, &
       upd, rhs, threadID, nthread, ldr, xlocal, flops)
     use spllt_data_mod
+    use timer_mod
     implicit none
     integer,                  intent(in)    :: m
     integer,                  intent(in)    :: n
@@ -243,13 +244,15 @@ contains
     double precision,         intent(out)   :: flops
 
     integer :: i, r, j
+    double precision :: lflops
 #if defined(SPLLT_TIMER_TASKS)
     type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%workerID, "solve_bwd_block_work", timer)
+    call spllt_open_timer(threadID, "solve_bwd_block_work", timer)
 #endif
 
     flops = zero
+    print *, "Nthread given to solve_bwd_block_work : ", nthread
 
     ! Perform retangular update from diagonal block
     if(m .gt. n) then
@@ -263,19 +266,38 @@ contains
     endif
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd block task reduction", 1, threadID, timer)
+call spllt_tic("bwd block task reduction", 1, threadID, timer)
 #endif
     ! Sum contributions to rhs
-    do r = 0, nrhs-1
-      do j = 1, nthread
+    if(nthread .eq. 1) then
+      do r = 0, nrhs-1
+        j = threadID + 1
         do i = col + r*ldr, col+n-1 + r*ldr
           rhs(i)    = rhs(i) + upd(i, j)
           upd(i,j)  = zero ! Reset in case of next fwd solve
         end do
       end do
-    end do
+#if defined(SPLLT_PROFILING_FLOP)
+    lflops = n * nrhs
+#endif
+    else
+      do r = 0, nrhs-1
+        do j = 1, nthread
+          do i = col + r*ldr, col+n-1 + r*ldr
+            rhs(i)    = rhs(i) + upd(i, j)
+            upd(i,j)  = zero ! Reset in case of next fwd solve
+          end do
+        end do
+      end do
+#if defined(SPLLT_PROFILING_FLOP)
+    lflops = n * nrhs * nthread
+#endif
+    end if
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = flops + lflops
+#endif
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(1, task_manager%workerID, timer)
+call spllt_tac(1, threadID, timer, lflops)
 #endif
 
     ! Perform triangular solve
@@ -287,7 +309,7 @@ call spllt_tac(1, task_manager%workerID, timer)
 #endif
 
 #if defined(SPLLT_TIMER_TASKS)
-    call spllt_close_timer(task_manager%workerID, timer)
+    call spllt_close_timer(threadID, timer, flops)
 #endif
   end subroutine solve_bwd_block_work
 
@@ -358,6 +380,7 @@ call spllt_tac(1, task_manager%workerID, timer)
   subroutine solve_fwd_block_work(m, n, col, offset, index, lcol, sa, nrhs, &
       upd, rhs, threadID, nthread, ldr, xlocal, flops)
     use spllt_data_mod
+    use timer_mod
     implicit none
     integer,                  intent(inout) :: m
     integer,                  intent(in)    :: n
@@ -376,10 +399,11 @@ call spllt_tac(1, task_manager%workerID, timer)
     double precision,         intent(out)   :: flops
 
     integer :: i, r, j
+    double precision :: lflops
 #if defined(SPLLT_TIMER_TASKS)
     type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%workerID, "solve_fwd_block_work", timer)
+    call spllt_open_timer(threadID, "solve_fwd_block_work", timer)
 #endif
 
     flops = zero
@@ -388,16 +412,35 @@ call spllt_tac(1, task_manager%workerID, timer)
 call spllt_tic("fwd block task reduction", 1, threadID, timer)
 #endif
     ! Sum contributions to rhs
-    do r = 0, nrhs - 1
-      do j = 1, nthread
+    if(nthread .eq. 1) then
+      do r = 0, nrhs - 1
+        j = threadID + 1
         do i = col + r*ldr, col+n-1 + r*ldr
           rhs(i)    = rhs(i) + upd(i, j)
           upd(i,j)  = zero ! Reset in case of bwd solve
         end do
       end do
-    end do
+#if defined(SPLLT_PROFILING_FLOP)
+    lflops = n * nrhs
+#endif
+    else
+      do r = 0, nrhs - 1
+        do j = 1, nthread
+          do i = col + r*ldr, col+n-1 + r*ldr
+            rhs(i)    = rhs(i) + upd(i, j)
+            upd(i,j)  = zero ! Reset in case of bwd solve
+          end do
+        end do
+      end do
+#if defined(SPLLT_PROFILING_FLOP)
+    lflops = n * nrhs * nthread
+#endif
+    end if
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = flops + lflops
+#endif
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(1, task_manager%workerID, timer)
+call spllt_tac(1, threadID, timer, lflops)
 #endif
 
 
@@ -424,7 +467,7 @@ call spllt_tac(1, task_manager%workerID, timer)
     endif
 
 #if defined(SPLLT_TIMER_TASKS)
-    call spllt_close_timer(task_manager%workerID, timer)
+    call spllt_close_timer(threadID, timer, flops)
 #endif
   end subroutine solve_fwd_block_work
 

@@ -1,8 +1,7 @@
- call task_manager%refresh_worker()
- threadID = task_manager%workerID
-!threadID = omp_get_thread_num()
+call task_manager%refresh_worker()
+threadID = task_manager%workerID
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("bwd block task", 13, threadID, timer)
+call spllt_tic("bwd block task", 13, threadID, p_timer)
 #endif
 call task_manager%incr_nrun()
 
@@ -19,9 +18,11 @@ if(ndep_lvl .le. chunk) then
 #if 1
   call solve_bwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
       p_upd, p_rhs, threadID, nthread, ldr, p_xlocal, flops)
+
 #if defined(SPLLT_PROFILING_FLOP)
      call task_manager%nflop_performed(flops)
 #endif
+
 #else
    ! Perform retangular update from diagonal block
    if(m .gt. n) then
@@ -35,7 +36,7 @@ if(ndep_lvl .le. chunk) then
    endif
  
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("bwd block task reduction", 14, threadID, timer)
+call spllt_tic("bwd block task reduction", 14, threadID, p_timer)
 #endif
    ! Sum contributions to rhs
    do r = 0, nrhs-1
@@ -47,7 +48,7 @@ call spllt_tic("bwd block task reduction", 14, threadID, timer)
      end do
    end do
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(14, threadID, timer)
+call spllt_tac(14, threadID, p_timer)
 #endif
  
    ! Perform triangular solve
@@ -67,5 +68,5 @@ call spllt_tac(14, threadID, timer)
 end if
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(13, threadID, timer)
+call spllt_tac(13, threadID, p_timer, flops)
 #endif

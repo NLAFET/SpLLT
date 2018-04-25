@@ -2,6 +2,7 @@ module worker_info_mod
   
   type worker_info_t
     double precision  :: nflop              = 0.0 ! # flop performed
+    double precision  :: nflop_performed    = 0.0 ! # flop performed locally
     integer           :: ntask_run          = 0   ! #task run by this worker
     integer           :: ntask_insert       = 0   ! #task insert to the runtim
     integer           :: nfake_task_insert  = 0   ! #fake task insert
@@ -32,6 +33,7 @@ contains
     print '(a, i9)',      "#task run           : ", self%ntask_run
     print '(a, i9)',      "#array allocate     : ", self%narray_allocated
     print '(a, es10.2)',  "#flop               : ", self%nflop
+    print '(a, es10.2)',  "#flop_performed     : ", self%nflop_performed
 
   end subroutine print_info
 
@@ -52,6 +54,7 @@ contains
     class(worker_info_t), intent(out) :: self
 
     self%nflop               = 0.0
+    self%nflop_performed     = 0.0
     self%ntask_run           = 0
     self%ntask_insert        = 0
     self%nfake_task_insert   = 0

@@ -59,6 +59,8 @@ module task_manager_mod
     procedure(solve_fwd_subtree_task_iface),deferred :: solve_fwd_subtree_task
     procedure(solve_bwd_subtree_task_iface),deferred :: solve_bwd_subtree_task
 
+    procedure(task_manager_get_nflop_iface),deferred :: get_nflop_performed
+
   end type task_manager_base
 
   abstract interface 
@@ -122,6 +124,16 @@ module task_manager_mod
       import task_manager_base
       class(task_manager_base), intent(inout) :: self
     end subroutine task_manager_deallocate_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Get number of flop performed at that point
+    !
+    subroutine task_manager_get_nflop_iface(self, nflop, thn)
+      import task_manager_base
+      class(task_manager_base), intent(inout) :: self
+      double precision,         intent(out)   :: nflop
+      integer, optional,        intent(in)    :: thn
+    end subroutine task_manager_get_nflop_iface
 
     !!!!!!!!!!!!!!!!!!!!!
     ! Submission of a forward block task by the task manager

@@ -33,7 +33,7 @@ call spllt_tic('CASE(1)',2, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -56,7 +56,7 @@ call spllt_tic('CASE(2)',3, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -80,7 +80,7 @@ call spllt_tic('CASE(3)',4, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -104,7 +104,7 @@ call spllt_tic('CASE(4)',5, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -129,7 +129,7 @@ call spllt_tic('CASE(5)',6, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -154,7 +154,7 @@ call spllt_tic('CASE(6)',7, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -180,7 +180,7 @@ call spllt_tic('CASE(7)',8, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -206,7 +206,7 @@ call spllt_tic('CASE(8)',9, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -233,7 +233,7 @@ call spllt_tic('CASE(9)',10, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &
@@ -260,7 +260,7 @@ call spllt_tic('CASE(10)',11, task_manager%workerID, timer)
 !$omp default(none)                                                       &
 !$omp firstprivate(m, n, nrhs, col, ldr, blk_sa, offset)                  &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep, trace_id, timer)                          &
+!$omp firstprivate(p_bc, p_dep, trace_id, p_timer)                          &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
 !$omp private(threadID, flops)                                            &

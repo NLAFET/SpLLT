@@ -21,6 +21,7 @@ module task_manager_omp_mod
       procedure :: incr_nrun
       procedure :: ntask_submitted
       procedure :: nflop_performed
+      procedure :: get_nflop_performed
       procedure :: nflop_reset
 
       procedure :: solve_fwd_block_task
@@ -60,10 +61,10 @@ module task_manager_omp_mod
     integer :: i
 
     if(present(thn)) then
-      self%worker_info(thn)%nflop = 0.0
+      self%worker_info(thn)%nflop_performed = 0.0
     else
       do i = 0, self%nworker - 1
-        self%worker_info(i)%nflop = 0.0
+        self%worker_info(i)%nflop_performed = 0.0
       end do
     end if
 
@@ -77,10 +78,27 @@ module task_manager_omp_mod
     double precision,           intent(in)    :: nflop
    !integer(long),              intent(in)    :: nflop
 
-    self%worker_info(self%workerID)%nflop = self%worker_info&
-      &(self%workerID)%nflop + nflop
+    self%worker_info(self%workerID)%nflop_performed = self%worker_info&
+      &(self%workerID)%nflop_performed + nflop
 
   end subroutine nflop_performed
+
+
+
+  subroutine get_nflop_performed(self, nflop, thn)
+    implicit none
+    class(task_manager_omp_t),  intent(inout) :: self
+    double precision,           intent(out)   :: nflop
+    integer, optional,          intent(in)    :: thn
+
+    integer :: i
+
+    nflop = 0.0
+    do i = 0, self%nworker - 1
+      nflop = nflop + self%worker_info(i)%nflop_performed
+    end do
+
+  end subroutine get_nflop_performed
 
 
 
@@ -114,7 +132,6 @@ module task_manager_omp_mod
     class(task_manager_omp_t), intent(inout)  :: self
 
     self%workerID = omp_get_thread_num()
-!   print *, "Current thread is reset to ", self%workerID
 
   end subroutine refresh_worker
 
@@ -233,8 +250,8 @@ module task_manager_omp_mod
       stat = st1 + st2
     end if
 
-    print *, "Init of the task_manager"
-    call self%print()
+!   print *, "Init of the task_manager"
+!   call self%print()
   end subroutine task_manager_omp_init
 
 
@@ -286,11 +303,11 @@ module task_manager_omp_mod
     end if
 
     print *, "Task manager env ::"
-    print '(a, i3)', "workerID      :", self%workerID
-    print '(a, i3)', "masterWorker  :", self%masterWorker
-    print '(a, i3)', "nworker       :", self%nworker
-    print '(a, i3)', "nthread_max   :", self%nthread_max
-    print '(a, i3)', "nfork         :", self%nfork
+    print '(a, i6)', "|workerID      :", self%workerID
+    print '(a, i6)', "|masterWorker  :", self%masterWorker
+    print '(a, i6)', "|nworker       :", self%nworker
+    print '(a, i6)', "|nthread_max   :", self%nthread_max
+    print '(a, i6)', "|nfork         :", self%nfork
     if(print_full .eq. 1) then
       if(associated(self%worker_info)) then
         do i = 0, self%nworker - 1
@@ -378,7 +395,10 @@ module task_manager_omp_mod
     double precision            :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer_t), save   :: timer
+
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
         
    !nthread   = omp_get_num_threads()
     nthread = task_manager%nworker
@@ -536,7 +556,10 @@ module task_manager_omp_mod
     integer                     :: nftask
     double precision            :: flops
 
-    type(spllt_timer_t), save   :: timer
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
         
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_task_worker", timer)
@@ -695,7 +718,10 @@ module task_manager_omp_mod
     double precision :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
-    type(spllt_timer_t), save   :: timer
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
 
    !nthread = omp_get_num_threads()
     nthread = task_manager%nworker
@@ -853,7 +879,10 @@ module task_manager_omp_mod
                                             ! into the runtime
     double precision            :: flops
 
-    type(spllt_timer_t), save   :: timer
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
 
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_task_worker", timer)
@@ -998,7 +1027,10 @@ module task_manager_omp_mod
     integer                     :: i
     integer                     :: sa, en, blk_en
     type(task_manager_seq_t)    :: sub_task_manager
-    type(spllt_timer_t), save   :: timer
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
 
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_subtree", timer)
@@ -1099,7 +1131,10 @@ module task_manager_omp_mod
                                             ! into the runtime
     logical                     :: all_task_submitted
     type(task_manager_seq_t)    :: sub_task_manager
-    type(spllt_timer_t), save   :: timer
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
 
     call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
 

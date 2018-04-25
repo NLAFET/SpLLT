@@ -78,15 +78,6 @@ contains
       end if
     end if
     
-   !if(ndep .gt. 0)then
-   !  print *, "Number of dep ", ndep, " for blk ", blk
-   !  if(size(fkeep%bc(blk)%fwd_update_dep) .gt. 0) then
-   !    call print_array("****Dep_update", size(fkeep%bc(blk)%fwd_update_dep),&
-   !      fkeep%bc(blk)%fwd_update_dep, 1)
-   !  endif
-   !  print *, "****Dep_solve", fkeep%bc(blk)%fwd_solve_dep
-   !end if
-
 #if defined(SOLVE_TASK_LOCKED)
     if(ndep .gt. 0) then
 #endif
@@ -156,10 +147,6 @@ contains
     endif
 #endif
 
-   !if(ndep .gt. 0)then
-   !  call print_array("becomes Dep", ndep, fkeep%bc(blk)%fwd_dep, 1)
-   !end if
-
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep
     !
@@ -200,7 +187,6 @@ contains
 
   subroutine spllt_compute_solve_dep(fkeep)
     use spllt_tree_stat_mod 
-!   use utils_mod
     type(spllt_fkeep), target, intent(inout)  :: fkeep
 
     integer                 :: i
@@ -214,13 +200,8 @@ contains
       call spllt_compute_blk_solve_dep(fkeep, i)
       call spllt_update_tree_stat(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
       call spllt_update_tree_stat(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
-!     if(i .lt. 41) then
-!       print *, "blk ", i
-!       call print_iarray("bwd_dep", size(fkeep%bc(i)%bwd_dep),&
-!         fkeep%bc(i)%bwd_dep, 1)
-!     end if
     end do
-    do i=1, size(fkeep%trees)
+    do i = 1, size(fkeep%trees)
       call spllt_update_blk_dep(fkeep, fkeep%trees(i))
     end do
     call print_tree_stat(task_info_fwd, "FWD STAT")
@@ -236,12 +217,10 @@ contains
 
     do i = 1, fkeep%info%num_nodes
       call spllt_compute_extra_row(fkeep, i)
-     !if(i .eq. 8 .or. i .eq. 9) then
-     !  print *, "Extra rows of node ", i
-     !  print *, " ... are ", fkeep%nodes(i)%extra_row
-     !end if
     end do
   end subroutine spllt_compute_solve_extra_row
+
+
 
   subroutine spllt_prepare_workspace(fkeep, n, st)
     type(spllt_fkeep), intent(inout)  :: fkeep

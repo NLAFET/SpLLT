@@ -35,9 +35,12 @@ module timer_mod
     double precision  :: swap(    0 : max_thread - 1)
     integer           :: ncall(   0 : max_steps, 0 : max_thread - 1)  = 0
     double precision  :: time(    0 : max_steps, 0 : max_thread - 1)  = 0.0
-    double precision  :: time_min(0 : max_steps, 0 : max_thread - 1)
-    double precision  :: time_max(0 : max_steps, 0 : max_thread - 1)
+    double precision  :: time_min(0 : max_steps, 0 : max_thread - 1)  = 1e30
+    double precision  :: time_max(0 : max_steps, 0 : max_thread - 1)  = 0.0
     integer           :: status(  0 : max_thread - 1)
+    double precision  :: flop(    0 : max_steps, 0 : max_thread - 1)  = 0.0
+    double precision  :: flop_min(0 : max_steps, 0 : max_thread - 1)  = 1e30
+    double precision  :: flop_max(0 : max_steps, 0 : max_thread - 1)  = 0.0
   end type spllt_timer_t
 
   ! Record the timer of all functions used
@@ -50,6 +53,17 @@ module timer_mod
 
   type(spllt_timers_t), target, save :: all_timers
 
+ !type spllt_flop_t
+ !  double precision :: flop_rate(0 : max_steps, 0 : max_thread - 1)
+ !end type spllt_flop_t
+   interface spllt_tac
+      module procedure spllt_tac
+      module procedure spllt_tac_flop
+   end interface
+   interface spllt_close_timer
+      module procedure spllt_close_timer
+      module procedure spllt_close_timer_flop
+   end interface
 contains
 
   subroutine spllt_init_timer(stat, nthread, ntimer_th)
@@ -153,19 +167,13 @@ contains
 
     ! Compute elapsed time
     ! Compute min/max
-    if(timer%ncall(step_id, thn) .eq. 0) then
-      timer%time(step_id, thn)     = timer%start(step_id, thn)
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
       timer%time_min(step_id, thn) = timer%start(step_id, thn)
+    end if
+    if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
       timer%time_max(step_id, thn) = timer%start(step_id, thn)
-    else
-      timer%time(step_id, thn)   = timer%time(step_id, thn) + &
-        timer%start(step_id, thn)
-      if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
-        timer%time_min(step_id, thn) = timer%start(step_id, thn)
-      end if
-      if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
-        timer%time_max(step_id, thn) = timer%start(step_id, thn)
-      end if
     end if
 
     ! Counter
@@ -174,6 +182,51 @@ contains
     timer%start(step_id, thn) = timer%swap(thn)
 
   end subroutine spllt_tac
+
+
+
+  subroutine spllt_tac_flop(step_id, thn, timer, flop)
+    integer,                    intent(in)    :: step_id
+    integer,                    intent(in)    :: thn
+    type(spllt_timer_t),        intent(inout) :: timer
+    double precision,           intent(in)    :: flop
+
+    double precision :: rate
+
+    timer%swap(thn) = omp_get_wtime()
+    timer%start(step_id, thn)  = timer%swap(thn) - timer%start(step_id, thn)
+
+
+    ! Compute elapsed time
+    ! Compute min/max
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
+      timer%time_min(step_id, thn) = timer%start(step_id, thn)
+    end if
+    if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
+      timer%time_max(step_id, thn) = timer%start(step_id, thn)
+    end if
+
+    ! Flop rate count
+    rate = flop / timer%start(step_id, thn)
+    timer%flop(step_id, thn)   = timer%flop(step_id, thn) + flop
+   !print '(a, a, a, es10.2, a, es10.2)', "Flop/s of ", &
+   !  trim(timer%steps%name(step_id)), " : ", rate,     &
+   !  " sum : ", timer%flop(step_id, thn)
+    if(timer%flop_min(step_id, thn) .gt. rate) then
+      timer%flop_min(step_id, thn) = rate
+    end if
+    if(timer%flop_max(step_id, thn) .lt. rate) then
+      timer%flop_max(step_id, thn) = rate
+    end if
+
+    ! Counter
+    timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+    ! Prepare in case of another call to tac
+    timer%start(step_id, thn) = timer%swap(thn)
+
+  end subroutine spllt_tac_flop
 
 
 
@@ -211,24 +264,60 @@ contains
 
     ! Compute elapsed time
     ! Compute min/max
-    if(timer%ncall(step_id, thn) .eq. 0) then
-      timer%time(step_id, thn)     = timer%start(step_id, thn)
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
       timer%time_min(step_id, thn) = timer%start(step_id, thn)
+    end if
+    if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
       timer%time_max(step_id, thn) = timer%start(step_id, thn)
-    else
-      timer%time(step_id, thn)   = timer%time(step_id, thn) + &
-        timer%start(step_id, thn)
-      if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
-        timer%time_min(step_id, thn) = timer%start(step_id, thn)
-      end if
-      if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
-        timer%time_max(step_id, thn) = timer%start(step_id, thn)
-      end if
     end if
     ! Counter
     timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
     
   end subroutine spllt_close_timer
+
+
+
+  subroutine spllt_close_timer_flop(thn, timer, flop)
+    integer,                    intent(in)    :: thn
+    type(spllt_timer_t),        intent(inout) :: timer
+    double precision,           intent(in)    :: flop
+    
+    integer :: step_id
+    double precision :: rate
+
+    step_id = 0
+
+    timer%swap(thn)           = omp_get_wtime()
+    timer%start(step_id, thn) = timer%swap(thn) - timer%start(step_id, thn)
+
+    ! Compute elapsed time
+    ! Compute min/max
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    if(timer%time_min(step_id, thn) .gt. timer%start(step_id, thn)) then
+      timer%time_min(step_id, thn) = timer%start(step_id, thn)
+    end if
+    if(timer%time_max(step_id, thn) .lt. timer%start(step_id, thn)) then
+      timer%time_max(step_id, thn) = timer%start(step_id, thn)
+    end if
+
+    ! Flop rate count
+    rate = flop / timer%start(step_id, thn)
+   !print '(a, es10.2)', "Close timer => GigaFlop/s : ", rate
+    timer%flop(step_id, thn)   = timer%flop(step_id, thn) + flop
+    if(timer%flop_min(step_id, thn) .gt. rate) then
+      timer%flop_min(step_id, thn) = rate
+    end if
+    if(timer%flop_max(step_id, thn) .lt. rate) then
+      timer%flop_max(step_id, thn) = rate
+    end if
+
+    ! Counter
+    timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+    
+  end subroutine spllt_close_timer_flop
 
 
 
@@ -242,22 +331,54 @@ contains
 
     if(timer%ncall(i, thn) .gt. 0) then
       print '(a, i3, a, a30, a, es10.2, a, i7, a, es10.2, a, es10.2, a)', &
-        "[Th: ", thn, "] ", trim(timer%steps%name(i)), " : ",        &
+        achar(27) // '[82m ' //                                           &
+        "[Th: ", thn, "] ", trim(timer%steps%name(i)), " : ",             &
         timer%time(i, thn), " s (ncall ", timer%ncall(i, thn), ") [",     &
-        timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]' 
+        timer%time_min(i, thn), ' , ', timer%time_max(i, thn), " ]"       &
+        // achar(27) // '[0m' 
+      if(timer%flop(i, thn) .gt. 0.0) then
+        print '(20x, a33, es10.2, a, es10.2, a, es10.2, a)',          &
+          achar(27) // '[33m ' //                                     &
+          "Flop_rate : ", timer%flop(i, thn) / timer%time(i, thn),    &
+          " [", timer%flop_min(i, thn), ' , ', timer%flop_max(i, thn),&
+          " ]"                                                        &
+          // achar(27) // '[0m'
+      end if
     else
-      print '(a, i3, a, a20, a)', "[Th: ", thn, "] ", trim('sub steps'), " : "
+      print '(a, i3, a, a20, a)',                   &
+        achar(27) // '[31m ' //                     &
+        "[Th: ", thn, "] ", trim('sub steps'), ":"  &
+        // achar(27) // '[0m'
     endif
 
     do i = 1, ubound(timer%ncall, 1)
       if(timer%ncall(i, thn) .gt. 0) then
         if(timer%ncall(i, thn) .eq. 1) then
-          print '(20x, a20, a, es10.2)', trim(timer%steps%name(i)), " : ", timer%time(i, thn)
+          print '(20x, a30, a, es10.2, a)',                       &
+            achar(27) // '[32m ' //                               &
+            trim(timer%steps%name(i)), " : ", timer%time(i, thn), &
+            achar(27) // '[0m'
+          if(timer%flop(i, thn) .gt. 0.0) then
+            print '(20x, a33, es10.2, a)',                              &
+              achar(27) // "[33m " //                                   &
+              "Flop_rate : ", timer%flop(i, thn) / timer%time(i, thn),  &
+              achar(27) //'[0m'
+          end if
         else
-          print '(20x, a20, a, es10.2, a, i7, a, es10.2, a, es10.2, a)',  &
+          print '(20x, a30, a, es10.2, a, i7, a, es10.2, a, es10.2, a)',  &
+            achar(27) // '[32m ' //                                       &
             trim(timer%steps%name(i)), " : ", timer%time(i, thn), " s (", &
             timer%ncall(i, thn), ") [ ",                                  &
-            timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]'
+            timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]'   &
+            // achar(27) //'[0m'
+
+          if(timer%flop(i, thn) .gt. 0.0) then
+            print '(20x, a33, es10.2, a, es10.2, a, es10.2, a)',              &
+              achar(27) // "[33m " //                                         &
+              "Flop_rate : ", timer%flop(i, thn) / timer%time(i, thn), " [",  &
+              timer%flop_min(i, thn), ' , ', timer%flop_max(i, thn), ' ]'     &
+              // achar(27) // '[0m'
+          end if
         end if
       end if
     end do

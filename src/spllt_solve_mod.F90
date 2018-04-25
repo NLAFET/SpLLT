@@ -318,8 +318,10 @@ contains
  !$ integer(kind=omp_lock_kind) :: lock
     integer                     :: tree_num
     integer(long)               :: size_rhs_local, size_xlocal
+    double precision            :: nflop_sa, nflop_en
 
     call spllt_open_timer(task_manager%workerID, "solve_fwd", timer)
+    call task_manager%get_nflop_performed(nflop_sa)
 
     nworker       = task_manager%nworker
 #if defined(SPLLT_OMP_TRACE)
@@ -396,8 +398,8 @@ call task_manager%print("fwd end of submitted task", 0)
 #endif
     
     !$omp taskwait
-
-    call spllt_close_timer(task_manager%workerID, timer)
+    call task_manager%get_nflop_performed(nflop_en)
+    call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
 
   end subroutine solve_fwd
 
@@ -432,9 +434,11 @@ call task_manager%print("fwd end of submitted task", 0)
     integer                     :: tree_num
     type(spllt_timer_t), save   :: timer
     integer(long)               :: size_rhs_local, size_xlocal
+    double precision            :: nflop_sa, nflop_en
  !$ integer(kind=omp_lock_kind) :: lock
 
     call spllt_open_timer(task_manager%workerID, "solve_bwd", timer)
+    call task_manager%get_nflop_performed(nflop_sa)
 
     nworker       = task_manager%nworker
 
@@ -506,7 +510,8 @@ call task_manager%print("fwd end of submitted task", 0)
     !$omp taskwait
     call task_manager%print("bwd end of execution task", 0)
 
-    call spllt_close_timer(task_manager%workerID, timer)
+    call task_manager%get_nflop_performed(nflop_en)
+    call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
 
   end subroutine solve_bwd
   

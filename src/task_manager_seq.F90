@@ -22,6 +22,7 @@ module task_manager_seq_mod
 
       procedure :: incr_nrun
       procedure :: nflop_performed
+      procedure :: get_nflop_performed
       procedure :: nflop_reset
 
       procedure :: solve_fwd_block_task   => solve_fwd_block_task_worker
@@ -56,7 +57,8 @@ module task_manager_seq_mod
     implicit none
     class(task_manager_seq_t),  intent(inout) :: self
 
-    self%p_worker%nflop = 0.0
+    self%p_worker%nflop           = 0.0
+    self%p_worker%nflop_performed = 0.0
 
   end subroutine nflop_reset
 
@@ -68,9 +70,21 @@ module task_manager_seq_mod
     double precision,           intent(in)    :: nflop
    !integer(long),              intent(in)    :: nflop
 
-    self%p_worker%nflop = self%p_worker%nflop + nflop
+    self%p_worker%nflop_performed = self%p_worker%nflop_performed + nflop
 
   end subroutine nflop_performed
+
+
+
+  subroutine get_nflop_performed(self, nflop, thn)
+    implicit none
+    class(task_manager_seq_t),  intent(inout) :: self
+    double precision,           intent(out)   :: nflop
+    integer, optional,          intent(in)    :: thn
+
+    nflop = self%p_worker%nflop_performed
+
+  end subroutine get_nflop_performed
 
 
 
@@ -260,6 +274,7 @@ module task_manager_seq_mod
       "solve_fwd_block_task_worker", timer)
 
     nthread   = task_manager%nworker
+    nthread   = 1
     threadID  = task_manager%workerID
 
     trace_id = task_manager%trace_ids(trace_fwd_block_pos)
@@ -420,6 +435,7 @@ module task_manager_seq_mod
 
     threadID  = task_manager%workerID
     nthread   = task_manager%nworker
+    nthread   = 1
     trace_id  = task_manager%trace_ids(trace_bwd_block_pos)
     ! Get block info
     node      = fkeep%bc(dblk)%node
@@ -450,7 +466,7 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(trace_id, threadID)
 #endif
-    call spllt_close_timer(task_manager%workerID, timer)
+    call spllt_close_timer_flop(task_manager%workerID, timer, flops)
     call task_manager%incr_nrun()
   end subroutine solve_bwd_block_task_worker
 

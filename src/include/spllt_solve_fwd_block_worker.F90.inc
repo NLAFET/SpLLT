@@ -2,7 +2,7 @@
  threadID  = task_manager%workerID
 !threadID = omp_get_thread_num()
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd block task", 13, threadID, timer)
+call spllt_tic("fwd block task", 13, threadID, p_timer)
 #endif
 
 call task_manager%incr_nrun()
@@ -26,7 +26,7 @@ if(ndep_lvl .le. chunk) then
 #else
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd block task reduction", 14, threadID, timer)
+call spllt_tic("fwd block task reduction", 14, threadID, p_timer)
 #endif
   ! Sum contributions to rhs
   do r = 0, nrhs-1
@@ -38,7 +38,7 @@ call spllt_tic("fwd block task reduction", 14, threadID, timer)
     end do
   end do
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(14, threadID, timer)
+call spllt_tac(14, threadID, p_timer)
 #endif
 
 
@@ -71,5 +71,5 @@ call spllt_tac(14, threadID, timer)
 end if
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(13, threadID, timer)
+call spllt_tac(13, threadID, p_timer, flops)
 #endif
