@@ -332,7 +332,7 @@ module task_manager_omp_mod
   
 
   subroutine solve_fwd_block_task(task_manager, dblk, nrhs, upd, rhs, ldr, &
-      xlocal, fkeep)
+      xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
     
@@ -344,9 +344,15 @@ module task_manager_omp_mod
     real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
     real(wp), target,           intent(inout) :: xlocal(:, :)
     type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer, optional,          intent(in)    :: trace_id
 
-    call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr, &
-      xlocal, fkeep, task_manager%trace_ids(trace_fwd_block_pos))
+    if(present(trace_id)) then
+      call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr,&
+        xlocal, fkeep, no_trace)
+    else
+      call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr,&
+        xlocal, fkeep, task_manager%trace_ids(trace_fwd_block_pos))
+    end if
   end subroutine solve_fwd_block_task
 
   subroutine solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
@@ -493,7 +499,7 @@ module task_manager_omp_mod
 
 
   subroutine solve_fwd_update_task(task_manager, blk, node, nrhs, upd, rhs, &
-      ldr, xlocal, fkeep)
+      ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
 
@@ -506,9 +512,15 @@ module task_manager_omp_mod
     real(wp), target,           intent(in)    :: rhs(ldr*nrhs)
     real(wp), target,           intent(out)   :: xlocal(:,:)
     type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer, optional,          intent(in)    :: trace_id
 
-    call solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, rhs,&
-      ldr, xlocal, fkeep, task_manager%trace_ids(trace_fwd_update_pos))
+    if(present(trace_id)) then
+      call solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
+        rhs, ldr, xlocal, fkeep, trace_id)
+    else
+      call solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
+        rhs, ldr, xlocal, fkeep, task_manager%trace_ids(trace_fwd_update_pos))
+    end if
   end subroutine solve_fwd_update_task
 
   subroutine solve_fwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
@@ -655,7 +667,7 @@ module task_manager_omp_mod
 
 
   subroutine solve_bwd_block_task(task_manager, dblk, nrhs, upd, rhs, ldr, &
-      xlocal, fkeep)
+      xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
 
@@ -667,9 +679,15 @@ module task_manager_omp_mod
     real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
     real(wp), target, intent(inout)           :: xlocal(:, :)
     type(spllt_fkeep), target, intent(in)     :: fkeep
+    integer, optional,          intent(in)    :: trace_id
     
-    call solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr, &
-      xlocal, fkeep, task_manager%trace_ids(trace_bwd_block_pos))
+    if(present(trace_id)) then
+      call solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
+        ldr, xlocal, fkeep, trace_id)
+    else
+      call solve_bwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, &
+        ldr, xlocal, fkeep, task_manager%trace_ids(trace_bwd_block_pos))
+    end if
 
   end subroutine solve_bwd_block_task
 
@@ -817,7 +835,7 @@ module task_manager_omp_mod
   
 
   subroutine solve_bwd_update_task(task_manager, blk, node, nrhs, upd, rhs, &
-      ldr, xlocal, fkeep)
+      ldr, xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
 
@@ -830,9 +848,15 @@ module task_manager_omp_mod
     real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
     real(wp), target, intent(inout)           :: xlocal(:,:)
     type(spllt_fkeep), target, intent(in)     :: fkeep
+    integer, optional,          intent(in)    :: trace_id
 
-    call solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, rhs,&
-      ldr, xlocal, fkeep, task_manager%trace_ids(trace_bwd_update_pos))
+    if(present(trace_id)) then
+      call solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
+        rhs, ldr, xlocal, fkeep, trace_id)
+    else
+      call solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
+        rhs, ldr, xlocal, fkeep, task_manager%trace_ids(trace_bwd_update_pos))
+    end if
   end subroutine solve_bwd_update_task
     
   subroutine solve_bwd_update_task_worker(task_manager, blk, node, nrhs, upd, &
@@ -1020,6 +1044,7 @@ module task_manager_omp_mod
     real(wp),          target,  intent(inout) :: xlocal(:,:)
     real(wp),          target,  intent(inout) :: rhs_local(:,:)
   
+    integer                     :: trace_id
     real(wp), pointer           :: p_rhs_local(:,:)
     real(wp), pointer           :: p_xlocal(:,:)
     real(wp), pointer           :: p_rhs(:)
@@ -1053,14 +1078,23 @@ module task_manager_omp_mod
     !$omp firstprivate(p_bc, blk_en)                  &
     !$omp firstprivate(en, sa)                        &
     !$omp shared(fkeep)                               &
-    !$omp private(i)
+    !$omp private(i, trace_id)
 
     call sub_task_manager%refresh_worker()
 
+#if defined(SPLLT_OMP_TRACE)
+    trace_id = task_manager%trace_ids(trace_fwd_subtree_pos)
+    call trace_event_start(trace_id, sub_task_manager%workerID)
+#endif
+
     do i = sa, en
       call solve_fwd_node(nrhs, p_rhs, ldr, fkeep, i, p_xlocal, &
-        p_rhs_local, sub_task_manager)
+        p_rhs_local, sub_task_manager, no_trace)
     end do
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(trace_id, sub_task_manager%workerID)
+#endif
 
     !$omp end task
 
@@ -1134,6 +1168,7 @@ module task_manager_omp_mod
    !type(spllt_timer_t), save   :: timer
     type(spllt_timer_t), target, save :: timer
     type(spllt_timer_t), pointer      :: p_timer
+    integer                     :: trace_id
     p_timer => timer
 
     call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)

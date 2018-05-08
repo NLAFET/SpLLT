@@ -47,13 +47,25 @@ contains
     nevents(:)  = 0
     ttimes(:)   = 0
     allocate(events(            -trace_nstep : trace_nth - 1, maxevents))
-    colors(1:(trace_nth+trace_nstep))= (/'#d38d5f', '#ffdd55', &
-      '#8dd35f', '#80b3ff', &
-      '#e580ff', '#ac9d93', &
-      '#bcd35f', '#a61e22', &
-      '#5542d7', '#2F4F4F', &
-      '#6600ff', '#ff0066', &
-      '#ff00ff'             &
+    colors(1:(trace_nth+trace_nstep))= (/&
+!     '#d38d5f', '#ffdd55', &
+!     '#8dd35f', '#80b3ff', &
+!     '#e580ff', '#ac9d93', &
+!     '#bcd35f', '#a61e22', &
+!     '#5542d7', '#2F4F4F', &
+!     '#6600ff', '#ff0066', &
+!     '#ff00ff'             &
+      '#e6194b', '#3cb44b', &
+      '#ffe119', '#0082c8', &
+      '#f58231', '#911eb4', &
+      '#46f0f0', '#f032e6', &
+      '#d2f53c', '#fabebe', &
+      '#008080', '#e6beff', &
+      '#aa6e28', '#fffac8', &
+      '#800000', '#aaffc3', &
+      '#808000', '#ffd8b1', &
+      '#000080', '#808080', &
+      '#ff00ff', '#6600ff'  &
       /)
     timezero = omp_get_wtime()
     return
@@ -89,6 +101,11 @@ contains
 
     integer :: id, thn, old_id
 
+    if(id .eq. 0) return
+  !   print *, "Ignored started event"
+  !   return
+  ! end if
+
     if(pendings(id, thn)) then
       write(*,'("Tracing error!!! events nesting not supported")')
       write(*,*) 'Th ', thn, ' already recorded as doing trace ', id
@@ -115,11 +132,18 @@ contains
     return
   end subroutine trace_event_start
 
+
+
   subroutine trace_event_stop(id, thn)
     use get_wtime_mod
     implicit none
 
     integer :: id, thn, old_id
+
+    if(id .eq. 0) return
+  !   print *, "Ignored stopped event"
+  !   return
+  ! end if
     
     stops(thn)                                = omp_get_wtime()
     nevents(thn)                              = nevents(thn) + 1

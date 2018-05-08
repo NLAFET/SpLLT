@@ -252,7 +252,6 @@ contains
 #endif
 
     flops = zero
-    print *, "Nthread given to solve_bwd_block_work : ", nthread
 
     ! Perform retangular update from diagonal block
     if(m .gt. n) then
@@ -270,6 +269,8 @@ call spllt_tic("bwd block task reduction", 1, threadID, timer)
 #endif
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
+!     print *, "Nthread given to solve_bwd_block_work : ", nthread
+!     print *, "Lighter reduction"
       do r = 0, nrhs-1
         j = threadID + 1
         do i = col + r*ldr, col+n-1 + r*ldr
@@ -281,6 +282,7 @@ call spllt_tic("bwd block task reduction", 1, threadID, timer)
     lflops = n * nrhs
 #endif
     else
+!     print *, "Nthread given to solve_bwd_block_work : ", nthread
       do r = 0, nrhs-1
         do j = 1, nthread
           do i = col + r*ldr, col+n-1 + r*ldr
@@ -474,7 +476,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
   subroutine solve_bwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
-      task_manager)
+      task_manager, trace_id)
     use spllt_data_mod
     use trace_mod
     use utils_mod
@@ -490,6 +492,7 @@ call spllt_tac(1, threadID, timer, lflops)
     real(wp),                   intent(inout) :: xlocal(:,:)
     real(wp),                   intent(inout) :: rhs_local(:,:)
     class(task_manager_base ),  intent(inout) :: task_manager
+    integer, optional,          intent(in)    :: trace_id
 
     integer                 :: sa, en
     integer                 :: numcol, numrow ! #column/row in node 
@@ -497,9 +500,19 @@ call spllt_tac(1, threadID, timer, lflops)
     integer                 :: s_nb           ! Block size in node
     integer                 :: jj, ii
     integer                 :: dblk, blk
+    integer                 :: bwd_block_id
+    integer                 :: bwd_update_id
     type(spllt_timer_t), save :: timer
 
     call spllt_open_timer(task_manager%workerID, "solve_bwd_node", timer)
+
+    if(present(trace_id)) then
+      bwd_block_id  = trace_id
+      bwd_update_id = trace_id
+    else
+      bwd_block_id  = task_manager%trace_ids(trace_bwd_block_pos)
+      bwd_update_id = task_manager%trace_ids(trace_bwd_update_pos)
+    end if
 
     ! Get node info
     s_nb   = fkeep%nodes(node)%nb
@@ -525,7 +538,7 @@ call spllt_tac(1, threadID, timer, lflops)
         !
         call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
         call task_manager%solve_bwd_update_task(blk, node, nrhs, rhs_local, &
-          rhs, ldr, xlocal, fkeep)
+          rhs, ldr, xlocal, fkeep, bwd_update_id)
         call spllt_tac(1, task_manager%workerID, timer)
 
       end do
@@ -535,7 +548,7 @@ call spllt_tac(1, threadID, timer, lflops)
       !
       call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
       call task_manager%solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr,&
-        xlocal, fkeep)
+        xlocal, fkeep, bwd_block_id)
       call spllt_tac(2, task_manager%workerID, timer)
      
       ! Update diag block in node       
@@ -546,7 +559,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
   subroutine solve_fwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
-      task_manager)
+      task_manager, trace_id)
     use spllt_data_mod
     use trace_mod
     use utils_mod
@@ -562,6 +575,7 @@ call spllt_tac(1, threadID, timer, lflops)
     real(wp),                   intent(inout) :: xlocal(:,:)
     real(wp),                   intent(inout) :: rhs_local(:,:)
     class(task_manager_base ),  intent(inout) :: task_manager
+    integer, optional,          intent(in)    :: trace_id
 
     integer                 :: sa, en
     integer                 :: numcol, numrow ! #column/row in node 
@@ -570,10 +584,19 @@ call spllt_tac(1, threadID, timer, lflops)
     integer                 :: dblk           ! Diagonal index 
     integer                 :: s_nb           ! Block size in node
     integer                 :: blk            ! Block index
+    integer                 :: fwd_block_id
+    integer                 :: fwd_update_id
     type(spllt_timer_t), save :: timer
 
-!   print *, "Submit node ", node
     call spllt_open_timer(task_manager%workerID, "solve_fwd_node", timer)
+
+    if(present(trace_id)) then
+      fwd_block_id  = trace_id
+      fwd_update_id = trace_id
+    else
+      fwd_block_id  = task_manager%trace_ids(trace_fwd_block_pos)
+      fwd_update_id = task_manager%trace_ids(trace_fwd_update_pos)
+    end if
 
     ! Get node info
     s_nb   = fkeep%nodes(node)%nb
@@ -595,7 +618,7 @@ call spllt_tac(1, threadID, timer, lflops)
       !
       call spllt_tic("submit fwd block", 1, task_manager%workerID, timer)
       call task_manager%solve_fwd_block_task(dblk, nrhs, rhs_local, rhs, &
-        ldr, xlocal, fkeep)
+        ldr, xlocal, fkeep, fwd_block_id)
       call spllt_tac(1, task_manager%workerID, timer)
 
       do ii = jj+1, nr
@@ -607,7 +630,7 @@ call spllt_tac(1, threadID, timer, lflops)
         !
         call spllt_tic("submit fwd update", 2, task_manager%workerID, timer)
         call task_manager%solve_fwd_update_task(blk, node, nrhs, rhs_local,&
-          rhs, ldr, xlocal, fkeep)
+          rhs, ldr, xlocal, fkeep, fwd_update_id)
         call spllt_tac(2, task_manager%workerID, timer)
 
       end do
@@ -618,5 +641,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
     call spllt_close_timer(task_manager%workerID, timer)
   end subroutine solve_fwd_node
+
+
 
 end module spllt_solve_kernels_mod

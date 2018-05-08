@@ -6,4 +6,4 @@
 !$omp firstprivate(en, sa)                        &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
-!$omp private(i)
+!$omp private(i, trace_id)
