@@ -125,6 +125,7 @@ contains
     integer                       :: n            ! #rows
     integer                       :: solve_step   ! Selector step
     integer                       :: st           ! stat parameter
+    integer(long)                 :: worksize
     real(wp),             pointer :: work(:)
     class(task_manager_base), pointer :: p_ltask_manager
 
@@ -160,8 +161,11 @@ contains
     ! worker
     !
 
-    allocate(work(n*nrhs + (fkeep%maxmn + n) * nrhs * &
-      p_ltask_manager%nworker), stat = st)
+   !allocate(work(n*nrhs + (fkeep%maxmn + n) * nrhs * &
+   !  p_ltask_manager%nworker), stat = st)
+    call spllt_solve_workspace_size(fkeep, p_ltask_manager%nworker, &
+      nrhs, worksize)
+    allocate(work(worksize), stat = st)
     call p_ltask_manager%incr_alloc(st)
     work = 0.0
     
@@ -235,7 +239,6 @@ contains
     work2(1 : size_work * task_manager%nworker) =>                        &
       workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
       task_manager%nworker))
-
 
     select case(job)
       case(0)
@@ -324,6 +327,7 @@ contains
 
     call spllt_open_timer(task_manager%workerID, "solve_fwd", timer)
     call task_manager%get_nflop_performed(nflop_sa)
+
 
     nworker       = task_manager%nworker
 #if defined(SPLLT_OMP_TRACE)

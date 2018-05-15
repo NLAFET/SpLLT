@@ -567,6 +567,22 @@ contains
     end if
   end subroutine spllt_deallocate_akeep 
 
+
+  subroutine spllt_solve_workspace_size(fkeep, nworker, nrhs, size)
+    implicit none
+    type(spllt_fkeep),  intent(in)  :: fkeep
+    integer,            intent(in)  :: nworker
+    integer,            intent(in)  :: nrhs
+    integer(long),      intent(out) :: size
+
+    integer(long) :: n
+
+    n = int(fkeep%n, long)
+
+    size = n * nrhs + (fkeep%maxmn + n) * nrhs * nworker
+
+  end subroutine spllt_solve_workspace_size
+
   !*************************************************  
   !
   ! Returns the destination block of an internal update task.

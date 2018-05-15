@@ -2,56 +2,6 @@ module spllt_data_ciface
   use iso_c_binding
   implicit none
 
-! type, bind(C) :: spllt_lfactor_t
-!    real(C_DOUBLE), allocatable :: lcol(:)
-! end type spllt_lfactor_t
-
-! type, bind(C) :: spllt_lmap_type_t
-!    integer(C_INT)               :: len_map
-!    integer(C_INT), allocatable  :: map(:,:)
-! end type spllt_lmap_type_t
-
-! type, bind(C) :: spllt_block_t
-!    real(C_PTR)                  :: c(:)
-!    integer(C_INT)               :: mem_node
-!    integer(C_INT)               :: bcol
-!    integer(C_INT)               :: blkm
-!    integer(C_INT)               :: blkn
-!    integer(C_INT)               :: dblk
-!    integer(C_INT)               :: dep_initial
-!    integer(C_INT)               :: id
-!    integer(C_INT)               :: last_blk
-!    integer(C_INT)               :: node
-!    integer(C_INT)               :: sa
-!    integer(C_INT)               :: dep
-!    integer(C_INT), allocatable  :: fwd_dep(:)
-!    integer(C_INT), allocatable  :: fwd_update_dep(:)
-!    integer(C_INT)               :: fwd_solve_dep
-!    integer(C_INT)               :: bwd_update_dep
-!    integer(C_INT), allocatable  :: bwd_solve_dep(:)
-!    integer(C_INT), allocatable  :: bwd_dep(:)
-! end type spllt_block_t
-
-! type, bind(C) :: spllt_node_t
-!    integer(C_INT)               :: num
-!    type(spllt_block_t)          :: buffer
-!    integer(C_INT)               :: blk_sa
-!    integer(C_INT)               :: blk_en
-!    integer(C_INT)               :: nb
-!    integer(C_INT)               :: sa
-!    integer(C_INT)               :: en
-!    integer(C_INT), allocatable  :: index(:)
-!    integer(C_INT)               :: nchild
-!    integer(C_INT), allocatable  :: child(:)
-!    integer(C_INT)               :: parent
-!    integer(C_INT)               :: least_desc
-!    integer(C_INT), allocatable  :: extra_row(:)
-! end type spllt_node_t
-
-! type, bind(C) :: spllt_workspace_i_t
-!    integer(C_PTR) :: c(:)
-! end type spllt_workspace_i_t
-
   type, bind(C) :: spllt_options_t
      integer(C_INT)     :: print_level
      integer(C_INT)     :: ncpu
@@ -69,16 +19,6 @@ module spllt_data_ciface
      integer(C_INT)     :: nrhs_linear_comp
   end type spllt_options_t
 
-! type spllt_tree_t
-!   integer(C_INT)              :: num
-!   integer(C_INT)              :: nnode
-!   integer(C_INT)              :: node_sa
-!   integer(C_INT)              :: node_en
-!   integer(C_INT)              :: nchild
-!   integer(C_INT), allocatable :: child(:)
-!   integer(C_INT)              :: parent
-! end type spllt_tree_t
-
   type, bind(C) :: spllt_inform_t
 !   !type(ssids_inform) :: ssids_inform
      integer(C_INT) :: flag
@@ -88,35 +28,6 @@ module spllt_data_ciface
      integer(C_INT) :: num_nodes
      integer(C_INT) :: stat
   end type spllt_inform_t
-
-  type, bind(C) :: spllt_akeep_t
-    integer(C_INT)  :: nnodes
-    integer(C_INT)  :: n
-    integer(C_INT)  :: num_factor
-    integer(C_INT)  :: num_flops
-    type(C_PTR)     :: weight
-    type(C_PTR)     :: small
-  end type spllt_akeep_t
-
-  type, bind(C) :: spllt_fkeep_t
-     type(C_PTR)          :: bc
-     type(C_PTR)          :: workspace
-     type(C_PTR)          :: nodes
-     type(C_PTR)          :: row_list
-     type(C_PTR)          :: col_list
-     type(C_PTR)          :: map
-     type(C_PTR)          :: flag_array
-     integer(C_INT)       :: final_blk
-     type(spllt_inform_t) :: info
-     integer(C_INT)       :: maxmn
-     integer(C_INT)       :: n
-     integer(C_INT)       :: nbcol
-     type(C_PTR)          :: lfact
-     type(C_PTR)          :: lmap
-     type(C_PTR)          :: trees
-     type(C_PTR)          :: small
-     type(C_PTR)          :: assoc_tree
-  end type spllt_fkeep_t
 
 contains
 
@@ -168,6 +79,30 @@ contains
 end module spllt_data_ciface
 
 
+  subroutine spllt_c_task_manager_init(ctask_manager) &
+      bind(C, name="spllt_task_manager_init")
+    use task_manager_omp_mod
+    use spllt_data_ciface
+    use ISO_Fortran_env, only: stderr => ERROR_UNIT
+    implicit none
+
+    type(C_PTR),  intent(inout) :: ctask_manager
+
+    type(task_manager_omp_t),  pointer :: ftask_manager
+
+    if(C_ASSOCIATED(ctask_manager)) then
+      call C_F_POINTER(ctask_manager, ftask_manager)
+    else
+      allocate(ftask_manager)
+      ctask_manager = C_LOC(ftask_manager)
+    end if
+
+    call ftask_manager%init()
+
+  end subroutine spllt_c_task_manager_init
+
+
+
   subroutine spllt_c_analyse(cakeep, cfkeep, coptions, n, cptr, crow, &
       cinfo, corder) bind(C, name="spllt_analyse")
     use spllt_analyse_mod
@@ -193,7 +128,6 @@ end module spllt_data_ciface
     type(spllt_inform)          :: finfo
     integer(C_INT),     pointer :: forder(:)
 
-    !$omp single
     call copy_options_in(coptions, foptions)
 
     if(C_ASSOCIATED(cakeep)) then
@@ -231,7 +165,6 @@ end module spllt_data_ciface
     call spllt_analyse(fakeep, ffkeep, foptions, n, fptr, frow, finfo, forder)
 
     call copy_inform_out(finfo, cinfo)
-    !$omp end single
   end subroutine spllt_c_analyse
 
 
@@ -257,7 +190,6 @@ end module spllt_data_ciface
     real(wp),           pointer :: fval(:)
     type(spllt_inform)          :: finfo
 
-    !$omp single
     call copy_options_in(coptions, foptions)
 
     if(.not. C_ASSOCIATED(cakeep)) then
@@ -280,7 +212,6 @@ end module spllt_data_ciface
     call spllt_wait()
 
     call copy_inform_out(finfo, cinfo)
-    !$omp end single
 
   end subroutine spllt_c_factor
 
@@ -304,7 +235,6 @@ end module spllt_data_ciface
     type(spllt_inform)          :: finfo
     integer                     :: st
 
-    !$omp single
     if(.not. C_ASSOCIATED(cakeep)) then
       write (stderr,*) "Error, akeep provided by the user is empty"
     end if
@@ -324,10 +254,38 @@ end module spllt_data_ciface
     call spllt_compute_solve_dep(ffkeep)
 
     call copy_inform_out(finfo, cinfo)
-    !$omp end single
 
   end subroutine spllt_c_prepare_solve
 
+
+
+  subroutine spllt_c_solve_workspace_size(cfkeep, nworker, nrhs, csize) &
+      bind(C, name="spllt_solve_workspace_size")
+    use spllt_data_mod
+    use spllt_solve_mod
+    use spllt_data_ciface
+    use task_manager_omp_mod
+    use ISO_Fortran_env, only: stderr => ERROR_UNIT
+    implicit none
+
+    type(C_PTR),            value         :: cfkeep
+    integer(C_INT),         value         :: nworker
+    integer(C_INT),         value         :: nrhs
+   !type(C_PTR),            intent(out)   :: csize
+    integer(C_LONG),        intent(out)   :: csize
+
+    type(spllt_fkeep),  pointer :: ffkeep
+    integer(long)               :: fsize
+
+    if(.not. C_ASSOCIATED(cfkeep)) then
+      write (stderr,*) "Error, fkeep provided by the user is empty"
+    end if
+    call C_F_POINTER(cfkeep, ffkeep)
+
+    call spllt_solve_workspace_size(ffkeep, nworker, nrhs, fsize)
+    csize = fsize
+
+  end subroutine spllt_c_solve_workspace_size
 
 
   subroutine spllt_c_solve(cfkeep, coptions, corder, nrhs, cx, cinfo, job) &
@@ -354,7 +312,6 @@ end module spllt_data_ciface
     type(spllt_inform)          :: finfo
     type(task_manager_omp_t)    :: task_manager
 
-    !$omp single
     if(.not. C_ASSOCIATED(cfkeep)) then
       write (stderr,*) "Error, fkeep provided by the user is empty"
     end if
@@ -382,9 +339,81 @@ end module spllt_data_ciface
     call task_manager%deallocate()
 
     call copy_inform_out(finfo, cinfo)
-    !$omp end single
 
   end subroutine spllt_c_solve
+
+
+
+  subroutine spllt_c_solve_worker(cfkeep, coptions, corder, nrhs, cx, &
+      cinfo, job, cwork, cworksize, ctask_manager) &
+      bind(C, name="spllt_solve_worker")
+    use spllt_mod
+    use spllt_data_mod
+    use spllt_solve_mod
+    use spllt_data_ciface
+    use task_manager_omp_mod
+    use ISO_Fortran_env, only: stderr => ERROR_UNIT
+    implicit none
+
+    type(C_PTR),            value         :: cfkeep
+    type(spllt_options_t),  intent(in)    :: coptions
+    type(C_PTR),            value         :: corder
+    integer(C_INT),         value         :: nrhs
+    type(C_PTR),            value         :: cx
+    type(spllt_inform_t),   intent(out)   :: cinfo
+    integer(C_INT),         value         :: job
+    type(C_PTR),            value         :: cwork
+    integer(C_LONG),        value         :: cworksize
+    type(C_PTR),            value         :: ctask_manager
+
+    type(spllt_fkeep),        pointer :: ffkeep
+    type(spllt_options)               :: foptions
+    integer,                  pointer :: forder(:)
+    real(wp),                 pointer :: fx(:)   
+    type(spllt_inform)                :: finfo
+    real(wp),                 pointer :: fwork(:)
+    type(task_manager_omp_t), pointer :: ftask_manager
+
+    if(.not. C_ASSOCIATED(cfkeep)) then
+      write (stderr,*) "Error, fkeep provided by the user is empty"
+    end if
+    call C_F_POINTER(cfkeep, ffkeep)
+
+    call copy_options_in(coptions, foptions)
+
+    if(C_ASSOCIATED(corder)) then
+      call C_F_POINTER(corder, forder, shape=(/ ffkeep%n /))
+    else
+      nullify(forder)
+    end if
+
+    if(.not. C_ASSOCIATED(cx)) then
+      write (stderr,*) "Error, x/rhs provided by the user is empty"
+    end if
+
+    if(.not. C_ASSOCIATED(cwork)) then
+      write (stderr,*) "Error, the workspace provided by the user is empty"
+    end if
+
+    if(.not. C_ASSOCIATED(ctask_manager)) then
+      write (stderr,*) "Error, the task_manager provided by the user is empty"
+    end if
+
+    call C_F_POINTER(cx, fx, shape=(/ ffkeep%n /))
+    call C_F_POINTER(cwork, fwork, shape=(/ cworksize /))
+    call C_F_POINTER(ctask_manager, ftask_manager)
+
+   !call task_manager%init()
+    call ftask_manager%refresh_master()
+
+    call spllt_solve_mult_double_worker(ffkeep, foptions, forder, nrhs, fx, &
+      finfo, job, fwork, ftask_manager)
+
+   !call task_manager%deallocate()
+
+    call copy_inform_out(finfo, cinfo)
+
+  end subroutine spllt_c_solve_worker
 
 
 
@@ -410,7 +439,6 @@ end module spllt_data_ciface
     real(wp),           pointer :: fx(:)
     real(wp),           pointer :: frhs(:)
 
-    !$omp single
     if(.not. C_ASSOCIATED(cptr)) then
       write (stderr,*) "Error, ptr provided by the user is empty"
     end if
@@ -438,7 +466,6 @@ end module spllt_data_ciface
     call C_F_POINTER(crhs, frhs, shape=(/ n /))
 
     call check_backward_error(n, fptr, frow, fval, nrhs, fx, frhs)
-    !$omp end single
 
   end subroutine spllt_c_check_backward_error
 
@@ -485,7 +512,7 @@ end module spllt_data_ciface
     type(C_PTR),    intent(inout) :: cfkeep
     integer(C_INT), intent(out)   :: cstat
 
-    integer :: stat
+    integer                     :: fstat
     type(spllt_fkeep),  pointer :: ffkeep
 
     if(.not. C_ASSOCIATED(cfkeep)) then
@@ -495,62 +522,52 @@ end module spllt_data_ciface
     end if
     call C_F_POINTER(cfkeep, ffkeep)
 
-    call spllt_deallocate_fkeep(ffkeep, stat)
+    call spllt_deallocate_fkeep(ffkeep, fstat)
     
-    if(stat .ne. 0) then
-      write (stderr,*) "Error in deallocation of fkeep : ", stat
+    if(fstat .ne. 0) then
+      write (stderr,*) "Error in deallocation of fkeep : ", fstat
     else
       deallocate(ffkeep)
       cfkeep  = C_NULL_PTR
     endif
-    cstat   = stat
+    cstat   = fstat
 
   end subroutine spllt_c_deallocate_fkeep
 
-! subroutine fkeep_default_control(cfkeep) bind(C, name="spllt_fkeep_init")
-!   use spllt_data_mod
-!   use spllt_data_ciface
-!   implicit none
-!   type(spllt_fkeep_t), intent(out) :: cfkeep
-
-!   type(spllt_fkeep) :: ffkeep
-
-!    cfkeep%bc          = C_NULL_PTR
-!    cfkeep%workspace   = C_NULL_PTR 
-!    cfkeep%nodes       = C_NULL_PTR 
-!    cfkeep%row_list    = C_NULL_PTR 
-!    cfkeep%col_list    = C_NULL_PTR 
-!    cfkeep%map         = C_NULL_PTR 
-!    cfkeep%flag_array  = C_NULL_PTR 
-!    cfkeep%final_blk   = ffkeep%final_blk
-!    cfkeep%maxmn       = ffkeep%maxmn
-!    cfkeep%n           = ffkeep%n
-!    cfkeep%nbcol       = ffkeep%nbcol
-!    cfkeep%lfact       = C_NULL_PTR 
-!    cfkeep%lmap        = C_NULL_PTR 
-!    cfkeep%trees       = C_NULL_PTR 
-!    cfkeep%small       = C_NULL_PTR 
-!    cfkeep%assoc_tree  = C_NULL_PTR 
-!    call copy_inform_out(ffkeep%info, cfkeep%info)
-
-! end subroutine fkeep_default_control
 
 
+  subroutine spllt_c_task_manager_deallocate(ctask_manager, cstat) &
+      bind(C, name="spllt_task_manager_deallocate")
+    use task_manager_omp_mod
+    use spllt_data_ciface
+    use ISO_Fortran_env, only: stderr => ERROR_UNIT
+    implicit none
 
-! subroutine akeep_default_control(cakeep) bind(C, name="spllt_akeep_init")
-!   use spllt_data_mod
-!   use spllt_data_ciface
-!   implicit none
-!   type(spllt_akeep_t), intent(out) :: cakeep
+    type(C_PTR),    intent(inout) :: ctask_manager
+    integer(C_INT), intent(out)   :: cstat
 
-!   type(spllt_akeep) :: fakeep
+    type(task_manager_omp_t),  pointer  :: ftask_manager
+    integer                             :: fstat
 
-!   cakeep%nnodes     = fakeep%nnodes
-!   cakeep%n          = fakeep%n
-!   cakeep%num_factor = fakeep%num_factor
-!   cakeep%num_flops  = fakeep%num_flops
-!   cakeep%weight     = C_NULL_PTR
-!   cakeep%small      = C_NULL_PTR
+    fstat = 0
+    if(.not. C_ASSOCIATED(ctask_manager)) then
+      write (stderr,*) "Error, task_manager provided by the user is empty"
+      cstat = 1
+      return
+    end if
 
-! end subroutine akeep_default_control
+    call C_F_POINTER(ctask_manager, ftask_manager)
+    
+    call ftask_manager%deallocate()
+
+    if(fstat .ne. 0) then
+      write (stderr,*) "Error in deallocation of fkeep : ", fstat
+    else
+      deallocate(ftask_manager)
+      ctask_manager  = C_NULL_PTR
+    endif
+    cstat   = fstat
+  end subroutine spllt_c_task_manager_deallocate
+
+
 

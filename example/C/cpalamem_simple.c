@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include <spllt_iface.h>
+#include <omp.h>
 
 #include <cpalamem_macro.h>
 #include <mat_csr.h>
@@ -17,6 +18,7 @@ int main(int argc, char ** argv){
 
   void *akeep = NULL;
   void *fkeep = NULL;
+  void *tm    = NULL;
   int *ptr    = NULL;
   int *row    = NULL;
   double *val = NULL;
@@ -33,7 +35,10 @@ int main(int argc, char ** argv){
   int rank      = 0;
   int matrixSet = 0;
   int ncpu      = 1;
+  int nth       = 1;
+  long size     = 0;
   char matrixFileName[FILENAMESIZE];
+  double *workspace = NULL;
 
   CPLM_Init(&argc, &argv);
 CPLM_PUSH
@@ -92,27 +97,41 @@ CPLM_OPEN_TIMER
   memcpy(x, rhs, n * sizeof(double));
 
   #pragma omp parallel 
+  #pragma omp single
   {
-  spllt_analyse(&akeep, &fkeep, &options, n, ptr,
-      row, &info, order);
+    spllt_task_manager_init(&tm);
 
-  spllt_factor(akeep, fkeep, &options, nnz, val, &info);
+    spllt_analyse(&akeep, &fkeep, &options, n, ptr,
+        row, &info, order);
 
-  spllt_prepare_solve(akeep, fkeep, &info);
+    spllt_factor(akeep, fkeep, &options, nnz, val, &info);
 
-  spllt_solve(fkeep, &options, order, nrhs, x, &info, 1);
+    spllt_prepare_solve(akeep, fkeep, &info);
 
-  spllt_solve(fkeep, &options, order, nrhs, x, &info, 2);
+#if 1
+    nth = omp_get_num_threads();
+    spllt_solve_workspace_size(fkeep, nth, nrhs, &size);
+    workspace = calloc(size, sizeof(double));
 
-  spllt_chkerr(n, ptr, row, val, nrhs, x, rhs);
+    spllt_solve_worker(fkeep, &options, order, nrhs, x, &info, 1, workspace, size, tm);
+
+    spllt_solve_worker(fkeep, &options, order, nrhs, x, &info, 2, workspace, size, tm);
+#else
+    spllt_solve(fkeep, &options, order, nrhs, x, &info, 1);
+
+    spllt_solve(fkeep, &options, order, nrhs, x, &info, 2);
+#endif
+    spllt_chkerr(n, ptr, row, val, nrhs, x, rhs);
   }
   spllt_deallocate_akeep(&akeep, &stat);
   spllt_deallocate_fkeep(&fkeep, &stat);
+  spllt_task_manager_deallocate(&tm, &stat);
 
   CPLM_MatCSRFree(&A);
   free(x);
   free(rhs);
   free(order);
+  free(workspace);
 CPLM_CLOSE_TIMER
 CPLM_END_TIME
 CPLM_POP
