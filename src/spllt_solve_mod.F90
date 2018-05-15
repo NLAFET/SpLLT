@@ -249,10 +249,8 @@ contains
         ! Forward solve
         call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
 
-!       call print_darray("fwd result", n, work, 1)
         ! Backward solve
         call solve_bwd(nrhs, work, n, fkeep, work2, task_manager)
-!       call print_darray("bwd result", n, work, 1)
 
        !
        ! Reorder soln
@@ -266,11 +264,7 @@ contains
            work(order(j),:) = x(j,:)
         end do
 
-        print *, "X initial ", work
         call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
-
-!       call print_darray("fwd result", n, work, 1)
-        print *, "X tmp ", work
 
         x = work
       

@@ -410,15 +410,23 @@ contains
 
     stat = 0
     ! fwd data
-    deallocate(blk%fwd_dep, stat=st)
-    stat = stat + st
-    deallocate(blk%fwd_update_dep, stat=st)
-    stat = stat + st
+    if(allocated(blk%fwd_dep)) then
+      deallocate(blk%fwd_dep, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(blk%fwd_update_dep)) then
+      deallocate(blk%fwd_update_dep, stat=st)
+      stat = stat + st
+    end if
     ! bwd data
-    deallocate(blk%bwd_dep, stat=st)
-    stat = stat + st
-    deallocate(blk%bwd_solve_dep, stat=st)
-    stat = stat + st
+    if(allocated(blk%bwd_dep)) then
+      deallocate(blk%bwd_dep, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(blk%bwd_solve_dep)) then
+      deallocate(blk%bwd_solve_dep, stat=st)
+      stat = stat + st
+    end if
   end subroutine spllt_deallocate_block
 
 
@@ -530,10 +538,6 @@ contains
       deallocate(fkeep%lmap, stat=st)
       stat = stat + st
     end if
-!   if(allocated(fkeep%workspace_reset)) then
-!     deallocate(fkeep%workspace_reset, stat=st)
-!     stat = stat + st
-!   end if
     if(allocated(fkeep%small)) then
       deallocate(fkeep%small, stat=st)
       stat = stat + st
