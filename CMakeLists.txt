@@ -741,6 +741,7 @@ if(MA87_TEST_DRIVER MATCHES ON)
   MESSAGE( STATUS "MA87 test driver: " ${MA87_TEST_DRIVER} )
 
   list(APPEND test_drivers "drivers/run_ma87.f90")
+  list(APPEND test_drivers "drivers/ma87_test.F90")
 
   # add_executable(spllt_test drivers/run_ma87.f90)
 else()
@@ -755,6 +756,82 @@ if(${RUNTIME} MATCHES "OMP")
   list(APPEND test_drivers "drivers/spllt_omp_bench.F90")
 endif()
 
+
+if(C_IFACE_TEST MATCHES "ON")
+  MESSAGE( STATUS "C Interface test: " ${C_IFACE_TEST} )
+
+ #add_subdirectory(interfaces/C)
+ #include_directories("src/")
+ #set(LIBS ${LIBS} spllt_ciface)
+
+  include_directories("include/")
+  list(APPEND c_iface_test "example/C/analyse.c")
+
+  if(DEFINED ENV{CPALAMEM_INC})
+    set(CPALAMEM_LIB $ENV{CPALAMEM_LIB} CACHE PATH "Location of CPALAMEM library")
+  endif()
+  if(DEFINED ENV{CPALAMEM_INC})
+    set(CPALAMEM_INC $ENV{CPALAMEM_INC} CACHE PATH "Location of CPALAMEM include")
+  endif()
+
+  if(CPALAMEM_INC AND CPALAMEM_LIB)
+    message(STATUS "CPALAMEM_INC used : " ${CPALAMEM_INC})
+    message(STATUS "CPALAMEM_LIB used : " ${CPALAMEM_LIB})
+    include_directories(${CPALAMEM_INC})
+
+    set(LIB_TO_FIND "cpalamem_core")
+
+    find_library(CPALAMEM_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${CPALAMEM_LIB})
+
+    if(CPALAMEM_LIBRARIES)
+      set(LIBS ${LIBS} ${CPALAMEM_LIBRARIES})
+    else(CPALAMEM_LIBRARIES)
+      message(FATAL_ERROR "${CPALAMEM_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+    endif(CPALAMEM_LIBRARIES)
+
+    unset(LIB_TO_FIND)
+    list(APPEND c_iface_test "example/C/example_c_iface.c")
+  else()
+    message(WARNING "Can not set CPALAMEM.")
+  endif()
+endif()
+
+if(PARDISO_TEST_DRIVER MATCHES "ON")
+
+  # Manage env
+  if(DEFINED ENV{PARDISO_INC})
+    set(PARDISO_INC $ENV{PARDISO_INC} CACHE PATH "Location of PARDISO include")
+  endif()
+
+  # Include
+  if(LPARDISO AND PARDISO_INC)
+    message(STATUS "PARDISO_INC used  : " ${PARDISO_INC})
+    message(STATUS "LPARDISO used     : " ${LPARDISO})
+    include_directories(${PARDISO_INC})
+    set(PARDISO_LIBRARIES ${LPARDISO})
+  else(LPARDISO AND PARDISO_INC)
+    message(ERROR " You should provide both LPARDISO and PARDISO_INC")
+  endif(LPARDISO AND PARDISO_INC)
+
+  # Search library
+  if(PARDISO_LIBRARIES)
+   #set(CMAKE_REQUIRED_LIBRARIES ${PARDISO_LIBRARIES})
+   #message(STATUS "Search in " ${CMAKE_REQUIRED_LIBRARIES})
+   #CHECK_FORTRAN_FUNCTION_EXISTS("pardiso" PARDISO_FOUND)
+   #unset(CMAKE_REQUIRED_LIBRARIES)
+   #if(NOT PARDISO_FOUND)
+   #  message(ERROR " User supplied PARDISO library is NOT working")
+   #else()
+      set(LIBS ${LIBS} ${PARDISO_LIBRARIES})
+      list(APPEND test_drivers "drivers/pardiso/pardiso_test.F90")
+   #endif()
+  else(PARDISO_LIBRARIES)
+    message(FATAL_ERROR " No Path for PARDISO library provided. "
+      "Define both LPARDISO and PARDISO_INC.")
+  endif(PARDISO_LIBRARIES)
+
+endif()
+
 foreach(test_driver ${test_drivers})
   
   get_filename_component(test_driver_name ${test_driver} NAME_WE)
@@ -765,6 +842,20 @@ foreach(test_driver ${test_drivers})
   target_include_directories(${test_driver_name} PUBLIC ${SPRAL_DIR})
   target_include_directories(${test_driver_name} PUBLIC ${CMAKE_BINARY_DIR}/src)
   target_link_libraries(${test_driver_name} ${LIBS})
+
+endforeach()
+
+foreach(c_iface_test ${c_iface_test})
+  
+  get_filename_component(c_iface_test_name ${c_iface_test} NAME_WE)
+  add_executable(${c_iface_test_name} ${c_iface_test})
+
+  ########################################
+  # Link test drivers with external libraries
+  target_include_directories(${test_driver_name} PUBLIC ${SPRAL_DIR})
+  target_include_directories(${test_driver_name} PUBLIC ${CMAKE_BINARY_DIR}/src)
+  target_include_directories(${test_driver_name} PUBLIC ${CMAKE_BINARY_DIR}/interfaces)
+  target_link_libraries(${c_iface_test_name} ${LIBS})
 
 endforeach()
 

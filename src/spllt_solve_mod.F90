@@ -163,6 +163,7 @@ contains
     allocate(work(n*nrhs + (fkeep%maxmn + n) * nrhs * &
       p_ltask_manager%nworker), stat = st)
     call p_ltask_manager%incr_alloc(st)
+    work = 0.0
     
     call spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, solve_step, work, p_ltask_manager)
@@ -185,6 +186,7 @@ contains
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, job, workspace, task_manager)
     use spllt_data_mod
+    use utils_mod
     use task_manager_mod
     implicit none
 
@@ -247,8 +249,10 @@ contains
         ! Forward solve
         call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
 
+!       call print_darray("fwd result", n, work, 1)
         ! Backward solve
         call solve_bwd(nrhs, work, n, fkeep, work2, task_manager)
+!       call print_darray("bwd result", n, work, 1)
 
        !
        ! Reorder soln
@@ -262,7 +266,11 @@ contains
            work(order(j),:) = x(j,:)
         end do
 
+        print *, "X initial ", work
         call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
+
+!       call print_darray("fwd result", n, work, 1)
+        print *, "X tmp ", work
 
         x = work
       

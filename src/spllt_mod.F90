@@ -244,6 +244,8 @@ contains
     return
   end subroutine spllt_print_atree
 
+
+
   function spllt_dep_in_add(dep_in_arr, id_jk, id_ik, csrc, rsrc, sync)
     implicit none
 
@@ -316,6 +318,8 @@ contains
 
   end function spllt_dep_out_add
   
+
+
   subroutine spllt_parse_args(options, matfile, nrhs)
     implicit none
 
@@ -397,6 +401,8 @@ contains
 
   end subroutine spllt_parse_args
 
+
+
   ! Read matrix in Matrix Market foramt
   subroutine mm_double_read(matfile, m, n, nnz, indx, jndx, val, info)
     use spral_random, only : random_state, random_real
@@ -468,6 +474,73 @@ contains
     return
 
   end subroutine mm_double_read
+
+
+
+  ! convert matrix from CSC to CSR format
+  subroutine csc_to_csr_double(m, n, nnz, colPtr, rowInd, val_in,       &
+    rowPtr, colInd, val_out, info)
+    use utils_mod
+    implicit none
+
+    integer,                intent(in)  :: m         ! Number of rows
+    integer,                intent(in)  :: n         ! Number of columns
+    integer,                intent(in)  :: nnz       ! Number of entries
+    integer,                intent(in)  :: colPtr(:) ! Elements that index rowInd array
+    integer,                intent(in)  :: rowInd(:) ! Stores the row index
+    real(wp),               intent(in)  :: val_in(:) ! Entry array in CSC format
+    integer,  allocatable,  intent(out) :: rowPtr(:) ! Elements that index colInd array
+    integer,  allocatable,  intent(out) :: colInd(:) ! Stores the col index
+    real(wp), allocatable,  intent(out) :: val_out(:)! Entry array in CSR format
+    integer,                intent(out) :: info      ! status
+
+    integer, allocatable :: offset(:) ! counter
+    integer :: i, j, k
+    integer :: st
+
+   !info = 0 ! init to success
+
+   !! allocate ptr 
+   !allocate(rowPtr(m + 1))
+   !allocate(offset(m))
+   ! 
+   !rowPtr = 0
+   !offset = 0
+
+   !allocate(colInd(nnz),   stat=st)
+   !info = info + st
+   !allocate(val_out(nnz),  stat=st)
+   !info = info + st
+
+    ! Count
+   !do i = 1, n
+   !  do j = colPtr(i), colPtr(i+1) - 1
+   !    k = rowInd(j)
+   !    rowPtr(k+1) = rowPtr(k+1) + 1
+   !  end do
+   !end do
+   !
+   !! Sum
+   !rowPtr(1) = 1
+   !do j = 1, m
+   !  rowPtr(j + 1) = rowPtr(j + 1) + rowPtr(j)
+   !end do
+
+   !! Store
+   !do i = 1, n
+   !  do j = colPtr(i), colPtr(i+1) - 1
+   !    k = rowInd(j)
+   !    colInd(rowPtr(k) + offset(k))   = i
+   !    val_out(rowPtr(k) + offset(k))  = val_in(j)
+   !    offset(k)                       = offset(k) + 1
+   !  end do
+   !end do
+
+   !deallocate(offset)
+
+  end subroutine csc_to_csr_double
+
+
 
   ! convert matrix from COO to CSC format
   subroutine coo_to_csc_double(m, n, nnz, indx_in, jndx, val_in, & 

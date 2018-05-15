@@ -323,7 +323,7 @@ module spllt_data_mod
      type(lmap_type), dimension(:), allocatable :: lmap
      ! holds mapping from matrix values into lfact
 
-     logical, allocatable :: workspace_reset(:)
+!    logical, allocatable :: workspace_reset(:)
      type(spllt_tree_t), allocatable :: trees(:)
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
@@ -530,10 +530,10 @@ contains
       deallocate(fkeep%lmap, stat=st)
       stat = stat + st
     end if
-    if(allocated(fkeep%workspace_reset)) then
-      deallocate(fkeep%workspace_reset, stat=st)
-      stat = stat + st
-    end if
+!   if(allocated(fkeep%workspace_reset)) then
+!     deallocate(fkeep%workspace_reset, stat=st)
+!     stat = stat + st
+!   end if
     if(allocated(fkeep%small)) then
       deallocate(fkeep%small, stat=st)
       stat = stat + st

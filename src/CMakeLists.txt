@@ -13,6 +13,10 @@ file(
 
 list(REMOVE_ITEM sources ${to_remove})
 
+file(
+  GLOB 
+  sources_iface
+  ../interfaces/C/*.F90)
 
 if(${RUNTIME} MATCHES "StarPU")
 
@@ -115,8 +119,8 @@ endif()
 if(MA87_TEST_DRIVER MATCHES ON)
   # MESSAGE( STATUS "Sources: " ${sources} )
   # MESSAGE( STATUS "HSL Sources: " ${HSL_SRC} )
-  add_library(spllt ${sources} ${HSL_SRC})
+  add_library(spllt ${sources} ${HSL_SRC} ${sources_iface})
 else()
 
-  add_library(spllt ${sources})
+  add_library(spllt ${sources} ${sources_iface})
 endif()

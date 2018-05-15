@@ -350,6 +350,49 @@ contains
   end subroutine compute_range
   
 
+  subroutine check_backward_error(n, ptr, row, val, nrhs, x, b) 
+    use spllt_data_mod
+    implicit none
+
+    integer, intent(in)                         :: n
+    integer, dimension(n+1), intent(in)         :: ptr
+    integer, dimension(ptr(n+1)-1), intent(in)  :: row
+    real(wp), dimension(ptr(n+1)-1), intent(in) :: val
+    integer, intent(in)                         :: nrhs
+    real(wp), dimension(n,nrhs), intent(in)     :: x
+    real(wp), dimension(n,nrhs), intent(in)     :: b
+
+    logical           :: bwd_error_ok
+    integer           :: i
+    real(wp)          :: norm_max
+    real(wp)          :: res(n, nrhs)
+    double precision  :: normRes(nrhs)
+    double precision  :: normRHS(nrhs)
+    double precision  :: solNorm(nrhs)
+    double precision  :: err
+
+    call compute_residual(n, ptr, row, val, nrhs, x, b, res)
+
+    call vector_norm_2(n, res, normRes)
+    call vector_norm_2(n,   b, normRHS)
+    call vector_norm_2(n,   x, solNorm)
+    call matrix_norm_max(n, ptr, row, val, norm_max)
+
+    bwd_error_ok = .true.
+    do i = 1, nrhs
+      err = normRes(i) / (normRHS(i) + norm_max * solNorm(i))
+     !if(normRes(i) / normRHS(i) .gt. 1e-14) then
+      if(normRes(i) / normRHS(i) .gt. 1e-14) then
+        write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
+          "/", nrhs, " : ", err
+        bwd_error_ok = .false.
+      end if
+    end do
+    if(bwd_error_ok) then
+      write(0, "(a)") "Backward error... ok"
+    end if
+  end subroutine check_backward_error
+
 
   !*************************************************
   !
@@ -406,4 +449,91 @@ contains
 !     val_perm(i) = val(perm(i))
 !   end do
 ! end subroutine permute_array
+
+! subroutine print_csc_matrix(m, n, nnz, colPtr, rowInd, val)
+!   use spllt_data_mod
+!   implicit none
+!   integer,  intent(in)  :: m         ! Number of rows
+!   integer,  intent(in)  :: n         ! Number of columns
+!   integer,  intent(in)  :: nnz       ! Number of entries
+!   integer,  intent(in)  :: colPtr(:) ! Elements that index rowInd array
+!   integer,  intent(in)  :: rowInd(:) ! Stores the row index
+!   real(wp), intent(in)  :: val(:)    ! Entry array in CSC format
+!   
+!   integer :: i, j, k
+!   real(wp), allocatable :: work(:, :)
+
+!   call print_array("colPtr", 15, colPtr, 1)
+!   call print_array("rowInd", 30  , rowInd, 1)
+!   call print_array("val   ", 30  ,    val, 1)
+
+!   return
+
+!   allocate(work(m, n))
+!   work = -9999.8888
+
+!   do i = 1, n
+!     do j = colPtr(i), colPtr(i + 1) - 1
+!       work(rowInd(j), i) = val(j)
+!     end do
+!   end do
+!  !do j = 1, m
+!  !  do i = 1, n
+!  !    if(rowInd(colPtr(i) + k) .eq. j) then
+!  !      write(*, fmt="(es10.2)", advance="no") val(colPtr(i) + k)
+!  !      k = k + 1
+!  !    else
+!  !      write(*, fmt="(a5)", advance="no") "."
+!  !    end if
+!  !  end do
+!  !end do
+
+!   do i = 1, m
+!     do j = 1, n
+!       if(work(i,j) .eq. -9999.8888) then
+!         write(*, fmt="(a10)", advance="no") "."
+!       else
+!         write(*, fmt="(es10.2)", advance="no") work(i, j)
+!       end if
+!     end do
+!     print *, ""
+!   end do
+
+! end subroutine print_csc_matrix
+! 
+
+
+! subroutine print_csr_matrix(m, n, nnz, rowPtr, colInd, val)
+!   use spllt_data_mod
+!   implicit none
+!   integer,  intent(in)  :: m         ! Number of rows
+!   integer,  intent(in)  :: n         ! Number of columns
+!   integer,  intent(in)  :: nnz       ! Number of entries
+!   integer,  intent(in)  :: rowPtr(:) ! Elements that index rowInd array
+!   integer,  intent(in)  :: colInd(:) ! Stores the row index
+!   real(wp), intent(in)  :: val(:)    ! Entry array in CSR format
+!   
+!   integer :: i, j, k
+
+!  !call print_array("rowPtr", m + 1, rowPtr, 1)
+!  !call print_array("colInd", nnz  , colInd, 1)
+!  !call print_array("val   ", nnz  ,    val, 1)
+!   call print_array("rowPtr", 15, rowPtr, 1)
+!   call print_array("colInd", 30  , colInd, 1)
+!   call print_array("val   ", 30  ,    val, 1)
+!  !do i = 1, m
+!  !  k = 0
+!  !  do j = 1, n
+!  !    if(j .eq. colInd(rowPtr(i) + k)) then
+!  !      write(*, fmt="(es10.2)", advance="no") val(rowPtr(i) + k)
+!  !      k = k + 1
+!  !    else
+!  !      write(*, fmt="(a10)", advance="no") "."
+!  !    end if
+!  !  end do
+!  !  print *, ""
+!  !end do
+
+! end subroutine print_csr_matrix
+
 end module utils_mod

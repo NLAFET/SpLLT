@@ -222,17 +222,17 @@ contains
 
 
 
-  subroutine spllt_prepare_workspace(fkeep, n, st)
-    type(spllt_fkeep), intent(inout)  :: fkeep
-    integer,            intent(in)    :: n  ! size of the workspace, 
-                                            ! i.e., size(rhs, 1)
-    integer,            intent(out)   :: st
+! subroutine spllt_prepare_workspace(fkeep, n, st)
+!   type(spllt_fkeep), intent(inout)  :: fkeep
+!   integer,            intent(in)    :: n  ! size of the workspace, 
+!                                           ! i.e., size(rhs, 1)
+!   integer,            intent(out)   :: st
 
-    allocate(fkeep%workspace_reset(n), stat=st)
-    if(st .eq. 0) then
-      fkeep%workspace_reset(:) = .false.
-    end if
-  end subroutine spllt_prepare_workspace
+!   allocate(fkeep%workspace_reset(n), stat=st)
+!   if(st .eq. 0) then
+!     fkeep%workspace_reset(:) = .false.
+!   end if
+! end subroutine spllt_prepare_workspace
 
 
 
