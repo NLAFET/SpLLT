@@ -79,7 +79,7 @@ endif()
 
 # if(MA87_TEST_DRIVER MATCHES ON)
 
-set(HSLPACK_DIR $ENV{HSLPACKDIR})
+set(HSLPACK_DIR $ENV{HSLPACK_DIR})
 
 # set(HSL_SRC hsl_ma87d.F90
 #   ${HSLPACK_DIR}/hsl_mc78/hsl_mc78i.f90

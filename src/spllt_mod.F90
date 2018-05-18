@@ -341,7 +341,7 @@ contains
           options%fmt = 'csc'
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
-          read( argval, * ) matfile
+          read( argval, '(a)' ) matfile
        case("--nb")
           call get_command_argument(argnum, argval)
           argnum = argnum + 1

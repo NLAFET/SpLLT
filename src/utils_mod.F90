@@ -382,7 +382,7 @@ contains
     do i = 1, nrhs
       err = normRes(i) / (normRHS(i) + norm_max * solNorm(i))
      !if(normRes(i) / normRHS(i) .gt. 1e-14) then
-      if(normRes(i) / normRHS(i) .gt. 1e-14) then
+      if(err .gt. 1e-14) then
         write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
           "/", nrhs, " : ", err
         bwd_error_ok = .false.
