@@ -271,8 +271,10 @@ module task_manager_seq_mod
 
     type(spllt_timer_t), save   :: timer
         
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_task_worker", timer)
+#endif
 
     nthread   = task_manager%nworker
     nthread   = 1
@@ -312,7 +314,9 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(traceID, threadID)
 #endif
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%incr_nrun()
 
   end subroutine solve_fwd_block_task_worker
@@ -354,8 +358,10 @@ module task_manager_seq_mod
 
     type(spllt_timer_t), save   :: timer
         
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_task_worker", timer)
+#endif
 
     if(present(trace_id)) then
       traceID = trace_id
@@ -394,7 +400,9 @@ module task_manager_seq_mod
     call trace_event_stop(traceID, task_manager%workerID)
 #endif
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%incr_nrun()
 
   end subroutine solve_fwd_update_task_worker
@@ -442,8 +450,10 @@ module task_manager_seq_mod
     type(spllt_block), pointer  :: p_bc(:)
     type(spllt_timer_t), save   :: timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_task_worker", timer)
+#endif
 
     if(present(trace_id)) then
       traceID = trace_id
@@ -483,7 +493,9 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(traceID, threadID)
 #endif
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer_flop(task_manager%workerID, timer, flops)
+#endif
     call task_manager%incr_nrun()
   end subroutine solve_bwd_block_task_worker
 
@@ -526,8 +538,10 @@ module task_manager_seq_mod
 
     type(spllt_timer_t), save   :: timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_task_worker", timer)
+#endif
 
     if(present(trace_id)) then
       traceID = trace_id
@@ -565,7 +579,9 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(traceID, threadID)
 #endif
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%incr_nrun()
   end subroutine solve_bwd_update_task_worker
 
@@ -595,14 +611,18 @@ module task_manager_seq_mod
     print *, "Treatment of subtree ", tree%num
     call spllt_print_subtree(tree)
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, "solve_fwd_subtree", timer)
+#endif
 
     do i = tree%node_sa, tree%node_en
       call solve_fwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &
         rhs_local, task_manager)
     end do
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
 
   end subroutine solve_fwd_subtree
 
@@ -632,14 +652,18 @@ module task_manager_seq_mod
     print *, "Treatment of subtree ", tree%num
     call spllt_print_subtree(tree)
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
+#endif
 
     do i = tree%node_en, tree%node_sa, -1
       call solve_bwd_node(nrhs, rhs, ldr, fkeep, i, xlocal, &
         rhs_local, task_manager)
     end do
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
 
   end subroutine solve_bwd_subtree
 

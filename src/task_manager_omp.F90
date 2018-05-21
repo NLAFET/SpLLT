@@ -408,8 +408,10 @@ module task_manager_omp_mod
         
    !nthread   = omp_get_num_threads()
     nthread = task_manager%nworker
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_task_worker", timer)
+#endif
 
     ! Get block info
     node      = fkeep%bc(dblk)%node
@@ -452,7 +454,9 @@ module task_manager_omp_mod
       ndep_lvl = ndep ! #dep local to the lvl
       all_task_submitted = .false.
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
       do while(.not. all_task_submitted)
       
         nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -489,10 +493,14 @@ module task_manager_omp_mod
           alpha = alpha * chunk
         end if
       end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(12, task_manager%workerID, timer)
+#endif
     end if
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%ntask_submitted(1, nftask)
 
   end subroutine solve_fwd_block_task_worker
@@ -573,8 +581,10 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
         
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_task_worker", timer)
+#endif
 
     ! Establish variables describing block
     n         = fkeep%bc(blk)%blkn
@@ -621,7 +631,9 @@ module task_manager_omp_mod
       ndep_lvl = ndep ! #dep local to the lvl
       all_task_submitted = .false.
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
       do while(.not. all_task_submitted)
       
         nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -656,10 +668,14 @@ module task_manager_omp_mod
           alpha = alpha * chunk
         end if
       end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(12, task_manager%workerID, timer)
+#endif
     end if
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%ntask_submitted(1, nftask)
 
   end subroutine solve_fwd_update_task_worker
@@ -743,8 +759,10 @@ module task_manager_omp_mod
 
    !nthread = omp_get_num_threads()
     nthread = task_manager%nworker
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_task_worker", timer)
+#endif
 
     ! Get block info
     node      = fkeep%bc(dblk)%node
@@ -789,7 +807,9 @@ module task_manager_omp_mod
       ndep_lvl = ndep ! #dep local to the lvl
       all_task_submitted = .false.
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
       do while(.not. all_task_submitted)
       
         nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -826,9 +846,13 @@ module task_manager_omp_mod
           alpha = alpha * chunk
         end if
       end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(12, task_manager%workerID, timer)
+#endif
     end if
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%ntask_submitted(1, nftask)
   end subroutine solve_bwd_block_task_worker
 
@@ -908,8 +932,10 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_task_worker", timer)
+#endif
 
     ! Establish variables describing block
     n       = fkeep%bc(blk)%blkn
@@ -955,7 +981,9 @@ module task_manager_omp_mod
       ndep_lvl = ndep ! #dep local to the lvl
       all_task_submitted = .false.
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
       do while(.not. all_task_submitted)
       
         nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -992,9 +1020,13 @@ module task_manager_omp_mod
           alpha = alpha * chunk
         end if
       end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(12, task_manager%workerID, timer)
+#endif
     end if
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
     call task_manager%ntask_submitted(1, nftask)
   end subroutine solve_bwd_update_task_worker
 
@@ -1057,8 +1089,10 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_subtree", timer)
+#endif
 
     p_rhs_local => rhs_local
     p_xlocal    => xlocal
@@ -1099,7 +1133,9 @@ module task_manager_omp_mod
     !$omp end task
 
     call task_manager%ntask_submitted(1, 0)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
 
   end subroutine solve_fwd_subtree_task_worker
 
@@ -1171,7 +1207,9 @@ module task_manager_omp_mod
     integer                     :: trace_id
     p_timer => timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
+#endif
 
     p_rhs_local => rhs_local
     p_xlocal    => xlocal
@@ -1207,7 +1245,9 @@ module task_manager_omp_mod
       ndep_lvl = ndep ! #dep local to the lvl
       all_task_submitted = .false.
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
       do while(.not. all_task_submitted)
       
         nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
@@ -1244,11 +1284,15 @@ module task_manager_omp_mod
           alpha = alpha * chunk
         end if
       end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(12, task_manager%workerID, timer)
+#endif
     end if
 
     call task_manager%ntask_submitted(1, nftask)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
 
   end subroutine solve_bwd_subtree_task_worker
 

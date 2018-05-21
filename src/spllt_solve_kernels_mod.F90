@@ -504,7 +504,9 @@ call spllt_tac(1, threadID, timer, lflops)
     integer                 :: bwd_update_id
     type(spllt_timer_t), save :: timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, "solve_bwd_node", timer)
+#endif
 
     if(present(trace_id)) then
       bwd_block_id  = trace_id
@@ -554,6 +556,10 @@ call spllt_tac(1, threadID, timer, lflops)
       ! Update diag block in node       
       if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
     end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
   end subroutine solve_bwd_node
 
 
@@ -588,7 +594,9 @@ call spllt_tac(1, threadID, timer, lflops)
     integer                 :: fwd_update_id
     type(spllt_timer_t), save :: timer
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, "solve_fwd_node", timer)
+#endif
 
     if(present(trace_id)) then
       fwd_block_id  = trace_id
@@ -639,7 +647,9 @@ call spllt_tac(1, threadID, timer, lflops)
       dblk = fkeep%bc(dblk)%last_blk + 1
     end do
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
+#endif
   end subroutine solve_fwd_node
 
 

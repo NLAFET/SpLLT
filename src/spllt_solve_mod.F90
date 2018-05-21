@@ -325,7 +325,9 @@ contains
     integer(long)               :: size_rhs_local, size_xlocal
     double precision            :: nflop_sa, nflop_en
 
+#if defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, "solve_fwd", timer)
+#endif
     call task_manager%get_nflop_performed(nflop_sa)
 
 
@@ -366,7 +368,9 @@ contains
     !$omp end task
 #endif
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+#endif
 
 #if defined(SPLLT_OMP_TRACE)
     fwd_submit_tree_id = task_manager%trace_ids(trace_fwd_submit_tree_pos)
@@ -391,7 +395,9 @@ contains
       call solve_fwd_node(nrhs, rhs, ldr, fkeep, node, xlocal, rhs_local, &
         task_manager)
     end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tac(4, task_manager%workerID, timer)
+#endif
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(fwd_submit_id, -1)
@@ -405,7 +411,9 @@ call task_manager%print("fwd end of submitted task", 0)
     
     !$omp taskwait
     call task_manager%get_nflop_performed(nflop_en)
+#if defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
+#endif
 
   end subroutine solve_fwd
 
@@ -443,7 +451,9 @@ call task_manager%print("fwd end of submitted task", 0)
     double precision            :: nflop_sa, nflop_en
  !$ integer(kind=omp_lock_kind) :: lock
 
+#if defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, "solve_bwd", timer)
+#endif
     call task_manager%get_nflop_performed(nflop_sa)
 
     nworker       = task_manager%nworker
@@ -484,7 +494,9 @@ call task_manager%print("fwd end of submitted task", 0)
     !$omp end task
 #endif
 
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+#endif
     do node = fkeep%info%num_nodes, 1, -1
 
       if(fkeep%small(node) .eq. 0) then
@@ -501,7 +513,9 @@ call task_manager%print("fwd end of submitted task", 0)
       end if
 
     end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tac(4, task_manager%workerID, timer)
+#endif
 
 
 #if defined(SPLLT_OMP_TRACE)
@@ -517,7 +531,9 @@ call task_manager%print("fwd end of submitted task", 0)
     call task_manager%print("bwd end of execution task", 0)
 
     call task_manager%get_nflop_performed(nflop_en)
+#if defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
+#endif
 
   end subroutine solve_bwd
   
