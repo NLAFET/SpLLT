@@ -405,7 +405,11 @@ endif()
 
 ########################################
 # SpLLT
-set(LIBS ${LIBS} spllt)
+if(${WITH_TRACE} MATCHES ON)
+  set(LIBS ${LIBS} spllt_trace)
+else()
+  set(LIBS ${LIBS} spllt)
+endif()
 
 ########################################
 # SPRAL
@@ -749,7 +753,7 @@ if(MA87_TEST_DRIVER MATCHES ON)
   MESSAGE( STATUS "MA87 test driver: " ${MA87_TEST_DRIVER} )
 
   list(APPEND test_drivers "drivers/run_ma87.f90")
-  list(APPEND test_drivers "drivers/ma87_test.F90")
+# list(APPEND test_drivers "drivers/ma87_test.F90")
 
   # add_executable(spllt_test drivers/run_ma87.f90)
 else()
@@ -838,6 +842,15 @@ if(PARDISO_TEST_DRIVER MATCHES "ON")
   endif(PARDISO_LIBRARIES)
 
 endif()
+
+###################################
+# Set the library installation
+#set(PROJECT_VERSION "1.0.0")
+#set_target_properties(spllt PROPERTIES VERSION ${PROJECT_VERSION})
+#include(GNUInstallDirs)
+#install(TARGETS spllt
+#    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 foreach(test_driver ${test_drivers})
   

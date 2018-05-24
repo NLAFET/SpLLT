@@ -50,6 +50,7 @@ program spllt_test
   character(len=10)                   :: time
   character(len=8)                    :: date
   integer                             :: trace_chkerr_id
+  integer                             :: ppos
 
   ! runtime
   type(task_manager_omp_t)            :: task_manager
@@ -274,6 +275,13 @@ program spllt_test
 
   call spllt_close_timer(task_manager%workerID, timer)
   call spllt_print_timers()
+
+#if defined(SPLLT_OMP_TRACE)
+  ppos = scan(trim(matfile),"/", BACK= .true.)
+  if ( ppos > 0 ) matfile = matfile(ppos+1:)
+  call trace_log_dump_paje('trace_spllt_'//trim(matfile)//'.out_'&
+      &//date//'-'//time)
+#endif
 
   call task_manager%print()
 
