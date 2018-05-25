@@ -150,9 +150,12 @@ contains
     !!!!!!!!!!!!!!!!!!!!!
     ! BWD dep
     !
+    !Compute basic dependencies
     fkeep%bc(blk)%bwd_update_dep  = bwd_update_dependency(fkeep, blk)
     call bwd_solve_dependency(fkeep, blk, fkeep%bc(blk)%bwd_solve_dep)
 
+    ! Count the number of dep different to the block blk in order to
+    ! allocate the right size and copy them into it
     ndep = 0
     if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
       ndep = ndep + size(fkeep%bc(blk)%bwd_solve_dep)
@@ -165,11 +168,15 @@ contains
     if(ndep .gt. 0) then
 #endif
       allocate(fkeep%bc(blk)%bwd_dep(ndep))
-
+      
+      ! Copy array if the first element is not blk
+      ! This assumes that the content is either only blk or a list that
+      ! does not contain blk
       if(fkeep%bc(blk)%bwd_solve_dep(1) .ne. blk) then
         fkeep%bc(blk)%bwd_dep(1:size(fkeep%bc(blk)%bwd_solve_dep)) = &
           fkeep%bc(blk)%bwd_solve_dep
       end if
+      ! Copy the dependency only if it is not blk
       if(fkeep%bc(blk)%bwd_update_dep .ne. blk) then
         fkeep%bc(blk)%bwd_dep(ndep) = fkeep%bc(blk)%bwd_update_dep
       end if
@@ -185,6 +192,7 @@ contains
 
 
 
+  ! This routine computes the dependencies of the blocks in fkeep
   subroutine spllt_compute_solve_dep(fkeep)
     use spllt_tree_stat_mod 
     type(spllt_fkeep), target, intent(inout)  :: fkeep
@@ -196,14 +204,23 @@ contains
     call spllt_init_tree_stat(task_info_fwd)
     call spllt_init_tree_stat(task_info_bwd)
 
+    ! For each block i, compute its dependencies for forward and 
+    ! backward steps,
     do i = 1, fkeep%nodes(fkeep%info%num_nodes)%blk_en
       call spllt_compute_blk_solve_dep(fkeep, i)
-      call spllt_update_tree_stat(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
-      call spllt_update_tree_stat(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
     end do
+    ! then, update the list of dependencies for the backward case
+    ! and for each tree.
     do i = 1, size(fkeep%trees)
       call spllt_update_blk_dep(fkeep, fkeep%trees(i))
     end do
+
+    ! Statistics
+    do i = 1, fkeep%nodes(fkeep%info%num_nodes)%blk_en
+      call spllt_update_tree_stat(task_info_fwd, size(fkeep%bc(i)%fwd_dep))
+      call spllt_update_tree_stat(task_info_bwd, size(fkeep%bc(i)%bwd_dep))
+    end do
+
     call print_tree_stat(task_info_fwd, "FWD STAT")
     call print_tree_stat(task_info_bwd, "BWD STAT")
   end subroutine spllt_compute_solve_dep
@@ -219,20 +236,6 @@ contains
       call spllt_compute_extra_row(fkeep, i)
     end do
   end subroutine spllt_compute_solve_extra_row
-
-
-
-! subroutine spllt_prepare_workspace(fkeep, n, st)
-!   type(spllt_fkeep), intent(inout)  :: fkeep
-!   integer,            intent(in)    :: n  ! size of the workspace, 
-!                                           ! i.e., size(rhs, 1)
-!   integer,            intent(out)   :: st
-
-!   allocate(fkeep%workspace_reset(n), stat=st)
-!   if(st .eq. 0) then
-!     fkeep%workspace_reset(:) = .false.
-!   end if
-! end subroutine spllt_prepare_workspace
 
 
 
@@ -1248,7 +1251,8 @@ contains
   end subroutine spllt_compute_extra_row
 
 
-
+  ! This routine changes the list of dependencies of the last block of the tree
+  ! given in parameter
   subroutine spllt_update_blk_dep(fkeep, tree)
     use utils_mod
     type(spllt_fkeep),  intent(inout) :: fkeep
@@ -1260,21 +1264,30 @@ contains
     integer :: dep_blk, ndep
     logical, allocatable :: is_dep(:)
 
-!   print *, "Update tree"
-!   call spllt_print_subtree(tree)
+    ! Considering the subtree given in parameter, the algorithm
+    ! computes the dependencies of all its blocks,
+    ! and replaces the dependencies of the last block, denoted blk_en,
+    ! with the dependencies of all the blocks in the tree that are 
+    ! greater than blk_en.
+
+
     nblk = fkeep%nodes(fkeep%info%num_nodes)%blk_en
     ndep = 0
     blk_sa = fkeep%nodes(tree%node_sa)%blk_sa
     blk_en = fkeep%nodes(tree%node_en)%blk_en
-!   print *, "First blk ", blk_sa, " to Last blk ", blk_en
 
+    ! Set blocks greater that blk_en as to not be a dependency
     allocate(is_dep(blk_en + 1 : nblk), stat = st)
     is_dep(:) = .false.
 
-    if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
-      ndep = ndep + 1
-    end if
+   !! Count the number of actual dependency blocks of blk_en
+   !if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
+   !  ndep = ndep + 1
+   !end if
 
+    ! For each block blk in the tree, for each dep_blk in the list of dep of 
+    ! the current blk, if the dep_blk is greater than blk_en, i.e. it does not
+    ! belongs to the tree, then this block is recorded and counted only once.
     do blk = blk_sa, blk_en
       do i = 1, size(fkeep%bc(blk)%bwd_solve_dep)
         dep_blk = fkeep%bc(blk)%bwd_solve_dep(i)
@@ -1285,12 +1298,11 @@ contains
       end do
     end do
 
-    ! Rebuild the bwd_dep list 
-!   call print_array("Original dep", size(fkeep%bc(blk_en)%bwd_dep), &
-!     fkeep%bc(blk_en)%bwd_dep, 1)
+    ! Rebuild the bwd_dep list of the last block of the tree
     deallocate(fkeep%bc(blk_en)%bwd_dep)
     allocate(fkeep%bc(blk_en)%bwd_dep(ndep))
 
+    ! Copy the dependency blocks in ascending order
     cpt = 1
     do blk = blk_en + 1, nblk
       if(is_dep(blk)) then
@@ -1298,24 +1310,11 @@ contains
         cpt = cpt + 1
       end if
     end do
-   !do blk = blk_sa, blk_en
-   !  do i = 1, size(fkeep%bc(blk)%bwd_solve_dep)
-   !    dep_blk = fkeep%bc(blk)%bwd_solve_dep(i)
-   !    if(dep_blk .gt. blk_en) then
-   !      if(is_dep(dep_blk)) then
-   !        fkeep%bc(blk_en)%bwd_dep(cpt) = dep_blk
-   !        cpt = cpt + 1
-   !        is_dep(dep_blk) = .false.
-   !      end if
-   !    end if
-   !  end do
-   !end do
 
-    if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
-      fkeep%bc(blk_en)%bwd_dep(cpt) = fkeep%bc(blk_en)%bwd_update_dep
-    end if
+   !if(fkeep%bc(blk_en)%bwd_update_dep .ne. blk_en) then
+   !  fkeep%bc(blk_en)%bwd_dep(cpt) = fkeep%bc(blk_en)%bwd_update_dep
+   !end if
 
-!   call print_array("Updated dep", ndep, fkeep%bc(blk_en)%bwd_dep, 1)
     deallocate(is_dep)
 
   end subroutine spllt_update_blk_dep

@@ -283,7 +283,7 @@ program spllt_test
       &//date//'-'//time)
 #endif
 
-  call task_manager%print()
+ !call task_manager%print()
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val)
 
