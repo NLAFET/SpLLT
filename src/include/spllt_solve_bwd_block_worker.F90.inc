@@ -11,7 +11,7 @@ if(ndep_lvl .le. chunk) then
 #endif
  
 #if defined(SPLLT_VERBOSE)
-   print '(a, i3, a, i3)', "SLV      Task dep of ", dblk, " [in : "
+   print '(a, i3, a, i3)', "SLV-BWD  Task dep of ", dblk, " [in : "
    print *, p_dep
 #endif
  

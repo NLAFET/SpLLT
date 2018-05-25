@@ -12,7 +12,7 @@ if(ndep_lvl .le. chunk) then
 #endif
 
 #if defined(SPLLT_VERBOSE)
-  print '(a, i3, a)', "UPD      Task dep of ", blk, " [in : "
+  print '(a, i3, a)', "UPD-BWD  Task dep of ", blk, " [in : "
   print *, p_dep
 #endif
 
