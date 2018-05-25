@@ -348,7 +348,7 @@ module task_manager_omp_mod
 
     if(present(trace_id)) then
       call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr,&
-        xlocal, fkeep, no_trace)
+        xlocal, fkeep, trace_id)
     else
       call solve_fwd_block_task_worker(task_manager, dblk, nrhs, upd, rhs, ldr,&
         xlocal, fkeep, task_manager%trace_ids(trace_fwd_block_pos))
