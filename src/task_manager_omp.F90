@@ -1121,6 +1121,10 @@ module task_manager_omp_mod
     call trace_event_start(trace_id, sub_task_manager%workerID)
 #endif
 
+#if defined(SPLLT_VERBOSE)
+  print '(a, i3, a)', "SLV_FWD  Task dep of ", blk_en, " [in : "
+#endif
+
     do i = sa, en
       call solve_fwd_node(nrhs, p_rhs, ldr, fkeep, i, p_xlocal, &
         p_rhs_local, sub_task_manager, no_trace)

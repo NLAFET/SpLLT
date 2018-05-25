@@ -218,7 +218,6 @@ program spllt_test
   workspace = zero
   call spllt_tac(6, task_manager%workerID, timer)
 
-  
 
   !!!!!!!!!!!!!!!!!!!!
   ! Compute dependencies of each blk
@@ -238,7 +237,6 @@ program spllt_test
   ! Forward substitution
   !
   call task_manager%nflop_reset()
-  call spllt_tic("Solving", 7, task_manager%workerID, timer)
   call spllt_tic("Forward", 4, task_manager%workerID, timer)
 
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
@@ -257,6 +255,17 @@ program spllt_test
     workspace=workspace, task_manager=task_manager)
 
   call spllt_tac(5, task_manager%workerID, timer)
+
+  !!!!!!!!!!!!!!!!!!!!
+  ! Solve
+  !
+  sol_computed = rhs
+  call task_manager%nflop_reset()
+  call spllt_tic("Solving", 7, task_manager%workerID, timer)
+
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=0, &
+    workspace=workspace, task_manager=task_manager)
+
   call spllt_tac(7, task_manager%workerID, timer)
 
 

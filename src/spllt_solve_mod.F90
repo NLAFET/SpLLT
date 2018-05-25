@@ -217,8 +217,8 @@ contains
     integer           :: j        ! Iterator
     integer           :: n        ! Order of the system
     character(len=30) :: context  ! Name of the subroutine
-    real(wp), pointer :: work(:,:)
-    real(wp), pointer :: work2(:)
+    real(wp), pointer :: x_tmp(:,:)
+    real(wp), pointer :: work(:)
     integer(long)     :: size_nrhs, size_work
 
     ! immediate return if n = 0
@@ -235,8 +235,8 @@ contains
     size_nrhs = int(n, long) * nrhs
     size_work = int(fkeep%maxmn + n, long) * int(nrhs, long)
 
-    work(1 : n, 1 : nrhs) => workspace(1 : size_nrhs)
-    work2(1 : size_work * task_manager%nworker) =>                        &
+    x_tmp(1 : n, 1 : nrhs) => workspace(1 : size_nrhs)
+    work(1 : size_work * task_manager%nworker) =>                        &
       workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
       task_manager%nworker))
 
@@ -246,38 +246,40 @@ contains
        ! Reorder x
        !
         do j = 1, n
-           work(order(j),:) = x(j,:)
+          !work(order(j),:) = x(j,:)
+           x_tmp(order(j),:) = x(j,:)
         end do
 
         ! Forward solve
-        call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
+        call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
         ! Backward solve
-        call solve_bwd(nrhs, work, n, fkeep, work2, task_manager)
+        call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
        !
        ! Reorder soln
        !
+      !$omp taskwait
         do j = 1, n
-           x(j,:) = work(order(j),:)
+           x(j,:) = x_tmp(order(j),:)
         end do
 
       case(1)
+        x_tmp = x
         do j = 1, n
-           work(order(j),:) = x(j,:)
+           x(order(j),:) = x_tmp(j,:)
         end do
 
-        call solve_fwd(nrhs, work, n, fkeep, work2, task_manager)
-
-        x = work
+        call solve_fwd(nrhs, x, n, fkeep, work, task_manager)
+      !$omp taskwait
       
       case(2)
-        work = x
 
-        call solve_bwd(nrhs, work, n, fkeep, work2, task_manager)
-
+        call solve_bwd(nrhs, x, n, fkeep, work, task_manager)
+      !$omp taskwait
+        x_tmp = x
         do j = 1, n
-           x(j,:) = work(order(j),:)
+           x(j,:) = x_tmp(order(j),:)
         end do
 
       case default
@@ -409,7 +411,8 @@ call task_manager%print("fwd end of submitted task", 0)
  !$ call omp_destroy_lock(lock)
 #endif
     
-    !$omp taskwait
+    call task_manager%print("fwd end of submitted task", 0)
+
     call task_manager%get_nflop_performed(nflop_en)
 #if defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
@@ -527,7 +530,6 @@ call task_manager%print("fwd end of submitted task", 0)
  !$ call omp_destroy_lock(lock)
 #endif
 
-    !$omp taskwait
     call task_manager%print("bwd end of execution task", 0)
 
     call task_manager%get_nflop_performed(nflop_en)
