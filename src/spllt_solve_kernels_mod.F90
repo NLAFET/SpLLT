@@ -61,6 +61,8 @@ contains
   subroutine slv_fwd_update(m, nelim, col, offset, index, dest, ldd, nrhs, &
        upd, ldu, rhs, ldr, xlocal)
     use spllt_data_mod
+    use timer_mod
+ !$ use omp_lib, ONLY : omp_get_thread_num
     implicit none
 
     integer,  intent(in)    :: m              ! number of rows in block
@@ -85,6 +87,15 @@ contains
     integer   :: r ! right hand side loop variable
     real(wp)  :: w ! temporary work value
     !%%%  integer :: t_start, t_end, this_thread
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+    type(spllt_timer_t), save :: timer
+    integer                   :: threadID
+
+    threadID = 0
+ !$ threadID = omp_get_thread_num()
+
+    call spllt_open_timer(threadID, "slv_fwd_update", timer)
+#endif
 
     if(nelim.eq.0) return
 
@@ -96,12 +107,18 @@ contains
           call dgemv('T', nelim, m, -one, dest, ldd, rhs(col), 1, zero, &
                xlocal, 1)
 
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+          call spllt_tic("scatter", 1, threadID, timer)
+#endif
           ! Copy xlocal out
           j = 1
           do i = offset, offset+m-1
              upd(index(i)) = upd(index(i)) + xlocal(j)
              j = j + 1
           end do
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+          call spllt_ftac(1, threadID, timer)
+#endif
        else
 !!! Single rhs, direct update
           j = 1
@@ -117,18 +134,28 @@ contains
        endif
     else
 !!! Multiple rhs, BLAS 3
-       call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs(col), ldr, &
-            zero, xlocal, m)
+      call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs(col), ldr, &
+           zero, xlocal, m)
 
-       ! Copy xlocal out
-       j = 1
-       do i = offset, offset+m-1
-          do r = 0, nrhs-1
-             upd(index(i)+r*ldu) = upd(index(i)+r*ldu) + xlocal(j+r*m)
-          end do
-          j = j + 1
-       end do
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+      call spllt_tic("scatter", 1, threadID, timer)
+#endif
+      ! Copy xlocal out
+      j = 1
+      do i = offset, offset+m-1
+         do r = 0, nrhs-1
+            upd(index(i)+r*ldu) = upd(index(i)+r*ldu) + xlocal(j+r*m)
+         end do
+         j = j + 1
+      end do
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+      call spllt_ftac(1, threadID, timer)
+#endif
     endif
+
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+    call spllt_close_ftimer(threadID, timer)
+#endif
 
   end subroutine slv_fwd_update
   
@@ -140,6 +167,8 @@ contains
   subroutine slv_bwd_update(m, nelim, col, offset, index, dest, ldd, nrhs, &
       rhs, upd, ldr, xlocal)
     use spllt_data_mod
+    use timer_mod
+ !$ use omp_lib, ONLY : omp_get_thread_num
     implicit none
 
     integer, intent(in) :: m ! number of rows in block
@@ -161,6 +190,15 @@ contains
     integer :: r ! right hand side loop variable
     real(wp) :: w ! temporary work variable
     !%%%  integer :: t_start, t_end, this_thread
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+    type(spllt_timer_t), save :: timer
+    integer                   :: threadID
+
+    threadID = 0
+ !$ threadID = omp_get_thread_num()
+
+    call spllt_open_timer(threadID, "slv_bwd_update", timer)
+#endif
 
     if(nelim.eq.0) return
 
@@ -168,53 +206,69 @@ contains
 
     ! backward substitution
     if(nrhs.eq.1) then
-       if(m-nelim.gt.10 .and. nelim.gt.4) then
+      if(m-nelim.gt.10 .and. nelim.gt.4) then
 !!! Single right-hand side, BLAS 2
 
-          ! Copy xlocal in
-          j = 1
-          do i = offset, offset+m-1
-             xlocal(j) = rhs(index(i))
-             j = j + 1
-          end do
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+        call spllt_tic("gather", 1, threadID, timer)
+#endif
+         ! Copy xlocal in
+        j = 1
+        do i = offset, offset+m-1
+           xlocal(j) = rhs(index(i))
+           j = j + 1
+        end do
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+        call spllt_ftac(1, threadID, timer)
+#endif
 
-          call dgemv('N', nelim, m, -one, dest, ldd, xlocal, 1, one, &
-               upd(col), 1)
-       else
+        call dgemv('N', nelim, m, -one, dest, ldd, xlocal, 1, one, &
+             upd(col), 1)
+      else
 !!! Single right-hand side, direct update
-          j = 1
-          do i = offset, offset+m-1
-             w = rhs(index(i))
-             do k = col, col + nelim - 1
-                upd(k) = upd(k) - dest(j)*w
-                j = j + 1
-             end do
-             j = j + (ldd-nelim)
+        j = 1
+        do i = offset, offset+m-1
+          w = rhs(index(i))
+          do k = col, col + nelim - 1
+            upd(k) = upd(k) - dest(j)*w
+            j = j + 1
           end do
-       endif
+          j = j + (ldd-nelim)
+        end do
+      endif
     else
 !!! Multiple RHS, BLAS 3
 
-       ! Copy xlocal in
-       j = 1
-!      do i = offset, offset+m-1
-!         do r = 0, nrhs-1
-!            xlocal(j+r*m) = rhs(index(i)+r*ldr)
-!         end do
-!         j = j + 1
-!      end do
-       !Test change order of loop
-       do r = 0, nrhs-1
-          j = 1
-          do i = offset, offset+m-1
-            xlocal(j+r*m) = rhs(index(i)+r*ldr)
-            j = j + 1
-          end do
-       end do
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+      call spllt_tic("gather", 1, threadID, timer)
+#endif
+      ! Copy xlocal in
+      j = 1
+!     do i = offset, offset+m-1
+!        do r = 0, nrhs-1
+!           xlocal(j+r*m) = rhs(index(i)+r*ldr)
+!        end do
+!        j = j + 1
+!     end do
+      !Test change order of loop
+      do r = 0, nrhs-1
+         j = 1
+         do i = offset, offset+m-1
+           xlocal(j+r*m) = rhs(index(i)+r*ldr)
+           j = j + 1
+         end do
+      end do
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+      call spllt_ftac(1, threadID, timer)
+#endif
 
-       call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, m, &
-            one, upd(col), ldr)
+      call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, m, &
+           one, upd(col), ldr)
     endif
+
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+    call spllt_close_ftimer(threadID, timer)
+#endif
 
   end subroutine slv_bwd_update
 
@@ -245,7 +299,7 @@ contains
 
     integer :: i, r, j
     double precision :: lflops
-#if defined(SPLLT_TIMER_TASKS)
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
     type(spllt_timer_t), save :: timer
 
     call spllt_open_timer(threadID, "solve_bwd_block_work", timer)
@@ -266,6 +320,9 @@ contains
 
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("bwd block task reduction", 1, threadID, timer)
+#endif
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+call spllt_tic("gather", 2, threadID, timer)
 #endif
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
@@ -298,6 +355,9 @@ call spllt_tic("bwd block task reduction", 1, threadID, timer)
 #if defined(SPLLT_PROFILING_FLOP)
     flops = flops + lflops
 #endif
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+call spllt_ftac(2, threadID, timer)
+#endif
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(1, threadID, timer, lflops)
 #endif
@@ -310,7 +370,7 @@ call spllt_tac(1, threadID, timer, lflops)
     flops = flops + n * n * nrhs
 #endif
 
-#if defined(SPLLT_TIMER_TASKS)
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
     call spllt_close_timer(threadID, timer, flops)
 #endif
   end subroutine solve_bwd_block_work
@@ -402,7 +462,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
     integer :: i, r, j
     double precision :: lflops
-#if defined(SPLLT_TIMER_TASKS)
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
     type(spllt_timer_t), save :: timer
 
     call spllt_open_timer(threadID, "solve_fwd_block_work", timer)
@@ -412,6 +472,9 @@ call spllt_tac(1, threadID, timer, lflops)
 
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd block task reduction", 1, threadID, timer)
+#endif
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+call spllt_tic("gather", 2, threadID, timer)
 #endif
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
@@ -441,6 +504,9 @@ call spllt_tic("fwd block task reduction", 1, threadID, timer)
 #if defined(SPLLT_PROFILING_FLOP)
     flops = flops + lflops
 #endif
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+call spllt_ftac(2, threadID, timer)
+#endif
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(1, threadID, timer, lflops)
 #endif
@@ -468,7 +534,7 @@ call spllt_tac(1, threadID, timer, lflops)
 #endif
     endif
 
-#if defined(SPLLT_TIMER_TASKS)
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
     call spllt_close_timer(threadID, timer, flops)
 #endif
   end subroutine solve_fwd_block_work
