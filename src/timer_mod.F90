@@ -251,6 +251,28 @@ contains
 
 
 
+  subroutine spllt_close_ftimer(thn, timer)
+    integer,                    intent(in)    :: thn
+    type(spllt_timer_t),        intent(inout) :: timer
+    
+    integer :: step_id
+
+    step_id = 0
+
+    timer%swap(thn)           = omp_get_wtime()
+    timer%start(step_id, thn) = timer%swap(thn) - timer%start(step_id, thn)
+
+    ! Compute elapsed time
+    ! Compute min/max
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    ! Counter
+    timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+    
+  end subroutine spllt_close_ftimer
+
+
+
   subroutine spllt_close_timer(thn, timer)
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
