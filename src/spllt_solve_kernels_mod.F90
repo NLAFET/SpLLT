@@ -108,7 +108,7 @@ contains
                xlocal, 1)
 
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
-          call spllt_tic("scatter", 1, threadID, timer)
+          call spllt_tic("fwd::scatter", 1, threadID, timer)
 #endif
           ! Copy xlocal out
           j = 1
@@ -138,7 +138,7 @@ contains
            zero, xlocal, m)
 
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
-      call spllt_tic("scatter", 1, threadID, timer)
+      call spllt_tic("fwd::scatter", 1, threadID, timer)
 #endif
       ! Copy xlocal out
       j = 1
@@ -210,7 +210,7 @@ contains
 !!! Single right-hand side, BLAS 2
 
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
-        call spllt_tic("gather", 1, threadID, timer)
+        call spllt_tic("bwd::gather", 1, threadID, timer)
 #endif
          ! Copy xlocal in
         j = 1
@@ -240,7 +240,7 @@ contains
 !!! Multiple RHS, BLAS 3
 
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
-      call spllt_tic("gather", 1, threadID, timer)
+      call spllt_tic("bwd::gather", 1, threadID, timer)
 #endif
       ! Copy xlocal in
       j = 1
@@ -322,7 +322,7 @@ contains
 call spllt_tic("bwd block task reduction", 1, threadID, timer)
 #endif
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
-call spllt_tic("gather", 2, threadID, timer)
+call spllt_tic("bwd::reduction", 2, threadID, timer)
 #endif
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
@@ -474,7 +474,7 @@ call spllt_tac(1, threadID, timer, lflops)
 call spllt_tic("fwd block task reduction", 1, threadID, timer)
 #endif
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
-call spllt_tic("gather", 2, threadID, timer)
+call spllt_tic("fwd::reduction", 2, threadID, timer)
 #endif
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
