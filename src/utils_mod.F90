@@ -15,6 +15,16 @@ module utils_mod
     module procedure flop_log_dump_one
     module procedure flop_log_dump_mult
   end interface flop_log_dump
+
+  interface pack_rhs
+    module procedure linear_pack_rhs
+    module procedure vector_pack_rhs
+  end interface pack_rhs
+
+  interface unpack_rhs
+    module procedure linear_unpack_rhs
+    module procedure vector_unpack_rhs
+  end interface unpack_rhs
 contains
 
   subroutine print_darray(array_name, n, val, display)
@@ -535,5 +545,174 @@ contains
 !  !end do
 
 ! end subroutine print_csr_matrix
+
+  subroutine linear_pack_rhs(nrhs, rhs, n, ldr, bdr, rhs_pack, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: ldr
+    integer,  intent(in)    :: bdr
+    real(wp), intent(in)    :: rhs(n,nrhs)
+    real(wp), intent(inout) :: rhs_pack(n*nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: last_entry
+
+    size_nrhs   = int(n, long) * nrhs
+    last_entry  = mod(n, bdr)
+    nblk        = n / bdr
+
+!   print *, "Nblk : ", nblk, 'with a rest of ', last_entry
+
+    do blk = 0, nblk - 1
+      do r = 1, nrhs
+!       print *, 'Fill rhs_pack from ', 1 + ldr * blk + bdr * (r - 1),   &
+!         ' to ', ldr * blk + bdr * r, 'with', 1 + bdr * blk, 'to', &
+!         bdr * (blk + 1)
+        rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + bdr * r ) =&
+          rhs(1 + bdr * blk : bdr * (blk + 1), r)
+      end do
+    end do
+    if (last_entry .gt. 0) then
+      do r = 1, nrhs
+        if( r .lt. nrhs) then
+!         print *, 'Fill rhs_pack from ', 1 + ldr * blk + bdr * (r - 1),   &
+!           ' to ', ldr * blk + last_entry * r, ' with ', 1 + bdr * blk,&
+!           ' to ', n
+          rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + last_entry * r) = &
+            rhs(1 + bdr * blk : n, r)
+        else
+!         print *, 'Fill xil from ', 1 + ldr * blk + last_entry * (r - 1), &
+!           ' to ', size_nrhs, ' with ', 1 + bdr * blk, ' to ', n
+          rhs_pack(1 + ldr * blk + last_entry * (r - 1) : size_nrhs) =&
+            rhs(1 + bdr * blk : n, r)
+        end if
+      end do
+    end if
+
+  end subroutine linear_pack_rhs
+
+
+
+  subroutine linear_unpack_rhs(nrhs, rhs_pack, n, ldr, bdr, rhs, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: ldr
+    integer,  intent(in)    :: bdr
+    real(wp), intent(in)    :: rhs_pack(n*nrhs)
+    real(wp), intent(inout) :: rhs(n,nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: last_entry
+
+    size_nrhs = int(n, long) * nrhs
+    last_entry  = mod(n, bdr)
+    nblk      = n / bdr
+
+    do blk = 0, nblk - 1!- merge(1, 0, last_blk .gt. 0)
+      do r = 1, nrhs
+!       print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', &
+!         bdr * (blk + 1)
+        rhs(1 + bdr * blk : bdr * (blk + 1), r) = &
+          rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + bdr * r )
+      end do
+    end do
+    if (last_entry .gt. 0) then
+      do r = 1, nrhs
+        if( r .lt. nrhs) then
+!         print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', n, &
+!           'with', 1 + ldr * blk + last_entry * (r - 1), 'to', &
+!           ldr * blk + last_entry * r
+          rhs(1 + bdr * blk : n, r) = &
+            rhs_pack(1 + ldr * blk + last_entry * (r - 1) : ldr * blk + last_entry * r )
+        else
+!         print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', n, &
+!           'with', 1 + ldr * blk + last_entry * (r - 1), 'to', size_nrhs
+          rhs(1 + bdr * blk : n, r) = &
+            rhs_pack(1 + ldr * blk + last_entry * (r - 1) :  size_nrhs )
+        end if
+      end do
+    end if
+
+  end subroutine linear_unpack_rhs
+
+
+
+  subroutine vector_pack_rhs(nrhs, rhs, n, v, rhs_pack, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: v(:)
+    real(wp), intent(in)    :: rhs(n,nrhs)
+    real(wp), intent(inout) :: rhs_pack(n*nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: rowPtr, bdr
+
+    size_nrhs   = int(n, long) * nrhs
+    nblk        = size(v) - 1
+
+    print *, "Nblk : ", nblk
+
+    do blk = 1, nblk
+      rowPtr  = v(blk) * nrhs
+      bdr     = v(blk + 1) - v(blk)
+      do r = 0, nrhs - 1
+        print *, 'Fill rhs_pack from ', 1 + rowPtr + bdr * r,       &
+          ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+          v(blk) + bdr
+        rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1)) =&
+          rhs(v(blk) + 1: v(blk) + bdr, r + 1)
+      end do
+    end do
+
+  end subroutine vector_pack_rhs
+
+
+
+  subroutine vector_unpack_rhs(nrhs, rhs_pack, n, v, rhs, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: v(:)
+    real(wp), intent(in)    :: rhs_pack(n*nrhs)
+    real(wp), intent(inout) :: rhs(n,nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: bdr, rowPtr
+
+    size_nrhs   = int(n, long) * nrhs
+    nblk        = size(v) - 1
+
+    print *, "Nblk : ", nblk
+
+    do blk = 1, nblk
+      rowPtr  = v(blk) * nrhs
+      bdr     = v(blk + 1) - v(blk)
+      do r = 0, nrhs - 1
+        print *, 'Fill x from ', 1 + rowPtr + bdr * r,       &
+          ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+          v(blk) + bdr
+        rhs(v(blk) + 1: v(blk) + bdr, r + 1)  = &
+          rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1))
+      end do
+    end do
+
+  end subroutine vector_unpack_rhs
+
+
 
 end module utils_mod

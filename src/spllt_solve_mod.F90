@@ -186,10 +186,11 @@ contains
 
 
 
-
+#define SPLLT_ILEAVE
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, job, workspace, task_manager)
     use spllt_data_mod
+    use spllt_solve_dep_mod, ONLY : spllt_compute_rhs_block
     use utils_mod
     use task_manager_mod
     implicit none
@@ -214,12 +215,20 @@ contains
     real(wp),             intent(out),   target :: workspace(:)
     class(task_manager_base), intent(inout), target :: task_manager
 
+    integer           :: r
     integer           :: j        ! Iterator
     integer           :: n        ! Order of the system
     character(len=30) :: context  ! Name of the subroutine
     real(wp), pointer :: x_tmp(:,:)
     real(wp), pointer :: work(:)
     integer(long)     :: size_nrhs, size_work
+#if defined(SPLLT_ILEAVE)
+    integer               :: ldr, bdr
+    integer               :: st
+    real(wp), allocatable :: xil(:)
+    real(wp), allocatable :: norm(:)
+    integer,  allocatable :: rhsPtr(:)
+#endif
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -245,17 +254,75 @@ contains
        !
        ! Reorder x
        !
+       !TODO Add subroutine to interleave and order at the same time
         do j = 1, n
           !work(order(j),:) = x(j,:)
            x_tmp(order(j),:) = x(j,:)
         end do
+        do r = 1, nrhs
+          call print_darray("Original RHS", n, x_tmp(:, r), 1)
+        end do
+
+#if defined(SPLLT_ILEAVE)
+
+      ! bdr = fkeep%nodes(1)%nb
+      ! ldr = nrhs * bdr
+!     ! print *, "Allocate xil of size ", size_nrhs
+      ! allocate(xil(size_nrhs))
+      ! allocate(norm(nrhs))
+
+      ! call pack_rhs(nrhs, x_tmp, n, ldr, bdr, xil, st)
+
+      ! call print_darray("Interleaved RHS", int(size_nrhs), xil, 1)
+
+      ! call unpack_rhs(nrhs, xil, n, ldr, bdr, x, st)
+
+      ! call vector_norm_2(nrhs, x_tmp - x, norm)
+      ! print *, "Norm ", norm
+
+      ! deallocate(xil)
+      ! deallocate(norm)
+        allocate(xil(size_nrhs))
+       !allocate(norm(nrhs))
+        call pack_rhs(nrhs, x_tmp, n, fkeep%rhsPtr, xil, st)
+
+       !call print_darray("Interleaved RHS", int(size_nrhs), xil, 1)
+
+       !call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x, st)
+
+       !do r = 1, nrhs
+       !  call print_darray("Unpack RHS", n, x(:, r), 1)
+       !end do
+
+       !call vector_norm_2(nrhs, x_tmp - x, norm)
+       !print *, "Norm ", norm
+       !stop
 
         ! Forward solve
+        call solve_fwd_ileave(nrhs, xil, n, ldr, bdr, fkeep, work, task_manager)
+
+!       call print_darray("Interleaved returned solution", int(size_nrhs), &
+!         xil, 1)
+
+        call spllt_rhs_unpack(nrhs, xil, n, ldr, bdr, x_tmp, st)
+#else
+        ! Forward solve
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
+
+#endif
+
+        do r = 1, nrhs
+          call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
+        end do
+
+        stop
 
         ! Backward solve
         call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
+        do r = 1, nrhs
+          call print_darray("Solution returned by bwd", n, x_tmp(:, r), 0)
+        end do
        !
        ! Reorder soln
        !
@@ -264,23 +331,23 @@ contains
            x(j,:) = x_tmp(order(j),:)
         end do
 
-      case(1)
-        x_tmp = x
-        do j = 1, n
-           x(order(j),:) = x_tmp(j,:)
-        end do
+     !case(1)
+     !  x_tmp = x
+     !  do j = 1, n
+     !     x(order(j),:) = x_tmp(j,:)
+     !  end do
 
-        call solve_fwd(nrhs, x, n, fkeep, work, task_manager)
-      !$omp taskwait
-      
-      case(2)
+     !  call solve_fwd(nrhs, x, n, fkeep, work, task_manager)
+     !!$omp taskwait
+     !
+     !case(2)
 
-        call solve_bwd(nrhs, x, n, fkeep, work, task_manager)
-      !$omp taskwait
-        x_tmp = x
-        do j = 1, n
-           x(j,:) = x_tmp(order(j),:)
-        end do
+     !  call solve_bwd(nrhs, x, n, fkeep, work, task_manager)
+     !!$omp taskwait
+     !  x_tmp = x
+     !  do j = 1, n
+     !     x(j,:) = x_tmp(order(j),:)
+     !  end do
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
@@ -539,4 +606,140 @@ call task_manager%print("fwd end of submitted task", 0)
 
   end subroutine solve_bwd
   
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! InterLeave subroutines
+  !
+  subroutine solve_fwd_ileave(nrhs, rhs, n, ldr, bdr, fkeep, workspace, task_manager)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use timer_mod
+    use utils_mod, ONLY : print_node, print_blk_index
+    use task_manager_mod
+ !$ use omp_lib, ONLY : omp_lock_kind
+    implicit none
+
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: n    ! Order of the system
+    integer,                    intent(in)    :: ldr  ! Move block by block in rhs
+    integer,                    intent(in)    :: bdr  ! Move RHS by RHS in rhs
+    real(wp),                   intent(inout) :: rhs(n*nrhs)
+    real(wp), target,           intent(out)   :: workspace(:)
+    class(task_manager_base ),  intent(inout) :: task_manager
+
+    integer                     :: nb
+    integer                     :: ldu, bdu, tdu
+    integer                     :: node
+    integer                     :: fwd_submit_tree_id
+    integer                     :: fwd_submit_id
+    integer                     :: nworker
+    real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
+    real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
+    type(spllt_block), pointer  :: p_bc(:)
+    type(spllt_timer_t), save   :: timer
+ !$ integer(kind=omp_lock_kind) :: lock
+    integer                     :: tree_num
+    integer(long)               :: size_rhs_local, size_xlocal
+    double precision            :: nflop_sa, nflop_en
+
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_ileave", timer)
+#endif
+    call task_manager%get_nflop_performed(nflop_sa)
+
+
+    nworker       = task_manager%nworker
+#if defined(SPLLT_OMP_TRACE)
+    fwd_submit_id = task_manager%trace_ids(trace_fwd_submit_pos)
+    call trace_event_start(fwd_submit_id, -1)
+#endif
+
+    size_xlocal     = int(fkeep%maxmn, long) * nrhs
+    size_rhs_local  = int(fkeep%maxmn + n, long) * int(nrhs, long) ! Shifted
+
+    xlocal(1 : size_xlocal, 0 : nworker - 1) => workspace(1 : &
+      size_xlocal * nworker)
+    rhs_local => workspace(size_xlocal * nworker + 1 : size_rhs_local * nworker)
+    nb  = fkeep%nodes(1)%nb
+    tdu = nworker
+   !bdu = nb * tdu
+   !ldu = nrhs * bdu
+
+#if defined(SOLVE_TASK_LOCKED)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Lock the execution of the tasks that will then be submitted by the master
+    p_bc => fkeep%bc(:)
+ !$ call omp_init_lock(lock)
+ !$ call omp_set_lock(lock)
+
+    !$omp task depend(inout: p_bc(1))   &
+    !$omp shared(lock)                  &
+    !$omp firstprivate(p_bc)
+
+ !$ call omp_set_lock(lock) 
+    print *, "Lock locked in task"
+ !$ call omp_unset_lock(lock)
+
+    !$omp end task
+#endif
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+    fwd_submit_tree_id = task_manager%trace_ids(trace_fwd_submit_tree_pos)
+    call trace_event_start(fwd_submit_tree_id, -2)
+#endif
+
+   !do tree_num = 1, size(fkeep%trees)
+   !  call task_manager%solve_fwd_subtree_task(nrhs, rhs, ldr, fkeep, &
+   !    fkeep%trees(tree_num), xlocal, rhs_local)
+   !end do
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_submit_tree_id, -2)
+#endif
+
+    do node = 1, fkeep%info%num_nodes
+
+     !if(fkeep%small(node) .ne. 0) then
+     !  cycle
+     !end if
+
+      print *, "Submit node ", node
+      call print_node(fkeep, node)
+      call print_blk_index('', size(fkeep%nodes(node)%index), &
+          fkeep%nodes(node)%index, 1)
+      call solve_fwd_node_ileave(nrhs, rhs, n, ldr, bdr, fkeep, node, xlocal, &
+        rhs_local, ldu, bdu, tdu, task_manager)
+    end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tac(4, task_manager%workerID, timer)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_submit_id, -1)
+#endif
+
+#if defined(SOLVE_TASK_LOCKED)
+call task_manager%print("fwd end of submitted task", 0)
+ !$ call omp_unset_lock(lock)
+ !$ call omp_destroy_lock(lock)
+#endif
+    
+    call task_manager%print("fwd end of submitted task", 0)
+
+    call task_manager%get_nflop_performed(nflop_en)
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
+#endif
+
+  end subroutine solve_fwd_ileave
+
+
+
 end module spllt_solve_mod

@@ -66,6 +66,8 @@ module task_manager_mod
 
     procedure(task_manager_get_nflop_iface),deferred :: get_nflop_performed
 
+    procedure(solve_fwd_block_task_il_iface),  deferred :: solve_fwd_block_il_task
+    procedure(solve_fwd_update_task_il_iface), deferred :: solve_fwd_update_il_task
   end type task_manager_base
 
   abstract interface 
@@ -250,6 +252,59 @@ module task_manager_mod
       real(wp),                   intent(inout) :: xlocal(:,:)
       real(wp),                   intent(inout) :: rhs_local(:,:)
     end subroutine solve_bwd_subtree_task_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    !   Interleave interfaces
+    !!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a forward block task by the task manager
+    !
+    subroutine solve_fwd_block_task_il_iface(task_manager, dblk, nrhs, upd, &
+      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: dblk 
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: ldu
+      integer,                    intent(in)    :: bdu
+      integer,                    intent(in)    :: tdu
+      integer,                    intent(in)    :: n
+      integer,                    intent(in)    :: ldr
+      integer,                    intent(in)    :: bdr
+      real(wp), target,           intent(inout) :: upd(:)
+      real(wp), target,           intent(inout) :: rhs(n * nrhs)
+      real(wp), target,           intent(inout) :: xlocal(:, :)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+
+    end subroutine solve_fwd_block_task_il_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a forward update task by the task manager
+    !
+    subroutine solve_fwd_update_task_il_iface(task_manager, blk, node, nrhs, &
+        upd, ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: blk
+      integer,                    intent(in)    :: node
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: ldu
+      integer,                    intent(in)    :: bdu
+      integer,                    intent(in)    :: tdu
+      integer,                    intent(in)    :: n
+      integer,                    intent(in)    :: ldr
+      integer,                    intent(in)    :: bdr
+      real(wp), target,           intent(inout) :: upd(:)
+      real(wp), target,           intent(in)    :: rhs(n*nrhs)
+      real(wp), target,           intent(out)   :: xlocal(:,:)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+    end subroutine solve_fwd_update_task_il_iface
   end interface
 
 contains

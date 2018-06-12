@@ -1319,6 +1319,65 @@ contains
 
   end subroutine spllt_update_blk_dep
 
+
+
+  subroutine spllt_compute_rhs_block(fkeep, st)
+    use spllt_data_mod
+    implicit none
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    integer,                    intent(out)   :: st
+
+    integer :: nnode, node
+    integer :: ndblk
+    integer :: sa, en
+    integer :: ncol
+    integer :: i
+    integer :: dblk, blk
+    integer :: nb
+    integer :: nlblk
+    integer, pointer :: rhsPtr(:)
+
+    nnode = fkeep%info%num_nodes
+    ndblk = 0
+    ! Count the number of diagonal block
+    do node = 1, nnode
+      sa    = fkeep%nodes(node)%sa
+      en    = fkeep%nodes(node)%en
+      ncol  = en - sa
+      nb    = fkeep%nodes(node)%nb
+      nlblk = ncol/nb + merge(1, 0, mod(ncol, nb) .gt. 0) ! #local diag block
+      print *, "Node ", node, "has", nlblk, "dblk"
+      ndblk  = ndblk + nlblk
+    end do
+    print *, "Total number of dblk", ndblk
+
+    fkeep%ndblk = ndblk
+    allocate(fkeep%rhsPtr(ndblk + 1), stat=st)
+
+    rhsPtr => fkeep%rhsPtr
+    rhsPtr(1) = 0
+    blk       = 0 ! #blk already treated
+
+    ! Fill in rhsPtr array
+    do node = 1, nnode
+      sa    = fkeep%nodes(node)%sa
+      en    = fkeep%nodes(node)%en
+      ncol  = en - sa
+      nb    = fkeep%nodes(node)%nb
+      nlblk = ncol/nb + merge(1, 0, mod(ncol, nb) .gt. 0) ! #local diag block
+      dblk  = fkeep%nodes(node)%blk_sa
+      do i = 1, nlblk
+        print *, fkeep%bc(dblk)%blkn, "ncol of blk", dblk
+        rhsPtr(blk + i + 1 ) = rhsPtr(blk + i) + fkeep%bc(dblk)%blkn
+        dblk = fkeep%bc(dblk)%last_blk + 1
+      end do
+      blk = blk + nlblk
+    end do
+
+    print *, "Result of rhsPtr", rhsPtr
+
+  end subroutine spllt_compute_rhs_block
+
 ! integer function bwd_solve_dependency(fkeep, blk)
 !   use spllt_data_mod
 

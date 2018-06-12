@@ -314,6 +314,8 @@ module spllt_data_mod
      integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
      ! locks in finalise
      type(spllt_inform) :: info ! Holds copy of info
+     integer :: ndblk
+     integer, allocatable :: rhsPtr(:)
      integer :: maxmn ! holds largest block dimension
      integer :: n  ! Order of the system.
      ! type(node_type), dimension(:), allocatable :: nodes ! nodal info
@@ -544,6 +546,10 @@ contains
     end if
     if(allocated(fkeep%assoc_tree)) then
       deallocate(fkeep%assoc_tree, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%rhsPtr)) then
+      deallocate(fkeep%rhsPtr, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_fkeep

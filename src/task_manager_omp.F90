@@ -31,6 +31,8 @@ module task_manager_omp_mod
       procedure :: solve_fwd_subtree_task
       procedure :: solve_bwd_subtree_task
 
+      procedure :: solve_fwd_block_il_task
+      procedure :: solve_fwd_update_il_task
   end type task_manager_omp_t
 
  contains
@@ -1299,5 +1301,385 @@ module task_manager_omp_mod
 #endif
 
   end subroutine solve_bwd_subtree_task_worker
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! InterLeave subroutines
+  !
+  subroutine solve_fwd_block_il_task(task_manager, dblk, nrhs, upd, ldu, &
+      bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    use spllt_data_mod
+    implicit none
+    
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: dblk !Index of diagonal block
+    integer,                    intent(in)    :: nrhs !Number of RHS
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr
+    integer,                    intent(in)    :: bdr
+    real(wp), target,           intent(inout) :: upd(:)
+    real(wp), target,           intent(inout) :: rhs(n * nrhs)
+    real(wp), target,           intent(inout) :: xlocal(:, :)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer, optional,          intent(in)    :: trace_id
+
+    if(present(trace_id)) then
+      call solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd,  &
+        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    else
+      call solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd,  &
+        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep,                   &
+        task_manager%trace_ids(trace_fwd_block_pos))
+    end if
+  end subroutine solve_fwd_block_il_task
+
+  subroutine solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd, &
+      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use spllt_solve_dep_mod
+    use omp_lib, ONLY : omp_get_thread_num
+    use timer_mod
+    implicit none
+    
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: dblk !Index of diagonal block
+    integer,                    intent(in)    :: nrhs !Number of RHS
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr
+    integer,                    intent(in)    :: bdr
+    real(wp), target,           intent(inout) :: upd(:)
+    real(wp), target,           intent(inout) :: rhs(n * nrhs)
+    real(wp), target,           intent(inout) :: xlocal(:, :)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: trace_id
+    
+    ! Node info
+    integer                     :: sa
+    ! Block info
+    integer                     :: blkm, blkn ! Block dimension
+    integer                     :: bcol, dcol, col
+    integer                     :: offset
+    integer                     :: node
+   !integer                     :: dep
+    integer                     :: i, j, r, chunkth
+    integer                     :: ndep
+    integer                     :: nthread, threadID
+    integer,           pointer  :: p_index(:)
+    real(wp),          pointer  :: p_lcol(:)
+
+    real(wp),          pointer  :: p_upd(:)
+    real(wp),          pointer  :: p_xlocal(:,:)
+    real(wp),          pointer  :: p_rhs(:)
+    integer,           pointer  :: p_dep(:)
+    integer                     :: chunk, chunk_size
+    integer                     :: ndep_lvl, lvl, nchunk
+    integer                     :: beta, alpha
+    logical                     :: all_task_submitted
+    integer                     :: nftask
+    double precision            :: flops
+
+    type(spllt_block), pointer  :: p_bc(:)
+
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
+        
+   !nthread   = omp_get_num_threads()
+    nthread = task_manager%nworker
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_fwd_block_il_task_worker", timer)
+#endif
+
+    ! Get block info
+    node      = fkeep%bc(dblk)%node
+    blkm      = fkeep%bc(dblk)%blkm
+    blkn      = fkeep%bc(dblk)%blkn
+    sa        = fkeep%bc(dblk)%sa
+    bcol      = fkeep%bc(dblk)%bcol ! Current block column
+    dcol      = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
+    col       = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
+    offset    = col - fkeep%nodes(node)%sa + 1
+    p_index   => fkeep%nodes(node)%index
+    p_lcol    => fkeep%lfact(bcol)%lcol
+    p_bc      => fkeep%bc
+    p_upd     => upd
+    p_xlocal  => xlocal
+    p_rhs     => rhs
+    p_dep     => fkeep%bc(dblk)%fwd_dep
+    ndep      = size(p_dep)
+    nftask    = 0
+    chunk     = 0
+    ndep_lvl  = 0
+
+    if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
+#endif
+      !$omp task                                &
+      include 'include/spllt_solve_fwd_block_il_omp_decl.F90.inc'
+
+#include "include/spllt_solve_fwd_block_il_worker.F90.inc"
+
+      !$omp end task
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(1, task_manager%workerID, timer)
+#endif
+    else
+      chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      lvl   = 1
+      alpha = 1
+      ndep_lvl = ndep ! #dep local to the lvl
+      all_task_submitted = .false.
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
+      do while(.not. all_task_submitted)
+      
+        nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
+
+        beta = 1 - alpha
+
+        do chunkth = 1, nchunk
+          chunk_size = merge(ndep_lvl - (chunkth - 1) * chunk, chunk, &
+            chunkth * chunk .gt. ndep_lvl)
+
+          select case(chunk_size)
+
+            case(0)
+              print *, "No dep ??"
+
+            !
+            !This file contains the remaining cases that are generated through a script
+            !
+#include "include/spllt_fwd_block_cases_il.F90.inc"
+
+          end select
+
+          beta = beta + chunk_size
+          if(ndep_lvl .le. chunk) then
+            all_task_submitted = .true.
+          else
+            nftask = nftask + 1
+          end if
+
+        end do
+        if(ndep_lvl .gt. chunk) then
+          ndep_lvl = nchunk
+          lvl = lvl + 1
+          alpha = alpha * chunk
+        end if
+      end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(12, task_manager%workerID, timer)
+#endif
+    end if
+    !$omp taskwait
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+    call task_manager%ntask_submitted(1, nftask)
+
+  end subroutine solve_fwd_block_il_task_worker
+
+
+
+  subroutine solve_fwd_update_il_task(task_manager, blk, node, nrhs, upd, &
+      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    use spllt_data_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: blk  ! Index of block
+    integer,                    intent(in)    :: node
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr
+    integer,                    intent(in)    :: bdr
+    real(wp), target,           intent(inout) :: upd(:)
+    real(wp), target,           intent(in)    :: rhs(n*nrhs)
+    real(wp), target,           intent(out)   :: xlocal(:,:)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer, optional,          intent(in)    :: trace_id
+
+    if(present(trace_id)) then
+      call solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, upd,&
+        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    else
+      call solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, upd,&
+        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep,                       &
+        task_manager%trace_ids(trace_fwd_update_pos))
+    end if
+  end subroutine solve_fwd_update_il_task
+
+  subroutine solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, &
+      upd, ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use spllt_solve_dep_mod
+    use timer_mod
+    use omp_lib, ONLY : omp_get_thread_num
+    implicit none
+    
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: blk  ! Index of block
+    integer,                    intent(in)    :: node
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr
+    integer,                    intent(in)    :: bdr
+    real(wp), target,           intent(inout) :: upd(:)
+    real(wp), target,           intent(in)    :: rhs(n*nrhs)
+    real(wp), target,           intent(out)   :: xlocal(:,:)
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer, intent(in)                       :: trace_id
+
+    ! Block info
+    integer                     :: blkm, blkn         ! Block dimension
+    integer                     :: blk_sa
+    integer                     :: bcol, dcol, col
+    integer                     :: offset
+    integer                     :: threadID
+    integer                     :: ndep
+   !integer                     :: dep
+    integer, pointer            :: p_index(:)
+    real(wp), pointer           :: p_lcol(:)
+    integer, pointer            :: p_dep(:)
+   !integer                     :: blk_dep_solve
+    real(wp)         , pointer  :: p_upd(:)
+    real(wp)         , pointer  :: p_xlocal(:,:)
+    real(wp)         , pointer  :: p_rhs(:)
+    type(spllt_block), pointer  :: p_bc(:)
+    integer                     :: j
+    integer                     :: chunk, chunk_size
+    integer                     :: ndep_lvl, lvl, nchunk
+    integer                     :: beta, alpha
+    logical                     :: all_task_submitted
+    integer                     :: nftask
+    double precision            :: flops
+
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
+        
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_fwd_update_il_task_worker", timer)
+#endif
+
+    ! Establish variables describing block
+    blkn      = fkeep%bc(blk)%blkn
+    blkm      = fkeep%bc(blk)%blkm
+    blk_sa    = fkeep%bc(blk)%sa
+    bcol      = fkeep%bc(blk)%bcol
+    dcol      = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
+    col       = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
+    offset    = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
+    offset    = offset + (blk-fkeep%bc(blk)%dblk) &
+      * fkeep%nodes(node)%nb ! this blk
+    p_index   => fkeep%nodes(node)%index
+    p_lcol    => fkeep%lfact(bcol)%lcol
+    p_bc      => fkeep%bc
+
+    p_upd     => upd
+    p_xlocal  => xlocal
+    p_rhs     => rhs
+    p_dep     => fkeep%bc(blk)%fwd_dep
+
+    nftask    = 0
+    ndep      = size(p_dep)
+    chunk     = 0
+    ndep_lvl  = 0
+
+    if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
+#endif
+      !$omp task                                &
+      include 'include/spllt_solve_fwd_update_il_omp_decl.F90.inc'
+
+#include "include/spllt_solve_fwd_update_il_worker.F90.inc"
+
+      !$omp end task
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(1, task_manager%workerID, timer)
+#endif
+    else
+
+      chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      lvl   = 1
+      alpha = 1
+      ndep_lvl = ndep ! #dep local to the lvl
+      all_task_submitted = .false.
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
+      do while(.not. all_task_submitted)
+      
+        nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
+
+        beta = 1 - alpha
+
+        do j = 1, nchunk
+          chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
+            j * chunk .gt. ndep_lvl)
+          select case(chunk_size)
+
+            case(0)
+              print *, "No dep ?? "
+
+            !
+            !This file contains the remaining cases that are generated through a script
+            !
+#include "include/spllt_fwd_update_cases_il.F90.inc"
+
+          end select
+          beta = beta + chunk_size
+          if(ndep_lvl .le. chunk) then
+            all_task_submitted = .true.
+          else
+            nftask = nftask + 1
+          end if
+
+        end do
+        if(ndep_lvl .gt. chunk) then
+          ndep_lvl = nchunk
+          lvl = lvl + 1
+          alpha = alpha * chunk
+        end if
+      end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(12, task_manager%workerID, timer)
+#endif
+    end if
+    !$omp taskwait
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+    call task_manager%ntask_submitted(1, nftask)
+
+  end subroutine solve_fwd_update_il_task_worker
+
+
 
 end module task_manager_omp_mod

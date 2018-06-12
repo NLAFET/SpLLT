@@ -229,6 +229,8 @@ program spllt_test
 
   call spllt_tac(3, task_manager%workerID, timer)
 
+  call spllt_compute_rhs_block(fkeep, st)
+
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine
   sol_computed = rhs
