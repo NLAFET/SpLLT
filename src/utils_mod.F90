@@ -662,15 +662,15 @@ contains
     size_nrhs   = int(n, long) * nrhs
     nblk        = size(v) - 1
 
-    print *, "Nblk : ", nblk
+ !! print *, "Nblk : ", nblk
 
     do blk = 1, nblk
       rowPtr  = v(blk) * nrhs
       bdr     = v(blk + 1) - v(blk)
       do r = 0, nrhs - 1
-        print *, 'Fill rhs_pack from ', 1 + rowPtr + bdr * r,       &
-          ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
-          v(blk) + bdr
+ !!     print *, 'Fill rhs_pack from ', 1 + rowPtr + bdr * r,       &
+ !!       ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+ !!       v(blk) + bdr
         rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1)) =&
           rhs(v(blk) + 1: v(blk) + bdr, r + 1)
       end do
@@ -697,15 +697,15 @@ contains
     size_nrhs   = int(n, long) * nrhs
     nblk        = size(v) - 1
 
-    print *, "Nblk : ", nblk
+ !! print *, "Nblk : ", nblk
 
     do blk = 1, nblk
       rowPtr  = v(blk) * nrhs
       bdr     = v(blk + 1) - v(blk)
       do r = 0, nrhs - 1
-        print *, 'Fill x from ', 1 + rowPtr + bdr * r,       &
-          ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
-          v(blk) + bdr
+ !!     print *, 'Fill x from ', 1 + rowPtr + bdr * r,       &
+ !!       ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+ !!       v(blk) + bdr
         rhs(v(blk) + 1: v(blk) + bdr, r + 1)  = &
           rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1))
       end do

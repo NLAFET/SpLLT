@@ -1372,6 +1372,7 @@ module task_manager_omp_mod
     integer                     :: i, j, r, chunkth
     integer                     :: ndep
     integer                     :: nthread, threadID
+    integer,           pointer  :: p_rhsPtr(:)
     integer,           pointer  :: p_index(:)
     real(wp),          pointer  :: p_lcol(:)
 
@@ -1410,6 +1411,7 @@ module task_manager_omp_mod
     offset    = col - fkeep%nodes(node)%sa + 1
     p_index   => fkeep%nodes(node)%index
     p_lcol    => fkeep%lfact(bcol)%lcol
+    p_rhsPtr  => fkeep%rhsPtr
     p_bc      => fkeep%bc
     p_upd     => upd
     p_xlocal  => xlocal
@@ -1461,7 +1463,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_fwd_block_cases_il.F90.inc"
+#include "include/spllt_fwd_block_il_cases.F90.inc"
 
           end select
 
@@ -1559,6 +1561,7 @@ module task_manager_omp_mod
     integer                     :: threadID
     integer                     :: ndep
    !integer                     :: dep
+    integer, pointer            :: p_rhsPtr(:)
     integer, pointer            :: p_index(:)
     real(wp), pointer           :: p_lcol(:)
     integer, pointer            :: p_dep(:)
@@ -1595,6 +1598,7 @@ module task_manager_omp_mod
     offset    = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
     offset    = offset + (blk-fkeep%bc(blk)%dblk) &
       * fkeep%nodes(node)%nb ! this blk
+    p_rhsPtr  => fkeep%rhsPtr
     p_index   => fkeep%nodes(node)%index
     p_lcol    => fkeep%lfact(bcol)%lcol
     p_bc      => fkeep%bc
@@ -1650,7 +1654,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_fwd_update_cases_il.F90.inc"
+#include "include/spllt_fwd_update_il_cases.F90.inc"
 
           end select
           beta = beta + chunk_size

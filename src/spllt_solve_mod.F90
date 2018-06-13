@@ -259,9 +259,9 @@ contains
           !work(order(j),:) = x(j,:)
            x_tmp(order(j),:) = x(j,:)
         end do
-        do r = 1, nrhs
-          call print_darray("Original RHS", n, x_tmp(:, r), 1)
-        end do
+ !!     do r = 1, nrhs
+ !!       call print_darray("Original RHS", n, x_tmp(:, r), 1)
+ !!     end do
 
 #if defined(SPLLT_ILEAVE)
 
@@ -298,31 +298,34 @@ contains
        !print *, "Norm ", norm
        !stop
 
+ !!     print *, "RHSPTR", fkeep%rhsPtr
+
         ! Forward solve
         call solve_fwd_ileave(nrhs, xil, n, ldr, bdr, fkeep, work, task_manager)
 
 !       call print_darray("Interleaved returned solution", int(size_nrhs), &
 !         xil, 1)
 
-        call spllt_rhs_unpack(nrhs, xil, n, ldr, bdr, x_tmp, st)
+       !call unpack_rhs(nrhs, xil, n, ldr, bdr, x_tmp, st)
+        call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x_tmp, st)
 #else
         ! Forward solve
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
 #endif
-
-        do r = 1, nrhs
-          call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
-        end do
-
-        stop
+        !$omp taskwait
+ !!     do r = 1, nrhs
+ !!       call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
+ !!     end do
+    
+       !stop
 
         ! Backward solve
         call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
-        do r = 1, nrhs
-          call print_darray("Solution returned by bwd", n, x_tmp(:, r), 0)
-        end do
+       !do r = 1, nrhs
+       !  call print_darray("Solution returned by bwd", n, x_tmp(:, r), 0)
+       !end do
        !
        ! Reorder soln
        !

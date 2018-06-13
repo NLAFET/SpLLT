@@ -705,6 +705,7 @@ module task_manager_seq_mod
     integer                     :: offset
     integer                     :: node
     integer                     :: nthread, threadID
+    integer,           pointer  :: p_rhsPtr(:)
     integer,           pointer  :: p_index(:)
     real(wp),          pointer  :: p_lcol(:)
 
@@ -740,6 +741,7 @@ module task_manager_seq_mod
     dcol      = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
     col       = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
     offset    = col - fkeep%nodes(node)%sa + 1
+    p_rhsPtr  => fkeep%rhsPtr
     p_index   => fkeep%nodes(node)%index
     p_lcol    => fkeep%lfact(bcol)%lcol
     p_upd     => upd
@@ -750,7 +752,7 @@ module task_manager_seq_mod
     call trace_event_start(traceID, threadID)
 #endif
 
-    call solve_fwd_block_work_ileave(blkm, blkn, col, offset, p_index, p_lcol,&
+    call solve_fwd_block_work_ileave(dblk, p_rhsPtr, blkm, blkn, col, offset, p_index, p_lcol,&
       sa, nrhs, p_upd, ldu, bdu, tdu, p_rhs, n, ldr, bdr, p_xlocal,           &
       threadID, nthread, flops)
 
@@ -799,6 +801,7 @@ module task_manager_seq_mod
     integer                     :: blk_sa
     integer                     :: bcol, dcol, col
     integer                     :: offset
+    integer, pointer            :: p_rhsPtr(:)
     integer, pointer            :: p_index(:)
     real(wp), pointer           :: p_lcol(:)
     real(wp)         , pointer  :: p_upd(:)
@@ -830,6 +833,7 @@ module task_manager_seq_mod
     offset    = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
     offset    = offset + (blk-fkeep%bc(blk)%dblk) &
       * fkeep%nodes(node)%nb ! this blk
+    p_rhsPtr  => fkeep%rhsPtr
     p_index   => fkeep%nodes(node)%index
     p_lcol    => fkeep%lfact(bcol)%lcol
 
@@ -841,7 +845,7 @@ module task_manager_seq_mod
     call trace_event_start(traceID, task_manager%workerID)
 #endif
 
-    call solve_fwd_update_work_ileave(blkm, blkn, col, offset, p_index,   &
+    call solve_fwd_update_work_ileave(blk, p_rhsPtr, blkm, blkn, col, offset, p_index,   &
       p_lcol, blk_sa, nrhs, p_upd, ldu, bdu, tdu, p_rhs, n, bdr, p_xlocal,&
       task_manager%workerID, flops)
 
