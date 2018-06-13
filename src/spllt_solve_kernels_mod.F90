@@ -772,15 +772,8 @@ call spllt_tac(1, threadID, timer, lflops)
     if(nrhs.eq.1) then
       call dtrsv('Upper', trans, unit, nelim, dest, n, rhs(col), 1)
     else
-     !print *, "Call DTRSM on rhs, starting at pos ", col
-     !do r = 0, nrhs - 1
-     !  print *, "SOLVE org RHS", rhs(col + r * nelim: col + n + r * nelim - 1)
-     !end do
       call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
            dest, n, rhs(col), nelim)
-     !do r = 0, nrhs - 1
-     !  print *, "SOLVE upd RHS", rhs(col + r * nelim: col + n + r * nelim - 1)
-     !end do
     endif
 
   end subroutine slv_solve_ileave
@@ -848,7 +841,7 @@ call spllt_tac(1, threadID, timer, lflops)
           ! Copy xlocal out
           j = 1
           do i = offset, offset+m-1
-             upd(index(i)) = upd(index(i)) + xlocal(j)
+             upd(index(i) * tdu) = upd(index(i) * tdu) + xlocal(j)
              j = j + 1
           end do
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
@@ -859,12 +852,12 @@ call spllt_tac(1, threadID, timer, lflops)
           j = 1
           do i = offset, offset+m-1
              w = zero
-             do k = col, col+nelim-1
-                w = w - dest(j)*rhs(k)
+             do k = col, col + nelim - 1
+                w = w - dest(j) * rhs(k)
                 j = j + 1
              end do
              j = j + (ldd-nelim)
-             upd(index(i)) = upd(index(i)) + w
+             upd(index(i) * tdu) = upd(index(i) * tdu) + w
           end do
        endif
     else
@@ -877,41 +870,18 @@ call spllt_tac(1, threadID, timer, lflops)
         end if
       end do
       if(lcol .eq. -1) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
-     !l = 1
-     !do while(rhsPtr(l) .ne. col)
-     !  l = l + 1
-     !  if(l .eq. size(rhsPtr)) then
-     !    print *, "/!\ Error in fwd_update : ", col, "not in rhsPtr"
-     !    stop
-     !  end if
-     !end do
-     !lcol = rhsPtr(l - 1) * nrhs + 1
-     !print *, "Call DGEMM on rhs, starting at pos ", col, "local offset", lcol
+
 !!! Multiple rhs, BLAS 3
       call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs(lcol), nelim, &
            zero, xlocal, m)
-     !do r = 0, nrhs - 1
-     !  print *, "RHS", rhs(lcol + r * nelim: lcol + (r+1) * nelim - 1)
-     !  print *, "xlocal", xlocal(1 + r * m : r * m + m)
-     !end do
 
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
       call spllt_tic("fwd::scatter", 1, threadID, timer)
 #endif
  !!   print *, "Compute scatter from xlocal to upd"
  !!   print *, "Local unknowns from", offset, 'to', offset + m - 1
-     !nrow = bdu / tdu
 
       ! Place the pointer on the lowest block in RHS
-     !l = 1
-     !do while(rhsPtr(l) .lt. index(offset))
-     !  l = l + 1
-     !  if(l .eq. size(rhsPtr)) then
-     !    l = l - 1
-     !    exit
-     !  end if
-     !end do
-
       rowPtr  = -1
       ndblk   = size(rhsPtr) - 1
 
@@ -928,9 +898,6 @@ call spllt_tac(1, threadID, timer, lflops)
 
  !!   print *, "Found ", index(offset), "lower or equal", rhsPtr(l) + 1, "with l=", l
  !!   print *, "ThreadID", threadID
-     !l_sa  = l
-     !rowPtr = rhsPtr(l_sa - 1)
-     !ind_n  = rhsPtr(l_sa) - rowPtr
 
       ! Copy xlocal out
       do r = 0, nrhs-1
@@ -942,16 +909,7 @@ call spllt_tac(1, threadID, timer, lflops)
         ind_n   = rhsPtr(l + 1) - rowPtr
  !!     print *, "********************"
         do j = 1 + r * m, (r + 1) * m
-        ! blk_id  = (index(i) - 1) / nrow
-        ! k = mod(index(i) - 1, nrow)
-         !print *, "index(", i, ") = ", index(i), "=>", blk_id, "with k = ", k
-         !print *, "Update pos ", blk_id * ldu + r * m * tdu + k * tdu + &
-         !  threadID + l, 'with pos ', j
-         !upd(rowPtr + r * m * tdu + k * tdu + threadID + l) = &
-         !  upd(blk_id * ldu + r * m * tdu + k * tdu + threadID + l) + xlocal(j)
-
  !!       print *, "index(", i, ") = ", index(i), "starts in pos", rowPtr
-
           lrow  = index(i) - rowPtr - 1
  !!       print *, "lrow = ", lrow, "ind_n=", ind_n
           ind_i = rowPtr * nrhs * tdu + r * ind_n * tdu + lrow * tdu + threadID + 1
@@ -962,15 +920,6 @@ call spllt_tac(1, threadID, timer, lflops)
           if(j .ne. (r + 1) * m) then
             i = i + 1
 
-           !if(l .lt. size(rhsPtr)) then
-           !  do while(rhsPtr(l) .lt. index(i))
-           !    l = l + 1
-           !    if(l .eq. size(rhsPtr)) then
-           !      l = l - 1
-           !      exit
-           !    end if
-           !  end do
-           !end if
  !!         print *, "TRY : index(", i, ") = ", index(i), "starts with", l
             rowPtr = -1
             do ll = l, ndblk
@@ -984,9 +933,7 @@ call spllt_tac(1, threadID, timer, lflops)
                 exit
               end if
             end do
- !!         if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
-           !rowPtr  = rhsPtr(l - 1)
-           !ind_n   = rhsPtr(l) - rowPtr
+            if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
           end if
         end do
       end do
@@ -1044,16 +991,6 @@ call spllt_tac(1, threadID, timer, lflops)
 #endif
 
     flops   = zero
-   !l = 1
-   !do while(rhsPtr(l) .lt. col)
-   !  l = l + 1
-   !  if(l .eq. size(rhsPtr)) then
-   !    l = l - 1
-   !    exit
-   !  end if
-   !end do
-   !l = l - 1
-
     found = .false.
     ndblk = size(rhsPtr) - 1
     do l = 1, ndblk
@@ -1077,8 +1014,6 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
  !! print *, "___ bdr ", bdr, "and bdu", bdu, "tdu", tdu
     ! Sum contributions to rhs
     if(nthread .eq. 1) then
-     !rhs_shift = (col - 1) * nrhs
-     !upd_shift = (col - 1) * nrhs
       do r = 0, nrhs - 1
  !!     print *, "RHS ", r
        !row_rhs = rhs_shift + r * blkn
@@ -1102,14 +1037,10 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
 #endif
     else
       !Compute first index in rhs and upd to proceed
-     !rhs_shift = (col - 1) * nrhs
-     !upd_shift = (col - 1) * nrhs
  !!  print *, "blkn : ", blkn
       do r = 0, nrhs - 1
  !!     print *, "RHS ", r
         !Compute the current row in the local memory spaces
-       !row_rhs = rhs_shift + r * blkn
-       !row_upd = upd_shift + r * blkn * nthread
         row_rhs = rhsPtr(l) * nrhs + r * blkn
         row_upd = rhsPtr(l) * nrhs * tdu + r * blkn * tdu
  !!     print *, "Row Pointer in RHS : ", row_rhs, ", and in UPD", row_upd
@@ -1118,19 +1049,11 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
           temp = zero
           do j = 1, nthread
  !!         print *, "Reduce over threads", row_upd + (i - 1) * tdu + j
-           !if(row_upd + (i - 1) * tdu + j .eq. 23) then
-           !  print *, "23 : ", upd(row_upd + (i - 1) * tdu + j)
-           !  print *, "24 : ", upd(row_upd + (i - 1) * tdu + j + 1)
-           !end if
             temp = temp + upd(row_upd + (i - 1) * tdu + j)
-          ! temp = temp + upd(blk_id * ldu + i * bdu + j)
           end do
  !!       print *, "To update row ", i, "in rhs(", row_rhs + i, ') = ', &
  !!         rhs(row_rhs + i)
           rhs(row_rhs + i) = rhs(row_rhs + i) + temp !&
-         !print *, "====> with ", temp, "give", rhs(row_rhs + 1)
-           !upd(row_upd + i : row_upd + i + nthread - 1)
-        ! rhs(blk_id * ldr + i) = rhs(blk_id * ldr + i) + temp !&
         end do
       end do
       ! Reset in case of bwd solve
@@ -1154,7 +1077,6 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
     ! Perform triangular solve
-   !call slv_solve_ileave(blkn, blkn, rhs_shift, &
  !! print *, "Call solve on col", col, "located in pos", &
  !!   1 + rhsPtr(l) * nrhs
     call slv_solve_ileave(blkn, blkn, rhsPtr(l) * nrhs + 1, &
@@ -1169,7 +1091,6 @@ call spllt_tac(1, threadID, timer, lflops)
     blkm = blkm - blkn
     if(blkm .gt. 0) then
       sa = sa + blkn * blkn
-     !call slv_fwd_update_ileave(blkm, blkn, rhs_shift, offset, index,  &
       call slv_fwd_update_ileave(blkm, blkn, col, offset, index, &
         lcol(sa : sa + blkn * blkm - 1), blkn, nrhs,                      &
         upd, tdu, rhs, n, bdr, rhsPtr, xlocal(:, threadID + 1))
@@ -1289,7 +1210,7 @@ call spllt_tac(1, threadID, timer, lflops)
       !
       ! Forward solve with block on diagoanl
       !
-      print *, "Submit fwd block ", dblk
+ !!   print *, "Submit fwd block ", dblk
       call spllt_tic("submit fwd block", 1, task_manager%workerID, timer)
       call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
         ldu, fkeep%bc(dblk)%blkn, tdu, rhs, n, ldr, fkeep%bc(dblk)%blkn,&
@@ -1303,7 +1224,7 @@ call spllt_tac(1, threadID, timer, lflops)
         !
         ! Forward update with off-diagonal
         !
-        print *, "Submit fwd update ", blk
+ !!     print *, "Submit fwd update ", blk
         call spllt_tic("submit fwd update", 2, task_manager%workerID, timer)
         call task_manager%solve_fwd_update_il_task(blk, node, nrhs, rhs_local,&
           ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, fwd_update_id)

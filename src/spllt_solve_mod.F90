@@ -713,10 +713,10 @@ call task_manager%print("fwd end of submitted task", 0)
      !  cycle
      !end if
 
-      print *, "Submit node ", node
-      call print_node(fkeep, node)
-      call print_blk_index('', size(fkeep%nodes(node)%index), &
-          fkeep%nodes(node)%index, 1)
+ !!   print *, "Submit node ", node
+ !!   call print_node(fkeep, node)
+ !!   call print_blk_index('', size(fkeep%nodes(node)%index), &
+ !!       fkeep%nodes(node)%index, 1)
       call solve_fwd_node_ileave(nrhs, rhs, n, ldr, bdr, fkeep, node, xlocal, &
         rhs_local, ldu, bdu, tdu, task_manager)
     end do
