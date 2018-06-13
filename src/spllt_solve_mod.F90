@@ -186,7 +186,7 @@ contains
 
 
 
-#define SPLLT_ILEAVE
+!#define SPLLT_ILEAVE
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, job, workspace, task_manager)
     use spllt_data_mod
@@ -313,7 +313,7 @@ contains
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
 #endif
-        !$omp taskwait
+       !!$omp taskwait
  !!     do r = 1, nrhs
  !!       call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
  !!     end do
