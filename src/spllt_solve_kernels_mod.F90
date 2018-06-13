@@ -48,14 +48,14 @@ contains
     if(nrhs.eq.1) then
       call dtrsv('Upper', trans, unit, nelim, dest, n, rhs(col), 1)
     else
-   !  do r = 0, nrhs - 1
-   !    print *, "SOLVE org RHS", rhs(col + r * ldr : col + n - 1 + r * ldr)
-   !  end do
+     !do r = 0, nrhs - 1
+     !  print *, "SOLVE org RHS", rhs(col + r * ldr : col + n - 1 + r * ldr)
+     !end do
       call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
            dest, n, rhs(col), ldr)
-   !  do r = 0, nrhs - 1
-   !    print *, "SOLVE upd RHS", rhs(col + r * ldr : col + n - 1 + r * ldr)
-   !  end do
+     !do r = 0, nrhs - 1
+     !  print *, "SOLVE upd RHS", rhs(col + r * ldr : col + n - 1 + r * ldr)
+     !end do
     endif
 
   end subroutine slv_solve
@@ -772,8 +772,14 @@ call spllt_tac(1, threadID, timer, lflops)
     if(nrhs.eq.1) then
       call dtrsv('Upper', trans, unit, nelim, dest, n, rhs(col), 1)
     else
+     !do r = 0, nrhs - 1
+     !  print *, "SOLVE org RHS", rhs(col + r * nelim : col + n - 1 + r * nelim)
+     !end do
       call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
            dest, n, rhs(col), nelim)
+     !do r = 0, nrhs - 1
+     !  print *, "SOLVE upd RHS", rhs(col + r * nelim : col + n - 1 + r * nelim)
+     !end do
     endif
 
   end subroutine slv_solve_ileave
@@ -841,7 +847,7 @@ call spllt_tac(1, threadID, timer, lflops)
           ! Copy xlocal out
           j = 1
           do i = offset, offset+m-1
-             upd(index(i) * tdu) = upd(index(i) * tdu) + xlocal(j)
+             upd(index(i) * tdu) = upd(index(i) * tdu) + xlocal(j) !TODO fix it
              j = j + 1
           end do
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
@@ -857,7 +863,7 @@ call spllt_tac(1, threadID, timer, lflops)
                 j = j + 1
              end do
              j = j + (ldd-nelim)
-             upd(index(i) * tdu) = upd(index(i) * tdu) + w
+             upd(index(i) * tdu) = upd(index(i) * tdu) + w !TODO fix it
           end do
        endif
     else
@@ -912,7 +918,10 @@ call spllt_tac(1, threadID, timer, lflops)
  !!       print *, "index(", i, ") = ", index(i), "starts in pos", rowPtr
           lrow  = index(i) - rowPtr - 1
  !!       print *, "lrow = ", lrow, "ind_n=", ind_n
-          ind_i = rowPtr * nrhs * tdu + r * ind_n * tdu + lrow * tdu + threadID + 1
+          ind_i = rowPtr * nrhs * tdu + &
+                  r * ind_n * tdu     + &
+                  ind_n * threadID    + &
+                  lrow + 1
  !!       print *, "Update upd( ", ind_i, ') with xlocal(', j, ')'
 
           upd(ind_i) = upd(ind_i) + xlocal(j)
@@ -975,13 +984,15 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,                  intent(in)    :: rhsPtr(:)
     integer,                  intent(inout) :: index(:)
     real(wp),                 intent(inout) :: lcol(:)
-    real(wp),                 intent(inout) :: upd(:)
-    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),  target,        intent(inout) :: upd(:)
+    real(wp),  target,        intent(inout) :: rhs(:)
     real(wp),                 intent(inout) :: xlocal(:,:)
 
-    integer           :: i, r, j, blk_id, ndblk, l
+    integer           :: i, r, j, blk_id, ndblk, l, k, kk
     integer           :: rhs_shift, upd_shift
-    integer           :: row_rhs, row_upd
+    integer           :: row_rhs, row_upd, rowPtr_rhs, rowPtr_upd
+    real(wp), pointer :: p_upd(:,:)
+    real(wp), pointer :: p_rhs(:)
     logical           :: found
     double precision  :: lflops, temp
 #if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
@@ -1036,6 +1047,8 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
     lflops = blkn * nrhs
 #endif
     else
+#if 0
+!#if defined(SPLLT_INTERLEAVE1)
       !Compute first index in rhs and upd to proceed
  !!  print *, "blkn : ", blkn
       do r = 0, nrhs - 1
@@ -1053,7 +1066,7 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
           end do
  !!       print *, "To update row ", i, "in rhs(", row_rhs + i, ') = ', &
  !!         rhs(row_rhs + i)
-          rhs(row_rhs + i) = rhs(row_rhs + i) + temp !&
+          rhs(row_rhs + i) = rhs(row_rhs + i) + temp
         end do
       end do
       ! Reset in case of bwd solve
@@ -1061,6 +1074,33 @@ call spllt_tic("fwd::reduction", 2, threadID, timer)
  !!     row_upd + tdu * blkn
       upd(rhsPtr(l) * nrhs  * tdu + 1 : &
         row_upd + tdu * blkn) = zero !TODO fix it
+#else
+     !print *, "Ptr version"
+ !!  print *, "blkn : ", blkn
+      rowPtr_rhs = rhsPtr(l) * nrhs
+      rowPtr_upd = rhsPtr(l) * nrhs * tdu
+      p_rhs(1 : blkn * nrhs)              => rhs(rowPtr_rhs + 1 : &
+        rowPtr_rhs + nrhs * blkn)
+      p_upd(1 : blkn * nthread, 0 : nrhs - 1) => upd(rowPtr_upd  + 1 : &
+        rowPtr_upd + nrhs * blkn * tdu)
+
+      do r = 0, nrhs - 1
+ !!     print *, "Reduce RHS", r, "over indices", 1 + rowPtr_rhs + &
+ !!       (r - 1 ) * blkn, "to", rowPtr_rhs + r * blkn
+        k = r * blkn
+        do j = 0, nthread - 1
+          kk = j * blkn
+          do i = 1, blkn
+ !!         print *, "__th", j, "__rhs(", i + (r - 1) * blkn, ") With ",&
+ !!           (r - 1) * blkn * nthread + i + j * blkn + rowPtr_upd,     &
+ !!           '=', p_upd(i + j * blkn, r)
+            p_rhs(i + k) = p_rhs(i + k) + p_upd(i + kk, r)
+            p_upd(i + kk, r) = zero
+          end do
+        end do
+      end do
+#endif
+
 #if defined(SPLLT_PROFILING_FLOP)
     lflops = blkn * nrhs * nthread
 #endif
