@@ -186,7 +186,7 @@ contains
 
 
 
-!#define SPLLT_ILEAVE
+#define SPLLT_ILEAVE
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, job, workspace, task_manager)
     use spllt_data_mod
@@ -264,7 +264,7 @@ contains
  !!     end do
 
 #if defined(SPLLT_ILEAVE)
-
+        print *, "INTERLEAVE VERSION"
       ! bdr = fkeep%nodes(1)%nb
       ! ldr = nrhs * bdr
 !     ! print *, "Allocate xil of size ", size_nrhs
@@ -303,10 +303,11 @@ contains
         ! Forward solve
         call solve_fwd_ileave(nrhs, xil, n, ldr, bdr, fkeep, work, task_manager)
 
-!       call print_darray("Interleaved returned solution", int(size_nrhs), &
-!         xil, 1)
+ !!     call print_darray("Interleaved returned solution", int(size_nrhs), &
+ !!       xil, 1)
 
        !call unpack_rhs(nrhs, xil, n, ldr, bdr, x_tmp, st)
+        !$omp taskwait
         call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x_tmp, st)
 #else
         ! Forward solve
@@ -314,9 +315,9 @@ contains
 
 #endif
        !!$omp taskwait
- !!     do r = 1, nrhs
- !!       call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
- !!     end do
+       !do r = 1, nrhs
+       !  call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
+       !end do
     
        !stop
 
@@ -698,10 +699,12 @@ call task_manager%print("fwd end of submitted task", 0)
     call trace_event_start(fwd_submit_tree_id, -2)
 #endif
 
-   !do tree_num = 1, size(fkeep%trees)
-   !  call task_manager%solve_fwd_subtree_task(nrhs, rhs, ldr, fkeep, &
-   !    fkeep%trees(tree_num), xlocal, rhs_local)
-   !end do
+    do tree_num = 1, size(fkeep%trees)
+ !!   call spllt_print_subtree(fkeep%trees(tree_num))
+
+      call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, ldr, bdr, &
+        fkeep, fkeep%trees(tree_num), xlocal, rhs_local, ldu, bdu, tdu)
+    end do
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(fwd_submit_tree_id, -2)
@@ -709,9 +712,9 @@ call task_manager%print("fwd end of submitted task", 0)
 
     do node = 1, fkeep%info%num_nodes
 
-     !if(fkeep%small(node) .ne. 0) then
-     !  cycle
-     !end if
+      if(fkeep%small(node) .ne. 0) then
+        cycle
+      end if
 
  !!   print *, "Submit node ", node
  !!   call print_node(fkeep, node)
