@@ -825,8 +825,9 @@ call spllt_tac(1, threadID, timer, lflops)
     integer   :: r ! right hand side loop variable
     integer   :: l, l_sa, ll
     integer   :: nrow
-    integer   :: lrow, rowPtr, lcol, ndblk
+    integer   :: lrow, rowPtr, lcol, ndblk, pos
     real(wp)  :: w ! temporary work value
+    integer   :: rhs_blk_size, rhs_thread_size
     !%%%  integer :: t_start, t_end, this_thread
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
     type(spllt_timer_t), save :: timer
@@ -935,6 +936,8 @@ call spllt_tac(1, threadID, timer, lflops)
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
       call spllt_tic("fwd::scatter", 1, threadID, timer)
 #endif
+
+#if 0
  !!   print *, "Compute scatter from xlocal to upd"
  !!   print *, "Local unknowns from", offset, 'to', offset + m - 1
 
@@ -997,6 +1000,44 @@ call spllt_tac(1, threadID, timer, lflops)
           end if
         end do
       end do
+#else
+      rowPtr  = -1
+      ndblk   = size(rhsPtr) - 1
+
+      do l = 1, ndblk
+        if(index(offset) .le. rhsPtr(l + 1)) then
+          rowPtr  = rhsPtr(l)
+          ind_n   = rhsPtr(l + 1) - rowPtr
+          exit
+        end if
+      end do
+
+      ! Copy xlocal out
+      j = 1
+      rhs_blk_size    = nrhs * tdu - 1
+      rhs_thread_size = threadID * nrhs
+      do i = offset, offset + m - 1
+        do ll = l, ndblk
+          if(index(i) .le. rhsPtr(ll + 1)) then
+            l       = ll
+!           print *, "index(", i, ") = ", index(i), "starts in pos", rowPtr
+            rowPtr  = rhsPtr(l)
+            ind_n   = rhsPtr(l + 1) - rowPtr
+            pos     = rowPtr * rhs_blk_size + ind_n * rhs_thread_size
+            exit
+          end if
+        end do
+        lrow  = pos + index(i)
+!       print *, "lrow = ", lrow, "ind_n=", ind_n
+        do r = 0, nrhs-1
+          ind_i = r * ind_n + lrow
+!         print *, "Update upd( ", ind_i, ') with xlocal(', j + r * m, ')'
+          upd(ind_i) = upd(ind_i) + xlocal(j + r * m)
+        end do
+        j = j + 1
+      end do
+#endif
+
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
       call spllt_ftac(1, threadID, timer)
 #endif
