@@ -770,7 +770,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
     !%%%   integer :: this_thread
     !%%%   integer :: t_start, t_end
-    integer :: r
+   !integer :: r
 
     if(nelim.eq.0) return
 
@@ -842,15 +842,17 @@ call spllt_tac(1, threadID, timer, lflops)
 
     if(nelim.eq.0) return
 
-    lcol  = -1
-    ndblk = size(rhsPtr) - 1
-    do l = 1, ndblk
-      if(col .eq. rhsPtr(l) + 1) then
-        lcol = rhsPtr(l) * nrhs + 1
-        exit
-      end if
-    end do
-    if(lcol .eq. -1) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
+   !lcol  = -1
+   !ndblk = size(rhsPtr) - 1
+   !do l = 1, ndblk
+   !  if(col .eq. rhsPtr(l) + 1) then
+   !    lcol = rhsPtr(l) * nrhs + 1
+   !    exit
+   !  end if
+   !end do
+   !if(lcol .eq. -1) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
+    l = indir_rhs(col) 
+    lcol = rhsPtr(l) * nrhs + 1
 
     ! forward substitution
     if(nrhs.eq.1) then
@@ -872,16 +874,19 @@ call spllt_tac(1, threadID, timer, lflops)
  !!       print *, "Compute scatter from xlocal to upd"
  !!       print *, "Local unknowns from", offset, 'to', offset + m - 1
           do j = 1, m
-            rowPtr = -1
-            do ll = l, ndblk
-              if(index(i) .le. rhsPtr(ll + 1)) then
-                l       = ll
-                rowPtr  = rhsPtr(l)
-                ind_n   = rhsPtr(l + 1) - rowPtr
-                exit
-              end if
-            end do
-            if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
+           !rowPtr = -1
+           !do ll = l, ndblk
+           !  if(index(i) .le. rhsPtr(ll + 1)) then
+           !    l       = ll
+           !    rowPtr  = rhsPtr(l)
+           !    ind_n   = rhsPtr(l + 1) - rowPtr
+           !    exit
+           !  end if
+           !end do
+           !if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
+            l       = indir_rhs(index(i))
+            rowPtr  = rhsPtr(l)
+            ind_n   = rhsPtr(l + 1) - rowPtr
             lrow  = index(i) - rowPtr - 1
             ind_i = rowPtr   * tdu  + &
                     threadID * ind_n + &
@@ -903,16 +908,19 @@ call spllt_tac(1, threadID, timer, lflops)
  !!       print *, "DotProd on rhs(", col, ",", col + nelim - 1
           ndblk = size(rhsPtr) - 1
           do i = offset, offset+m-1
-            rowPtr = -1
-            do ll = l, ndblk
-              if(index(i) .le. rhsPtr(ll + 1)) then
-                l       = ll
-                rowPtr  = rhsPtr(l)
-                ind_n   = rhsPtr(l + 1) - rowPtr
-                exit
-              end if
-            end do
-            if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
+           !rowPtr = -1
+           !do ll = l, ndblk
+           !  if(index(i) .le. rhsPtr(ll + 1)) then
+           !    l       = ll
+           !    rowPtr  = rhsPtr(l)
+           !    ind_n   = rhsPtr(l + 1) - rowPtr
+           !    exit
+           !  end if
+           !end do
+           !if(rowPtr .eq. -1) print *, "/!\ Error ", index(i), "not in rhsPtr", rhsPtr(:) + 1
+            l = indir_rhs(index(i))
+            rowPtr  = rhsPtr(l)
+            ind_n   = rhsPtr(l + 1) - rowPtr
             w = zero
             do k = col, col + nelim - 1
                w = w - dest(j) * rhs(k)
@@ -1101,17 +1109,17 @@ call spllt_tac(1, threadID, timer, lflops)
 #endif
 
     flops   = zero
-    found = .false.
-    ndblk = size(rhsPtr) - 1
-    do l = 1, ndblk
-      if(col .eq. rhsPtr(l) + 1) then
-        found = .true.
-        exit
-      end if
-    end do
-    if(.not. found) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
+   !found = .false.
+   !ndblk = size(rhsPtr) - 1
+   !do l = 1, ndblk
+   !  if(col .eq. rhsPtr(l) + 1) then
+   !    found = .true.
+   !    exit
+   !  end if
+   !end do
+   !if(.not. found) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
 
-   !l = indir_rhs(col) ! TODO fix here by remove above piece of code
+   l = indir_rhs(col)
 
  !! print *, "Consider block ", l, "from", rhsPtr(l)
 
