@@ -34,6 +34,7 @@ module task_manager_seq_mod
 
       procedure :: solve_fwd_block_il_task   => solve_fwd_block_il_task_worker
       procedure :: solve_fwd_update_il_task  => solve_fwd_update_il_task_worker
+      procedure :: solve_fwd_subtree_il_task => solve_fwd_subtree_il
   end type task_manager_seq_t
 
  contains
@@ -862,6 +863,52 @@ module task_manager_seq_mod
     call task_manager%incr_nrun()
 
   end subroutine solve_fwd_update_il_task_worker
+
+
+
+  subroutine solve_fwd_subtree_il(task_manager, nrhs, rhs, n, ldr, bdr, fkeep, &
+      tree, xlocal, rhs_local, ldu, bdu, tdu)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    implicit none
+
+    class(task_manager_seq_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n*nrhs)
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    integer,                    intent(in)    :: bdr
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:)
+  
+    integer :: i
+    type(spllt_timer_t), save :: timer
+
+    print *, "Treatment of subtree ", tree%num
+    call spllt_print_subtree(tree)
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_subtree", timer)
+#endif
+
+    do i = tree%node_sa, tree%node_en
+      call solve_fwd_node_ileave(nrhs, rhs, n, ldr, bdr, fkeep, i, xlocal, &
+        rhs_local, ldu, bdu, tdu, task_manager)
+    end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_fwd_subtree_il
 
 
 

@@ -33,6 +33,7 @@ module task_manager_omp_mod
 
       procedure :: solve_fwd_block_il_task
       procedure :: solve_fwd_update_il_task
+      procedure :: solve_fwd_subtree_il_task
   end type task_manager_omp_t
 
  contains
@@ -1485,7 +1486,7 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-    !$omp taskwait
+   !!$omp taskwait
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
@@ -1675,7 +1676,7 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-    !$omp taskwait
+   !!$omp taskwait
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
@@ -1683,6 +1684,129 @@ module task_manager_omp_mod
     call task_manager%ntask_submitted(1, nftask)
 
   end subroutine solve_fwd_update_il_task_worker
+
+
+
+  subroutine solve_fwd_subtree_il_task(task_manager, nrhs, rhs, n, ldr, bdr, &
+      fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n*nrhs)
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    integer,                    intent(in)    :: bdr
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:)
+
+    call solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, ldr, bdr,&
+      fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+  end subroutine solve_fwd_subtree_il_task
+
+
+
+  subroutine solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, ldr,&
+      bdr, fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),          target,  intent(inout) :: rhs(n*nrhs)
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
+    integer,                    intent(in)    :: bdr
+    integer,                    intent(in)    :: ldu
+    integer,                    intent(in)    :: bdu
+    integer,                    intent(in)    :: tdu
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+    real(wp),          target,  intent(inout) :: xlocal(:,:)
+    real(wp),          target,  intent(inout) :: rhs_local(:)
+  
+    integer                     :: trace_id
+    real(wp), pointer           :: p_rhs_local(:)
+    real(wp), pointer           :: p_xlocal(:,:)
+    real(wp), pointer           :: p_rhs(:)
+    type(spllt_block), pointer  :: p_bc(:)
+    integer                     :: i
+    integer                     :: sa, en, blk_en
+    type(task_manager_seq_t)    :: sub_task_manager
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_fwd_subtree", timer)
+#endif
+
+    p_rhs_local => rhs_local
+    p_xlocal    => xlocal
+    p_rhs       => rhs
+    p_bc        => fkeep%bc
+    sa          = tree%node_sa
+    en          = tree%node_en
+    blk_en      = fkeep%nodes(en)%blk_en
+    call task_manager%semifork(sub_task_manager)
+
+    !$omp task                                        &
+!   !$omp default(none)                               &
+    !$omp depend(inout: p_bc(blk_en))                 &
+    !$omp firstprivate(p_rhs, p_xlocal, p_rhs_local)  &
+    !$omp firstprivate(nrhs, ldr)                     &
+    !$omp firstprivate(sub_task_manager)              &
+    !$omp firstprivate(p_bc, blk_en)                  &
+    !$omp firstprivate(en, sa)                        &
+    !$omp shared(fkeep)                               &
+    !$omp private(i, trace_id)
+
+    call sub_task_manager%refresh_worker()
+
+#if defined(SPLLT_OMP_TRACE)
+    trace_id = task_manager%trace_ids(trace_fwd_subtree_pos)
+    call trace_event_start(trace_id, sub_task_manager%workerID)
+#endif
+
+#if defined(SPLLT_VERBOSE)
+  print '(a, i3, a)', "SLV_FWD  Task dep of ", blk_en, " [in : "
+#endif
+
+    do i = sa, en
+      call solve_fwd_node_ileave(nrhs, p_rhs, n, ldr, bdr, fkeep, i, &
+        p_xlocal, p_rhs_local, ldu, bdu, tdu, sub_task_manager, no_trace)
+    end do
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(trace_id, sub_task_manager%workerID)
+#endif
+
+    !$omp end task
+
+    call task_manager%ntask_submitted(1, 0)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_fwd_subtree_il_task_worker
 
 
 
