@@ -17,7 +17,7 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif
 
-  call solve_fwd_block_work_ileave(dblk, p_rhsPtr, blkm, blkn, col, offset, p_index, p_lcol, sa, nrhs, &
+  call solve_fwd_block_work_ileave(dblk, p_rhsPtr, p_indir_rhs, blkm, blkn, col, offset, p_index, p_lcol, sa, nrhs, &
       p_upd, ldu, bdu, tdu, p_rhs, n, ldr, bdr, p_xlocal, threadID, nthread, flops)
 
   call task_manager%nflop_performed(flops)

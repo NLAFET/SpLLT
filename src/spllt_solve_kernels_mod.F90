@@ -794,7 +794,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
   subroutine slv_fwd_update_ileave(m, nelim, col, offset, index, dest, &
-      ldd, nrhs, upd, tdu, rhs, n, bdr, rhsPtr, xlocal)
+      ldd, nrhs, upd, tdu, rhs, n, bdr, rhsPtr, indir_rhs, xlocal)
     use spllt_data_mod
     use timer_mod
  !$ use omp_lib, ONLY : omp_get_thread_num
@@ -814,6 +814,7 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,  intent(in)    :: n              ! Order of the system
     integer,  intent(in)    :: bdr
     integer,  intent(in)    :: rhsPtr(:)
+    integer,  intent(in)    :: indir_rhs(:)
     real(wp), intent(inout) :: upd(:)         ! vector to update
     real(wp), intent(in)    :: rhs(n*nrhs)    ! rhs vector
     real(wp), intent(out)   :: xlocal(*)
@@ -1001,33 +1002,37 @@ call spllt_tac(1, threadID, timer, lflops)
         end do
       end do
 #else
-      rowPtr  = -1
-      ndblk   = size(rhsPtr) - 1
+     !rowPtr  = -1
+     !ndblk   = size(rhsPtr) - 1
 
-      do l = 1, ndblk
-        if(index(offset) .le. rhsPtr(l + 1)) then
-          rowPtr  = rhsPtr(l)
-          ind_n   = rhsPtr(l + 1) - rowPtr
-          exit
-        end if
-      end do
+     !do l = 1, ndblk
+     !  if(index(offset) .le. rhsPtr(l + 1)) then
+     !    rowPtr  = rhsPtr(l)
+     !    ind_n   = rhsPtr(l + 1) - rowPtr
+     !    exit
+     !  end if
+     !end do
 
       ! Copy xlocal out
       j = 1
       rhs_blk_size    = nrhs * tdu - 1
       rhs_thread_size = threadID * nrhs
       do i = offset, offset + m - 1
-        do ll = l, ndblk
-          if(index(i) .le. rhsPtr(ll + 1)) then
-            l       = ll
-!           print *, "index(", i, ") = ", index(i), "starts in pos", rowPtr
-            rowPtr  = rhsPtr(l)
-            ind_n   = rhsPtr(l + 1) - rowPtr
-            pos     = rowPtr * rhs_blk_size + ind_n * rhs_thread_size
-            exit
-          end if
-        end do
-        lrow  = pos + index(i)
+       !do ll = l, ndblk
+       !  if(index(i) .le. rhsPtr(ll + 1)) then
+       !    l       = ll
+!      !    print *, "index(", i, ") = ", index(i), "starts in pos", rowPtr
+       !    rowPtr  = rhsPtr(l)
+       !    ind_n   = rhsPtr(l + 1) - rowPtr
+       !    pos     = rowPtr * rhs_blk_size + ind_n * rhs_thread_size
+       !    exit
+       !  end if
+       !end do
+        l       = indir_rhs(index(i))
+        rowPtr  = rhsPtr(l)
+        ind_n   = rhsPtr(l + 1) - rowPtr
+        pos     = rowPtr * rhs_blk_size + ind_n * rhs_thread_size
+        lrow    = pos + index(i)
 !       print *, "lrow = ", lrow, "ind_n=", ind_n
         do r = 0, nrhs-1
           ind_i = r * ind_n + lrow
@@ -1051,9 +1056,9 @@ call spllt_tac(1, threadID, timer, lflops)
   
 
 
-  subroutine solve_fwd_block_work_ileave(blk, rhsPtr, blkm, blkn, col,  &
-      offset, index, lcol, sa, nrhs, upd, ldu, bdu, tdu, rhs, n, ldr,   &
-      bdr, xlocal, threadID, nthread, flops)
+  subroutine solve_fwd_block_work_ileave(blk, rhsPtr, indir_rhs, blkm,  &
+      blkn, col, offset, index, lcol, sa, nrhs, upd, ldu, bdu, tdu,     &
+      rhs, n, ldr, bdr, xlocal, threadID, nthread, flops)
     use spllt_data_mod
     use timer_mod
     implicit none
@@ -1074,6 +1079,7 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,                  intent(in)    :: nthread
     double precision,         intent(out)   :: flops
     integer,                  intent(in)    :: rhsPtr(:)
+    integer,                  intent(in)    :: indir_rhs(:)
     integer,                  intent(inout) :: index(:)
     real(wp),                 intent(inout) :: lcol(:)
     real(wp),  target,        intent(inout) :: upd(:)
@@ -1104,6 +1110,8 @@ call spllt_tac(1, threadID, timer, lflops)
       end if
     end do
     if(.not. found) print *, "/!\ Error ", col, "not in rhsPtr", rhsPtr(:) + 1
+
+   !l = indir_rhs(col) ! TODO fix here by remove above piece of code
 
  !! print *, "Consider block ", l, "from", rhsPtr(l)
 
@@ -1262,7 +1270,7 @@ call spllt_tac(1, threadID, timer, lflops)
       sa = sa + blkn * blkn
       call slv_fwd_update_ileave(blkm, blkn, col, offset, index, &
         lcol(sa : sa + blkn * blkm - 1), blkn, nrhs,                      &
-        upd, tdu, rhs, n, bdr, rhsPtr, xlocal(:, threadID + 1))
+        upd, tdu, rhs, n, bdr, rhsPtr, indir_rhs, xlocal(:, threadID + 1))
 
 #if defined(SPLLT_PROFILING_FLOP)
       flops = flops + 2 * (blkn * nrhs * blkm)
@@ -1276,9 +1284,9 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
 
-  subroutine solve_fwd_update_work_ileave(blk, rhsPtr, blkm, blkn, col,   &
-      offset, index, lcol, blk_sa, nrhs, upd, ldu, bdu, tdu, rhs, n, bdr, &
-      xlocal, threadID, flops)
+  subroutine solve_fwd_update_work_ileave(blk, rhsPtr, indir_rhs, blkm,   &
+      blkn, col, offset, index, lcol, blk_sa, nrhs, upd, ldu, bdu, tdu,   &
+      rhs, n, bdr, xlocal, threadID, flops)
     use spllt_data_mod
     implicit none
     integer,                  intent(in)    :: blk
@@ -1296,6 +1304,7 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,                  intent(in)    :: threadID
     double precision,         intent(out)   :: flops
     integer,                  intent(in)    :: rhsPtr(:)
+    integer,                  intent(in)    :: indir_rhs(:)
     integer,                  intent(inout) :: index(:)
     real(wp),                 intent(inout) :: lcol(:)
     real(wp),                 intent(inout) :: upd(:)
@@ -1304,7 +1313,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
     call slv_fwd_update_ileave(blkm, blkn, col, offset, &
       index, lcol(blk_sa : blk_sa + blkn * blkm - 1), blkn, nrhs,    &
-      upd, tdu, rhs, n, bdr, rhsPtr, xlocal(:, threadID + 1))
+      upd, tdu, rhs, n, bdr, rhsPtr, indir_rhs, xlocal(:, threadID + 1))
 
 #if defined(SPLLT_PROFILING_FLOP)
     flops = 2 * (blkm * nrhs * blkn)

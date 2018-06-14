@@ -1321,21 +1321,24 @@ contains
 
 
 
-  subroutine spllt_compute_rhs_block(fkeep, st)
+  subroutine spllt_compute_rhs_block(fkeep, stat)
     use spllt_data_mod
     implicit none
     type(spllt_fkeep), target,  intent(inout) :: fkeep
-    integer,                    intent(out)   :: st
+    integer,                    intent(out)   :: stat
 
     integer :: nnode, node
     integer :: ndblk
     integer :: sa, en
     integer :: ncol
+    integer :: st
     integer :: i
+    integer :: cpt
     integer :: dblk, blk
     integer :: nb
     integer :: nlblk
     integer, pointer :: rhsPtr(:)
+    integer, pointer :: indir_rhs(:)
 
     nnode = fkeep%info%num_nodes
     ndblk = 0
@@ -1353,10 +1356,15 @@ contains
 
     fkeep%ndblk = ndblk
     allocate(fkeep%rhsPtr(ndblk + 1), stat=st)
+    stat = st
+    allocate(fkeep%indir_rhs(en), stat=st)
+    stat = stat + st
 
-    rhsPtr => fkeep%rhsPtr
+    indir_rhs => fkeep%indir_rhs
+    rhsPtr    => fkeep%rhsPtr
     rhsPtr(1) = 0
     blk       = 0 ! #blk already treated
+    cpt       = 0
 
     ! Fill in rhsPtr array
     do node = 1, nnode
@@ -1369,14 +1377,19 @@ contains
       do i = 1, nlblk
 !!      print *, fkeep%bc(dblk)%blkn, "ncol of blk", dblk
         rhsPtr(blk + i + 1 ) = rhsPtr(blk + i) + fkeep%bc(dblk)%blkn
-        dblk = fkeep%bc(dblk)%last_blk + 1
+        indir_rhs(cpt + 1 : cpt + fkeep%bc(dblk)%blkn) = blk + i
+        cpt   = cpt + fkeep%bc(dblk)%blkn
+        dblk  = fkeep%bc(dblk)%last_blk + 1
       end do
       blk = blk + nlblk
     end do
 
 !!  print *, "Result of rhsPtr", rhsPtr
+!!  print *, "Result of indir_rhs", indir_rhs
 
   end subroutine spllt_compute_rhs_block
+
+
 
 ! integer function bwd_solve_dependency(fkeep, blk)
 !   use spllt_data_mod

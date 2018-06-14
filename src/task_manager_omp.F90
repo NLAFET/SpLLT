@@ -1374,6 +1374,7 @@ module task_manager_omp_mod
     integer                     :: ndep
     integer                     :: nthread, threadID
     integer,           pointer  :: p_rhsPtr(:)
+    integer,           pointer  :: p_indir_rhs(:)
     integer,           pointer  :: p_index(:)
     real(wp),          pointer  :: p_lcol(:)
 
@@ -1410,14 +1411,17 @@ module task_manager_omp_mod
     dcol      = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
     col       = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
     offset    = col - fkeep%nodes(node)%sa + 1
-    p_index   => fkeep%nodes(node)%index
-    p_lcol    => fkeep%lfact(bcol)%lcol
-    p_rhsPtr  => fkeep%rhsPtr
-    p_bc      => fkeep%bc
-    p_upd     => upd
-    p_xlocal  => xlocal
-    p_rhs     => rhs
-    p_dep     => fkeep%bc(dblk)%fwd_dep
+
+    p_index     => fkeep%nodes(node)%index
+    p_lcol      => fkeep%lfact(bcol)%lcol
+    p_rhsPtr    => fkeep%rhsPtr
+    p_indir_rhs => fkeep%indir_rhs
+    p_bc        => fkeep%bc
+    p_upd       => upd
+    p_xlocal    => xlocal
+    p_rhs       => rhs
+    p_dep       => fkeep%bc(dblk)%fwd_dep
+
     ndep      = size(p_dep)
     nftask    = 0
     chunk     = 0
@@ -1563,6 +1567,7 @@ module task_manager_omp_mod
     integer                     :: ndep
    !integer                     :: dep
     integer, pointer            :: p_rhsPtr(:)
+    integer, pointer            :: p_indir_rhs(:)
     integer, pointer            :: p_index(:)
     real(wp), pointer           :: p_lcol(:)
     integer, pointer            :: p_dep(:)
@@ -1590,29 +1595,30 @@ module task_manager_omp_mod
 #endif
 
     ! Establish variables describing block
-    blkn      = fkeep%bc(blk)%blkn
-    blkm      = fkeep%bc(blk)%blkm
-    blk_sa    = fkeep%bc(blk)%sa
-    bcol      = fkeep%bc(blk)%bcol
-    dcol      = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
-    col       = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
-    offset    = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
-    offset    = offset + (blk-fkeep%bc(blk)%dblk) &
+    blkn        = fkeep%bc(blk)%blkn
+    blkm        = fkeep%bc(blk)%blkm
+    blk_sa      = fkeep%bc(blk)%sa
+    bcol        = fkeep%bc(blk)%bcol
+    dcol        = bcol - fkeep%bc(fkeep%nodes(node)%blk_sa)%bcol + 1
+    col         = fkeep%nodes(node)%sa + (dcol-1)*fkeep%nodes(node)%nb
+    offset      = col - fkeep%nodes(node)%sa + 1 ! diagonal blk
+    offset      = offset + (blk-fkeep%bc(blk)%dblk) &
       * fkeep%nodes(node)%nb ! this blk
-    p_rhsPtr  => fkeep%rhsPtr
-    p_index   => fkeep%nodes(node)%index
-    p_lcol    => fkeep%lfact(bcol)%lcol
-    p_bc      => fkeep%bc
 
-    p_upd     => upd
-    p_xlocal  => xlocal
-    p_rhs     => rhs
-    p_dep     => fkeep%bc(blk)%fwd_dep
+    p_rhsPtr    => fkeep%rhsPtr
+    p_indir_rhs => fkeep%indir_rhs
+    p_index     => fkeep%nodes(node)%index
+    p_lcol      => fkeep%lfact(bcol)%lcol
+    p_bc        => fkeep%bc
+    p_upd       => upd
+    p_xlocal    => xlocal
+    p_rhs       => rhs
+    p_dep       => fkeep%bc(blk)%fwd_dep
 
-    nftask    = 0
-    ndep      = size(p_dep)
-    chunk     = 0
-    ndep_lvl  = 0
+    nftask      = 0
+    ndep        = size(p_dep)
+    chunk       = 0
+    ndep_lvl    = 0
 
     if(ndep .eq. 0) then
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)

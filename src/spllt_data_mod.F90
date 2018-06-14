@@ -316,6 +316,7 @@ module spllt_data_mod
      type(spllt_inform) :: info ! Holds copy of info
      integer :: ndblk
      integer, allocatable :: rhsPtr(:)
+     integer, allocatable :: indir_rhs(:)
      integer :: maxmn ! holds largest block dimension
      integer :: n  ! Order of the system.
      ! type(node_type), dimension(:), allocatable :: nodes ! nodal info
@@ -550,6 +551,10 @@ contains
     end if
     if(allocated(fkeep%rhsPtr)) then
       deallocate(fkeep%rhsPtr, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%indir_rhs)) then
+      deallocate(fkeep%indir_rhs, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_fkeep
