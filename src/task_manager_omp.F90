@@ -1307,20 +1307,16 @@ module task_manager_omp_mod
   !!!!!!!!!!!!!!!!!!!!!!!!!!
   ! InterLeave subroutines
   !
-  subroutine solve_fwd_block_il_task(task_manager, dblk, nrhs, upd, ldu, &
-      bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+  subroutine solve_fwd_block_il_task(task_manager, dblk, nrhs, upd, &
+      tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
     
     class(task_manager_omp_t),  intent(inout) :: task_manager
     integer,                    intent(in)    :: dblk !Index of diagonal block
     integer,                    intent(in)    :: nrhs !Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)
     real(wp), target,           intent(inout) :: rhs(n * nrhs)
     real(wp), target,           intent(inout) :: xlocal(:, :)
@@ -1329,16 +1325,16 @@ module task_manager_omp_mod
 
     if(present(trace_id)) then
       call solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd,  &
-        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+        tdu, rhs, n, xlocal, fkeep, trace_id)
     else
       call solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd,  &
-        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep,                   &
+        tdu, rhs, n, xlocal, fkeep,                   &
         task_manager%trace_ids(trace_fwd_block_pos))
     end if
   end subroutine solve_fwd_block_il_task
 
   subroutine solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd, &
-      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -1350,12 +1346,8 @@ module task_manager_omp_mod
     type (task_manager_omp_t),  intent(inout) :: task_manager
     integer,                    intent(in)    :: dblk !Index of diagonal block
     integer,                    intent(in)    :: nrhs !Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)
     real(wp), target,           intent(inout) :: rhs(n * nrhs)
     real(wp), target,           intent(inout) :: xlocal(:, :)
@@ -1502,7 +1494,7 @@ module task_manager_omp_mod
 
 
   subroutine solve_fwd_update_il_task(task_manager, blk, node, nrhs, upd, &
-      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     implicit none
 
@@ -1510,12 +1502,8 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: blk  ! Index of block
     integer,                    intent(in)    :: node
     integer,                    intent(in)    :: nrhs ! Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)
     real(wp), target,           intent(in)    :: rhs(n*nrhs)
     real(wp), target,           intent(out)   :: xlocal(:,:)
@@ -1524,16 +1512,15 @@ module task_manager_omp_mod
 
     if(present(trace_id)) then
       call solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, upd,&
-        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+        tdu, rhs, n, xlocal, fkeep, trace_id)
     else
       call solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, upd,&
-        ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep,                       &
-        task_manager%trace_ids(trace_fwd_update_pos))
+        tdu, rhs, n, xlocal, fkeep, task_manager%trace_ids(trace_fwd_update_pos))
     end if
   end subroutine solve_fwd_update_il_task
 
   subroutine solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, &
-      upd, ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      upd, tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -1546,12 +1533,8 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: blk  ! Index of block
     integer,                    intent(in)    :: node
     integer,                    intent(in)    :: nrhs ! Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)
     real(wp), target,           intent(in)    :: rhs(n*nrhs)
     real(wp), target,           intent(out)   :: xlocal(:,:)
@@ -1693,8 +1676,8 @@ module task_manager_omp_mod
 
 
 
-  subroutine solve_fwd_subtree_il_task(task_manager, nrhs, rhs, n, ldr, bdr, &
-      fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+  subroutine solve_fwd_subtree_il_task(task_manager, nrhs, rhs, n, fkeep, &
+      tree, xlocal, rhs_local, tdu)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -1707,24 +1690,20 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: nrhs ! Number of RHS
     real(wp),                   intent(inout) :: rhs(n*nrhs)
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
-    integer,                    intent(in)    :: bdr
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     type(spllt_fkeep), target,  intent(in)    :: fkeep
     type(spllt_tree_t),         intent(in)    :: tree
     real(wp),                   intent(inout) :: xlocal(:,:)
     real(wp),                   intent(inout) :: rhs_local(:)
 
-    call solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, ldr, bdr,&
-      fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+    call solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree, xlocal, rhs_local, tdu)
   end subroutine solve_fwd_subtree_il_task
 
 
 
-  subroutine solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, ldr,&
-      bdr, fkeep, tree, xlocal, rhs_local, ldu, bdu, tdu)
+  subroutine solve_fwd_subtree_il_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree, xlocal, rhs_local, tdu)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -1737,10 +1716,6 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: nrhs ! Number of RHS
     real(wp),          target,  intent(inout) :: rhs(n*nrhs)
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
-    integer,                    intent(in)    :: bdr
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     type(spllt_fkeep), target,  intent(in)    :: fkeep
     type(spllt_tree_t),         intent(in)    :: tree
@@ -1778,7 +1753,7 @@ module task_manager_omp_mod
 !   !$omp default(none)                               &
     !$omp depend(inout: p_bc(blk_en))                 &
     !$omp firstprivate(p_rhs, p_xlocal, p_rhs_local)  &
-    !$omp firstprivate(nrhs, ldr)                     &
+    !$omp firstprivate(nrhs, tdu)                     &
     !$omp firstprivate(sub_task_manager)              &
     !$omp firstprivate(p_bc, blk_en)                  &
     !$omp firstprivate(en, sa)                        &
@@ -1797,8 +1772,8 @@ module task_manager_omp_mod
 #endif
 
     do i = sa, en
-      call solve_fwd_node_ileave(nrhs, p_rhs, n, ldr, bdr, fkeep, i, &
-        p_xlocal, p_rhs_local, ldu, bdu, tdu, sub_task_manager, no_trace)
+      call solve_fwd_node_ileave(nrhs, p_rhs, n, fkeep, i, &
+        p_xlocal, p_rhs_local, tdu, sub_task_manager, no_trace)
     end do
 
 #if defined(SPLLT_OMP_TRACE)

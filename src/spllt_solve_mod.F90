@@ -702,8 +702,8 @@ call task_manager%print("fwd end of submitted task", 0)
     do tree_num = 1, size(fkeep%trees)
  !!   call spllt_print_subtree(fkeep%trees(tree_num))
 
-      call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, ldr, bdr, &
-        fkeep, fkeep%trees(tree_num), xlocal, rhs_local, ldu, bdu, tdu)
+      call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, &
+        fkeep, fkeep%trees(tree_num), xlocal, rhs_local, tdu)
     end do
 
 #if defined(SPLLT_OMP_TRACE)
@@ -720,8 +720,8 @@ call task_manager%print("fwd end of submitted task", 0)
  !!   call print_node(fkeep, node)
  !!   call print_blk_index('', size(fkeep%nodes(node)%index), &
  !!       fkeep%nodes(node)%index, 1)
-      call solve_fwd_node_ileave(nrhs, rhs, n, ldr, bdr, fkeep, node, xlocal, &
-        rhs_local, ldu, bdu, tdu, task_manager)
+      call solve_fwd_node_ileave(nrhs, rhs, n, fkeep, node, xlocal, &
+        rhs_local, tdu, task_manager)
     end do
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tac(4, task_manager%workerID, timer)

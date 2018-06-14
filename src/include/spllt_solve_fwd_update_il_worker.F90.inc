@@ -16,8 +16,9 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif 
 
-  call solve_fwd_update_work_ileave(blk, p_rhsPtr, p_indir_rhs, blkm, blkn, col, offset, p_index, p_lcol, blk_sa, &
-    nrhs, p_upd, ldu, bdu, tdu, p_rhs, n, bdr, p_xlocal, threadID, flops)
+  call solve_fwd_update_work_ileave(blk, p_rhsPtr, p_indir_rhs, blkm, blkn, &
+    col, offset, p_index, p_lcol, blk_sa, nrhs, p_upd, tdu, p_rhs, n,       &
+    p_xlocal, threadID, flops)
 
 #if defined(SPLLT_PROFILING_FLOP)
   call task_manager%nflop_performed(flops)

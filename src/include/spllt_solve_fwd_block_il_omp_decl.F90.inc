@@ -1,6 +1,6 @@
 !$omp default(none)                                                       &
 !$omp firstprivate(blkm, blkn, nrhs, col, sa, offset)                     &
-!$omp firstprivate(n, ldr, bdr, ldu, bdu, tdu)                            &
+!$omp firstprivate(n, tdu)                                                &
 !$omp firstprivate(nthread, trace_id, p_timer)                            &
 !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
 !$omp firstprivate(p_rhsPtr, p_indir_rhs)                                 &

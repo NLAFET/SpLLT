@@ -672,10 +672,14 @@ module task_manager_seq_mod
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! InterLeave
   !
+  !
+  !
   subroutine solve_fwd_block_il_task_worker(task_manager, dblk, nrhs, upd, &
-      ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -686,12 +690,8 @@ module task_manager_seq_mod
     class(task_manager_seq_t),  intent(inout) :: task_manager
     integer,                    intent(in)    :: dblk !Index of diagonal block
     integer,                    intent(in)    :: nrhs !Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)
     real(wp), target,           intent(inout) :: rhs(n * nrhs)
     real(wp), target,           intent(inout) :: xlocal(:, :)
@@ -757,8 +757,8 @@ module task_manager_seq_mod
 #endif
 
     call solve_fwd_block_work_ileave(dblk, p_rhsPtr, p_indir_rhs, blkm,   &
-      blkn, col, offset, p_index, p_lcol, sa, nrhs, p_upd, ldu, bdu, tdu, &
-      p_rhs, n, ldr, bdr, p_xlocal, threadID, nthread, flops)
+      blkn, col, offset, p_index, p_lcol, sa, nrhs, p_upd, tdu, p_rhs, n, &
+      p_xlocal, threadID, nthread, flops)
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -776,7 +776,7 @@ module task_manager_seq_mod
 
 
   subroutine solve_fwd_update_il_task_worker(task_manager, blk, node, nrhs, &
-      upd, ldu, bdu, tdu, rhs, n, ldr, bdr, xlocal, fkeep, trace_id)
+      upd, tdu, rhs, n, xlocal, fkeep, trace_id)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -788,12 +788,8 @@ module task_manager_seq_mod
     integer,                    intent(in)    :: blk  ! Index of block
     integer,                    intent(in)    :: node
     integer,                    intent(in)    :: nrhs ! Number of RHS
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr
-    integer,                    intent(in)    :: bdr
     real(wp), target,           intent(inout) :: upd(:)        
     real(wp), target,           intent(in)    :: rhs(n*nrhs)
     real(wp), target,           intent(out)   :: xlocal(:,:)
@@ -851,9 +847,9 @@ module task_manager_seq_mod
     call trace_event_start(traceID, task_manager%workerID)
 #endif
 
-    call solve_fwd_update_work_ileave(blk, p_rhsPtr, p_indir_rhs, blkm, blkn, col, offset, p_index,   &
-      p_lcol, blk_sa, nrhs, p_upd, ldu, bdu, tdu, p_rhs, n, bdr, p_xlocal,&
-      task_manager%workerID, flops)
+    call solve_fwd_update_work_ileave(blk, p_rhsPtr, p_indir_rhs, blkm, blkn, &
+      col, offset, p_index, p_lcol, blk_sa, nrhs, p_upd, tdu, p_rhs, n,       &
+      p_xlocal, task_manager%workerID, flops)
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -871,8 +867,8 @@ module task_manager_seq_mod
 
 
 
-  subroutine solve_fwd_subtree_il(task_manager, nrhs, rhs, n, ldr, bdr, fkeep, &
-      tree, xlocal, rhs_local, ldu, bdu, tdu)
+  subroutine solve_fwd_subtree_il(task_manager, nrhs, rhs, n, fkeep, tree, &
+      xlocal, rhs_local, tdu)
     use spllt_data_mod
     use spllt_solve_kernels_mod
     use trace_mod
@@ -884,10 +880,6 @@ module task_manager_seq_mod
     integer,                    intent(in)    :: nrhs ! Number of RHS
     real(wp),                   intent(inout) :: rhs(n*nrhs)
     integer,                    intent(in)    :: n
-    integer,                    intent(in)    :: ldr  ! Leading dimension of RHS
-    integer,                    intent(in)    :: bdr
-    integer,                    intent(in)    :: ldu
-    integer,                    intent(in)    :: bdu
     integer,                    intent(in)    :: tdu
     type(spllt_fkeep), target,  intent(in)    :: fkeep
     type(spllt_tree_t),         intent(in)    :: tree
@@ -905,8 +897,8 @@ module task_manager_seq_mod
 #endif
 
     do i = tree%node_sa, tree%node_en
-      call solve_fwd_node_ileave(nrhs, rhs, n, ldr, bdr, fkeep, i, xlocal, &
-        rhs_local, ldu, bdu, tdu, task_manager)
+      call solve_fwd_node_ileave(nrhs, rhs, n, fkeep, i, xlocal, rhs_local, &
+        tdu, task_manager)
     end do
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
