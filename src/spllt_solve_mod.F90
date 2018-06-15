@@ -316,6 +316,7 @@ contains
         ! Backward solve
         call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
+        !$omp taskwait
 #endif
        !!$omp taskwait
        !do r = 1, nrhs
@@ -334,7 +335,6 @@ contains
        !
        ! Reorder soln
        !
-      !$omp taskwait
         do j = 1, n
            x(j,:) = x_tmp(order(j),:)
         end do
