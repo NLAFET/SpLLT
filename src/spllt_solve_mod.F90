@@ -303,12 +303,18 @@ contains
  !!     call print_darray("Interleaved returned solution", int(size_nrhs), &
  !!       xil, 1)
 
+        ! Backward solve
+        call solve_bwd_ileave(nrhs, xil, n, fkeep, work, task_manager)
+
        !call unpack_rhs(nrhs, xil, n, ldr, bdr, x_tmp, st)
         !$omp taskwait
         call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x_tmp, st)
 #else
         ! Forward solve
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
+
+        ! Backward solve
+        call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
 #endif
        !!$omp taskwait
@@ -319,7 +325,8 @@ contains
        !stop
 
         ! Backward solve
-        call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
+       !call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
+
 
        !do r = 1, nrhs
        !  call print_darray("Solution returned by bwd", n, x_tmp(:, r), 0)
@@ -812,10 +819,16 @@ call task_manager%print("fwd end of submitted task", 0)
     do node = fkeep%info%num_nodes, 1, -1
 
       if(fkeep%small(node) .eq. 0) then
+ !!     print *, "Submit node ", node
+ !!     call print_node(fkeep, node)
+ !!     call print_blk_index('', size(fkeep%nodes(node)%index), &
+ !!         fkeep%nodes(node)%index, 1)
+
         call solve_bwd_node_ileave(nrhs, rhs, n, fkeep, node, xlocal, &
           rhs_local, tdu, task_manager)
       else if(fkeep%small(node) .eq. 1) then
         tree_num = fkeep%assoc_tree(node)
+ !!     call spllt_print_subtree(fkeep%trees(tree_num))
 
         call task_manager%solve_bwd_subtree_il_task(nrhs, rhs, n, fkeep, &
           fkeep%trees(tree_num), xlocal, rhs_local, tdu)

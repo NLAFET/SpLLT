@@ -1485,7 +1485,6 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-   !!$omp taskwait
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
@@ -1668,7 +1667,6 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-   !!$omp taskwait
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
@@ -1868,12 +1866,10 @@ module task_manager_omp_mod
     double precision :: flops
 
     type(spllt_block), pointer  :: p_bc(:)
-   !type(spllt_timer_t), save   :: timer
     type(spllt_timer_t), target, save :: timer
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
 
-   !nthread = omp_get_num_threads()
     nthread = task_manager%nworker
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_open_timer(task_manager%workerID, &
@@ -2225,7 +2221,8 @@ module task_manager_omp_mod
     p_timer => timer
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-    call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree", timer)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_bwd_subtree_il_task_worker", timer)
 #endif
 
     p_rhs_local => rhs_local
@@ -2312,4 +2309,5 @@ module task_manager_omp_mod
 #endif
 
   end subroutine solve_bwd_subtree_il_task_worker
+
 end module task_manager_omp_mod
