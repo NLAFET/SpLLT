@@ -68,7 +68,10 @@ module task_manager_mod
 
     procedure(solve_fwd_block_task_il_iface),  deferred :: solve_fwd_block_il_task
     procedure(solve_fwd_update_task_il_iface), deferred :: solve_fwd_update_il_task
+    procedure(solve_bwd_block_task_il_iface),  deferred :: solve_bwd_block_il_task
+    procedure(solve_bwd_update_task_il_iface), deferred :: solve_bwd_update_il_task
     procedure(solve_fwd_subtree_task_il_iface),deferred :: solve_fwd_subtree_il_task
+    procedure(solve_bwd_subtree_task_il_iface),deferred :: solve_bwd_subtree_il_task
   end type task_manager_base
 
   abstract interface 
@@ -192,13 +195,13 @@ module task_manager_mod
       import task_manager_base
 
       class(task_manager_base),   intent(inout) :: task_manager
-      integer, intent(in)                       :: dblk
-      integer, intent(in)                       :: nrhs
-      integer, intent(in)                       :: ldr
-      real(wp), target, intent(inout)           :: upd(:, :)
-      real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
-      real(wp), target, intent(inout)           :: xlocal(:, :)
-      type(spllt_fkeep), target, intent(in)     :: fkeep
+      integer,                    intent(in)    :: dblk
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: ldr
+      real(wp), target,           intent(inout) :: upd(:, :)
+      real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
+      real(wp), target,           intent(inout) :: xlocal(:, :)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
       integer, optional,          intent(in)    :: trace_id
     end subroutine solve_bwd_block_task_iface
 
@@ -211,14 +214,14 @@ module task_manager_mod
       import task_manager_base
 
       class(task_manager_base),   intent(inout) :: task_manager
-      integer, intent(in)                       :: blk
-      integer, intent(in)                       :: node 
-      integer, intent(in)                       :: nrhs
-      integer, intent(in)                       :: ldr
-      real(wp), target, intent(inout)           :: upd(:,:)
-      real(wp), target, intent(inout)           :: rhs(ldr * nrhs)
-      real(wp), target, intent(inout)           :: xlocal(:,:)
-      type(spllt_fkeep), target, intent(in)     :: fkeep
+      integer,                    intent(in)    :: blk
+      integer,                    intent(in)    :: node 
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: ldr
+      real(wp), target,           intent(inout) :: upd(:,:)
+      real(wp), target,           intent(inout) :: rhs(ldr * nrhs)
+      real(wp), target,           intent(inout) :: xlocal(:,:)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
       integer, optional,          intent(in)    :: trace_id
     end subroutine solve_bwd_update_task_iface
 
@@ -314,6 +317,64 @@ module task_manager_mod
       real(wp),                   intent(inout) :: xlocal(:,:)
       real(wp),                   intent(inout) :: rhs_local(:)
     end subroutine solve_fwd_subtree_task_il_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a backward block task by the task manager
+    !
+    subroutine solve_bwd_block_task_il_iface(task_manager, dblk, nrhs, upd, &
+      tdu, rhs, n, xlocal, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: dblk 
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: tdu
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(inout) :: upd(:)
+      real(wp), target,           intent(inout) :: rhs(n*nrhs)
+      real(wp), target,           intent(inout) :: xlocal(:, :)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+
+    end subroutine solve_bwd_block_task_il_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a forward update task by the task manager
+    !
+    subroutine solve_bwd_update_task_il_iface(task_manager, blk, node, nrhs, &
+        upd, tdu, rhs, n, xlocal, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: blk
+      integer,                    intent(in)    :: node
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: tdu
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(inout) :: upd(:)
+      real(wp), target,           intent(inout) :: rhs(n*nrhs)
+      real(wp), target,           intent(inout) :: xlocal(:,:)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+    end subroutine solve_bwd_update_task_il_iface
+
+    subroutine solve_bwd_subtree_task_il_iface(task_manager, nrhs, rhs, n, &
+        fkeep, tree, xlocal, rhs_local, tdu)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base ),  intent(inout) :: task_manager
+      integer,                    intent(in)    :: nrhs ! Number of RHS
+      integer,                    intent(in)    :: tdu
+      integer,                    intent(in)    :: n
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      type(spllt_tree_t),         intent(in)    :: tree
+      real(wp),                   intent(inout) :: rhs(n*nrhs)
+      real(wp),                   intent(inout) :: xlocal(:,:)
+      real(wp),                   intent(inout) :: rhs_local(:)
+    end subroutine solve_bwd_subtree_task_il_iface
 
   end interface
 
