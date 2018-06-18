@@ -393,6 +393,8 @@ contains
           options%nrhs_linear_comp = .true.
         case("--no-nrhs-linear")
           options%nrhs_linear_comp = .false.
+        case("--ileave")
+          options%ileave_solve = .true.
 
        case default
           write(*,'("Unrecognised command line argument: ", a20)') argval

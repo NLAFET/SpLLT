@@ -645,7 +645,7 @@ contains
 
 
 
-  subroutine vector_pack_rhs(nrhs, rhs, n, v, rhs_pack, st)
+  subroutine vector_pack_rhs(nrhs, rhs, n, v, rhs_pack)
     use spllt_data_mod
     implicit none
     integer,  intent(in)    :: nrhs
@@ -653,7 +653,6 @@ contains
     integer,  intent(in)    :: v(:)
     real(wp), intent(in)    :: rhs(n,nrhs)
     real(wp), intent(inout) :: rhs_pack(n*nrhs)
-    integer,  intent(out)   :: st
 
     integer(long) :: size_nrhs
     integer       :: nblk, blk, r
@@ -680,7 +679,7 @@ contains
 
 
 
-  subroutine vector_unpack_rhs(nrhs, rhs_pack, n, v, rhs, st)
+  subroutine vector_unpack_rhs(nrhs, rhs_pack, n, v, rhs)
     use spllt_data_mod
     implicit none
     integer,  intent(in)    :: nrhs
@@ -688,7 +687,6 @@ contains
     integer,  intent(in)    :: v(:)
     real(wp), intent(in)    :: rhs_pack(n*nrhs)
     real(wp), intent(inout) :: rhs(n,nrhs)
-    integer,  intent(out)   :: st
 
     integer(long) :: size_nrhs
     integer       :: nblk, blk, r

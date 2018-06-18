@@ -824,13 +824,15 @@ call spllt_tac(1, threadID, timer, lflops)
     integer   :: lrow, rowPtr, lcol, ndblk, pos
     integer   :: rhs_blk_size, rhs_thread_size
     real(wp)  :: w ! temporary work value
+    integer                   :: threadID
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
     type(spllt_timer_t), save :: timer
-    integer                   :: threadID
+#endif
 
     threadID = 0
  !$ threadID = omp_get_thread_num()
 
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
     call spllt_open_timer(threadID, "slv_fwd_update_ileave", timer)
 #endif
 
@@ -965,13 +967,15 @@ call spllt_tac(1, threadID, timer, lflops)
     integer   :: lrow, rowPtr, lcol, ndblk, pos
     integer   :: rhs_blk_size, rhs_thread_size
     real(wp)  :: w ! temporary work variable
+    integer   :: threadID
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
     type(spllt_timer_t), save :: timer
-    integer                   :: threadID
+#endif
 
     threadID = 0
  !$ threadID = omp_get_thread_num()
 
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
     call spllt_open_timer(threadID, "slv_bwd_update_ileave", timer)
 #endif
 

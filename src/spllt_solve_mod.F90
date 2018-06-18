@@ -93,8 +93,6 @@ contains
     
   end subroutine spllt_solve_one_double
 
-  
-
 
 
   subroutine spllt_solve_mult_double(fkeep, options, order, nrhs, x, info, &
@@ -186,11 +184,11 @@ contains
 
 
 
-#define SPLLT_ILEAVE
   subroutine spllt_solve_mult_double_worker(fkeep, options, order, nrhs, x, &
       info, job, workspace, task_manager)
     use spllt_data_mod
     use spllt_solve_dep_mod, ONLY : spllt_compute_rhs_block
+    use timer_mod
     use utils_mod
     use task_manager_mod
     implicit none
@@ -200,7 +198,7 @@ contains
     integer,              intent(in)  :: order(fkeep%n) ! pivot order
     integer,              intent(in)  :: nrhs           ! Number of RHS
     ! For details of fkeep, control, info : see derived type description        
-    real(wp),           intent(inout) :: x(fkeep%n,nrhs)! On entry, x must
+    real(wp), target,   intent(inout) :: x(fkeep%n,nrhs)! On entry, x must
     ! be set so that if i has been used to index a variable,
     ! x(i, j) is the corresponding component of the j-th right-hand side.
     ! On exit, if i has been used to index a variable,
@@ -222,23 +220,17 @@ contains
     real(wp), pointer :: x_tmp(:,:)
     real(wp), pointer :: work(:)
     integer(long)     :: size_nrhs, size_work
-#if defined(SPLLT_ILEAVE)
-    integer               :: st
-    real(wp), allocatable :: xil(:)
-    real(wp), allocatable :: norm(:)
-    integer,  allocatable :: rhsPtr(:)
-#endif
+    real(wp), pointer :: p_x(:)
+    type(spllt_timer_t), save :: timer
+
+    call spllt_open_timer(task_manager%workerID, &
+      "spllt_solve_mult_double_worker", timer)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
 
     n = fkeep%n
     context = 'spllt_solve_mult_double_worker'
-
-   !work(1 : n, 1 : nrhs) => workspace(1 : n * nrhs)
-   !work2(1 : (fkeep%maxmn + n) * nrhs * task_manager%nworker) =>      &
-   !  workspace(n * nrhs + 1 : nrhs * (n + (fkeep%maxmn + n) *      &
-   !  task_manager%nworker))
 
     size_nrhs = int(n, long) * nrhs
     size_work = int(fkeep%maxmn + n, long) * int(nrhs, long)
@@ -247,6 +239,9 @@ contains
     work(1 : size_work * task_manager%nworker) =>                        &
       workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
       task_manager%nworker))
+    p_x(1 : size_nrhs) => x(:,:)
+
+    print *, "Call with Job = ", job
 
     select case(job)
       case(0)
@@ -255,107 +250,98 @@ contains
        !
        !TODO Add subroutine to interleave and order at the same time
         do j = 1, n
-          !work(order(j),:) = x(j,:)
            x_tmp(order(j),:) = x(j,:)
         end do
- !!     do r = 1, nrhs
- !!       call print_darray("Original RHS", n, x_tmp(:, r), 1)
- !!     end do
 
-#if defined(SPLLT_ILEAVE)
-        print *, "INTERLEAVE VERSION"
-!     ! print *, "Allocate xil of size ", size_nrhs
-      ! allocate(xil(size_nrhs))
-      ! allocate(norm(nrhs))
-
-      ! call pack_rhs(nrhs, x_tmp, n, ldr, bdr, xil, st)
-
-      ! call print_darray("Interleaved RHS", int(size_nrhs), xil, 1)
-
-      ! call unpack_rhs(nrhs, xil, n, ldr, bdr, x, st)
-
-      ! call vector_norm_2(nrhs, x_tmp - x, norm)
-      ! print *, "Norm ", norm
-
-      ! deallocate(xil)
-      ! deallocate(norm)
-        allocate(xil(size_nrhs))
-       !allocate(norm(nrhs))
-        call pack_rhs(nrhs, x_tmp, n, fkeep%rhsPtr, xil, st)
-
-       !call print_darray("Interleaved RHS", int(size_nrhs), xil, 1)
-
-       !call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x, st)
-
-       !do r = 1, nrhs
-       !  call print_darray("Unpack RHS", n, x(:, r), 1)
-       !end do
-
-       !call vector_norm_2(nrhs, x_tmp - x, norm)
-       !print *, "Norm ", norm
-       !stop
-
- !!     print *, "RHSPTR", fkeep%rhsPtr
-
-        ! Forward solve
-        call solve_fwd_ileave(nrhs, xil, n, fkeep, work, task_manager)
-
- !!     call print_darray("Interleaved returned solution", int(size_nrhs), &
- !!       xil, 1)
-
-        ! Backward solve
-        call solve_bwd_ileave(nrhs, xil, n, fkeep, work, task_manager)
-
-       !call unpack_rhs(nrhs, xil, n, ldr, bdr, x_tmp, st)
-        !$omp taskwait
-        call unpack_rhs(nrhs, xil, n, fkeep%rhsPtr, x_tmp, st)
-#else
         ! Forward solve
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
         ! Backward solve
         call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
 
-        !$omp taskwait
-#endif
-       !!$omp taskwait
-       !do r = 1, nrhs
-       !  call print_darray("Solution returned by fwd", n, x_tmp(:, r), 1)
-       !end do
-    
-       !stop
-
-        ! Backward solve
-       !call solve_bwd(nrhs, x_tmp, n, fkeep, work, task_manager)
-
-
-       !do r = 1, nrhs
-       !  call print_darray("Solution returned by bwd", n, x_tmp(:, r), 0)
-       !end do
        !
        ! Reorder soln
        !
+        !$omp taskwait
         do j = 1, n
            x(j,:) = x_tmp(order(j),:)
         end do
 
-     !case(1)
-     !  x_tmp = x
-     !  do j = 1, n
-     !     x(order(j),:) = x_tmp(j,:)
-     !  end do
+      case(1)
+        x_tmp = x
+        do j = 1, n
+           x(order(j),:) = x_tmp(j,:)
+        end do
 
-     !  call solve_fwd(nrhs, x, n, fkeep, work, task_manager)
-     !!$omp taskwait
-     !
-     !case(2)
+        call solve_fwd(nrhs, x, n, fkeep, work, task_manager)
+      !$omp taskwait
+      
+      case(2)
 
-     !  call solve_bwd(nrhs, x, n, fkeep, work, task_manager)
-     !!$omp taskwait
-     !  x_tmp = x
-     !  do j = 1, n
-     !     x(j,:) = x_tmp(order(j),:)
-     !  end do
+        call solve_bwd(nrhs, x, n, fkeep, work, task_manager)
+      !$omp taskwait
+        x_tmp = x
+        do j = 1, n
+           x(j,:) = x_tmp(order(j),:)
+        end do
+
+      case(3)
+        print *, "INTERLEAVE SOLVE"
+       !
+       ! Reorder x
+       !
+       !TODO Add subroutine to interleave and order at the same time
+        call spllt_tic("Reorder x", 1, task_manager%workerID, timer)
+        do j = 1, n
+           x_tmp(order(j),:) = x(j,:)
+        end do
+        call spllt_tac(1, task_manager%workerID, timer)
+
+        call spllt_tic("Pack x", 2, task_manager%workerID, timer)
+        call pack_rhs(nrhs, x_tmp, n, fkeep%rhsPtr, p_x)
+        call spllt_tac(2, task_manager%workerID, timer)
+
+        ! Forward solve
+        call solve_fwd_ileave(nrhs, p_x, n, fkeep, work, task_manager)
+
+        ! Backward solve
+        call solve_bwd_ileave(nrhs, p_x, n, fkeep, work, task_manager)
+
+       !
+       ! Reorder soln
+       !
+        !$omp taskwait
+        call spllt_tic("Unpack x", 3, task_manager%workerID, timer)
+        call unpack_rhs(nrhs, p_x, n, fkeep%rhsPtr, x_tmp)
+        call spllt_tac(3, task_manager%workerID, timer)
+
+        call spllt_tic("Reorder x", 1, task_manager%workerID, timer)
+        do j = 1, n
+           x(j,:) = x_tmp(order(j),:)
+        end do
+        call spllt_tac(1, task_manager%workerID, timer)
+
+      case(4)
+        print *, "INTERLEAVE FORWARD"
+
+        do j = 1, n
+           x_tmp(order(j),:) = x(j,:)
+        end do
+        call pack_rhs(nrhs, x_tmp, n, fkeep%rhsPtr, p_x)
+
+        call solve_fwd_ileave(nrhs, p_x, n, fkeep, work, task_manager)
+        !$omp taskwait
+      
+      case(5)
+        print *, "INTERLEAVE BACKWARD"
+
+        call solve_bwd_ileave(nrhs, p_x, n, fkeep, work, task_manager)
+
+        !$omp taskwait
+        call unpack_rhs(nrhs, p_x, n, fkeep%rhsPtr, x_tmp)
+        do j = 1, n
+           x(j,:) = x_tmp(order(j),:)
+        end do
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
@@ -364,6 +350,7 @@ contains
         return
     end select
 
+    call spllt_close_timer(task_manager%workerID, timer)
   end subroutine spllt_solve_mult_double_worker
 
 
@@ -617,7 +604,12 @@ call task_manager%print("fwd end of submitted task", 0)
 
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
   ! InterLeave subroutines
+  !
   !
   subroutine solve_fwd_ileave(nrhs, rhs, n, fkeep, workspace, task_manager)
     use spllt_data_mod
@@ -697,7 +689,6 @@ call task_manager%print("fwd end of submitted task", 0)
 #endif
 
     do tree_num = 1, size(fkeep%trees)
- !!   call spllt_print_subtree(fkeep%trees(tree_num))
 
       call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, &
         fkeep, fkeep%trees(tree_num), xlocal, rhs_local, tdu)
@@ -713,10 +704,6 @@ call task_manager%print("fwd end of submitted task", 0)
         cycle
       end if
 
- !!   print *, "Submit node ", node
- !!   call print_node(fkeep, node)
- !!   call print_blk_index('', size(fkeep%nodes(node)%index), &
- !!       fkeep%nodes(node)%index, 1)
       call solve_fwd_node_ileave(nrhs, rhs, n, fkeep, node, xlocal, &
         rhs_local, tdu, task_manager)
     end do
@@ -819,16 +806,11 @@ call task_manager%print("fwd end of submitted task", 0)
     do node = fkeep%info%num_nodes, 1, -1
 
       if(fkeep%small(node) .eq. 0) then
- !!     print *, "Submit node ", node
- !!     call print_node(fkeep, node)
- !!     call print_blk_index('', size(fkeep%nodes(node)%index), &
- !!         fkeep%nodes(node)%index, 1)
 
         call solve_bwd_node_ileave(nrhs, rhs, n, fkeep, node, xlocal, &
           rhs_local, tdu, task_manager)
       else if(fkeep%small(node) .eq. 1) then
         tree_num = fkeep%assoc_tree(node)
- !!     call spllt_print_subtree(fkeep%trees(tree_num))
 
         call task_manager%solve_bwd_subtree_il_task(nrhs, rhs, n, fkeep, &
           fkeep%trees(tree_num), xlocal, rhs_local, tdu)

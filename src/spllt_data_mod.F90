@@ -233,6 +233,7 @@ module spllt_data_mod
      integer :: nrhs_max = 1
      logical :: nb_linear_comp = .false.
      logical :: nrhs_linear_comp = .false.
+     logical :: ileave_solve = .false.
   end type spllt_options
 
   type spllt_tree_t
