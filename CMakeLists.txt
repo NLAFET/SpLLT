@@ -50,10 +50,6 @@ message(STATUS "Run on KNL device: " ${USE_KNL})
 # set_property(CACHE TEST_DRIVER PROPERTY STRINGS SpLLT SpLDLT)
 # MESSAGE( STATUS "Test driver:         " ${TEST_DRIVER} )
 
-# MA87 test driver
-option(MA87_TEST_DRIVER "Use the ma87 test driver" OFF)
-message(STATUS "Use MA87 test driver: " ${MA87_TEST_DRIVER})
-
 ################################################################################
 # Compiler options
 
@@ -418,14 +414,6 @@ if(${USE_MPI} MATCHES ON)
 endif()
 
 
-# Set flags for the MA87 test driver
-
-if(MA87_TEST_DRIVER MATCHES ON)
-  # TODO find_package omp
-  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp")
-  set(CMAKE_Fortran_FLAGS "${CMAKE_Fortran_FLAGS} -fopenmp")
-endif()
-
 ########################################
 # SpLLT
 if(${WITH_TRACE} MATCHES ON)
@@ -771,20 +759,7 @@ add_subdirectory(src)
 # Setup list of test drivers
 set(test_drivers)
 
-if(MA87_TEST_DRIVER MATCHES ON)
-  # Generate the MA87 test driver
-  MESSAGE( STATUS "MA87 test driver: " ${MA87_TEST_DRIVER} )
-
-  list(APPEND test_drivers "drivers/run_ma87.f90")
-# list(APPEND test_drivers "drivers/ma87_test.F90")
-
-  # add_executable(spllt_test drivers/run_ma87.f90)
-else()
-  # add_executable(spllt_test spllt_test.F90)
-  list(APPEND test_drivers "drivers/spllt_test.F90")
-  
-  # add_executable(spllt_test drivers/spllt_test.F90)
-endif()
+#list(APPEND test_drivers "drivers/spllt_test.F90")
 
 if(${RUNTIME} MATCHES "OMP")
   list(APPEND test_drivers "drivers/spllt_omp.F90")
