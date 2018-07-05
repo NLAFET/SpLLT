@@ -235,28 +235,28 @@ program spllt_test
   ! the subroutine
   sol_computed = rhs
 
-  !!!!!!!!!!!!!!!!!!!!
-  ! Forward substitution
-  !
-  call task_manager%nflop_reset()
-  call spllt_tic("Forward", 4, task_manager%workerID, timer)
+! !!!!!!!!!!!!!!!!!!!!
+! ! Forward substitution
+! !
+! call task_manager%nflop_reset()
+! call spllt_tic("Forward", 4, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
-    workspace=workspace, task_manager=task_manager)
+! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
+!   workspace=workspace, task_manager=task_manager)
 
-  call spllt_tac(4, task_manager%workerID, timer)
+! call spllt_tac(4, task_manager%workerID, timer)
 
 
-  !!!!!!!!!!!!!!!!!!!!
-  ! Backward substitution
-  !
-  call task_manager%nflop_reset()
-  call spllt_tic("Backward", 5, task_manager%workerID, timer)
+! !!!!!!!!!!!!!!!!!!!!
+! ! Backward substitution
+! !
+! call task_manager%nflop_reset()
+! call spllt_tic("Backward", 5, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
-    workspace=workspace, task_manager=task_manager)
+! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
+!   workspace=workspace, task_manager=task_manager)
 
-  call spllt_tac(5, task_manager%workerID, timer)
+! call spllt_tac(5, task_manager%workerID, timer)
 
   !!!!!!!!!!!!!!!!!!!!
   ! Solve

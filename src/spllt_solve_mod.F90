@@ -249,9 +249,11 @@ contains
        ! Reorder x
        !
        !TODO Add subroutine to interleave and order at the same time
+        call spllt_tic("Reorder x", 1, task_manager%workerID, timer)
         do j = 1, n
            x_tmp(order(j),:) = x(j,:)
         end do
+        call spllt_tac(1, task_manager%workerID, timer)
 
         ! Forward solve
         call solve_fwd(nrhs, x_tmp, n, fkeep, work, task_manager)
@@ -263,9 +265,11 @@ contains
        ! Reorder soln
        !
         !$omp taskwait
+        call spllt_tic("Reorder x", 1, task_manager%workerID, timer)
         do j = 1, n
            x(j,:) = x_tmp(order(j),:)
         end do
+        call spllt_tac(1, task_manager%workerID, timer)
 
       case(1)
         x_tmp = x
