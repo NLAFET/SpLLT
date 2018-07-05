@@ -1038,6 +1038,7 @@ call spllt_tac(1, threadID, timer, lflops)
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
       call spllt_tic("bwd::gather", 1, threadID, timer)
 #endif
+#if 0
       ! Copy xlocal in
       do i = offset, offset + m - 1
         l       = indir_rhs(index(i))
@@ -1053,6 +1054,21 @@ call spllt_tac(1, threadID, timer, lflops)
         end do
         j = j + 1
       end do
+#else
+      do r = 0, nrhs - 1
+        j = 1
+        do i = offset, offset + m - 1
+          l       = indir_rhs(index(i))
+          rowPtr  = rhsPtr(l)
+          ind_n   = rhsPtr(l + 1) - rowPtr
+          pos     = rowPtr * rhs_blk_size
+          lrow    = pos + index(i)
+
+          xlocal(j + r * m) = rhs(lrow + r * ind_n)
+          j = j + 1
+        end do
+      end do
+#endif
 !     do i = offset, offset+m-1
 !        do r = 0, nrhs-1
 !           xlocal(j+r*m) = rhs(index(i)+r*ldr)
