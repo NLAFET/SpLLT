@@ -6,6 +6,7 @@ module timer_mod
   integer, parameter  :: max_steps      = 15
   integer, parameter  :: max_thread     = 64
   integer, parameter  :: max_ntimer_th  = 20
+  integer, parameter  :: max_val        = 20
 
   type spllt_steps
     character(len=200)        :: name(0 : max_steps)
@@ -41,6 +42,8 @@ module timer_mod
     double precision  :: flop(    0 : max_steps, 0 : max_thread - 1)  = 0.0
     double precision  :: flop_min(0 : max_steps, 0 : max_thread - 1)  = 1e30
     double precision  :: flop_max(0 : max_steps, 0 : max_thread - 1)  = 0.0
+    double precision  :: val(     0 : max_steps, 0 : max_thread - 1,&
+                                                 0 : max_val    - 1)  = - 1.0
   end type spllt_timer_t
 
   ! Record the timer of all functions used
@@ -251,6 +254,29 @@ contains
 
 
 
+  subroutine spllt_fulltac(step_id, thn, timer)
+    integer,                    intent(in)    :: step_id
+    integer,                    intent(in)    :: thn
+    type(spllt_timer_t),        intent(inout) :: timer
+
+
+    timer%swap(thn) = omp_get_wtime()
+    timer%start(step_id, thn)  = timer%swap(thn) - timer%start(step_id, thn)
+    print *, "Add ", timer%start(step_id, thn), "in pos ", timer%ncall(step_id, thn)
+    timer%val(step_id, thn, timer%ncall(step_id, thn)) = timer%start(step_id, thn)
+
+    ! Compute elapsed time
+    timer%time(step_id, thn)   = timer%time(step_id, thn) + &
+      timer%start(step_id, thn)
+    ! Counter
+    timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+    ! Prepare in case of another call to tac
+    timer%start(step_id, thn) = timer%swap(thn)
+
+  end subroutine spllt_fulltac
+
+
+
   subroutine spllt_close_ftimer(thn, timer)
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
@@ -414,7 +440,7 @@ contains
     integer,              intent(in) :: thn
     type(spllt_timer_t),  intent(in) :: timer
 
-    integer :: i
+    integer :: i, j
 
     i = 0
 
@@ -439,6 +465,16 @@ contains
         if(timer%ncall(i, thn) .eq. 1) then
           print '(20x, a30, a, es10.2, a)',                       &
             trim(timer%steps%name(i)), " : ", timer%time(i, thn)
+
+          if(timer%val(i, thn, 0) .gt. - 1.0) then
+            write(*, fmt='(20x, a33, es10.2)', advance="no") &
+              "__val__ : ", timer%val(i, thn, 0)
+            do j = 1, timer%ncall(i, thn) - 1
+              write(*, fmt='(es10.2)', advance="no") timer%val(i, thn, j)
+            end do
+            write(*,*) ""
+          end if
+
           if(timer%flop(i, thn) .gt. 0.0) then
             print '(20x, a33, es10.2, a)',                              &
               "Flop_rate : ", timer%flop(i, thn) / timer%time(i, thn)
@@ -448,6 +484,15 @@ contains
             trim(timer%steps%name(i)), " : ", timer%time(i, thn), " s (", &
             timer%ncall(i, thn), ") [ ",                                  &
             timer%time_min(i, thn), ' , ', timer%time_max(i, thn), ' ]'
+
+          if(timer%val(i, thn, 0) .gt. - 1.0) then
+            write(*, fmt='(20x, a33, es10.2)', advance="no") &
+              "__val__ : ", timer%val(i, thn, 0)
+            do j = 1, timer%ncall(i, thn) - 1
+              write(*, fmt='(es10.2)', advance="no") timer%val(i, thn, j)
+            end do
+            write(*,*) ""
+          end if
 
           if(timer%flop(i, thn) .gt. 0.0) then
             print '(20x, a33, es10.2, a, es10.2, a, es10.2, a)',              &
