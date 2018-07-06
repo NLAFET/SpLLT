@@ -1633,4 +1633,372 @@ call spllt_tac(1, threadID, timer, lflops)
 #endif
   end subroutine solve_bwd_node_ileave
 
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! NEW
+  !
+  !
+  subroutine slv_solve_ileave2(n, nelim, dest, trans, unit, nrhs, rhs, ldr)
+    use spllt_data_mod
+    implicit none
+
+    integer,            intent(in)    :: n      ! leading dimension of 
+                                                ! diag. block
+    integer,            intent(in)    :: nelim  ! number eliminations 
+                                                ! (immediate return if =0)
+    real(wp),           intent(in)    :: dest(*)! holds destination block
+    character(len=13),  intent(in)    :: trans  ! set to :
+                                                ! 'Transpose    ' 
+                                                ! for forward substitution 
+                                                ! 'Non-Transpose' 
+                                                ! for back substitution
+    character(len=8),   intent(in)    :: unit   ! set to 
+                                                ! 'Non-Unit' 
+                                                ! for positive-definite case
+    integer,            intent(in)    :: nrhs   ! number of right-hand sides
+    real(wp),           intent(inout) :: rhs(*)
+    integer,            intent(in)    :: ldr
+
+    if(nelim.eq.0) return
+
+    if(nrhs.eq.1) then
+      call dtrsv('Upper', trans, unit, nelim, dest, n, rhs, 1)
+    else
+      call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
+           dest, n, rhs, ldr)
+    endif
+
+  end subroutine slv_solve_ileave2
+
+
+
+  subroutine slv_fwd_update_ileave2(m, nelim, dest, ldd, &
+      n, nrhs, rhs, ldr, xlocal, ldx)
+    use spllt_data_mod
+    use timer_mod
+ !$ use omp_lib, ONLY : omp_get_thread_num
+    implicit none
+
+    integer,  intent(in)    :: m              ! number of rows in block
+    integer,  intent(in)    :: nelim          ! # eliminations 
+                                              ! (immediate return if =0)
+    real(wp), intent(in)    :: dest(m*ldd)    ! holds destination block
+    integer,  intent(in)    :: ldd            ! leading dimension of block
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: nrhs
+    real(wp), intent(in)    :: rhs(*)    ! rhs vector
+    integer,  intent(in)    :: ldr
+    real(wp), intent(out)   :: xlocal(*)
+    integer,  intent(in)    :: ldx            ! leading dimension of block
+
+    integer   :: i
+    integer   :: j
+    integer   :: k
+    real(wp)  :: w ! temporary work value
+    integer   :: threadID
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+    type(spllt_timer_t), save :: timer
+#endif
+
+    threadID = 0
+ !$ threadID = omp_get_thread_num()
+
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+    call spllt_open_timer(threadID, "slv_fwd_update_ileave2", timer)
+#endif
+
+    if(nelim.eq.0) return
+
+    ! forward substitution
+    if(nrhs.eq.1) then
+       if(m-nelim.gt.10 .and. nelim.gt.4) then
+!!! Single rhs, BLAS 2
+
+          call dgemv('T', nelim, m, -one, dest, ldd, rhs, 1, zero, xlocal, 1)
+
+       else
+!!! Single rhs, direct update
+         j = 1
+         do i = 1, m
+           w = zero
+           do k = 1, nelim
+             w = w - dest(j)*rhs(k)
+             j = j + 1
+           end do
+           j = j + (ldd-nelim)
+           xlocal(i) = xlocal(i) + w
+         end do
+       endif
+    else
+!!! Multiple rhs, BLAS 3
+      call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs, ldr, &
+           zero, xlocal, ldx)
+    endif
+
+#if defined(SPLLT_SOLVE_KERNEL_SCATTER)
+    call spllt_close_ftimer(threadID, timer)
+#endif
+
+  end subroutine slv_fwd_update_ileave2
+
+
+#if 0
+  subroutine slv_bwd_update_ileave2(m, nelim, col, offset, index, dest, &
+      ldd, nrhs, upd, tdu, rhs, n, rhsPtr, indir_rhs, xlocal)
+    use spllt_data_mod
+    use timer_mod
+ !$ use omp_lib, ONLY : omp_get_thread_num
+    implicit none
+
+    integer,  intent(in)    :: m            ! number of rows in block
+    integer,  intent(in)    :: nelim        ! # eliminations
+                                            ! (immediate return if =0)
+    integer,  intent(in)    :: col          ! start of block column variables
+                                            ! in rhs
+    integer,  intent(in)    :: offset       ! offset into index we start at
+    integer,  intent(in)    :: index(*)
+    integer,  intent(in)    :: ldd          ! leading dimension of block
+    real(wp), intent(in)    :: dest(m*ldd)  ! holds block
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: tdu
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: rhsPtr(:)
+    integer,  intent(in)    :: indir_rhs(:)
+    real(wp), intent(inout) :: upd(:)
+    real(wp), intent(inout) :: rhs(n*nrhs)
+    real(wp), intent(out)   :: xlocal(:)
+
+    integer   :: i, ind_i, ind_n
+    integer   :: j
+    integer   :: k
+    integer   :: l
+    integer   :: r ! right hand side loop variable
+    integer   :: lrow, rowPtr, lcol, ndblk, pos
+    integer   :: rhs_blk_size, rhs_thread_size
+    real(wp)  :: w ! temporary work variable
+    integer   :: threadID
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+    type(spllt_timer_t), save :: timer
+#endif
+
+    threadID = 0
+ !$ threadID = omp_get_thread_num()
+
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+    call spllt_open_timer(threadID, "slv_bwd_update_ileave2", timer)
+#endif
+
+    if(nelim.eq.0) return
+
+    ! backward substitution
+    if(nrhs.eq.1) then
+      if(m-nelim.gt.10 .and. nelim.gt.4) then
+!!! Single right-hand side, BLAS 2
+
+        call dgemv('N', nelim, m, -one, dest, ldd, xlocal, 1, one, &
+             upd, 1)
+      else
+!!! Single right-hand side, direct update
+        j = 1
+        do i = offset, offset+m-1
+          w = xlocal(i)
+          do k = col, col + nelim - 1
+            upd(k) = upd(k) - dest(j)*w
+            j = j + 1
+          end do
+          j = j + (ldd-nelim)
+        end do
+      endif
+    else
+!!! Multiple RHS, BLAS 3
+      call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, m, &
+           one, upd, nelim)
+    endif
+
+#if defined(SPLLT_SOLVE_KERNEL_GATHER)
+    call spllt_close_ftimer(threadID, timer)
+#endif
+
+  end subroutine slv_bwd_update_ileave2
+#endif  
+
+
+#if 0
+  subroutine solve_fwd_block_work_ileave2(blkm, blkn, lcol, sa, nrhs, y, &
+      ldy, xlocal, ldx, threadID, flops)
+    use spllt_data_mod
+    use timer_mod
+    implicit none
+    integer,                  intent(inout) :: blkm
+    integer,                  intent(in)    :: blkn
+    integer,                  intent(inout) :: sa
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: ldy
+    integer,                  intent(in)    :: ldx
+    integer,                  intent(in)    :: threadID
+    double precision,         intent(out)   :: flops
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: y(:,:)
+    real(wp),                 intent(inout) :: xlocal(:)
+
+    integer           :: i
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
+    type(spllt_timer_t), save :: timer
+
+    call spllt_open_timer(threadID, "solve_fwd_block_work_ileave2", timer)
+#endif
+
+    ! Perform triangular solve
+    call slv_solve_ileave2(blkn, blkn, lcol(sa : sa + blkn * blkn - 1), &
+      'Transpose    ', 'Non-unit', nrhs, y, ldy)
+
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = blkn * blkn * nrhs
+#endif
+
+    ! Deal with any left over trapezoidal part of diagonal block
+    blkm = blkm - blkn
+    if(blkm .gt. 0) then
+      sa = sa + blkn * blkn
+      call slv_fwd_update_ileave2(blkm, blkn, lcol(sa : sa + blkn * blkm - 1), &
+        blkn, blkn, nrhs, y, ldy, xlocal, ldx)
+
+#if defined(SPLLT_PROFILING_FLOP)
+      flops = flops + 2 * (blkn * nrhs * blkm)
+#endif
+    endif
+
+#if defined(SPLLT_TIMER_TASKS) || defined(SPLLT_SOLVE_KERNEL_GATHER)
+    call spllt_close_timer(threadID, timer, flops)
+#endif
+  end subroutine solve_fwd_block_work_ileave2
+
+
+
+  subroutine solve_fwd_update_work_ileave2(blkm, blkn, lcol, blk_sa, &
+      n, nrhs, rhs, ldr, xlocal, ldx, threadID, flops)
+    use spllt_data_mod
+    implicit none
+    integer,                  intent(in)    :: blkm
+    integer,                  intent(in)    :: blkn
+    integer,                  intent(in)    :: blk_sa
+    integer,                  intent(in)    :: n
+    integer,                  intent(in)    :: nrhs
+    integer,                  intent(in)    :: ldr
+    integer,                  intent(in)    :: ldx
+    integer,                  intent(in)    :: threadID ! useless ?
+    double precision,         intent(out)   :: flops
+    real(wp),                 intent(inout) :: lcol(:)
+    real(wp),                 intent(inout) :: rhs(:)
+    real(wp),                 intent(inout) :: xlocal(:)
+
+    call slv_fwd_update_ileave2(blkm, blkn,                              &
+      lcol(blk_sa : blk_sa + blkn * blkm - 1), blkn, n, nrhs, rhs, ldr, &
+      xlocal, ldx)
+
+#if defined(SPLLT_PROFILING_FLOP)
+    flops = 2 * (blkm * nrhs * blkn)
+#endif
+
+  end subroutine solve_fwd_update_work_ileave2
+#endif
+
+#if 0
+  subroutine solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, &
+      xlocal, rhs_local, tdu, task_manager, trace_id)
+    use spllt_data_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_mod
+    implicit none
+
+    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: node 
+    integer,                    intent(in)    :: tdu
+    real(wp),                   intent(inout) :: rhs(n*nrhs)
+    real(wp),                   intent(inout) :: xlocal(:,:)
+    real(wp),                   intent(inout) :: rhs_local(:)
+    class(task_manager_base ),  intent(inout) :: task_manager
+    integer, optional,          intent(in)    :: trace_id
+
+    integer                   :: sa, en
+    integer                   :: numcol, numrow ! #col/row in node 
+    integer                   :: nc, nr         ! #block-col/block-row in node
+    integer                   :: jj, ii
+    integer                   :: dblk           ! Diagonal index 
+    integer                   :: s_nb           ! Block size in node
+    integer                   :: blk            ! Block index
+    integer                   :: fwd_block_id
+    integer                   :: fwd_update_id
+    type(spllt_timer_t), save :: timer
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_node_ileave2", timer)
+#endif
+
+    if(present(trace_id)) then
+      fwd_block_id  = trace_id
+      fwd_update_id = trace_id
+    else
+      fwd_block_id  = task_manager%trace_ids(trace_fwd_block_pos)
+      fwd_update_id = task_manager%trace_ids(trace_fwd_update_pos)
+    end if
+
+    ! Get node info
+    s_nb   = fkeep%nodes(node)%nb
+    sa     = fkeep%nodes(node)%sa
+    en     = fkeep%nodes(node)%en
+    numcol = en - sa + 1
+    numrow = size(fkeep%nodes(node)%index)
+    nc     = (numcol-1) / s_nb + 1
+    nr     = (numrow-1) / s_nb + 1
+    
+    ! Get first diag block in node
+    dblk = fkeep%nodes(node)%blk_sa
+
+    ! Loop over block columns
+    do jj = 1, nc
+       
+      !
+      ! Forward solve with block on diagoanl
+      !
+ !!   print *, "Submit fwd block ", dblk
+      call spllt_tic("submit fwd block", 1, task_manager%workerID, timer)
+      call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
+        tdu, rhs, n, xlocal, fkeep, fwd_block_id)
+      call spllt_tac(1, task_manager%workerID, timer)
+
+      do ii = jj+1, nr
+
+        blk = dblk+ii-jj
+
+        !
+        ! Forward update with off-diagonal
+        !
+ !!     print *, "Submit fwd update ", blk
+        call spllt_tic("submit fwd update", 2, task_manager%workerID, timer)
+        call task_manager%solve_fwd_update_il_task(blk, node, nrhs, rhs_local,&
+          tdu, rhs, n, xlocal, fkeep, fwd_update_id)
+        call spllt_tac(2, task_manager%workerID, timer)
+
+      end do
+      
+      ! Update diag block in node          
+      dblk = fkeep%bc(dblk)%last_blk + 1
+    end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+  end subroutine solve_fwd_node_ileave2
+#endif
+
+
 end module spllt_solve_kernels_mod

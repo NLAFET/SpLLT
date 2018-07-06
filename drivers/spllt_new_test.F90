@@ -43,7 +43,7 @@ program spllt_test
   type(spllt_fkeep), target           :: fkeep ! Factorization data
 
   ! stats
-  integer,           allocatable      :: order(:)     ! Matrix permutation array
+  integer, target,   allocatable      :: order(:)     ! Matrix permutation array
   real(wp),          allocatable      :: workspace(:) ! Workspace
   integer(long)                       :: worksize
   character(len=1024)                 :: header
@@ -193,6 +193,8 @@ program spllt_test
      write(*, "(a)") "error detected during analysis"
      stop
   endif
+
+  fkeep%p_order => order
 
   !!!!!!!!!!!!!!!!!!!!
   ! Numerical Factorization

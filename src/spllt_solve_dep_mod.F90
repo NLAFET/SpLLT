@@ -815,10 +815,9 @@ contains
   subroutine fwd_update_dependency(fkeep, blk, dep)
     use spllt_data_mod
 
-    type(spllt_fkeep), intent(in)     :: fkeep
-    integer, intent(in)               :: blk    ! Index of block 
-!   integer, pointer,     intent(out) :: dep(:) !List of dependencies
-    integer, allocatable, intent(out) :: dep(:) !List of dependencies
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    integer,                    intent(in)    :: blk    ! Index of block 
+    integer, allocatable,       intent(out)   :: dep(:) !List of dependencies
     
     integer :: previous_dblk
     integer :: last_previous_dblk
@@ -849,6 +848,9 @@ contains
     offset  = nb * ( local_blk + (bcol - bcol_blk_sa)) + 1
     
     new_method = 1
+
+    fkeep%bc(blk)%p_index(1 : blkm) => fkeep%nodes(node)%index &
+      (offset : offset + blkm - 1)
 
 !   print '(a, i3, a, i3)', "Initial dep of blk ", blk,        &
 !     " is ", fkeep%bc(blk)%dep_initial
@@ -924,6 +926,37 @@ contains
 !           print *, "=====> dep of ", blk, " in NODE_CHILD are ", dep
 
 !           deallocate(dep)
+          ! !Count
+          ! min_j = 1
+          ! max_j = size(dep)
+          ! do i = 1, nchild
+          !   blk_sa = fkeep%nodes(node)%child(i)%blk_sa
+          !   blk_en = fkeep%nodes(node)%child(i)%blk_en
+          !   do j = min_j, max_j
+          !     if(dep(j) .ge. blk_sa) then
+          !       if(dep(j) .le. blk_en)then
+          !         nchild_dep = nchild_dep + 1
+          !       end if
+          !    !else
+          !    !  min_j = j
+          !     end if
+          !   end do
+          ! end do
+          ! allocate(child_dep(nchild_dep))
+          ! do i = 1, nchild
+          !   blk_sa = fkeep%nodes(node)%child(i)%blk_sa
+          !   blk_en = fkeep%nodes(node)%child(i)%blk_en
+          !   do j = min_j, max_j
+          !     if(dep(j) .ge. blk_sa) then
+          !       if(dep(j) .le. blk_en)then
+          !         child_dep(k) = dep(j)
+          !         k = k + 1
+          !       end if
+          !    !else
+          !    !  min_j = j
+          !     end if
+          !   end do
+          ! end do
           else
             allocate(dep(1))
             dep(1) = blk
@@ -1388,6 +1421,47 @@ contains
 !!  print *, "Result of indir_rhs", indir_rhs
 
   end subroutine spllt_compute_rhs_block
+
+
+
+  subroutine update_upd(fkeep, blk, child_blk)
+    type(spllt_fkeep), target, intent(inout)  :: fkeep
+    integer, intent(in)                       :: blk
+    integer, intent(in)                       :: child_blk
+
+    integer           :: i, j, k
+    integer, pointer  :: p_blk_index(:)
+    integer, pointer  :: p_child_index(:)
+    real(wp), pointer :: p_child_upd(:,:)
+    real(wp), pointer :: p_upd(:,:)
+
+    p_child_upd => fkeep%bc(child_blk)%p_upd
+    p_upd       => fkeep%bc(blk)%p_upd
+
+    p_blk_index   => fkeep%bc(blk)%p_index
+    p_child_index => fkeep%bc(child_blk)%p_index
+
+    !Set variables
+    j           = 1
+    k           = 1
+    do while(j .le. size(p_blk_index) .and. k .le. size(p_child_index))
+      if(p_blk_index(j) .lt. p_child_index(k)) then
+        j = j + 1
+      else if(p_blk_index(j) .gt. p_child_index(k)) then
+        k = k + 1
+      else
+        p_upd(j, :) = p_upd(j, :) + p_child_upd(k, :)
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+  end subroutine update_upd
+
+
+
+
+
 
 
 

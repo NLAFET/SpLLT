@@ -163,6 +163,10 @@ module spllt_data_mod
      integer              :: bwd_update_dep
      integer, allocatable :: bwd_solve_dep(:)
      integer, allocatable :: bwd_dep(:)
+     !  - workspace
+     real(wp), pointer    :: p_upd(:,:)
+     integer              :: ldu
+     integer, pointer     :: p_index(:)
 
   end type spllt_block
 
@@ -332,6 +336,7 @@ module spllt_data_mod
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
      integer, allocatable :: assoc_tree(:)
+     integer, pointer     :: p_order(:)
   end type spllt_fkeep
 
 
