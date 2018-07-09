@@ -1666,7 +1666,10 @@ call spllt_tac(1, threadID, timer, lflops)
     if(nelim.eq.0) return
 
     if(nrhs.eq.1) then
+     !print *, "Rhs :", rhs(1 : nelim)
       call dtrsv('Upper', trans, unit, nelim, dest, n, rhs, 1)
+     !print *, "dest", dest(1 : nelim * nelim)
+     !print *, "Result of solving :", rhs(1 : nelim)
     else
       call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
            dest, n, rhs, ldr)
@@ -1722,6 +1725,9 @@ call spllt_tac(1, threadID, timer, lflops)
 
        else
 !!! Single rhs, direct update
+        !print *, "local RHS", rhs(1:nelim) 
+        !print *, "Dest", dest(1 : m * nelim)
+        !print *, "Result before", xlocal(1 : m)
          j = 1
          do i = 1, m
            w = zero
@@ -1733,6 +1739,7 @@ call spllt_tac(1, threadID, timer, lflops)
            xlocal(i) = xlocal(i) + w
          end do
        endif
+      !print *, "Result DGEMM", xlocal(1 : m)
     else
 !!! Multiple rhs, BLAS 3
       call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs, ldr, &
@@ -1746,9 +1753,8 @@ call spllt_tac(1, threadID, timer, lflops)
   end subroutine slv_fwd_update_ileave2
 
 
-#if 0
-  subroutine slv_bwd_update_ileave2(m, nelim, col, offset, index, dest, &
-      ldd, nrhs, upd, tdu, rhs, n, rhsPtr, indir_rhs, xlocal)
+  subroutine slv_bwd_update_ileave2(m, nelim, dest, ldd, &
+      n, nrhs, xlocal, ldx, rhs, ldr)
     use spllt_data_mod
     use timer_mod
  !$ use omp_lib, ONLY : omp_get_thread_num
@@ -1757,28 +1763,18 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,  intent(in)    :: m            ! number of rows in block
     integer,  intent(in)    :: nelim        ! # eliminations
                                             ! (immediate return if =0)
-    integer,  intent(in)    :: col          ! start of block column variables
-                                            ! in rhs
-    integer,  intent(in)    :: offset       ! offset into index we start at
-    integer,  intent(in)    :: index(*)
     integer,  intent(in)    :: ldd          ! leading dimension of block
     real(wp), intent(in)    :: dest(m*ldd)  ! holds block
     integer,  intent(in)    :: nrhs
-    integer,  intent(in)    :: tdu
     integer,  intent(in)    :: n
-    integer,  intent(in)    :: rhsPtr(:)
-    integer,  intent(in)    :: indir_rhs(:)
-    real(wp), intent(inout) :: upd(:)
-    real(wp), intent(inout) :: rhs(n*nrhs)
-    real(wp), intent(out)   :: xlocal(:)
+    integer,  intent(in)    :: ldx
+    integer,  intent(in)    :: ldr
+    real(wp), intent(inout) :: rhs(*)       ! Update of the RHS
+    real(wp), intent(in)    :: xlocal(*)    ! Data already gather in it
 
-    integer   :: i, ind_i, ind_n
+    integer   :: i
     integer   :: j
     integer   :: k
-    integer   :: l
-    integer   :: r ! right hand side loop variable
-    integer   :: lrow, rowPtr, lcol, ndblk, pos
-    integer   :: rhs_blk_size, rhs_thread_size
     real(wp)  :: w ! temporary work variable
     integer   :: threadID
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
@@ -1800,14 +1796,14 @@ call spllt_tac(1, threadID, timer, lflops)
 !!! Single right-hand side, BLAS 2
 
         call dgemv('N', nelim, m, -one, dest, ldd, xlocal, 1, one, &
-             upd, 1)
+             rhs, 1)
       else
 !!! Single right-hand side, direct update
         j = 1
-        do i = offset, offset+m-1
+        do i = 1, m
           w = xlocal(i)
-          do k = col, col + nelim - 1
-            upd(k) = upd(k) - dest(j)*w
+          do k = 1, nelim
+            rhs(k) = rhs(k) - dest(j)*w
             j = j + 1
           end do
           j = j + (ldd-nelim)
@@ -1815,8 +1811,8 @@ call spllt_tac(1, threadID, timer, lflops)
       endif
     else
 !!! Multiple RHS, BLAS 3
-      call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, m, &
-           one, upd, nelim)
+      call dgemm('N', 'N', nelim, nrhs, m, -one, dest, ldd, xlocal, ldx, &
+           one, rhs, ldr)
     endif
 
 #if defined(SPLLT_SOLVE_KERNEL_GATHER)
@@ -1824,7 +1820,6 @@ call spllt_tac(1, threadID, timer, lflops)
 #endif
 
   end subroutine slv_bwd_update_ileave2
-#endif  
 
 
 #if 0
@@ -1907,9 +1902,8 @@ call spllt_tac(1, threadID, timer, lflops)
   end subroutine solve_fwd_update_work_ileave2
 #endif
 
-#if 0
   subroutine solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, &
-      xlocal, rhs_local, tdu, task_manager, trace_id)
+      task_manager, trace_id)
     use spllt_data_mod
     use trace_mod
     use utils_mod
@@ -1917,14 +1911,11 @@ call spllt_tac(1, threadID, timer, lflops)
     use task_manager_mod
     implicit none
 
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer,                    intent(in)    :: nrhs ! Number of RHS
     integer,                    intent(in)    :: n
     integer,                    intent(in)    :: node 
-    integer,                    intent(in)    :: tdu
-    real(wp),                   intent(inout) :: rhs(n*nrhs)
-    real(wp),                   intent(inout) :: xlocal(:,:)
-    real(wp),                   intent(inout) :: rhs_local(:)
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
     class(task_manager_base ),  intent(inout) :: task_manager
     integer, optional,          intent(in)    :: trace_id
 
@@ -1956,12 +1947,14 @@ call spllt_tac(1, threadID, timer, lflops)
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
-    numrow = size(fkeep%nodes(node)%index)
-    nc     = (numcol-1) / s_nb + 1
-    nr     = (numrow-1) / s_nb + 1
+   !numrow = size(fkeep%nodes(node)%index)
+   !nc     = (numcol-1) / s_nb + 1
+   !nr     = (numrow-1) / s_nb + 1
+    nc     = ceiling(numcol / real(s_nb))
     
     ! Get first diag block in node
-    dblk = fkeep%nodes(node)%blk_sa
+    dblk = fkeep%nodes(node)%sblk_sa
+   !call print_node_solve(fkeep, node)
 
     ! Loop over block columns
     do jj = 1, nc
@@ -1969,36 +1962,135 @@ call spllt_tac(1, threadID, timer, lflops)
       !
       ! Forward solve with block on diagoanl
       !
- !!   print *, "Submit fwd block ", dblk
+      print *, "Submit fwd block ", dblk
       call spllt_tic("submit fwd block", 1, task_manager%workerID, timer)
-      call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
-        tdu, rhs, n, xlocal, fkeep, fwd_block_id)
+      call task_manager%solve_fwd_block_il2_task(dblk, nrhs, n, rhs, &
+        fkeep, trace_id)
+     !call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
+     !  tdu, rhs, n, xlocal, fkeep, fwd_block_id)
       call spllt_tac(1, task_manager%workerID, timer)
+      !$omp taskwait
 
-      do ii = jj+1, nr
+      do blk = dblk + 1, fkeep%sbc(dblk)%last_blk
 
-        blk = dblk+ii-jj
+       !blk = dblk+ii-jj
 
         !
         ! Forward update with off-diagonal
         !
- !!     print *, "Submit fwd update ", blk
+        print *, "Submit fwd update ", blk
         call spllt_tic("submit fwd update", 2, task_manager%workerID, timer)
-        call task_manager%solve_fwd_update_il_task(blk, node, nrhs, rhs_local,&
-          tdu, rhs, n, xlocal, fkeep, fwd_update_id)
+        call task_manager%solve_fwd_update_il2_task(blk, node, nrhs, &
+            n, rhs, fkeep, trace_id)
+       !call task_manager%solve_fwd_update_il2_task(blk, node, nrhs, rhs_local,&
+       !  tdu, rhs, n, xlocal, fkeep, fwd_update_id)
         call spllt_tac(2, task_manager%workerID, timer)
+      !$omp taskwait
 
       end do
       
       ! Update diag block in node          
-      dblk = fkeep%bc(dblk)%last_blk + 1
+      dblk = fkeep%sbc(dblk)%last_blk + 1
     end do
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
   end subroutine solve_fwd_node_ileave2
+
+
+  subroutine solve_bwd_node_ileave2(nrhs, rhs, n, fkeep, node, &
+      task_manager, trace_id)
+    use spllt_data_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_mod
+    implicit none
+
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: n
+    integer,                    intent(in)    :: node 
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    class(task_manager_base ),  intent(inout) :: task_manager
+    integer, optional,          intent(in)    :: trace_id
+
+    integer                 :: sa, en
+    integer                 :: numcol, numrow ! #column/row in node 
+    integer                 :: nc, nr         ! #block-column/block-row in node
+    integer                 :: jj, ii
+    integer                 :: dblk
+    integer                 :: s_nb           ! Block size in node
+    integer                 :: blk
+    integer                 :: bwd_block_id
+    integer                 :: bwd_update_id
+    type(spllt_timer_t), save :: timer
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_node_ileave2", timer)
 #endif
 
+    if(present(trace_id)) then
+      bwd_block_id  = trace_id
+      bwd_update_id = trace_id
+    else
+      bwd_block_id  = task_manager%trace_ids(trace_bwd_block_pos)
+      bwd_update_id = task_manager%trace_ids(trace_bwd_update_pos)
+    end if
+
+    ! Get node info
+    s_nb   = fkeep%nodes(node)%nb
+    sa     = fkeep%nodes(node)%sa
+    en     = fkeep%nodes(node)%en
+    numcol = en - sa + 1
+   !numrow = size(fkeep%nodes(node)%index)
+   !nc     = (numcol-1) / s_nb + 1
+   !nr     = (numrow-1) / s_nb + 1 
+    nc     = ceiling(numcol / real(s_nb))
+
+    ! Get first diag block in node
+    dblk = fkeep%sbc(fkeep%nodes(node)%sblk_en)%dblk
+
+    ! Loop over block columns
+    do jj = nc, 1, -1
+
+      do blk = fkeep%sbc(dblk)%last_blk, dblk, -1
+        
+       !blk = dblk+ii-jj ! Block index
+
+        !
+        ! Backward update with block on diagoanl
+        !
+ !!     print *, "Submit bwd update ", blk
+        call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
+        call task_manager%solve_bwd_update_il2_task(blk, node, nrhs, & 
+          n, rhs, fkeep, trace_id)
+       !call task_manager%solve_bwd_update_il_task(blk, node, nrhs, rhs_local, &
+       !  tdu, rhs, n, xlocal, fkeep, bwd_update_id)
+        call spllt_tac(1, task_manager%workerID, timer)
+       !!$omp taskwait
+      end do
+
+      !
+      ! Backward solve with block on diagoanl
+      !
+ !!   print *, "Submit bwd block ", dblk
+      call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
+      call task_manager%solve_bwd_block_il2_task(dblk, nrhs, &
+        n, rhs, fkeep, trace_id)
+     !call task_manager%solve_bwd_block_il_task(dblk, nrhs, rhs_local, tdu, &
+     !  rhs, n, xlocal, fkeep, bwd_block_id)
+      call spllt_tac(2, task_manager%workerID, timer)
+     !!$omp taskwait
+     
+      ! Update diag block in node       
+      if (jj .gt. 1) dblk = fkeep%sbc(dblk-1)%dblk
+    end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+  end subroutine solve_bwd_node_ileave2
 
 end module spllt_solve_kernels_mod

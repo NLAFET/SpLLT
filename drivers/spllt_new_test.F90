@@ -42,9 +42,13 @@ program spllt_test
   type(spllt_akeep)                   :: akeep ! Symbolic factorization data
   type(spllt_fkeep), target           :: fkeep ! Factorization data
 
+  ! Solving
+  type(spllt_sblock_t), target, allocatable :: sbc(:)
+
   ! stats
   integer, target,   allocatable      :: order(:)     ! Matrix permutation array
   real(wp),          allocatable      :: workspace(:) ! Workspace
+  real(wp),          allocatable      :: y(:) ! Workspace
   integer(long)                       :: worksize
   character(len=1024)                 :: header
   character(len=10)                   :: time
@@ -193,8 +197,10 @@ program spllt_test
      write(*, "(a)") "error detected during analysis"
      stop
   endif
+ !call spllt_print_atree(akeep, fkeep, options)
 
   fkeep%p_order => order
+  print *, "Order : ", order
 
   !!!!!!!!!!!!!!!!!!!!
   ! Numerical Factorization
@@ -204,9 +210,27 @@ program spllt_test
   call spllt_factor(akeep, fkeep, options, val, info)
   call spllt_wait()
 
+  !!!!!!!!!!!!!!!!!!!!
+  ! Compute dependencies of each blk
+  !
+  call spllt_tic("Compute Dep", 3, task_manager%workerID, timer)
+
+  call spllt_create_subtree(akeep, fkeep)
+
+ !call get_solve_blocks(fkeep, options%nb, nrhs, rhs, workspace, sbc)
+  call get_solve_blocks(fkeep, options%nb, nrhs, worksize, sbc)
+  fkeep%sbc => sbc
+
+  call spllt_compute_solve_dep(fkeep)
+
+  call spllt_tac(3, task_manager%workerID, timer)
+
+ !call spllt_compute_rhs_block(fkeep, st)
+
   call spllt_tac(2, task_manager%workerID, timer)
 
-  call spllt_solve_workspace_size(fkeep, task_manager%nworker, nrhs, worksize)
+ !call spllt_solve_workspace_size(fkeep, task_manager%nworker, nrhs, worksize)
+ !worksize = fkeep%n
   allocate(workspace(worksize), stat = st)
   print '(a, es10.2)', "Allocation of a workspace of size ", real(worksize)
   if(st.ne.0) then
@@ -220,18 +244,13 @@ program spllt_test
   workspace = zero
   call spllt_tac(6, task_manager%workerID, timer)
 
+  allocate(y(fkeep%n), stat=st)
+  call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, sbc)
 
-  !!!!!!!!!!!!!!!!!!!!
-  ! Compute dependencies of each blk
-  !
-  call spllt_tic("Compute Dep", 3, task_manager%workerID, timer)
 
-  call spllt_create_subtree(akeep, fkeep)
-  call spllt_compute_solve_dep(fkeep)
 
-  call spllt_tac(3, task_manager%workerID, timer)
 
-  call spllt_compute_rhs_block(fkeep, st)
+  stop
 
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine
@@ -267,8 +286,10 @@ program spllt_test
   call task_manager%nflop_reset()
   call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
+  print *, "Order : ", order
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=merge(3,0, options%ileave_solve), &
+   !job=merge(3,0, options%ileave_solve), &
+    job=merge(3,6, options%ileave_solve), &
     workspace=workspace, task_manager=task_manager)
 
   call spllt_tac(7, task_manager%workerID, timer)

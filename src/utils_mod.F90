@@ -148,6 +148,26 @@ contains
     end do
   end subroutine print_node
 
+  subroutine print_node_solve(fkeep, node_num)
+    use spllt_data_mod
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node_num
+
+    integer :: ncol, last_blk, first_blk, i, j, nrow
+
+    first_blk = fkeep%nodes(node_num)%sblk_sa
+    last_blk  = fkeep%nodes(node_num)%sblk_en
+    ncol      = fkeep%sbc(last_blk)%bcol - fkeep%sbc(first_blk)%bcol + 1
+    nrow      = fkeep%sbc(first_blk)%last_blk - first_blk + 1
+    do i = 1, nrow
+      do j = 1, min(i, ncol)
+        write(*, fmt="(i9)", advance="no") &
+          first_blk + int((j - 1) * ( nrow + 1 - 0.5 * j )) + (i - j)
+      end do
+      write (*,*) ""
+    end do
+  end subroutine print_node_solve
+
   !Compute res = b - Ax 
   subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
     use spllt_data_mod

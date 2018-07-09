@@ -193,7 +193,7 @@ contains
     use task_manager_mod
     implicit none
 
-    type(spllt_fkeep),    intent(in)  :: fkeep          ! Factorization data
+    type(spllt_fkeep)                 :: fkeep          ! Factorization data
     type(spllt_options),  intent(in)  :: options        ! User-supplied options
     integer,              intent(in)  :: order(fkeep%n) ! pivot order
     integer,              intent(in)  :: nrhs           ! Number of RHS
@@ -235,11 +235,11 @@ contains
     size_nrhs = int(n, long) * nrhs
     size_work = int(fkeep%maxmn + n, long) * int(nrhs, long)
 
-    x_tmp(1 : n, 1 : nrhs) => workspace(1 : size_nrhs)
-    work(1 : size_work * task_manager%nworker) =>                        &
-      workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
-      task_manager%nworker))
-    p_x(1 : size_nrhs) => x(:,:)
+   !x_tmp(1 : n, 1 : nrhs) => workspace(1 : size_nrhs)
+   !work(1 : size_work * task_manager%nworker) =>                        &
+   !  workspace(size_nrhs + 1 : nrhs * (n + int(fkeep%maxmn + n, long) *  &
+   !  task_manager%nworker))
+   !p_x(1 : size_nrhs) => x(:,:)
 
     print *, "Call with Job = ", job
 
@@ -346,6 +346,23 @@ contains
         do j = 1, n
            x(j,:) = x_tmp(order(j),:)
         end do
+
+      case(6)
+        print *, "NEW FWD"
+
+        print *, "Workspace", workspace
+        print *, "rhs", x
+        call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
+
+        !$omp taskwait
+        print *, "Workspace", workspace
+        call print_darray('x solution fwd', n, workspace, 1)
+        
+        call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
+        !$omp taskwait
+        print *, "Workspace", workspace
+        call print_darray('x solution', n, workspace, 1)
+        stop
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
@@ -846,6 +863,245 @@ call task_manager%print("fwd end of submitted task", 0)
 
   end subroutine solve_bwd_ileave
 
+
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  ! NEW
+  !
+  !
+  subroutine solve_fwd_ileave2(nrhs, rhs, n, fkeep, workspace, task_manager)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use timer_mod
+    use utils_mod, ONLY : print_node, print_blk_index
+    use task_manager_mod
+ !$ use omp_lib, ONLY : omp_lock_kind
+    implicit none
+
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: n    ! Order of the system
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    real(wp), target,           intent(out)   :: workspace(:)
+    class(task_manager_base ),  intent(inout) :: task_manager
+
+    integer                     :: tdu
+    integer                     :: node
+    integer                     :: fwd_submit_tree_id
+    integer                     :: fwd_submit_id
+    integer                     :: nworker
+    real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
+    real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
+    type(spllt_block), pointer  :: p_bc(:)
+    type(spllt_timer_t), save   :: timer
+    integer                     :: tree_num
+    integer(long)               :: size_rhs_local, size_xlocal
+    double precision            :: nflop_sa, nflop_en
+ !$ integer(kind=omp_lock_kind) :: lock
+
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_ileave2", timer)
+#endif
+    call task_manager%get_nflop_performed(nflop_sa)
+
+    nworker       = task_manager%nworker
+#if defined(SPLLT_OMP_TRACE)
+    fwd_submit_id = task_manager%trace_ids(trace_fwd_submit_pos)
+    call trace_event_start(fwd_submit_id, -1)
+#endif
+
+   !size_xlocal     = int(fkeep%maxmn, long) * nrhs
+   !size_rhs_local  = int(fkeep%maxmn + n, long) * int(nrhs, long) ! Shifted
+
+   !xlocal(1 : size_xlocal, 0 : nworker - 1) => workspace(1 : &
+   !  size_xlocal * nworker)
+   !rhs_local => workspace(size_xlocal * nworker + 1 : size_rhs_local * nworker)
+   !tdu = nworker
+
+#if defined(SOLVE_TASK_LOCKED)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Lock the execution of the tasks that will then be submitted by the master
+    p_bc => fkeep%bc(:)
+ !$ call omp_init_lock(lock)
+ !$ call omp_set_lock(lock)
+
+    !$omp task depend(inout: p_bc(1))   &
+    !$omp shared(lock)                  &
+    !$omp firstprivate(p_bc)
+
+ !$ call omp_set_lock(lock) 
+    print *, "Lock locked in task"
+ !$ call omp_unset_lock(lock)
+
+    !$omp end task
+#endif
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+    fwd_submit_tree_id = task_manager%trace_ids(trace_fwd_submit_tree_pos)
+    call trace_event_start(fwd_submit_tree_id, -2)
+#endif
+
+   !do tree_num = 1, size(fkeep%trees)
+
+   !  call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, &
+   !    fkeep, fkeep%trees(tree_num), xlocal, rhs_local, tdu)
+   !end do
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_submit_tree_id, -2)
+#endif
+
+    do node = 1, fkeep%info%num_nodes
+
+     !if(fkeep%small(node) .ne. 0) then
+     !  cycle
+     !end if
+
+      call solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
+
+    end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tac(4, task_manager%workerID, timer)
+#endif
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(fwd_submit_id, -1)
+#endif
+
+#if defined(SOLVE_TASK_LOCKED)
+call task_manager%print("fwd end of submitted task", 0)
+ !$ call omp_unset_lock(lock)
+ !$ call omp_destroy_lock(lock)
+#endif
+    
+    call task_manager%print("fwd end of submitted task", 0)
+
+    call task_manager%get_nflop_performed(nflop_en)
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
+#endif
+
+  end subroutine solve_fwd_ileave2
+
+
+
+  subroutine solve_bwd_ileave2(nrhs, rhs, n, fkeep, workspace, task_manager)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+ !$ use omp_lib, ONLY : omp_lock_kind
+    use task_manager_mod
+    implicit none
+
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    integer,                    intent(in)    :: n    ! Order of the system
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    real(wp), target,           intent(out)   :: workspace(:)
+    class(task_manager_base),   intent(inout) :: task_manager
+
+    integer                     :: tdu
+    integer                     :: node
+    integer                     :: bwd_submit_tree_id
+    integer                     :: bwd_submit_id
+    integer                     :: nworker
+    real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
+    real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
+    type(spllt_block), pointer  :: p_bc(:)
+    integer                     :: tree_num
+    type(spllt_timer_t), save   :: timer
+    integer(long)               :: size_rhs_local, size_xlocal
+    double precision            :: nflop_sa, nflop_en
+ !$ integer(kind=omp_lock_kind) :: lock
+
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_ileave2", timer)
+#endif
+    call task_manager%get_nflop_performed(nflop_sa)
+
+    nworker       = task_manager%nworker
+#if defined(SPLLT_OMP_TRACE)
+    bwd_submit_id = task_manager%trace_ids(trace_bwd_submit_pos)
+    call trace_event_start(bwd_submit_id, -1)
+#endif
+
+   !size_xlocal     = int(fkeep%maxmn, long) * nrhs
+   !size_rhs_local  = int(fkeep%maxmn + n, long) * int(nrhs, long)
+
+   !xlocal(1 : size_xlocal, 0 : nworker - 1) => workspace(1 : &
+   !  size_xlocal * nworker)
+   !rhs_local => workspace(size_xlocal * nworker + 1 : size_rhs_local * nworker)
+   !tdu = nworker
+
+#if defined(SOLVE_TASK_LOCKED)
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!
+    ! Lock the execution of the tasks that will then be submitted by the master
+    p_bc => fkeep%bc(:)
+ !$ call omp_init_lock(lock)
+ !$ call omp_set_lock(lock)
+
+    !$omp task depend(inout: p_bc(num_node))  &
+    !$omp shared(lock)                        &
+    !$omp firstprivate(p_bc, num_node)
+
+ !$ call omp_set_lock(lock) 
+    print *, "[BWD] Lock locked in task"
+ !$ call omp_unset_lock(lock)
+
+    !$omp end task
+#endif
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
+#endif
+    do node = fkeep%info%num_nodes, 1, -1
+
+     !if(fkeep%small(node) .eq. 0) then
+
+        call solve_bwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
+     !else if(fkeep%small(node) .eq. 1) then
+     !  tree_num = fkeep%assoc_tree(node)
+
+     !  call task_manager%solve_bwd_subtree_il_task(nrhs, rhs, n, fkeep, &
+     !    fkeep%trees(tree_num), xlocal, rhs_local, tdu)
+     !else
+     !  cycle
+     !end if
+
+    end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_tac(4, task_manager%workerID, timer)
+#endif
+
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(bwd_submit_id, -1)
+#endif
+#if defined(SOLVE_TASK_LOCKED)
+  call task_manager%print("bwd end of submitted task", 0)
+ !$ call omp_unset_lock(lock)
+ !$ call omp_destroy_lock(lock)
+#endif
+
+    call task_manager%print("bwd end of execution task", 0)
+
+    call task_manager%get_nflop_performed(nflop_en)
+#if defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(task_manager%workerID, timer, nflop_en - nflop_sa)
+#endif
+
+  end subroutine solve_bwd_ileave2
 
 
 end module spllt_solve_mod

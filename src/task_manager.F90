@@ -72,6 +72,11 @@ module task_manager_mod
     procedure(solve_bwd_update_task_il_iface), deferred :: solve_bwd_update_il_task
     procedure(solve_fwd_subtree_task_il_iface),deferred :: solve_fwd_subtree_il_task
     procedure(solve_bwd_subtree_task_il_iface),deferred :: solve_bwd_subtree_il_task
+
+    procedure(solve_fwd_block_task_il2_iface),  deferred :: solve_fwd_block_il2_task
+    procedure(solve_fwd_update_task_il2_iface), deferred :: solve_fwd_update_il2_task
+    procedure(solve_bwd_block_task_il2_iface),  deferred :: solve_bwd_block_il2_task
+    procedure(solve_bwd_update_task_il2_iface), deferred :: solve_bwd_update_il2_task
   end type task_manager_base
 
   abstract interface 
@@ -376,6 +381,71 @@ module task_manager_mod
       real(wp),                   intent(inout) :: rhs_local(:)
     end subroutine solve_bwd_subtree_task_il_iface
 
+    subroutine solve_fwd_block_task_il2_iface(task_manager, dblk, nrhs, &
+      n, rhs, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: dblk 
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(inout) :: rhs(n, nrhs)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+
+    end subroutine solve_fwd_block_task_il2_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a forward update task by the task manager
+    !
+    subroutine solve_fwd_update_task_il2_iface(task_manager, blk, node, nrhs, &
+        n, rhs, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: blk
+      integer,                    intent(in)    :: node
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(in)    :: rhs(n, nrhs)
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+    end subroutine solve_fwd_update_task_il2_iface
+
+    subroutine solve_bwd_block_task_il2_iface(task_manager, dblk, nrhs, &
+      n, rhs, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: dblk 
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(inout) :: rhs(n, nrhs)
+      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+
+    end subroutine solve_bwd_block_task_il2_iface
+
+    !!!!!!!!!!!!!!!!!!!!!
+    ! Submission of a forward update task by the task manager
+    !
+    subroutine solve_bwd_update_task_il2_iface(task_manager, blk, node, nrhs, &
+        n, rhs, fkeep, trace_id)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base),   intent(inout) :: task_manager
+      integer,                    intent(in)    :: blk
+      integer,                    intent(in)    :: node
+      integer,                    intent(in)    :: nrhs
+      integer,                    intent(in)    :: n
+      real(wp), target,           intent(in)    :: rhs(n, nrhs)
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
+      integer, optional,          intent(in)    :: trace_id
+    end subroutine solve_bwd_update_task_il2_iface
   end interface
 
 contains

@@ -163,12 +163,42 @@ module spllt_data_mod
      integer              :: bwd_update_dep
      integer, allocatable :: bwd_solve_dep(:)
      integer, allocatable :: bwd_dep(:)
+
+  end type spllt_block
+
+  ! block type  
+  type spllt_sblock_t
+
+     ! Static info, which is set in ma87_analyse
+     integer :: bcol            ! block column that blk belongs to
+     integer :: blkm            ! height of block (number of rows in blk)
+     integer :: blkn            ! width of block (number of columns in blk)
+     integer(long) :: dblk      ! id of the block on the diagonal within the 
+     ! block column to which blk belongs
+     integer(long) :: id        ! The block identifier (ie, its number blk)
+     integer(long) :: last_blk  ! id of the last block within the
+     ! block column to which blk belongs
+     integer :: node            ! node to which blk belongs
+     integer :: sa              ! posn of the first entry of the
+     ! block blk within the array that holds the block column of L
+     ! that blk belongs to.
+
+     ! Additional components to handle the list of dependencies of the block
+     ! List of blk indices dependencies in :
+     !  - the forward step of the solve
+     integer, pointer :: fwd_dep(:)
+     integer, pointer :: fwd_update_dep(:)
+     integer          :: fwd_solve_dep
+     !  - the backward step of the solve
+     integer          :: bwd_update_dep
+     integer, pointer :: bwd_solve_dep(:)
+     integer, pointer :: bwd_dep(:)
      !  - workspace
      real(wp), pointer    :: p_upd(:,:)
      integer              :: ldu
      integer, pointer     :: p_index(:)
 
-  end type spllt_block
+  end type spllt_sblock_t
 
   ! node type
   type spllt_node
@@ -181,6 +211,9 @@ module spllt_data_mod
 
      integer(long) :: blk_sa ! identifier of the first block in node
      integer(long) :: blk_en ! identifier of the last block in node
+
+     integer(long) :: sblk_sa ! identifier of the first block in node
+     integer(long) :: sblk_en ! identifier of the last block in node
 
      integer :: nb ! Block size for nodal matrix
      ! If number of cols nc in nodal matrix is less than control%nb but 
@@ -286,6 +319,7 @@ module spllt_data_mod
   ! Data type for data generated in factorise phase
   !
   type spllt_fkeep
+     type(spllt_sblock_t), pointer  :: sbc(:) ! solve blocks
      type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
      type(spllt_block), allocatable :: workspace(:) ! workspaces
