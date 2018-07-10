@@ -391,7 +391,7 @@ module task_manager_mod
       integer,                    intent(in)    :: nrhs
       integer,                    intent(in)    :: n
       real(wp), target,           intent(inout) :: rhs(n, nrhs)
-      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
       integer, optional,          intent(in)    :: trace_id
 
     end subroutine solve_fwd_block_task_il2_iface
@@ -424,7 +424,7 @@ module task_manager_mod
       integer,                    intent(in)    :: nrhs
       integer,                    intent(in)    :: n
       real(wp), target,           intent(inout) :: rhs(n, nrhs)
-      type(spllt_fkeep), target,  intent(in)    :: fkeep
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
       integer, optional,          intent(in)    :: trace_id
 
     end subroutine solve_bwd_block_task_il2_iface

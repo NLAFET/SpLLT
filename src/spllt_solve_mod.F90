@@ -352,17 +352,22 @@ contains
 
         print *, "Workspace", workspace
         print *, "rhs", x
+       !do j = 1, n
+       !   x_tmp(order(j),:) = x(j,:)
+       !end do
+       !print *, "rhs permuted", x_tmp
         call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
 
         !$omp taskwait
         print *, "Workspace", workspace
-        call print_darray('x solution fwd', n, workspace, 1)
+        call print_darray('x solution fwd', n, fkeep%p_y, 1)
+       !stop
         
         call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
         !$omp taskwait
         print *, "Workspace", workspace
-        call print_darray('x solution', n, workspace, 1)
-        stop
+        call print_darray('x solution', n, x, 1)
+       !stop
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
@@ -1083,6 +1088,7 @@ call task_manager%print("fwd end of submitted task", 0)
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tac(4, task_manager%workerID, timer)
 #endif
+    print *, "Returned RHS", rhs
 
 
 #if defined(SPLLT_OMP_TRACE)

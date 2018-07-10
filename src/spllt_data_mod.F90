@@ -370,7 +370,8 @@ module spllt_data_mod
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
      integer, allocatable :: assoc_tree(:)
-     integer, pointer     :: p_order(:)
+     integer, pointer     :: p_porder(:)
+     real(wp), pointer    :: p_y(:)
   end type spllt_fkeep
 
 

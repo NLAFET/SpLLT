@@ -47,8 +47,9 @@ program spllt_test
 
   ! stats
   integer, target,   allocatable      :: order(:)     ! Matrix permutation array
+  integer, target,   allocatable      :: porder(:)    ! Matrix permutation array
   real(wp),          allocatable      :: workspace(:) ! Workspace
-  real(wp),          allocatable      :: y(:) ! Workspace
+  real(wp), target,  allocatable      :: y(:) ! Workspace
   integer(long)                       :: worksize
   character(len=1024)                 :: header
   character(len=10)                   :: time
@@ -199,8 +200,12 @@ program spllt_test
   endif
  !call spllt_print_atree(akeep, fkeep, options)
 
-  fkeep%p_order => order
-  print *, "Order : ", order
+  allocate(porder(n))
+  do i = 1, n
+    porder(order(i)) = i
+  end do
+  fkeep%p_porder => porder
+ !print *, "Order : ", order
 
   !!!!!!!!!!!!!!!!!!!!
   ! Numerical Factorization
@@ -245,12 +250,14 @@ program spllt_test
   call spllt_tac(6, task_manager%workerID, timer)
 
   allocate(y(fkeep%n), stat=st)
+  y = zero
   call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, sbc)
+  fkeep%p_y => y
 
 
 
 
-  stop
+ !stop
 
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine

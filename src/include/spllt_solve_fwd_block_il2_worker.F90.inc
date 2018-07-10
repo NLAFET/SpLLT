@@ -23,6 +23,13 @@ if(ndep_lvl .le. chunk) then
    !p_y(i, :) = p_y(i, :) + p_rhs(p_index(p_order(i)), :)
     p_y(i, :) = p_y(i, :) + p_rhs(p_order(p_index(i)), :)
   end do
+  !Compute the reduction if blk \in L_{:,1}
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+    do i = 1, ndep
+      ! reduce children dep into p_y
+      call fwd_update_upd(fkeep, dblk, p_dep(i))
+    end do
+  end if
 
   call slv_solve_ileave2(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
     nrhs, p_y, ldy)

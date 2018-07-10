@@ -157,6 +157,7 @@ contains
 
     first_blk = fkeep%nodes(node_num)%sblk_sa
     last_blk  = fkeep%nodes(node_num)%sblk_en
+    print *, "Node :", node_num, "first blk:", first_blk, "last blk", last_blk
     ncol      = fkeep%sbc(last_blk)%bcol - fkeep%sbc(first_blk)%bcol + 1
     nrow      = fkeep%sbc(first_blk)%last_blk - first_blk + 1
     do i = 1, nrow

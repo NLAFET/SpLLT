@@ -1725,9 +1725,9 @@ call spllt_tac(1, threadID, timer, lflops)
 
        else
 !!! Single rhs, direct update
-        !print *, "local RHS", rhs(1:nelim) 
-        !print *, "Dest", dest(1 : m * nelim)
-        !print *, "Result before", xlocal(1 : m)
+      !  print *, "local RHS", rhs(1:nelim) 
+      !  print *, "Dest", dest(1 : m * nelim)
+      !  print *, "Result before", xlocal(1 : m)
          j = 1
          do i = 1, m
            w = zero
@@ -2055,34 +2055,35 @@ call spllt_tac(1, threadID, timer, lflops)
     ! Loop over block columns
     do jj = nc, 1, -1
 
-      do blk = fkeep%sbc(dblk)%last_blk, dblk, -1
+      print *, "update from", fkeep%sbc(dblk)%last_blk, "to", dblk + 1
+      do blk = fkeep%sbc(dblk)%last_blk, dblk + 1, -1
         
        !blk = dblk+ii-jj ! Block index
 
         !
         ! Backward update with block on diagoanl
         !
- !!     print *, "Submit bwd update ", blk
+        print *, "Submit bwd update ", blk
         call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
         call task_manager%solve_bwd_update_il2_task(blk, node, nrhs, & 
           n, rhs, fkeep, trace_id)
        !call task_manager%solve_bwd_update_il_task(blk, node, nrhs, rhs_local, &
        !  tdu, rhs, n, xlocal, fkeep, bwd_update_id)
         call spllt_tac(1, task_manager%workerID, timer)
-       !!$omp taskwait
+        !$omp taskwait
       end do
 
       !
       ! Backward solve with block on diagoanl
       !
- !!   print *, "Submit bwd block ", dblk
+      print *, "Submit bwd block ", dblk
       call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
       call task_manager%solve_bwd_block_il2_task(dblk, nrhs, &
         n, rhs, fkeep, trace_id)
      !call task_manager%solve_bwd_block_il_task(dblk, nrhs, rhs_local, tdu, &
      !  rhs, n, xlocal, fkeep, bwd_block_id)
       call spllt_tac(2, task_manager%workerID, timer)
-     !!$omp taskwait
+      !$omp taskwait
      
       ! Update diag block in node       
       if (jj .gt. 1) dblk = fkeep%sbc(dblk-1)%dblk

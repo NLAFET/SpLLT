@@ -1459,6 +1459,8 @@ contains
 
     p_blk_index   => fkeep%sbc(blk)%p_index
     p_child_index => fkeep%sbc(child_blk)%p_index
+    print*, "index of ", blk, ":", p_blk_index
+    print*, "index of child", child_blk, ":", p_child_index
 
     !Set variables
     j           = 1
@@ -1469,7 +1471,9 @@ contains
       else if(p_blk_index(j) .gt. p_child_index(k)) then
         k = k + 1
       else
+        print *, "Index in commom", p_blk_index(j)
         p_upd(j, :) = p_upd(j, :) + p_child_upd(k, :)
+        p_child_upd(k,:) = zero
         j = j + 1
         k = k + 1
       end if
@@ -1506,6 +1510,7 @@ contains
         k = k + 1
       else
         p_upd(j, :) = p_upd(j, :) + p_child_upd(k, :)
+        p_child_upd(k, :) = zero
         j = j + 1
         k = k + 1
       end if
@@ -1575,7 +1580,7 @@ contains
 
   subroutine get_solve_blocks(fkeep, nb, nrhs, worksize, sbc)
     use spllt_data_mod
-   !use utils_mod
+    use utils_mod
     implicit none
 
     type(spllt_fkeep),                 target,  intent(inout) :: fkeep
@@ -1592,27 +1597,30 @@ contains
     integer :: st
     integer :: rhs_sa, blk_sa, lsa, w_sa
 
-    nblock = 0
+    worksize  = 0
+    nblock    = 0
     !Count the number of blocks in the tree
     do i = 1, fkeep%info%num_nodes
-     !call print_node(fkeep, i)
+      call print_node(fkeep, i)
       ncol = fkeep%nodes(i)%en - fkeep%nodes(i)%sa + 1
       !Treat blocks in L_1
       nbrow = ceiling(ncol / real(nb))
       nbcol = nbrow
       nblock = nblock + (nbrow + 1) * nbrow / 2
-     !print *, "ncol ", ncol, "=> nbrow of L_1", nbrow, " ==> nblock ", (nbrow + 1) * nbrow / 2
+      print *, "ncol ", ncol, "=> nbrow of L_1", nbrow, " ==> nblock ", (nbrow + 1) * nbrow / 2
       !Treat blocks in L_2
       nbrow = ceiling((size(fkeep%nodes(i)%index) - ncol) / real(nb))
-     !print *, "nrow ", (size(fkeep%nodes(i)%index) - ncol), &
-     !  "=> nbrow of L_2", nbrow, " ==> nblock ", nbrow * nbcol
+      print *, "nrow ", (size(fkeep%nodes(i)%index) - ncol), &
+        "=> nbrow of L_2", nbrow, " ==> nblock ", nbrow * nbcol
       nblock = nblock + nbrow * nbcol
      !print *, "After node ", i, "nblock = ", nblock
     end do
 
     !Allocate sbc
     allocate(sbc(nblock), stat=st)
+    print *, "Allocate ", nblock, "blocks in sbc"
    !print *, "RHS is :", rhs(1 : fkeep%n)
+    fkeep%sbc => sbc
 
     iblock = 1
     bcol   = 0
@@ -1663,21 +1671,21 @@ contains
             last_blk, i, sa)
 
           !Associate memory
-         !if(j .eq. 1) then
+          if(j .eq. 1) then
          !  sbc(iblock)%p_upd(1 : n, 1 : nrhs)  => rhs(rhs_sa :   &
-         !    rhs_sa + n * nrhs)
+         !    rhs_sa + n * nrhs - 1)
          !  sbc(iblock)%ldu                         = n
-         !  sbc(iblock)%p_index                     => fkeep%nodes(i)%&
-         !    index(lsa : lsa + m - 1)
+            sbc(iblock)%p_index                     => fkeep%nodes(i)%&
+              index(lsa : lsa + m - 1)
 
          !  rhs_sa = rhs_sa + n * nrhs
-         !  lsa    = lsa + m
-         !else
-         !  lblk = blk_sa + k - 1
+            lsa    = lsa + m
+          else
+            lblk = blk_sa + k - 1
          !  sbc(iblock)%p_upd   => sbc(lblk)%p_upd
          !  sbc(iblock)%ldu     = sbc(lblk)%ldu
-         !  sbc(iblock)%p_index => sbc(lblk)%p_index
-         !endif
+            sbc(iblock)%p_index => sbc(lblk)%p_index
+          endif
          !call print_solve_block(sbc(iblock))
          !print *, "L1 : sa = ", sa, "+", m * n, "=", sa + m * n
           sa     = sa + m * n
@@ -1700,26 +1708,26 @@ contains
             last_blk, i, sa)
 
           if(j .eq. 1) then
-            worksize = worksize + m * n
+            worksize = worksize + m * nrhs
           end if
 
          !!Associate memory
-         !if(j .eq. 1) then
+          if(j .eq. 1) then
          !  sbc(iblock)%p_upd(1 : n, 1 : nrhs) => w(w_sa :      &
-         !    w_sa + n * nrhs)
+         !    w_sa + n * nrhs - 1)
          !  sbc(iblock)%ldu                 = m * n
-         !  sbc(iblock)%p_index             => fkeep%nodes(i)%index &
-         !    (lsa : lsa + m - 1)
+            sbc(iblock)%p_index             => fkeep%nodes(i)%index &
+              (lsa : lsa + m - 1)
 
          !  w_sa = w_sa + n * nrhs
-         !  lsa  = lsa + m
-         !else
-         !  lblk = blk_sa + k - 1
+            lsa  = lsa + m
+          else
+            lblk = blk_sa + k - 1
          !  print *, "Left block id : ", lblk
          !  sbc(iblock)%p_upd   => sbc(lblk)%p_upd
          !  sbc(iblock)%ldu     = sbc(lblk)%ldu
-         !  sbc(iblock)%p_index => sbc(lblk)%p_index
-         !endif
+            sbc(iblock)%p_index => sbc(lblk)%p_index
+          endif
          !call print_solve_block(sbc(iblock))
          !print *, "L2 : sa = ", sa, "+", m * n, "=", sa + m * n
           sa      = sa + m * n
@@ -1739,6 +1747,7 @@ contains
 
 
   subroutine sblock_assoc_mem(fkeep, nb, nrhs, rhs, w, sbc)
+    use utils_mod
     use spllt_data_mod
     implicit none
 
@@ -1796,20 +1805,22 @@ contains
           
           !Associate memory
           if(j .eq. 1) then
-            sbc(iblock)%p_upd(1 : n, 1 : nrhs)  => rhs(rhs_sa :   &
-              rhs_sa + n * nrhs)
-            sbc(iblock)%ldu                         = n
-            sbc(iblock)%p_index                     => fkeep%nodes(i)%&
-              index(lsa : lsa + m - 1)
-
-            rhs_sa = rhs_sa + n * nrhs
-            lsa    = lsa + m
+         !  print *, "rhs_sa = ", rhs_sa, "m=", m
+            sbc(iblock)%p_upd(1 : m, 1 : nrhs)  => rhs(rhs_sa :   &
+              rhs_sa + m * nrhs - 1)
+            sbc(iblock)%ldu                         = m
+         !  sbc(iblock)%p_index                     => fkeep%nodes(i)%&
+         !    index(lsa : lsa + m - 1)
+         !  print *, "Associate to block", iblock, "rhs :", rhs(rhs_sa : rhs_sa + n * nrhs - 1)
+            rhs_sa = rhs_sa + m * nrhs
+         !  lsa    = lsa + m
           else
             lblk = blk_sa + k - 1
             sbc(iblock)%p_upd   => sbc(lblk)%p_upd
             sbc(iblock)%ldu     = sbc(lblk)%ldu
-            sbc(iblock)%p_index => sbc(lblk)%p_index
+         !  sbc(iblock)%p_index => sbc(lblk)%p_index
           endif
+         !call print_solve_block(sbc(iblock))
           iblock = iblock + 1
         end do
 
@@ -1823,24 +1834,26 @@ contains
 
           !Associate memory
           if(j .eq. 1) then
-            sbc(iblock)%p_upd(1 : n, 1 : nrhs) => w(w_sa :      &
-              w_sa + n * nrhs)
-            sbc(iblock)%ldu                 = n
-            sbc(iblock)%p_index             => fkeep%nodes(i)%index &
-              (lsa : lsa + m - 1)
+            sbc(iblock)%p_upd(1 : m, 1 : nrhs) => w(w_sa :      &
+              w_sa + m * nrhs - 1)
+            sbc(iblock)%ldu                 = m
+         !  sbc(iblock)%p_index             => fkeep%nodes(i)%index &
+         !    (lsa : lsa + m - 1)
 
-            w_sa = w_sa + n * nrhs
-            lsa  = lsa + m
+            w_sa = w_sa + m * nrhs
+         !  lsa  = lsa + m
           else
             lblk = blk_sa + k - 1
             sbc(iblock)%p_upd   => sbc(lblk)%p_upd
             sbc(iblock)%ldu     = sbc(lblk)%ldu
-            sbc(iblock)%p_index => sbc(lblk)%p_index
+         !  sbc(iblock)%p_index => sbc(lblk)%p_index
           endif
+         !call print_solve_block(sbc(iblock))
           iblock  = iblock + 1
         end do
       end do
 
+      call print_node_solve(fkeep, i)
     end do
 
   end subroutine sblock_assoc_mem

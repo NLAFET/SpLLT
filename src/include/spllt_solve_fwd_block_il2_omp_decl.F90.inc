@@ -1,5 +1,6 @@
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &

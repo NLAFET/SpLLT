@@ -31,7 +31,8 @@ call spllt_tic('CASE(1)',2, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)))   &
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -55,7 +56,8 @@ call spllt_tic('CASE(2)',3, task_manager%workerID, timer)
 # endif
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -80,7 +82,8 @@ call spllt_tic('CASE(3)',4, task_manager%workerID, timer)
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -105,7 +108,8 @@ call spllt_tic('CASE(4)',5, task_manager%workerID, timer)
 !$omp task depend(out: p_bc(p_dep(alpha*1+beta))) depend(in: p_bc(p_dep(alpha*1+beta)),p_bc(p_dep(alpha*2+beta)))   &
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -131,7 +135,8 @@ call spllt_tic('CASE(5)',6, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -157,7 +162,8 @@ call spllt_tic('CASE(6)',7, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+2)),p_bc(p_dep(alpha*2+beta+2)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -184,7 +190,8 @@ call spllt_tic('CASE(7)',8, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -211,7 +218,8 @@ call spllt_tic('CASE(8)',9, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+4)),p_bc(p_dep(alpha*2+beta+4)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -239,7 +247,8 @@ call spllt_tic('CASE(9)',10, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &
@@ -267,7 +276,8 @@ call spllt_tic('CASE(10)',11, task_manager%workerID, timer)
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+6)),p_bc(p_dep(alpha*2+beta+6)))&
 !$omp depend(in: p_bc(p_dep(alpha*1+beta+8)),p_bc(p_dep(alpha*2+beta+8)))&
 !$omp default(none)                                                       &
-!$omp firstprivate(blkm, blkn, nrhs, ldy)                                 &
+!$omp firstprivate(fkeep)                                                 &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, node)                     &
 !$omp firstprivate(trace_id, p_timer)                                     &
 !$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
 !$omp firstprivate(p_bc, p_dep)                                           &

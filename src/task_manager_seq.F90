@@ -1169,7 +1169,7 @@ module task_manager_seq_mod
     integer,                    intent(in)    :: nrhs !Number of RHS
     integer,                    intent(in)    :: n
     real(wp), target,           intent(inout) :: rhs(n, nrhs)
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer, optional,          intent(in)    :: trace_id
     
     ! Node info
@@ -1213,7 +1213,7 @@ module task_manager_seq_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_order
+    p_order     => fkeep%p_porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, threadID)
@@ -1351,7 +1351,7 @@ module task_manager_seq_mod
     integer,                    intent(in)    :: nrhs !Number of RHS
     integer,                    intent(in)    :: n
     real(wp), target,           intent(inout) :: rhs(n, nrhs)
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer, optional,          intent(in)    :: trace_id
     
     ! Node info
@@ -1395,7 +1395,7 @@ module task_manager_seq_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_order
+    p_order     => fkeep%p_porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, threadID)

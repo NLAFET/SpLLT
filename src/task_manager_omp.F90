@@ -2333,7 +2333,7 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: nrhs !Number of RHS
     integer,                    intent(in)    :: n
     real(wp), target,           intent(inout) :: rhs(n, nrhs)
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer, optional,          intent(in)    :: trace_id
 
     integer :: id
@@ -2364,7 +2364,7 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: nrhs !Number of RHS
     integer,                    intent(in)    :: n
     real(wp), target,           intent(inout) :: rhs(n, nrhs)
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer,                    intent(in)    :: trace_id
     
     ! Node info
@@ -2413,7 +2413,7 @@ module task_manager_omp_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_order
+    p_order     => fkeep%p_porder
    !print *, "from ", sa, 'to', sa + blkn * blkn - 1, "FOR bcol", bcol
    !print *, "lbound lfact", lbound(fkeep%lfact), "ubound", ubound(fkeep%lfact)
    !print *, "lbound lcol ", lbound(fkeep%lfact(bcol)%lcol), "ubound", ubound(fkeep%lfact(bcol)%lcol)
@@ -2680,7 +2680,7 @@ module task_manager_omp_mod
     integer,                    intent(in)    :: nrhs ! Number of RHS
     integer,                    intent(in)    :: n
     real(wp), target,           intent(inout) :: rhs(n, nrhs)
-    type(spllt_fkeep), target,  intent(in)    :: fkeep
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer, optional,          intent(in)    :: trace_id
 
     integer :: id
@@ -2710,7 +2710,7 @@ module task_manager_omp_mod
     integer, intent(in)                       :: nrhs ! Number of RHS
     integer, intent(in)                       :: n
     real(wp), target, intent(inout)           :: rhs(n, nrhs)
-    type(spllt_fkeep), target, intent(in)     :: fkeep
+    type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: trace_id
     
     ! Node info
@@ -2755,8 +2755,10 @@ module task_manager_omp_mod
     ldy       = fkeep%sbc(dblk)%ldu
     
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_order
-    p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + n * n - 1)
+    p_order     => fkeep%p_porder
+   !print *, "Current block column", bcol
+   !print *, "sa = ", sa, "to sa + n * n - 1 = ", sa + blkn*blkn-1
+    p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_bc        => fkeep%sbc
