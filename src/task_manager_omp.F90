@@ -2659,7 +2659,7 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-    !$omp taskwait
+   !!$omp taskwait
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
@@ -2888,8 +2888,9 @@ module task_manager_omp_mod
     
     ! Block info
     integer                     :: blkm, blkn         ! Block dimension
-    integer                     :: blk_sa
-    integer                     :: bcol
+    integer                     :: blk_sa, blk_en
+    integer                     :: sa
+    integer                     :: bcol, nbcol
     integer                     :: threadID
     integer                     :: ndep
     integer                     :: dblk
@@ -2922,13 +2923,15 @@ module task_manager_omp_mod
     ! Establish variables describing block
     blkn    = fkeep%sbc(blk)%blkn
     blkm    = fkeep%sbc(blk)%blkm
-    blk_sa  = fkeep%sbc(blk)%sa
+    blk_sa  = fkeep%nodes(node)%sblk_sa
+    blk_en  = fkeep%nodes(node)%sblk_en
+    sa      = fkeep%sbc(blk)%sa
     bcol    = fkeep%sbc(blk)%bcol
     dblk    = fkeep%sbc(blk)%dblk
     ldy     = fkeep%sbc(dblk)%ldu
     ldx     = fkeep%sbc(blk)%ldu
 
-    p_lcol      => fkeep%lfact(bcol)%lcol(blk_sa : blk_sa + blkn * blkm - 1)
+    p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkm - 1)
     p_bc        => fkeep%sbc
     p_y         => fkeep%sbc(dblk)%p_upd
     p_xlocal    => fkeep%sbc(blk)%p_upd
@@ -2938,6 +2941,8 @@ module task_manager_omp_mod
     ndep      = size(p_dep)
     chunk     = 0
     ndep_lvl  = 0
+
+    nbcol     = fkeep%sbc(blk_en)%bcol - fkeep%sbc(blk_sa)%bcol + 1
 
     if(ndep .eq. 0) then
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)

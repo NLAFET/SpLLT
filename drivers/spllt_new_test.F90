@@ -293,7 +293,7 @@ program spllt_test
   call task_manager%nflop_reset()
   call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
-  print *, "Order : ", order
+ !print *, "Order : ", order
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
    !job=merge(3,0, options%ileave_solve), &
     job=merge(3,6, options%ileave_solve), &
@@ -325,7 +325,7 @@ program spllt_test
       &//date//'-'//time)
 #endif
 
- !call task_manager%print()
+  call task_manager%print()
 
   deallocate(order, rhs, sol, sol_computed, ptr, row, val)
 

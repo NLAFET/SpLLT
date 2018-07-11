@@ -350,23 +350,25 @@ contains
       case(6)
         print *, "NEW FWD"
 
-        print *, "Workspace", workspace
-        print *, "rhs", x
+       !print *, "Workspace", workspace
+       !print *, "rhs", x
        !do j = 1, n
        !   x_tmp(order(j),:) = x(j,:)
        !end do
        !print *, "rhs permuted", x_tmp
         call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
 
-        !$omp taskwait
-        print *, "Workspace", workspace
-        call print_darray('x solution fwd', n, fkeep%p_y, 1)
+       !!$omp taskwait
+       !print *, "Workspace", workspace
+       !call print_darray('x solution fwd', n, fkeep%p_y, 1)
+       !print *, fkeep%p_y
        !stop
         
         call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
         !$omp taskwait
-        print *, "Workspace", workspace
-        call print_darray('x solution', n, x, 1)
+       !print *, "Workspace", workspace
+       !call print_darray('x solution', n, x, 1)
+       !call print_darray('permuted x solution', n, fkeep%p_y, 1)
        !stop
 
       case default
@@ -972,6 +974,7 @@ call task_manager%print("fwd end of submitted task", 0)
      !end if
 
       call solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
+     !if(node .eq. 1) stop
 
     end do
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
@@ -1088,7 +1091,7 @@ call task_manager%print("fwd end of submitted task", 0)
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_tac(4, task_manager%workerID, timer)
 #endif
-    print *, "Returned RHS", rhs
+   !print *, "Returned RHS", rhs
 
 
 #if defined(SPLLT_OMP_TRACE)

@@ -22,11 +22,13 @@ contains
 
   subroutine spllt_compute_blk_solve_dep(fkeep, blk)
    !use utils_mod
+    implicit none
+
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
 
     integer :: ndep, nldep, repr, old_node, cpt
-    integer :: dep_blk, dep_node
+    integer :: dep_blk, dep_node, i
     integer, pointer :: p_small(:)
     integer, target, allocatable :: fwd_update_dep(:)
     integer, target, allocatable :: bwd_solve_dep(:)
@@ -200,6 +202,8 @@ contains
   ! This routine computes the dependencies of the blocks in fkeep
   subroutine spllt_compute_solve_dep(fkeep)
     use spllt_tree_stat_mod 
+    implicit none
+
     type(spllt_fkeep), target, intent(inout)  :: fkeep
 
     integer                 :: i
@@ -233,6 +237,8 @@ contains
 
 
   subroutine spllt_compute_solve_extra_row(fkeep)
+    implicit none
+
     type(spllt_fkeep), intent(inout)  :: fkeep
 
     integer :: i
@@ -247,6 +253,7 @@ contains
   !Return the position in child_node of the rows of node that are 
   ! in child_node
   subroutine get_update_dep(fkeep, child_node, node, pos)
+    implicit none
     
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
@@ -303,6 +310,8 @@ contains
 
 
   subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
     integer, intent(inout)                :: blk_index(:)
@@ -342,6 +351,8 @@ contains
 
 
   subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
     integer, intent(inout)                :: blk_index(:)
@@ -386,34 +397,68 @@ contains
 
 
   function get_child_dep_blk_id(fkeep, child_node, row, nrow)
+    implicit none
+
     integer                               :: get_child_dep_blk_id
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: child_node
     integer, intent(in)                   :: row
     integer, intent(in)                   :: nrow
 
-    integer :: lblk, nlblk, diff, tmp, nb
+    integer :: sa, en, blk_sa, nb
+    integer :: ncol, nbrowL1, nbrowL2, nbrow
+    integer :: dep_blk, lbrow
+   !integer :: lblk, nlblk, diff, tmp, nb
 
-    nb    = fkeep%nodes(child_node)%nb
-    tmp   = fkeep%nodes(child_node)%sblk_sa
-    lblk  = ceiling((row + 0.0) / nb)
-    nlblk = ceiling((nrow + 0.0)/nb)
-    diff  = (fkeep%nodes(child_node)%sblk_en - &
-      fkeep%sbc(fkeep%nodes(child_node)%sblk_en)%dblk + 0) ! #blk on the last nbol
-    if(lblk .le. (nlblk - diff)) then
-      tmp = tmp + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
-    else
-      tmp = fkeep%sbc(fkeep%nodes(child_node)%sblk_en)%dblk + lblk - &
-        (nlblk - diff) - 0
-    end if
+   !nb    = fkeep%nodes(child_node)%nb
+   !tmp   = fkeep%nodes(child_node)%sblk_sa
+   !lblk  = ceiling((row + 0.0) / nb)
+   !nlblk = ceiling((nrow + 0.0)/nb)
+   !diff  = (fkeep%nodes(child_node)%sblk_en - &
+   !  fkeep%sbc(fkeep%nodes(child_node)%sblk_en)%dblk + 0) ! #blk on the last nbol
+   !if(lblk .le. (nlblk - diff)) then
+   !  tmp = tmp + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
+   !else
+   !  tmp = fkeep%sbc(fkeep%nodes(child_node)%sblk_en)%dblk + lblk - &
+   !    (nlblk - diff) - 0
+   !end if
 
-    get_child_dep_blk_id = tmp
+   !get_child_dep_blk_id = tmp
+
+   !New algorithm based on sbc
+   nb   = fkeep%nodes(child_node)%nb
+   sa   = fkeep%nodes(child_node)%sa
+   en   = fkeep%nodes(child_node)%en
+   ncol = en - sa + 1
+
+   nbrowL1  = ceiling(ncol / real(nb))
+   nbrowL2  = ceiling((nrow - ncol) / real(nb))
+   blk_sa   = fkeep%nodes(child_node)%sblk_sa
+   nbrow    = nbrowL1 + nbrowL2
+
+  !if(child_node .eq. 3) then
+  !  print *, "Node", child_node, "ncol : ", ncol, "row :", row
+  !end if
+
+   if(row .le. ncol) then
+     lbrow   = ceiling(row / real(nb))
+     dep_blk = blk_sa + (lbrow - 1) * ( nbrow + 1 - 0.5 * lbrow )
+  !  print *, "[", child_node, "]In L_1 dep_blk = ", dep_blk
+   else
+     dep_blk = fkeep%sbc(fkeep%nodes(child_node)%sblk_en)%dblk + &
+       ceiling((row - ncol) / real(nb))
+  !  print *, "[", child_node, "]In L_2 dep_blk = ", dep_blk
+   end if
+
+   get_child_dep_blk_id = dep_blk
 
   end function get_child_dep_blk_id
 
 
 
   subroutine reduce_ind_and_get_ndep(fkeep, ind, nind, child_node, ndep)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(inout)                :: ind(:)
     integer, intent(inout)                :: nind       ! #elmt in ind
@@ -477,6 +522,8 @@ contains
 
 
   recursive subroutine getUpdateNDep(fkeep, node, ind, nind, ndep, lvl)
+    implicit none
+
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
     integer, intent(inout)        :: ind(:)
@@ -536,6 +583,8 @@ contains
 
   !Get the dependencies after counting its number
   subroutine reduce_ind_and_get_dep(fkeep, ind, nind, child_node, dep)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(inout)                :: ind(:)
     integer, intent(inout)                :: nind       ! #elmt in ind
@@ -597,6 +646,8 @@ contains
 
 
   recursive subroutine getUpdateDep(fkeep, node, ind, nind, dep, ndep, lvl)
+    implicit none
+
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
     integer, intent(inout)        :: ind(:)
@@ -664,6 +715,8 @@ contains
 
 
   subroutine reduce_ind_and_get_dep_blk(fkeep, ind, nind, child_node, blk_dep)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(inout)                :: ind(:)
     integer, intent(inout)                :: nind       ! #elmt in ind
@@ -720,6 +773,8 @@ contains
 
 
   subroutine getPointerBlkIndex(fkeep, blk, p)
+    implicit none
+
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: blk
     integer, pointer, intent(out)         :: p(:)
@@ -748,6 +803,8 @@ contains
 
 
   subroutine getSolveNDep(fkeep, node, ind, nind, ndep)
+    implicit none
+
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
     integer, intent(inout)        :: ind(:)
@@ -786,6 +843,8 @@ contains
 
 
   subroutine getSolveDep(fkeep, node, ind, nind, dep, ndep)
+    implicit none
+
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node
     integer, intent(inout)        :: ind(:)
@@ -1056,15 +1115,71 @@ contains
 
   integer function bwd_update_dependency(fkeep, blk)
     use spllt_data_mod
+    implicit none
 
     type(spllt_fkeep), intent(in)   :: fkeep
     integer, intent(in)             :: blk  ! Index of block 
-    
-    bwd_update_dependency = blk
 
-    if(fkeep%sbc(blk)%last_blk .ne. blk) then
-      bwd_update_dependency = blk + 1
+    integer :: node, nb, blk_sa, blk_en
+    integer :: ncol, nrow, nbrowL1, nbrowL2, nbrow
+    integer :: row, lbrow, lbrowL2
+    integer :: i
+
+    lbrow = 0
+    bwd_update_dependency = blk
+ !  print *, "Treat block", blk
+
+   !print *, "Does not belong to last bcol"
+    node    = fkeep%sbc(blk)%node
+    nb      = fkeep%nodes(node)%nb    
+    blk_sa  = fkeep%nodes(node)%sblk_sa
+    blk_en  = fkeep%nodes(node)%sblk_en
+    ncol    = fkeep%nodes(node)%en - fkeep%nodes(node)%sa + 1
+    nrow    = size(fkeep%nodes(node)%index)
+    nbrowL1 = ceiling(ncol / real(nb))
+    nbrowL2 = ceiling((nrow - ncol) / real(nb))
+    nbrow   = nbrowL1 + nbrowL2
+
+    !Get first row in index of blk
+    row = fkeep%sbc(blk)%p_index(1)
+ !  print *, "Search row", row
+
+    !Find the block row index
+    ! First search in L1
+    do i = 0, nbrowL1 - 1
+ !    print *, "==== is it equal to", fkeep%nodes(node)%index(1 + i * nb)
+      if(fkeep%nodes(node)%index(1 + i * nb) .eq. row) then
+        lbrow   = i + 1
+        lbrowL2 = 0
+        exit
+      end if
+    end do
+    ! If not found in L1, search in L2
+    if(lbrow .eq. 0) then
+ !    print *, "CONT"
+      do i = 0, nbrowL2 - 1
+ !      print *, "==== is it equal to", fkeep%nodes(node)%index(1 + ncol + i * nb)
+        if(fkeep%nodes(node)%index(1 + ncol + i * nb) .eq. row) then
+          lbrow   = nbrowL1 + i + 1
+          lbrowL2 = i + 1
+          exit
+        end if
+      end do
     end if
+ !  print *, "INFO : lbrow = ", lbrow
+    if(lbrow .eq. 0) then
+      print *, "ERRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOR!"
+      stop
+    end if
+
+    if(lbrow .gt. nbrowL1) then
+      bwd_update_dependency = fkeep%sbc(blk_en)%dblk + lbrowL2
+    else
+      bwd_update_dependency = blk_sa + (lbrow - 1) * ( nbrow + 1 - 0.5 * lbrow )
+    end if
+
+    
+ !  print *, "Returned dep from bwd_update_dependency", bwd_update_dependency
 
   end function bwd_update_dependency
 
@@ -1072,6 +1187,7 @@ contains
 
   integer function fwd_solve_dependency(fkeep, blk)
     use spllt_data_mod
+    implicit none
 
     type(spllt_fkeep), intent(in)   :: fkeep
     integer, intent(in)             :: blk  ! Index of block 
@@ -1103,6 +1219,7 @@ contains
     integer :: lblk, nlblk, dblk
     integer, allocatable :: node_parent(:) ! Remove by using a workspace
     integer, allocatable :: blk_index(:) ! Remove by using a workspace
+    integer :: ndep, nextra_dep
 
     node      = fkeep%sbc(blk)%node
     parent    = fkeep%nodes(node)%parent
@@ -1133,6 +1250,7 @@ contains
     ! or blk belongs to L_{21}, 
     ! where the L_{21} is the off diagonal block of L such that 
     ! L = [L_{11} ; L_{21}], with L_{11} is the triangular diagonal block
+#if 0
     if(bcol .eq. bcol_blk_en  &
       .or. blk .eq. dblk      &
       .or. lblk .gt. nbcol) then
@@ -1193,9 +1311,72 @@ contains
       dep(1) = blk_sa + (lblk - 1) * ( nlblk + 1 - 0.5 * lblk )
       
     end if
+#else
+    if(bcol .eq. bcol_blk_en) then
+      if(nparent .gt. 0) then
 
-!   call print_iarray("Returned dep from bwd_solve_dependency",  &
-!     size(dep), dep)
+        allocate(node_parent(nparent + 1))
+        node_parent    = zero
+        node_parent(1) = one
+
+        nind  = blkm
+
+        call getSolveNDep(fkeep, node, blk_index,&
+          nind, node_parent(2 : nparent+1))
+
+        !Restore the array
+        blk_index = fkeep%sbc(blk)%p_index
+        nind  = blkm
+
+        !PostTreatment of ndep to compute the accsum
+        do i = 1, nparent
+          node_parent(i + 1) = node_parent(i) + node_parent(i + 1)
+        end do
+
+        ndep        = node_parent(nparent + 1) - 1
+        nextra_dep  = 0
+
+        if(blk .ne. blk_en) then
+          nextra_dep = 1
+        end if
+
+        if(node_parent(nparent + 1) .gt. 1) then
+          
+          allocate(dep(ndep + nextra_dep))
+          ! Add the last blk of the node as first dep
+          if(blk .ne. blk_en) then
+            dep(1) = blk_en
+          end if
+
+          call getSolveDep(fkeep, node, blk_index,&
+            nind, dep(1 + nextra_dep : ndep + nextra_dep), node_parent)
+
+          !       deallocate(dep)
+        else
+          allocate(dep(1))
+          dep(1) = blk + 1
+        end if
+      else
+        allocate(dep(1))
+        if(blk .eq. blk_en) then
+          dep(1) = blk
+        else
+          dep(1) = blk + 1
+        endif
+      end if
+    else
+      allocate(dep(1))
+      if(blk .lt. fkeep%sbc(blk)%last_blk) then
+        dep(1) = blk + 1
+      else
+        dep(1) = blk
+      end if
+    end if
+#endif
+
+ !  call print_iarray("Returned dep from bwd_solve_dependency",  &
+ !    size(dep), dep)
+ !  print *, "_____________"
 
   end subroutine bwd_solve_dependency
 
@@ -1203,6 +1384,7 @@ contains
 
   function contain(fkeep, blk1, blk2) result(isIn)
     use spllt_data_mod
+    implicit none
     
     type(spllt_fkeep), target, intent(in) :: fkeep
     integer, intent(in)                   :: blk1
@@ -1234,12 +1416,15 @@ contains
   
 
   subroutine spllt_compute_extra_row(fkeep, node)
+    implicit none
+
     type(spllt_fkeep),  target, intent(inout) :: fkeep
     integer,            intent(in)            :: node
 
-    integer               :: i, nchild, child
+    integer               :: i, j, k, nchild, child
     integer               :: blk_sa, last_blk
     integer               :: nblk
+    integer               :: nchild_row
     integer               :: nrow, nval
     logical, allocatable  :: is_present(:)
     integer, pointer      :: p_index(:)
@@ -1307,6 +1492,8 @@ contains
   ! given in parameter
   subroutine spllt_update_blk_dep(fkeep, tree)
     use utils_mod
+    implicit none
+
     type(spllt_fkeep),  intent(inout) :: fkeep
     type(spllt_tree_t), intent(in)    :: tree
 
@@ -1376,6 +1563,7 @@ contains
   subroutine spllt_compute_rhs_block(fkeep, stat)
     use spllt_data_mod
     implicit none
+
     type(spllt_fkeep), target,  intent(inout) :: fkeep
     integer,                    intent(out)   :: stat
 
@@ -1444,6 +1632,8 @@ contains
 
 
   subroutine fwd_update_upd(fkeep, blk, child_blk)
+    implicit none
+
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
     integer, intent(in)                       :: child_blk
@@ -1459,8 +1649,8 @@ contains
 
     p_blk_index   => fkeep%sbc(blk)%p_index
     p_child_index => fkeep%sbc(child_blk)%p_index
-    print*, "index of ", blk, ":", p_blk_index
-    print*, "index of child", child_blk, ":", p_child_index
+  ! print*, "index of ", blk, ":", p_blk_index
+  ! print*, "index of child", child_blk, ":", p_child_index
 
     !Set variables
     j           = 1
@@ -1471,7 +1661,7 @@ contains
       else if(p_blk_index(j) .gt. p_child_index(k)) then
         k = k + 1
       else
-        print *, "Index in commom", p_blk_index(j)
+  !     print *, "Index in commom", p_blk_index(j)
         p_upd(j, :) = p_upd(j, :) + p_child_upd(k, :)
         p_child_upd(k,:) = zero
         j = j + 1
@@ -1484,6 +1674,8 @@ contains
 
 
   subroutine bwd_update_upd(fkeep, blk, child_blk) ! maybe useless; simple copy
+    implicit none
+
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
     integer, intent(in)                       :: child_blk
@@ -1510,13 +1702,51 @@ contains
         k = k + 1
       else
         p_upd(j, :) = p_upd(j, :) + p_child_upd(k, :)
-        p_child_upd(k, :) = zero
+       !p_child_upd(k, :) = zero
         j = j + 1
         k = k + 1
       end if
     end do
 
   end subroutine bwd_update_upd
+
+
+
+  subroutine bwd_reset_upd(fkeep, blk, child_blk) ! maybe useless; simple copy
+    implicit none
+
+    type(spllt_fkeep), target, intent(inout)  :: fkeep
+    integer, intent(in)                       :: blk
+    integer, intent(in)                       :: child_blk
+
+    integer           :: i, j, k
+    integer, pointer  :: p_blk_index(:)
+    integer, pointer  :: p_child_index(:)
+    real(wp), pointer :: p_child_upd(:,:)
+    real(wp), pointer :: p_upd(:,:)
+
+    p_child_upd => fkeep%sbc(child_blk)%p_upd
+    p_upd       => fkeep%sbc(blk)%p_upd
+
+    p_blk_index   => fkeep%sbc(blk)%p_index
+    p_child_index => fkeep%sbc(child_blk)%p_index
+
+    !Set variables
+    j           = 1
+    k           = 1
+    do while(j .le. size(p_blk_index) .and. k .le. size(p_child_index))
+      if(p_blk_index(j) .lt. p_child_index(k)) then
+        j = j + 1
+      else if(p_blk_index(j) .gt. p_child_index(k)) then
+        k = k + 1
+      else
+        p_child_upd(k, :) = zero
+        j = j + 1
+        k = k + 1
+      end if
+    end do
+
+  end subroutine bwd_reset_upd
 
 
 
@@ -1601,24 +1831,24 @@ contains
     nblock    = 0
     !Count the number of blocks in the tree
     do i = 1, fkeep%info%num_nodes
-      call print_node(fkeep, i)
+     !call print_node(fkeep, i)
       ncol = fkeep%nodes(i)%en - fkeep%nodes(i)%sa + 1
       !Treat blocks in L_1
       nbrow = ceiling(ncol / real(nb))
       nbcol = nbrow
       nblock = nblock + (nbrow + 1) * nbrow / 2
-      print *, "ncol ", ncol, "=> nbrow of L_1", nbrow, " ==> nblock ", (nbrow + 1) * nbrow / 2
+     !print *, "ncol ", ncol, "=> nbrow of L_1", nbrow, " ==> nblock ", (nbrow + 1) * nbrow / 2
       !Treat blocks in L_2
       nbrow = ceiling((size(fkeep%nodes(i)%index) - ncol) / real(nb))
-      print *, "nrow ", (size(fkeep%nodes(i)%index) - ncol), &
-        "=> nbrow of L_2", nbrow, " ==> nblock ", nbrow * nbcol
+     !print *, "nrow ", (size(fkeep%nodes(i)%index) - ncol), &
+     !  "=> nbrow of L_2", nbrow, " ==> nblock ", nbrow * nbcol
       nblock = nblock + nbrow * nbcol
      !print *, "After node ", i, "nblock = ", nblock
     end do
 
     !Allocate sbc
     allocate(sbc(nblock), stat=st)
-    print *, "Allocate ", nblock, "blocks in sbc"
+   !print *, "Allocate ", nblock, "blocks in sbc"
    !print *, "RHS is :", rhs(1 : fkeep%n)
     fkeep%sbc => sbc
 
@@ -1662,9 +1892,9 @@ contains
           ! Change the number of rows if last block row is being treated
           if(k * nb .gt. ncol) then
             m = ncol - (nbrowL1 - 1) * nb 
-         !  print *, "L1 : Updated m = ", m
-         !else
-         !  print *, "L1 : Original m = ", m
+        !   print *, "L1 : Updated m = ", m
+        ! else
+        !   print *, "L1 : Original m = ", m
           end if
           
           call set_solve_block(sbc(iblock), bcol + j, m, n, dblk, iblock, &
@@ -1695,13 +1925,13 @@ contains
         !Treate L_2
         m = nb
         do k = nbrowL1 + 1, nbrow
-         !print *, "Brow number", k
+        ! print *, "Brow number", k
           ! Change the number of rows if last block row is being treated
-          if(k * nb .gt. nrow - ncol) then
+          if((k - nbrowL1) * nb .gt. nrow - ncol) then
             m = nrow - ncol - (nbrowL2 - 1) * nb 
-         !  print *, "L2 : Updated m = ", m
-         !else
-         !  print *, "L2 : Original m = ", m
+        !   print *, "L2 : Updated m = ", m
+        ! else
+        !   print *, "L2 : Original m = ", m
           end if
 
           call set_solve_block(sbc(iblock), bcol + j, m, n, dblk, iblock, &
@@ -1718,6 +1948,9 @@ contains
          !  sbc(iblock)%ldu                 = m * n
             sbc(iblock)%p_index             => fkeep%nodes(i)%index &
               (lsa : lsa + m - 1)
+        !   if(iblock .le. 5) then
+        !     print *, "block", iblock, " with index : ", sbc(iblock)%p_index(1 : m)
+        !   end if
 
          !  w_sa = w_sa + n * nrhs
             lsa  = lsa + m
@@ -1750,7 +1983,6 @@ contains
     use utils_mod
     use spllt_data_mod
     implicit none
-
     
     type(spllt_fkeep), target,  intent(in)    :: fkeep
     integer,                    intent(in)    :: nb
@@ -1828,7 +2060,8 @@ contains
         m = nb
         do k = nbrowL1 + 1, nbrow
           ! Change the number of rows if last block row is being treated
-          if(k * nb .gt. nrow - ncol) then
+          if((k - nbrowL1) * nb .gt. nrow - ncol) then
+         !if(k * nb .gt. nrow - ncol) then
             m = nrow - ncol - (nbrowL2 - 1) * nb 
           end if
 
@@ -1853,7 +2086,7 @@ contains
         end do
       end do
 
-      call print_node_solve(fkeep, i)
+     !call print_node_solve(fkeep, i)
     end do
 
   end subroutine sblock_assoc_mem

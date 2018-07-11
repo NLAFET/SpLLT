@@ -21,7 +21,7 @@ if(ndep_lvl .le. chunk) then
   do i = 1, blkn
    !p_y(i, :) = rhs(p_order(p_index(i)), :)
    !p_y(i, :) = p_y(i, :) + p_rhs(p_index(p_order(i)), :)
-    p_y(i, :) = p_y(i, :) + p_rhs(p_order(p_index(i)), :)
+    p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
   end do
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. dblk) then

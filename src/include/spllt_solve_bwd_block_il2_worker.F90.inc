@@ -16,13 +16,13 @@ if(ndep_lvl .le. chunk) then
    print *, p_dep
 #endif
 
-  !Gather data into xlocal if belongs to last block column of L
-  if(fkeep%nodes(node)%sblk_en .eq. dblk) then
-    do i = 1, ndep
-      ! reduce ancestor dep into p_y
-      call bwd_update_upd(fkeep, dblk, p_dep(i))
-    end do
-  end if
+ !!Gather data into xlocal if belongs to last block column of L
+ !if(fkeep%nodes(node)%sblk_en .eq. dblk) then
+ !  do i = 1, ndep
+ !    ! reduce ancestor dep into p_y
+ !    call bwd_update_upd(fkeep, dblk, p_dep(i))
+ !  end do
+ !end if
  
   call slv_solve_ileave2(blkn, blkm, p_lcol, 'Non-Transpose', 'Non-unit', &
     nrhs, p_y, ldy)
