@@ -1,7 +1,7 @@
 module spllt_solve_dep_mod
 
-! subroutine spllt_compute_blk_solve_dep(fkeep, blk)
-! subroutine spllt_compute_solve_dep(fkeep)
+! subroutine spllt_compute_blk_solve_dep(fkeep, blk, stat)
+! subroutine spllt_compute_solve_dep(fkeep, stat)
 ! subroutine get_update_dep(fkeep, child_node, node, pos)
 ! subroutine get_update_nblk(fkeep, child_node, blk_index, nblk)
 ! subroutine get_update_dep_blk(fkeep, child_node, blk_index, pos)
@@ -20,15 +20,17 @@ module spllt_solve_dep_mod
 
 contains
 
-  subroutine spllt_compute_blk_solve_dep(fkeep, blk)
+  subroutine spllt_compute_blk_solve_dep(fkeep, blk, stat)
    !use utils_mod
     implicit none
 
     type(spllt_fkeep), target, intent(inout)  :: fkeep
     integer, intent(in)                       :: blk
+    integer, intent(out)                      :: stat
 
     integer :: ndep, nldep, repr, old_node, cpt
     integer :: dep_blk, dep_node, i
+    integer :: st
     integer, pointer :: p_small(:)
     integer, target, allocatable :: fwd_update_dep(:)
     integer, target, allocatable :: bwd_solve_dep(:)
@@ -39,12 +41,38 @@ contains
     ! FWD dep
     !
     call fwd_update_dependency(fkeep, blk, fwd_update_dep)
-    fkeep%sbc(blk)%fwd_update_dep => fwd_update_dep
    !print *, "Returned fwd_update of blk", blk, ":", fwd_update_dep
     fkeep%sbc(blk)%fwd_solve_dep   = fwd_solve_dependency(fkeep, blk)
 
+    ndep = size(fwd_update_dep)
+    allocate(fkeep%sbc(blk)%fwd_update_dep(ndep), stat=st)
+    fkeep%sbc(blk)%fwd_update_dep = fwd_update_dep
+
+    ndep  = 0
+    
+    !Post-treat the fwd dep to remove blk index from the list
+    ! and create the workspace dep list wdep
+    if(fkeep%sbc(blk)%fwd_update_dep(1) .ne. blk) then
+      ndep = ndep + size(fkeep%sbc(blk)%fwd_update_dep)
+    end if
+    if(fkeep%sbc(blk)%fwd_solve_dep .ne. blk) then
+      ndep = ndep + 1
+    end if
+
+    allocate(fkeep%sbc(blk)%fwd_wdep(ndep), stat=st)
+    stat = stat + st
+
+    if(fkeep%sbc(blk)%fwd_update_dep(1) .ne. blk) then
+      fkeep%sbc(blk)%fwd_wdep(1:size(fkeep%sbc(blk)%fwd_update_dep)) = &
+        fkeep%sbc(blk)%fwd_update_dep
+    end if
+    if(fkeep%sbc(blk)%fwd_solve_dep .ne. blk) then
+      fkeep%sbc(blk)%fwd_wdep(ndep) = fkeep%sbc(blk)%fwd_solve_dep
+    end if
+    
     ndep  = 0
 
+    !Post-treat the fwd dep
     if(p_small(fkeep%sbc(blk)%node) .eq. 0) then
 
       nldep = 0
@@ -87,7 +115,9 @@ contains
 #if defined(SOLVE_TASK_LOCKED)
     if(ndep .gt. 0) then
 #endif
-      allocate(fkeep%sbc(blk)%fwd_dep(ndep))
+      allocate(fkeep%sbc(blk)%fwd_dep(ndep), stat=st)
+      stat = stat + st
+
       if(p_small(fkeep%sbc(blk)%node) .eq. 0) then
         cpt = 1
         old_node  = 0
@@ -159,7 +189,10 @@ contains
     !Compute basic dependencies
     fkeep%sbc(blk)%bwd_update_dep  = bwd_update_dependency(fkeep, blk)
     call bwd_solve_dependency(fkeep, blk, bwd_solve_dep)
-    fkeep%sbc(blk)%bwd_solve_dep => bwd_solve_dep
+    
+    ndep = size(bwd_solve_dep)
+    allocate(fkeep%sbc(blk)%bwd_solve_dep(ndep), stat=st)
+    fkeep%sbc(blk)%bwd_solve_dep = bwd_solve_dep
 
     ! Count the number of dep different to the block blk in order to
     ! allocate the right size and copy them into it
@@ -174,7 +207,8 @@ contains
 #if defined(SOLVE_TASK_LOCKED)
     if(ndep .gt. 0) then
 #endif
-      allocate(fkeep%sbc(blk)%bwd_dep(ndep))
+      allocate(fkeep%sbc(blk)%bwd_dep(ndep), stat=st)
+      stat = stat + st
       
       ! Copy array if the first element is not blk
       ! This assumes that the content is either only blk or a list that
@@ -195,18 +229,31 @@ contains
       end if
     end if
 #endif
+    allocate(fkeep%sbc(blk)%bwd_wdep(ndep), stat=st)
+    stat = stat + st
+
+    if(fkeep%sbc(blk)%bwd_solve_dep(1) .ne. blk) then
+      fkeep%sbc(blk)%bwd_wdep(1:size(fkeep%sbc(blk)%bwd_solve_dep)) = &
+        fkeep%sbc(blk)%bwd_solve_dep
+    end if
+    ! Copy the dependency only if it is not blk
+    if(fkeep%sbc(blk)%bwd_update_dep .ne. blk) then
+      fkeep%sbc(blk)%bwd_wdep(ndep) = fkeep%sbc(blk)%bwd_update_dep
+    end if
+
   end subroutine spllt_compute_blk_solve_dep
 
 
 
   ! This routine computes the dependencies of the blocks in fkeep
-  subroutine spllt_compute_solve_dep(fkeep)
+  subroutine spllt_compute_solve_dep(fkeep, stat)
     use spllt_tree_stat_mod 
     implicit none
 
-    type(spllt_fkeep), target, intent(inout)  :: fkeep
+    type(spllt_fkeep), target,  intent(inout)  :: fkeep
+    integer,                    intent(out)   :: stat
 
-    integer                 :: i
+    integer                 :: i, st
     type(spllt_tree_stat_t) :: task_info_fwd
     type(spllt_tree_stat_t) :: task_info_bwd
 
@@ -216,7 +263,8 @@ contains
     ! For each block i, compute its dependencies for forward and 
     ! backward steps,
     do i = 1, fkeep%nodes(fkeep%info%num_nodes)%sblk_en
-      call spllt_compute_blk_solve_dep(fkeep, i)
+      call spllt_compute_blk_solve_dep(fkeep, i, st)
+      stat = stat  + st
     end do
     ! then, update the list of dependencies for the backward case
     ! and for each tree.
@@ -1237,7 +1285,6 @@ contains
     blkm    = fkeep%sbc(blk)%blkm
     dblk    = fkeep%sbc(blk)%dblk
     local_blk = blk - dblk
-   !offset  = nb * ( local_blk + (bcol - bcol_blk_sa)) + 1
 
     lblk = local_blk + bcol - bcol_blk_sa + 1
     nlblk = fkeep%sbc(blk_sa)%last_blk - blk_sa + 1
@@ -1351,7 +1398,6 @@ contains
           call getSolveDep(fkeep, node, blk_index,&
             nind, dep(1 + nextra_dep : ndep + nextra_dep), node_parent)
 
-          !       deallocate(dep)
         else
           allocate(dep(1))
           dep(1) = blk + 1

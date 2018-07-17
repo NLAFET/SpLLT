@@ -193,6 +193,9 @@ module spllt_data_mod
      integer          :: bwd_update_dep
      integer, pointer :: bwd_solve_dep(:)
      integer, pointer :: bwd_dep(:)
+     !  - the workspace dependencies
+     integer, pointer :: fwd_wdep(:)
+     integer, pointer :: bwd_wdep(:)
      !  - workspace
      real(wp), pointer    :: p_upd(:,:)
      integer              :: ldu

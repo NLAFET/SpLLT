@@ -102,9 +102,6 @@ contains
     integer :: id, thn, old_id
 
     if(id .eq. 0) return
-  !   print *, "Ignored started event"
-  !   return
-  ! end if
 
     if(pendings(id, thn)) then
       write(*,'("Tracing error!!! events nesting not supported")')
@@ -141,9 +138,6 @@ contains
     integer :: id, thn, old_id
 
     if(id .eq. 0) return
-  !   print *, "Ignored stopped event"
-  !   return
-  ! end if
     
     stops(thn)                                = omp_get_wtime()
     nevents(thn)                              = nevents(thn) + 1

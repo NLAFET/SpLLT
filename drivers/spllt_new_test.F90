@@ -8,7 +8,7 @@ program spllt_test
   use trace_mod
   use timer_mod
   use task_manager_omp_mod
- !use task_manager_seq_mod
+  use task_manager_seq_mod
   use ISO_Fortran_env, only: stdout => OUTPUT_UNIT, &
     compiler_version, compiler_options
   implicit none
@@ -59,6 +59,7 @@ program spllt_test
 
   ! runtime
   type(task_manager_omp_t)            :: task_manager
+ !type(task_manager_seq_t)            :: task_manager
   type(spllt_timer_t),        save    :: timer
 
   call date_and_time(DATE=date, TIME=time)
@@ -226,7 +227,7 @@ program spllt_test
   call get_solve_blocks(fkeep, options%nb, nrhs, worksize, sbc)
   fkeep%sbc => sbc
 
-  call spllt_compute_solve_dep(fkeep)
+  call spllt_compute_solve_dep(fkeep, stat = st)
 
   call spllt_tac(3, task_manager%workerID, timer)
 
@@ -249,7 +250,7 @@ program spllt_test
   workspace = zero
   call spllt_tac(6, task_manager%workerID, timer)
 
-  allocate(y(fkeep%n), stat=st)
+  allocate(y(fkeep%n * nrhs), stat=st)
   y = zero
   call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, sbc)
   fkeep%p_y => y
@@ -263,43 +264,43 @@ program spllt_test
   ! the subroutine
   sol_computed = rhs
 
-! !!!!!!!!!!!!!!!!!!!!
-! ! Forward substitution
-! !
-! call task_manager%nflop_reset()
-! call spllt_tic("Forward", 4, task_manager%workerID, timer)
+  !!!!!!!!!!!!!!!!!!!!
+  ! Forward substitution
+  !
+  call task_manager%nflop_reset()
+  call spllt_tic("Forward", 4, task_manager%workerID, timer)
 
-! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
-!   workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=7, &
+    workspace=workspace, task_manager=task_manager)
 
-! call spllt_tac(4, task_manager%workerID, timer)
+  call spllt_tac(4, task_manager%workerID, timer)
 
 
-! !!!!!!!!!!!!!!!!!!!!
-! ! Backward substitution
-! !
-! call task_manager%nflop_reset()
-! call spllt_tic("Backward", 5, task_manager%workerID, timer)
+  !!!!!!!!!!!!!!!!!!!!
+  ! Backward substitution
+  !
+  call task_manager%nflop_reset()
+  call spllt_tic("Backward", 5, task_manager%workerID, timer)
 
-! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
-!   workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=8, &
+    workspace=workspace, task_manager=task_manager)
 
-! call spllt_tac(5, task_manager%workerID, timer)
+  call spllt_tac(5, task_manager%workerID, timer)
 
   !!!!!!!!!!!!!!!!!!!!
   ! Solve
   !
-  sol_computed = rhs
-  call task_manager%nflop_reset()
-  call spllt_tic("Solving", 7, task_manager%workerID, timer)
+! sol_computed = rhs
+! call task_manager%nflop_reset()
+! call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
- !print *, "Order : ", order
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-   !job=merge(3,0, options%ileave_solve), &
-    job=merge(3,6, options%ileave_solve), &
-    workspace=workspace, task_manager=task_manager)
+!!print *, "Order : ", order
+! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
+!  !job=merge(3,0, options%ileave_solve), &
+!   job=merge(3,6, options%ileave_solve), &
+!   workspace=workspace, task_manager=task_manager)
 
-  call spllt_tac(7, task_manager%workerID, timer)
+! call spllt_tac(7, task_manager%workerID, timer)
 
 
   !!!!!!!!!!!!!!!!!!!!

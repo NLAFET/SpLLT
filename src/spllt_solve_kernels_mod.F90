@@ -1671,8 +1671,11 @@ call spllt_tac(1, threadID, timer, lflops)
      !print *, "dest", dest(1 : nelim * nelim)
      !print *, "Result of solving :", rhs(1 : nelim)
     else
+     !print *, "Rhs :", rhs(1 : nelim * nrhs)
       call dtrsm('Left', 'Upper', trans, unit, nelim, nrhs, one, &
            dest, n, rhs, ldr)
+     !print *, "dest", dest(1 : nelim * nelim)
+     !print *, "Result of solving :", rhs(1 : nelim * nrhs)
     endif
 
   end subroutine slv_solve_ileave2
@@ -1746,7 +1749,7 @@ call spllt_tac(1, threadID, timer, lflops)
     else
 !!! Multiple rhs, BLAS 3
       call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs, ldr, &
-           zero, xlocal, ldx)
+           one, xlocal, ldx)
     endif
 
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
@@ -1953,9 +1956,6 @@ call spllt_tac(1, threadID, timer, lflops)
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
-   !numrow = size(fkeep%nodes(node)%index)
-   !nc     = (numcol-1) / s_nb + 1
-   !nr     = (numrow-1) / s_nb + 1
     nc     = ceiling(numcol / real(s_nb))
     
     ! Get first diag block in node
@@ -1975,7 +1975,6 @@ call spllt_tac(1, threadID, timer, lflops)
      !call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
      !  tdu, rhs, n, xlocal, fkeep, fwd_block_id)
       call spllt_tac(1, task_manager%workerID, timer)
-     !!$omp taskwait
 
       do blk = dblk + 1, fkeep%sbc(dblk)%last_blk
 
@@ -1991,14 +1990,10 @@ call spllt_tac(1, threadID, timer, lflops)
        !call task_manager%solve_fwd_update_il2_task(blk, node, nrhs, rhs_local,&
        !  tdu, rhs, n, xlocal, fkeep, fwd_update_id)
         call spllt_tac(2, task_manager%workerID, timer)
-     !!$omp taskwait
-
-      ! print *, "W content of blk", blk, ":", fkeep%sbc(blk)%p_upd
       end do
       
       ! Update diag block in node          
       dblk = fkeep%sbc(dblk)%last_blk + 1
-     !print *, "Y content after 1 node", fkeep%p_y(1 : 37)
     end do
 
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
@@ -2052,9 +2047,6 @@ call spllt_tac(1, threadID, timer, lflops)
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
-   !numrow = size(fkeep%nodes(node)%index)
-   !nc     = (numcol-1) / s_nb + 1
-   !nr     = (numrow-1) / s_nb + 1 
     nc     = ceiling(numcol / real(s_nb))
 
     ! Get first diag block in node
@@ -2066,32 +2058,28 @@ call spllt_tac(1, threadID, timer, lflops)
  !!   print *, "update from", fkeep%sbc(dblk)%last_blk, "to", dblk + 1
       do blk = fkeep%sbc(dblk)%last_blk, dblk + 1, -1
         
-       !blk = dblk+ii-jj ! Block index
-
         !
         ! Backward update with block on diagoanl
         !
  !!     print *, "Submit bwd update ", blk
+       !print *, "blk", blk, "y INPUT", fkeep%sbc(blk)%p_upd
         call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
         call task_manager%solve_bwd_update_il2_task(blk, node, nrhs, & 
           n, rhs, fkeep, trace_id)
-       !call task_manager%solve_bwd_update_il_task(blk, node, nrhs, rhs_local, &
-       !  tdu, rhs, n, xlocal, fkeep, bwd_update_id)
         call spllt_tac(1, task_manager%workerID, timer)
-       !!$omp taskwait
+       !print *, "blk", blk, "x associated", fkeep%sbc(blk)%p_upd
       end do
 
       !
       ! Backward solve with block on diagoanl
       !
  !!   print *, "Submit bwd block ", dblk
+     !print *, "dblk", dblk, "y INPUT", fkeep%sbc(dblk)%p_upd
       call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
       call task_manager%solve_bwd_block_il2_task(dblk, nrhs, &
         n, rhs, fkeep, trace_id)
-     !call task_manager%solve_bwd_block_il_task(dblk, nrhs, rhs_local, tdu, &
-     !  rhs, n, xlocal, fkeep, bwd_block_id)
       call spllt_tac(2, task_manager%workerID, timer)
-     !!$omp taskwait
+     !print *, "dblk", dblk, "x associated", fkeep%sbc(dblk)%p_upd
      
       ! Update diag block in node       
       if (jj .gt. 1) dblk = fkeep%sbc(dblk-1)%dblk

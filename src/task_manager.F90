@@ -77,6 +77,8 @@ module task_manager_mod
     procedure(solve_fwd_update_task_il2_iface), deferred :: solve_fwd_update_il2_task
     procedure(solve_bwd_block_task_il2_iface),  deferred :: solve_bwd_block_il2_task
     procedure(solve_bwd_update_task_il2_iface), deferred :: solve_bwd_update_il2_task
+    procedure(solve_fwd_subtree_task_il2_iface),deferred :: solve_fwd_subtree_il2_task
+    procedure(solve_bwd_subtree_task_il2_iface),deferred :: solve_bwd_subtree_il2_task
   end type task_manager_base
 
   abstract interface 
@@ -446,6 +448,33 @@ module task_manager_mod
       type(spllt_fkeep), target,  intent(inout) :: fkeep
       integer, optional,          intent(in)    :: trace_id
     end subroutine solve_bwd_update_task_il2_iface
+
+    subroutine solve_fwd_subtree_task_il2_iface(task_manager, nrhs, rhs, n, &
+        fkeep, tree)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base ),  intent(inout) :: task_manager
+      integer,                    intent(in)    :: nrhs ! Number of RHS
+      integer,                    intent(in)    :: n
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
+      type(spllt_tree_t),         intent(in)    :: tree
+      real(wp),                   intent(inout) :: rhs(n, nrhs)
+    end subroutine solve_fwd_subtree_task_il2_iface
+
+    subroutine solve_bwd_subtree_task_il2_iface(task_manager, nrhs, rhs, n, &
+        fkeep, tree)
+      use spllt_data_mod
+      import task_manager_base
+
+      class(task_manager_base ),  intent(inout) :: task_manager
+      integer,                    intent(in)    :: nrhs ! Number of RHS
+      integer,                    intent(in)    :: n
+      type(spllt_fkeep), target,  intent(inout) :: fkeep
+      type(spllt_tree_t),         intent(in)    :: tree
+      real(wp),                   intent(inout) :: rhs(n, nrhs)
+    end subroutine solve_bwd_subtree_task_il2_iface
+
   end interface
 
 contains

@@ -19,20 +19,12 @@ if(ndep_lvl .le. chunk) then
   !Gather data into xlocal if belongs to last block column of L
   if(fkeep%nodes(node)%sblk_en .eq. fkeep%sbc(blk)%last_blk) then
    !print *, "Reduce in blk", blk
-    do i = 1, ndep
+    do i = 1, nwdep
       ! reduce ancestor dep into p_y
    !  print *, "with ", p_dep(i)
-      call bwd_update_upd(fkeep, blk, p_dep(i))
+      call bwd_update_upd(fkeep, blk, p_wdep(i))
     end do
   end if
- !if(dblk .eq. fkeep%nodes(node)%sblk_sa .and. &
- !  blk .ge. (fkeep%nodes(node)%sblk_sa + nbcol) ) then
- !  print *, "Blk", blk, "reset workspace of"
- !  do i = 1, ndep
- !    print *, p_dep(i)
- !    call bwd_reset_upd(fkeep, blk, p_dep(i))
- !  end do
- !end if
  
   call slv_bwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, &
     p_xlocal, ldx, p_y, ldy)

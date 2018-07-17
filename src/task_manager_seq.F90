@@ -43,6 +43,8 @@ module task_manager_seq_mod
       procedure :: solve_fwd_update_il2_task  => solve_fwd_update_il2_task_worker
       procedure :: solve_bwd_block_il2_task   => solve_bwd_block_il2_task_worker
       procedure :: solve_bwd_update_il2_task  => solve_bwd_update_il2_task_worker
+      procedure :: solve_fwd_subtree_il2_task => solve_fwd_subtree_il2
+      procedure :: solve_bwd_subtree_il2_task => solve_bwd_subtree_il2
   end type task_manager_seq_t
 
  contains
@@ -1176,15 +1178,16 @@ module task_manager_seq_mod
     integer                     :: sa
     ! Block info
     integer                     :: blkm, blkn ! Block dimension
-    integer                     :: bcol
+    integer                     :: bcol, node
     integer                     :: threadID
-    integer                     :: i, ldy
+    integer                     :: i, ldy, nwdep
     double precision            :: flops
     integer                     :: traceID
     type(spllt_timer_t), save   :: timer
 
     real(wp),          pointer  :: p_y(:,:)
     real(wp),          pointer  :: p_rhs(:,:)
+    integer,           pointer  :: p_wdep(:)
     integer,           pointer  :: p_index(:)
     integer,           pointer  :: p_order(:)
     real(wp),          pointer  :: p_lcol(:)
@@ -1206,6 +1209,7 @@ module task_manager_seq_mod
     ! Get block info
     blkm      = fkeep%sbc(dblk)%blkm
     blkn      = fkeep%sbc(dblk)%blkn
+    node      = fkeep%sbc(dblk)%node
     sa        = fkeep%sbc(dblk)%sa
     bcol      = fkeep%sbc(dblk)%bcol ! Current block column
     ldy       = fkeep%sbc(dblk)%ldu
@@ -1215,14 +1219,24 @@ module task_manager_seq_mod
     p_index     => fkeep%sbc(dblk)%p_index
     p_order     => fkeep%p_porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
+    p_wdep      => fkeep%sbc(dblk)%fwd_wdep
+
+    nwdep       = size(p_wdep)
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, threadID)
 #endif
 
   !Gather part of RHS into y
   do i = 1, blkn
-    p_y(i, :) = p_y(i, :) + p_rhs(p_index(p_order(i)), :)
+    p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
   end do
+  !Compute the reduction if blk \in L_{:,1}
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+    do i = 1, nwdep
+      ! reduce children dep into p_y
+      call fwd_update_upd(fkeep, dblk, p_wdep(i))
+    end do
+  end if
 
   call slv_solve_ileave2(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
     nrhs, p_y, ldy)
@@ -1236,7 +1250,6 @@ module task_manager_seq_mod
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
-    call task_manager%incr_nrun()
 
   end subroutine solve_fwd_block_il2_task_worker
 
@@ -1265,7 +1278,7 @@ module task_manager_seq_mod
     integer                     :: blk_sa
     integer                     :: bcol
     integer                     :: ldy, ldx
-    integer                     :: ndep
+    integer                     :: nwdep
     integer                     :: i, dblk
     double precision            :: flops
     integer                     :: traceID
@@ -1274,7 +1287,7 @@ module task_manager_seq_mod
     real(wp)         , pointer    :: p_y(:,:)
     real(wp)         , pointer    :: p_xlocal(:,:)
     type(spllt_sblock_t), pointer :: p_bc(:)
-    integer, pointer              :: p_dep(:)
+    integer, pointer              :: p_wdep(:)
 
     type(spllt_timer_t), save   :: timer
         
@@ -1302,9 +1315,9 @@ module task_manager_seq_mod
     p_y       => fkeep%sbc(dblk)%p_upd
     p_xlocal  => fkeep%sbc(blk)%p_upd
     p_bc      => fkeep%sbc
-    p_dep     => fkeep%sbc(blk)%fwd_dep
+    p_wdep    => fkeep%sbc(blk)%fwd_wdep
 
-    ndep        = size(p_dep)
+    nwdep     = size(p_wdep)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, task_manager%workerID)
@@ -1312,9 +1325,9 @@ module task_manager_seq_mod
 
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
-    do i = 1, ndep
+    do i = 1, nwdep
       ! reduce children dep into p_y
-      call fwd_update_upd(fkeep, blk, p_dep(i))
+      call fwd_update_upd(fkeep, blk, p_wdep(i))
     end do
   end if
 
@@ -1331,7 +1344,6 @@ module task_manager_seq_mod
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
-    call task_manager%incr_nrun()
 
   end subroutine solve_fwd_update_il2_task_worker
 
@@ -1401,11 +1413,13 @@ module task_manager_seq_mod
     call trace_event_start(traceID, threadID)
 #endif
 
-
-  call slv_solve_ileave2(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
+  call slv_solve_ileave2(blkn, blkm, p_lcol, 'Non-Transpose', 'Non-unit', &
     nrhs, p_y, ldy)
 
-  !Scatter result into RHS
+  !Scatter the result into the solution vector
+  do i = 1, blkn
+    p_rhs(p_order(p_index(i)), :) = p_y(i, :)
+  end do
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1416,7 +1430,6 @@ module task_manager_seq_mod
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
-    call task_manager%incr_nrun()
 
   end subroutine solve_bwd_block_il2_task_worker
 
@@ -1445,7 +1458,7 @@ module task_manager_seq_mod
     integer                     :: blk_sa
     integer                     :: bcol
     integer                     :: ldy, ldx
-    integer                     :: ndep
+    integer                     :: nwdep
     integer                     :: i, dblk
     double precision            :: flops
     integer                     :: traceID
@@ -1454,7 +1467,7 @@ module task_manager_seq_mod
     real(wp)         , pointer    :: p_y(:,:)
     real(wp)         , pointer    :: p_xlocal(:,:)
     type(spllt_sblock_t), pointer :: p_bc(:)
-    integer, pointer              :: p_dep(:)
+    integer, pointer              :: p_wdep(:)
 
     type(spllt_timer_t), save   :: timer
         
@@ -1482,24 +1495,24 @@ module task_manager_seq_mod
     p_y       => fkeep%sbc(dblk)%p_upd
     p_xlocal  => fkeep%sbc(blk)%p_upd
     p_bc      => fkeep%sbc
-    p_dep     => fkeep%sbc(blk)%fwd_dep
+    p_wdep    => fkeep%sbc(blk)%bwd_wdep
 
-    ndep        = size(p_dep)
+    nwdep        = size(p_wdep)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, task_manager%workerID)
 #endif
 
-  !Compute the reduction if blk \in L_{:,1}
-  if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
-    do i = 1, ndep
-      ! reduce children dep into p_y
-      call fwd_update_upd(fkeep, blk, p_dep(i)) !TODO fix it
+  !Gather data into xlocal if belongs to last block column of L
+  if(fkeep%nodes(node)%sblk_en .eq. fkeep%sbc(blk)%last_blk) then
+    do i = 1, nwdep
+      ! reduce ancestor dep into p_y
+      call bwd_update_upd(fkeep, blk, p_wdep(i))
     end do
   end if
 
-  call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
-    p_xlocal, ldx)
+  call slv_bwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, &
+    p_xlocal, ldx, p_y, ldy)
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1511,9 +1524,81 @@ module task_manager_seq_mod
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
-    call task_manager%incr_nrun()
 
   end subroutine solve_bwd_update_il2_task_worker
 
+
+
+  subroutine solve_fwd_subtree_il2(task_manager, nrhs, rhs, n, fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    implicit none
+
+    class(task_manager_seq_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n,nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+  
+    integer :: i
+    type(spllt_timer_t), save :: timer
+
+    print *, "Treatment of subtree ", tree%num
+    call spllt_print_subtree(tree)
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, "solve_fwd_subtree_il", timer)
+#endif
+
+    do i = tree%node_sa, tree%node_en
+      call solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, i, task_manager)
+    end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_fwd_subtree_il2
+
+
+
+  subroutine solve_bwd_subtree_il2(task_manager, nrhs, rhs, n, fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    implicit none
+
+    class(task_manager_seq_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+  
+    integer :: i
+    type(spllt_timer_t), save :: timer
+
+    print *, "Treatment of subtree ", tree%num
+    call spllt_print_subtree(tree)
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, "solve_bwd_subtree_il2", timer)
+#endif
+
+    do i = tree%node_en, tree%node_sa, -1
+      call solve_bwd_node_ileave2(nrhs, rhs, n, fkeep, i, task_manager)
+    end do
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_bwd_subtree_il2
 
 end module task_manager_seq_mod

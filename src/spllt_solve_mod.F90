@@ -358,18 +358,33 @@ contains
        !print *, "rhs permuted", x_tmp
         call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
 
-       !!$omp taskwait
+        !$omp taskwait
        !print *, "Workspace", workspace
-       !call print_darray('x solution fwd', n, fkeep%p_y, 1)
+       !call print_darray('x solution fwd', n * nrhs, fkeep%p_y, 1)
        !print *, fkeep%p_y
        !stop
         
         call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
         !$omp taskwait
        !print *, "Workspace", workspace
-       !call print_darray('x solution', n, x, 1)
-       !call print_darray('permuted x solution', n, fkeep%p_y, 1)
+       !call print_darray('permuted x solution', n * nrhs, fkeep%p_y, 1)
+       !do j = 1, nrhs
+       !  call print_darray('x solution', n, x(:,j), 1)
+       !end do
        !stop
+
+      case(7)
+        print *, "FWD"
+        call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
+
+       !call print_darray('x solution fwd', n * nrhs, fkeep%p_y, 1)
+       !stop
+
+      case(8)
+        print *, "BWD"
+        call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
+        !$omp taskwait
+       !call print_darray('x solution bwd', n * nrhs, fkeep%p_y, 1)
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE
@@ -538,7 +553,7 @@ call task_manager%print("fwd end of submitted task", 0)
     real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer           :: rhs_local(:,:) ! update_buffer workspace
     type(spllt_block), pointer  :: p_bc(:)
-    integer                     :: tree_num
+    integer                     :: tree_num, num_nodes
     type(spllt_timer_t), save   :: timer
     integer(long)               :: size_rhs_local, size_xlocal
     double precision            :: nflop_sa, nflop_en
@@ -573,12 +588,13 @@ call task_manager%print("fwd end of submitted task", 0)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Lock the execution of the tasks that will then be submitted by the master
     p_bc => fkeep%bc(:)
+    num_nodes = fkeep%info%num_nodes
  !$ call omp_init_lock(lock)
  !$ call omp_set_lock(lock)
 
-    !$omp task depend(inout: p_bc(num_node))  &
+    !$omp task depend(inout: p_bc(num_nodes)) &
     !$omp shared(lock)                        &
-    !$omp firstprivate(p_bc, num_node)
+    !$omp firstprivate(p_bc, num_nodes)
 
  !$ call omp_set_lock(lock) 
     print *, "[BWD] Lock locked in task"
@@ -785,7 +801,7 @@ call task_manager%print("fwd end of submitted task", 0)
     real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
     type(spllt_block), pointer  :: p_bc(:)
-    integer                     :: tree_num
+    integer                     :: tree_num, num_nodes
     type(spllt_timer_t), save   :: timer
     integer(long)               :: size_rhs_local, size_xlocal
     double precision            :: nflop_sa, nflop_en
@@ -814,12 +830,13 @@ call task_manager%print("fwd end of submitted task", 0)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Lock the execution of the tasks that will then be submitted by the master
     p_bc => fkeep%bc(:)
+    num_nodes = fkeep%info%num_nodes
  !$ call omp_init_lock(lock)
  !$ call omp_set_lock(lock)
 
-    !$omp task depend(inout: p_bc(num_node))  &
+    !$omp task depend(inout: p_bc(num_nodes)) &
     !$omp shared(lock)                        &
-    !$omp firstprivate(p_bc, num_node)
+    !$omp firstprivate(p_bc, num_nodes)
 
  !$ call omp_set_lock(lock) 
     print *, "[BWD] Lock locked in task"
@@ -904,7 +921,7 @@ call task_manager%print("fwd end of submitted task", 0)
     integer                     :: nworker
     real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
-    type(spllt_block), pointer  :: p_bc(:)
+    type(spllt_sblock_t), pointer  :: p_bc(:)
     type(spllt_timer_t), save   :: timer
     integer                     :: tree_num
     integer(long)               :: size_rhs_local, size_xlocal
@@ -933,7 +950,7 @@ call task_manager%print("fwd end of submitted task", 0)
 #if defined(SOLVE_TASK_LOCKED)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Lock the execution of the tasks that will then be submitted by the master
-    p_bc => fkeep%bc(:)
+    p_bc => fkeep%sbc(:)
  !$ call omp_init_lock(lock)
  !$ call omp_set_lock(lock)
 
@@ -957,11 +974,10 @@ call task_manager%print("fwd end of submitted task", 0)
     call trace_event_start(fwd_submit_tree_id, -2)
 #endif
 
-   !do tree_num = 1, size(fkeep%trees)
-
-   !  call task_manager%solve_fwd_subtree_il_task(nrhs, rhs, n, &
-   !    fkeep, fkeep%trees(tree_num), xlocal, rhs_local, tdu)
-   !end do
+    do tree_num = 1, size(fkeep%trees)
+      call task_manager%solve_fwd_subtree_il2_task(nrhs, rhs, n, &
+        fkeep, fkeep%trees(tree_num))
+    end do
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(fwd_submit_tree_id, -2)
@@ -969,12 +985,11 @@ call task_manager%print("fwd end of submitted task", 0)
 
     do node = 1, fkeep%info%num_nodes
 
-     !if(fkeep%small(node) .ne. 0) then
-     !  cycle
-     !end if
+      if(fkeep%small(node) .ne. 0) then
+        cycle
+      end if
 
       call solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
-     !if(node .eq. 1) stop
 
     end do
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
@@ -986,7 +1001,7 @@ call task_manager%print("fwd end of submitted task", 0)
 #endif
 
 #if defined(SOLVE_TASK_LOCKED)
-call task_manager%print("fwd end of submitted task", 0)
+call task_manager%print("Release of lock in fwd", 0)
  !$ call omp_unset_lock(lock)
  !$ call omp_destroy_lock(lock)
 #endif
@@ -1026,8 +1041,8 @@ call task_manager%print("fwd end of submitted task", 0)
     integer                     :: nworker
     real(wp), pointer           :: xlocal(:,:)    ! update_buffer workspace
     real(wp), pointer           :: rhs_local(:) ! update_buffer workspace
-    type(spllt_block), pointer  :: p_bc(:)
-    integer                     :: tree_num
+    type(spllt_sblock_t), pointer  :: p_bc(:)
+    integer                     :: tree_num, num_nodes
     type(spllt_timer_t), save   :: timer
     integer(long)               :: size_rhs_local, size_xlocal
     double precision            :: nflop_sa, nflop_en
@@ -1055,13 +1070,14 @@ call task_manager%print("fwd end of submitted task", 0)
 #if defined(SOLVE_TASK_LOCKED)
     !!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Lock the execution of the tasks that will then be submitted by the master
-    p_bc => fkeep%bc(:)
+    p_bc => fkeep%sbc(:)
+    num_nodes = fkeep%info%num_nodes
  !$ call omp_init_lock(lock)
  !$ call omp_set_lock(lock)
 
-    !$omp task depend(inout: p_bc(num_node))  &
-    !$omp shared(lock)                        &
-    !$omp firstprivate(p_bc, num_node)
+    !$omp task depend(inout: p_bc(num_nodes))   &
+    !$omp shared(lock)                          &
+    !$omp firstprivate(p_bc, num_nodes)
 
  !$ call omp_set_lock(lock) 
     print *, "[BWD] Lock locked in task"
@@ -1074,18 +1090,18 @@ call task_manager%print("fwd end of submitted task", 0)
     call spllt_tic("Submit tasks", 4, task_manager%workerID, timer)
 #endif
     do node = fkeep%info%num_nodes, 1, -1
+     !call print_node_solve(fkeep, node)
 
-     !if(fkeep%small(node) .eq. 0) then
-
+      if(fkeep%small(node) .eq. 0) then
         call solve_bwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
-     !else if(fkeep%small(node) .eq. 1) then
-     !  tree_num = fkeep%assoc_tree(node)
+      else if(fkeep%small(node) .eq. 1) then
+        tree_num = fkeep%assoc_tree(node)
 
-     !  call task_manager%solve_bwd_subtree_il_task(nrhs, rhs, n, fkeep, &
-     !    fkeep%trees(tree_num), xlocal, rhs_local, tdu)
-     !else
-     !  cycle
-     !end if
+        call task_manager%solve_bwd_subtree_il2_task(nrhs, rhs, n, fkeep, &
+          fkeep%trees(tree_num))
+      else
+        cycle
+      end if
 
     end do
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
@@ -1098,7 +1114,7 @@ call task_manager%print("fwd end of submitted task", 0)
     call trace_event_stop(bwd_submit_id, -1)
 #endif
 #if defined(SOLVE_TASK_LOCKED)
-  call task_manager%print("bwd end of submitted task", 0)
+  call task_manager%print("Release of lock in bwd", 0)
  !$ call omp_unset_lock(lock)
  !$ call omp_destroy_lock(lock)
 #endif

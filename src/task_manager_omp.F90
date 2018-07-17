@@ -42,6 +42,8 @@ module task_manager_omp_mod
       procedure :: solve_fwd_update_il2_task
       procedure :: solve_bwd_block_il2_task
       procedure :: solve_bwd_update_il2_task
+      procedure :: solve_fwd_subtree_il2_task
+      procedure :: solve_bwd_subtree_il2_task
   end type task_manager_omp_t
 
  contains
@@ -2374,7 +2376,7 @@ module task_manager_omp_mod
     integer                     :: bcol
     integer                     :: node
     integer                     :: i, j, r, chunkth
-    integer                     :: ndep
+    integer                     :: ndep, nwdep
     integer                     :: threadID
     integer                     :: ldy
 
@@ -2385,6 +2387,7 @@ module task_manager_omp_mod
     real(wp),          pointer    :: p_lcol(:)
     type(spllt_sblock_t), pointer :: p_bc(:)
     integer,           pointer    :: p_dep(:)
+    integer,           pointer    :: p_wdep(:)
 
     integer                     :: chunk, chunk_size
     integer                     :: ndep_lvl, lvl, nchunk
@@ -2397,7 +2400,7 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_il2_task_worker", timer)
 #endif
@@ -2420,8 +2423,10 @@ module task_manager_omp_mod
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
     p_bc        => fkeep%sbc
     p_dep       => fkeep%sbc(dblk)%fwd_dep
+    p_wdep      => fkeep%sbc(dblk)%fwd_wdep
 
     ndep      = size(p_dep)
+    nwdep     = size(p_wdep)
     nftask    = 0
     chunk     = 0
     ndep_lvl  = 0
@@ -2490,7 +2495,7 @@ module task_manager_omp_mod
 #endif
     end if
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
     call task_manager%ntask_submitted(1, nftask)
@@ -2551,13 +2556,14 @@ module task_manager_omp_mod
     integer                     :: dblk
     integer                     :: ldy, ldx
     integer                     :: threadID
-    integer                     :: ndep
+    integer                     :: ndep, nwdep
 
     real(wp), pointer             :: p_lcol(:)
     real(wp)         , pointer    :: p_y(:,:)
     real(wp)         , pointer    :: p_xlocal(:,:)
     type(spllt_sblock_t), pointer :: p_bc(:)
     integer, pointer              :: p_dep(:)
+    integer, pointer              :: p_wdep(:)
 
     integer                     :: i
     integer                     :: j
@@ -2572,7 +2578,7 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_il2_task_worker", timer)
 #endif
@@ -2591,9 +2597,11 @@ module task_manager_omp_mod
     p_xlocal    => fkeep%sbc(blk)%p_upd
     p_bc        => fkeep%sbc
     p_dep       => fkeep%sbc(blk)%fwd_dep
+    p_wdep      => fkeep%sbc(blk)%fwd_wdep
 
     nftask      = 0
     ndep        = size(p_dep)
+    nwdep       = size(p_wdep)
     chunk       = 0
     ndep_lvl    = 0
 
@@ -2659,9 +2667,8 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-   !!$omp taskwait
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
     call task_manager%ntask_submitted(1, nftask)
@@ -2892,7 +2899,7 @@ module task_manager_omp_mod
     integer                     :: sa
     integer                     :: bcol, nbcol
     integer                     :: threadID
-    integer                     :: ndep
+    integer                     :: ndep, nwdep
     integer                     :: dblk
     integer                     :: j, i
     integer                     :: chunk, chunk_size
@@ -2906,6 +2913,7 @@ module task_manager_omp_mod
 
     real(wp),             pointer :: p_lcol(:)
     integer,              pointer :: p_dep(:)
+    integer,              pointer :: p_wdep(:)
     real(wp)         ,    pointer :: p_xlocal(:,:)
     real(wp)         ,    pointer :: p_y(:,:)
     type(spllt_sblock_t), pointer :: p_bc(:)
@@ -2936,9 +2944,11 @@ module task_manager_omp_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_xlocal    => fkeep%sbc(blk)%p_upd
     p_dep       => fkeep%sbc(blk)%bwd_dep
+    p_wdep      => fkeep%sbc(blk)%bwd_wdep
 
     nftask    = 0
     ndep      = size(p_dep)
+    nwdep     = size(p_wdep)
     chunk     = 0
     ndep_lvl  = 0
 
@@ -3013,5 +3023,262 @@ module task_manager_omp_mod
 #endif
     call task_manager%ntask_submitted(1, nftask)
   end subroutine solve_bwd_update_il2_task_worker
+
+
+
+  subroutine solve_fwd_subtree_il2_task(task_manager, nrhs, rhs, n, fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+
+    call solve_fwd_subtree_il2_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree)
+  end subroutine solve_fwd_subtree_il2_task
+
+
+
+  subroutine solve_fwd_subtree_il2_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),          target,  intent(inout) :: rhs(n, nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+  
+    integer                     :: trace_id
+    real(wp), pointer           :: p_rhs(:,:)
+    type(spllt_sblock_t), pointer  :: p_bc(:)
+    integer                     :: i
+    integer                     :: sa, en, blk_en
+    type(task_manager_seq_t)    :: sub_task_manager
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    p_timer => timer
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_fwd_subtree_il2", timer)
+#endif
+
+    p_rhs       => rhs
+    p_bc        => fkeep%sbc
+    sa          = tree%node_sa
+    en          = tree%node_en
+    blk_en      = fkeep%nodes(en)%sblk_en
+    call task_manager%semifork(sub_task_manager)
+
+    !$omp task                                        &
+!   !$omp default(none)                               &
+    !$omp depend(inout: p_bc(blk_en))                 &
+    !$omp firstprivate(p_rhs)                         &
+    !$omp firstprivate(nrhs)                          &
+    !$omp firstprivate(sub_task_manager)              &
+    !$omp firstprivate(p_bc, blk_en)                  &
+    !$omp firstprivate(en, sa)                        &
+    !$omp shared(fkeep)                               &
+    !$omp private(i, trace_id)
+
+    call sub_task_manager%refresh_worker()
+
+#if defined(SPLLT_OMP_TRACE)
+    trace_id = task_manager%trace_ids(trace_fwd_subtree_pos)
+    call trace_event_start(trace_id, sub_task_manager%workerID)
+#endif
+
+#if defined(SPLLT_VERBOSE)
+  print '(a, i3, a)', "SLV_FWD  Task dep of ", blk_en, " [in : "
+#endif
+
+    call sub_task_manager%incr_nrun()
+
+    do i = sa, en
+      call solve_fwd_node_ileave2(nrhs, p_rhs, n, fkeep, i, &
+        sub_task_manager, no_trace)
+    end do
+
+#if defined(SPLLT_OMP_TRACE)
+    call trace_event_stop(trace_id, sub_task_manager%workerID)
+#endif
+
+    !$omp end task
+
+    call task_manager%ntask_submitted(1, 0)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_fwd_subtree_il2_task_worker
+
+
+
+  subroutine solve_bwd_subtree_il2_task(task_manager, nrhs, rhs, n, fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    class(task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),                   intent(inout) :: rhs(n, nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+
+    call solve_bwd_subtree_il2_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree)
+  end subroutine solve_bwd_subtree_il2_task
+
+
+
+  subroutine solve_bwd_subtree_il2_task_worker(task_manager, nrhs, rhs, n, &
+      fkeep, tree)
+    use spllt_data_mod
+    use spllt_solve_kernels_mod
+    use trace_mod
+    use utils_mod
+    use timer_mod
+    use task_manager_seq_mod
+    implicit none
+
+    type (task_manager_omp_t),  intent(inout) :: task_manager
+    integer,                    intent(in)    :: nrhs ! Number of RHS
+    real(wp),          target,  intent(inout) :: rhs(n, nrhs)
+    integer,                    intent(in)    :: n
+    type(spllt_fkeep), target,  intent(inout) :: fkeep
+    type(spllt_tree_t),         intent(in)    :: tree
+  
+    integer,  pointer           :: p_dep(:)
+    real(wp), pointer           :: p_rhs(:,:)
+    type(spllt_sblock_t), pointer  :: p_bc(:)
+    integer                     :: ndep
+    integer                     :: i
+    integer                     :: sa, en, blk_en
+    integer                     :: j
+    integer                     :: chunk, chunk_size
+    integer                     :: ndep_lvl, lvl, nchunk
+    integer                     :: beta, alpha
+    integer                     :: nftask   ! #fake tasks inserted 
+                                            ! into the runtime
+    logical                     :: all_task_submitted
+    type(task_manager_seq_t)    :: sub_task_manager
+   !type(spllt_timer_t), save   :: timer
+    type(spllt_timer_t), target, save :: timer
+    type(spllt_timer_t), pointer      :: p_timer
+    integer                     :: trace_id
+    p_timer => timer
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_open_timer(task_manager%workerID, &
+      "solve_bwd_subtree_il2_task_worker", timer)
+#endif
+
+    p_rhs       => rhs
+    p_bc        => fkeep%sbc
+    sa          = tree%node_sa
+    en          = tree%node_en
+    blk_en      = fkeep%nodes(en)%sblk_en
+    call task_manager%semifork(sub_task_manager)
+
+    nftask      = 0
+    p_dep       => fkeep%sbc(blk_en)%bwd_dep
+    ndep        = size(p_dep)
+
+    if(ndep .eq. 0) then
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
+#endif
+      !$omp task                                &
+      include 'include/spllt_solve_bwd_node_il2_omp_decl.F90.inc'
+
+#include "include/spllt_solve_bwd_node_il2_worker.F90.inc"
+
+      !$omp end task
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(1, task_manager%workerID, timer)
+#endif
+    else
+
+      chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      lvl   = 1
+      alpha = 1
+      ndep_lvl = ndep ! #dep local to the lvl
+      all_task_submitted = .false.
+
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tic("Submit k-ary tree", 12, task_manager%workerID, timer)
+#endif
+      do while(.not. all_task_submitted)
+      
+        nchunk = ceiling( (ndep_lvl  + 0.0 ) / chunk)
+
+        beta = 1 - alpha
+
+        do j = 1, nchunk
+          chunk_size = merge(ndep_lvl - (j - 1) * chunk, chunk, &
+            j * chunk .gt. ndep_lvl)
+
+          select case(chunk_size)
+
+            case(0)
+              print *, "No dep ?? "
+
+            !
+            !This file contains the remaining cases that are generated through a script
+            !
+#include "include/spllt_bwd_node_il2_cases.F90.inc"
+
+          end select
+
+          beta = beta + chunk_size
+          if(ndep_lvl .le. chunk) then
+            all_task_submitted = .true.
+          else
+            nftask = nftask + 1
+          end if
+
+        end do
+        if(ndep_lvl .gt. chunk) then
+          ndep_lvl = nchunk
+          lvl = lvl + 1
+          alpha = alpha * chunk
+        end if
+      end do
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+      call spllt_tac(12, task_manager%workerID, timer)
+#endif
+    end if
+
+    call task_manager%ntask_submitted(1, nftask)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+    call spllt_close_timer(task_manager%workerID, timer)
+#endif
+
+  end subroutine solve_bwd_subtree_il2_task_worker
+
+
 
 end module task_manager_omp_mod

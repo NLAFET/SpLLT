@@ -251,7 +251,7 @@ end module spllt_data_ciface
     end if
 
     call spllt_create_subtree(fakeep, ffkeep)
-    call spllt_compute_solve_dep(ffkeep)
+    call spllt_compute_solve_dep(ffkeep, stat = st)
 
     call copy_inform_out(finfo, cinfo)
 

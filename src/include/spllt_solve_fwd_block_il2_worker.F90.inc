@@ -1,6 +1,6 @@
- call task_manager%refresh_worker()
- threadID  = task_manager%workerID
-!threadID = omp_get_thread_num()
+call task_manager%refresh_worker()
+threadID  = task_manager%workerID
+
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd block task", 13, threadID, p_timer)
 #endif
@@ -17,22 +17,38 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd get RHS", 14, threadID, p_timer)
+#endif
   !Gather part of RHS into y
   do i = 1, blkn
-   !p_y(i, :) = rhs(p_order(p_index(i)), :)
-   !p_y(i, :) = p_y(i, :) + p_rhs(p_index(p_order(i)), :)
     p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
   end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, p_timer)
+#endif
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update UPD", 15, threadID, p_timer)
+#endif
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
-    do i = 1, ndep
+    do i = 1, nwdep
       ! reduce children dep into p_y
-      call fwd_update_upd(fkeep, dblk, p_dep(i))
+      call fwd_update_upd(fkeep, dblk, p_wdep(i))
     end do
   end if
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer)
+#endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd solve KERNEL", 16, threadID, p_timer)
+#endif
   call slv_solve_ileave2(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
     nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(16, threadID, p_timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
   flops = blkn * blkn * nrhs
@@ -45,5 +61,5 @@ if(ndep_lvl .le. chunk) then
 end if
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(13, threadID, p_timer, flops)
+call spllt_tac(13, threadID, p_timer) !, flops)
 #endif

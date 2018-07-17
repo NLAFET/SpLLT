@@ -3,7 +3,7 @@ module timer_mod
   use iso_c_binding
   implicit none
 
-  integer, parameter  :: max_steps      = 15
+  integer, parameter  :: max_steps      = 20
   integer, parameter  :: max_thread     = 64
   integer, parameter  :: max_ntimer_th  = 20
   integer, parameter  :: max_val        = 20
@@ -70,6 +70,7 @@ module timer_mod
 contains
 
   subroutine spllt_init_timer(stat, nthread, ntimer_th)
+    implicit none
 
     integer,            intent(out) :: stat
     integer, optional,  intent(in)  :: nthread
@@ -109,6 +110,7 @@ contains
 
   subroutine save_timer(local_timer, thn)
     implicit none
+
     type(spllt_timer_t),  target, intent(in)  :: local_timer
     integer,                      intent(in)  :: thn
 
@@ -126,6 +128,8 @@ contains
 
 
   subroutine spllt_open_timer(thn, fun_name, timer)
+    implicit none
+
     integer,                    intent(in)    :: thn
     character(len=*),           intent(in)    :: fun_name
     type(spllt_timer_t),        intent(inout) :: timer
@@ -147,10 +151,17 @@ contains
 
 
   subroutine spllt_tic(step_name, step_id, thn, timer)
+    implicit none
+
     character(len=*),           intent(in)    :: step_name
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
+
+    if(timer%status(thn) .eq. 0) then
+      timer%status(thn) = 1
+      call save_timer(timer, thn)
+    end if
 
     timer%start(step_id, thn) = omp_get_wtime()
     timer%steps%name(step_id)  = step_name
@@ -160,6 +171,8 @@ contains
 
 
   subroutine spllt_tac(step_id, thn, timer)
+    implicit none
+
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
@@ -181,6 +194,8 @@ contains
 
     ! Counter
     timer%ncall(step_id, thn) = timer%ncall(step_id, thn) + 1
+   !print '(a, i2, a, a20, a, i1, a, i2)', "Call of step ", step_id, " named ", trim(timer%steps%name(step_id)), " by thID ", thn,&
+   !  " ncall = ", timer%ncall(step_id, thn)
     ! Prepare in case of another call to tac
     timer%start(step_id, thn) = timer%swap(thn)
 
@@ -189,6 +204,8 @@ contains
 
 
   subroutine spllt_tac_flop(step_id, thn, timer, flop)
+    implicit none
+
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
@@ -234,6 +251,8 @@ contains
 
 
   subroutine spllt_ftac(step_id, thn, timer)
+    implicit none
+
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
@@ -255,6 +274,8 @@ contains
 
 
   subroutine spllt_fulltac(step_id, thn, timer)
+    implicit none
+
     integer,                    intent(in)    :: step_id
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
@@ -278,6 +299,8 @@ contains
 
 
   subroutine spllt_close_ftimer(thn, timer)
+    implicit none
+
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
     
@@ -300,6 +323,8 @@ contains
 
 
   subroutine spllt_close_timer(thn, timer)
+    implicit none
+
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
     
@@ -328,6 +353,8 @@ contains
 
 
   subroutine spllt_close_timer_flop(thn, timer, flop)
+    implicit none
+
     integer,                    intent(in)    :: thn
     type(spllt_timer_t),        intent(inout) :: timer
     double precision,           intent(in)    :: flop
@@ -370,6 +397,8 @@ contains
 
 
   subroutine spllt_print_timer_color(thn, timer)
+    implicit none
+
     integer,              intent(in) :: thn
     type(spllt_timer_t),  intent(in) :: timer
 
@@ -437,6 +466,8 @@ contains
 
 
   subroutine spllt_print_timer(thn, timer)
+    implicit none
+
     integer,              intent(in) :: thn
     type(spllt_timer_t),  intent(in) :: timer
 
@@ -461,6 +492,7 @@ contains
     endif
 
     do i = 1, ubound(timer%ncall, 1)
+     !print *, "Th_id", thn, "step_id", i, "named ", trim(timer%steps%name(i)), " called", timer%ncall(i,thn)
       if(timer%ncall(i, thn) .gt. 0) then
         if(timer%ncall(i, thn) .eq. 1) then
           print '(20x, a30, a, es10.2, a)',                       &
@@ -509,6 +541,8 @@ contains
 
 
   subroutine spllt_print_timers(thn)
+    implicit none
+
     integer, optional, intent(in) :: thn
 
     integer :: t
