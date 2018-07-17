@@ -16,13 +16,25 @@ if(ndep_lvl .le. chunk) then
    print *, p_dep
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd solve KERNEL", 15, threadID, p_timer)
+#endif
   call slv_solve_ileave2(blkn, blkm, p_lcol, 'Non-Transpose', 'Non-unit', &
     nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer, flops)
+#endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd set X", 14, threadID, p_timer)
+#endif
   !Scatter the result into the solution vector
   do i = 1, blkn
     p_rhs(p_order(p_index(i)), :) = p_y(i, :)
   end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, p_timer, flops)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
      call task_manager%nflop_performed(flops)

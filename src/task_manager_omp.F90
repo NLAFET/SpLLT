@@ -2748,7 +2748,7 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_il2_task_worker", timer)
 #endif
@@ -2839,7 +2839,7 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
     call task_manager%ntask_submitted(1, nftask)
@@ -2923,7 +2923,7 @@ module task_manager_omp_mod
     type(spllt_timer_t), pointer      :: p_timer
     p_timer => timer
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_il2_task_worker", timer)
 #endif
@@ -3018,7 +3018,7 @@ module task_manager_omp_mod
       call spllt_tac(12, task_manager%workerID, timer)
 #endif
     end if
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
     call task_manager%ntask_submitted(1, nftask)

@@ -1193,7 +1193,7 @@ module task_manager_seq_mod
     real(wp),          pointer  :: p_lcol(:)
 
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_block_il2_task_worker", timer)
 #endif
@@ -1226,10 +1226,19 @@ module task_manager_seq_mod
     call trace_event_start(traceID, threadID)
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd get RHS", 1, threadID, timer)
+#endif
   !Gather part of RHS into y
   do i = 1, blkn
     p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
   end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, threadID, timer)
+#endif
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update UPD", 2, threadID, timer)
+#endif
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
     do i = 1, nwdep
@@ -1237,9 +1246,18 @@ module task_manager_seq_mod
       call fwd_update_upd(fkeep, dblk, p_wdep(i))
     end do
   end if
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(2, threadID, timer)
+#endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd solve KERNEL", 3, threadID, timer)
+#endif
   call slv_solve_ileave2(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
     nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(3, threadID, timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1247,7 +1265,7 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(traceID, threadID)
 #endif
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
 
@@ -1291,7 +1309,7 @@ module task_manager_seq_mod
 
     type(spllt_timer_t), save   :: timer
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_fwd_update_il2_task_worker", timer)
 #endif
@@ -1325,14 +1343,26 @@ module task_manager_seq_mod
 
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update UPD", 1, task_manager%workerID, timer)
+#endif
     do i = 1, nwdep
       ! reduce children dep into p_y
       call fwd_update_upd(fkeep, blk, p_wdep(i))
     end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, task_manager%workerID, timer)
+#endif
   end if
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update KERNEL", 2, task_manager%workerID, timer)
+#endif
   call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
     p_xlocal, ldx)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(2, task_manager%workerID, timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1341,7 +1371,7 @@ module task_manager_seq_mod
     call trace_event_stop(traceID, task_manager%workerID)
 #endif
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
 
@@ -1384,7 +1414,7 @@ module task_manager_seq_mod
     real(wp),          pointer  :: p_lcol(:)
 
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_block_il2_task_worker", timer)
 #endif
@@ -1413,13 +1443,25 @@ module task_manager_seq_mod
     call trace_event_start(traceID, threadID)
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd solve KERNEL", 1, threadID, timer)
+#endif
   call slv_solve_ileave2(blkn, blkm, p_lcol, 'Non-Transpose', 'Non-unit', &
     nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, threadID, timer)
+#endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd set X", 2, threadID, timer)
+#endif
   !Scatter the result into the solution vector
   do i = 1, blkn
     p_rhs(p_order(p_index(i)), :) = p_y(i, :)
   end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(2, threadID, timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1427,8 +1469,8 @@ module task_manager_seq_mod
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_stop(traceID, threadID)
 #endif
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-    call spllt_close_timer(task_manager%workerID, timer)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
+    call spllt_close_timer(threadID, timer)
 #endif
 
   end subroutine solve_bwd_block_il2_task_worker
@@ -1471,7 +1513,7 @@ module task_manager_seq_mod
 
     type(spllt_timer_t), save   :: timer
         
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_open_timer(task_manager%workerID, &
       "solve_bwd_update_il2_task_worker", timer)
 #endif
@@ -1505,14 +1547,26 @@ module task_manager_seq_mod
 
   !Gather data into xlocal if belongs to last block column of L
   if(fkeep%nodes(node)%sblk_en .eq. fkeep%sbc(blk)%last_blk) then
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd update UPD", 1, task_manager%workerID, timer)
+#endif
     do i = 1, nwdep
       ! reduce ancestor dep into p_y
       call bwd_update_upd(fkeep, blk, p_wdep(i))
     end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(1, task_manager%workerID, timer)
+#endif
   end if
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd update KERNEL", 2, task_manager%workerID, timer)
+#endif
   call slv_bwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, &
     p_xlocal, ldx, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(2, task_manager%workerID, timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
@@ -1521,7 +1575,7 @@ module task_manager_seq_mod
     call trace_event_stop(traceID, task_manager%workerID)
 #endif
 
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION) || defined(SPLLT_TIMER_TASKS)
     call spllt_close_timer(task_manager%workerID, timer)
 #endif
 

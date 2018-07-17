@@ -16,19 +16,19 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif 
 
+  !Compute the reduction if blk \in L_{:,1}
+  if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update UPD", 14, threadID, p_timer)
 #endif
-  !Compute the reduction if blk \in L_{:,1}
-  if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
     do i = 1, nwdep
       ! reduce children dep into p_y
       call fwd_update_upd(fkeep, blk, p_wdep(i))
     end do
-  end if
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(14, threadID, p_timer)
 #endif
+  end if
 
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update KERNEL", 15, threadID, p_timer)
