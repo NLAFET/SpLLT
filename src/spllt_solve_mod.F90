@@ -348,43 +348,15 @@ contains
         end do
 
       case(6)
-        print *, "NEW FWD"
-
-       !print *, "Workspace", workspace
-       !print *, "rhs", x
-       !do j = 1, n
-       !   x_tmp(order(j),:) = x(j,:)
-       !end do
-       !print *, "rhs permuted", x_tmp
         call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
 
-        !$omp taskwait
-       !print *, "Workspace", workspace
-       !call print_darray('x solution fwd', n * nrhs, fkeep%p_y, 1)
-       !print *, fkeep%p_y
-       !stop
-        
         call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
-        !$omp taskwait
-       !print *, "Workspace", workspace
-       !call print_darray('permuted x solution', n * nrhs, fkeep%p_y, 1)
-       !do j = 1, nrhs
-       !  call print_darray('x solution', n, x(:,j), 1)
-       !end do
-       !stop
 
       case(7)
-        print *, "FWD"
         call solve_fwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
 
-       !call print_darray('x solution fwd', n * nrhs, fkeep%p_y, 1)
-       !stop
-
       case(8)
-        print *, "BWD"
         call solve_bwd_ileave2(nrhs, x, n, fkeep, work, task_manager)
-        !$omp taskwait
-       !call print_darray('x solution bwd', n * nrhs, fkeep%p_y, 1)
 
       case default
         info%flag = SPLLT_WARNING_PARAM_VALUE

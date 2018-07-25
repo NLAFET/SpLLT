@@ -36,7 +36,7 @@ contains
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
     type(spllt_inform), intent(inout) :: info
     ! Optional parameters:
-    integer, dimension(:), optional, intent(inout) :: order
+    integer, dimension(:), intent(inout) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
@@ -521,6 +521,12 @@ contains
     call spllt_lcol_map(aptr, arow, num_nodes, fkeep%nodes, fkeep%bc, &
          fkeep%lmap, map, amap, st)
     if(st.ne.0) goto 100
+
+    ! Compute invert of order
+    allocate(fkeep%porder(n))
+    do i = 1, n
+      fkeep%porder(order(i)) = i
+    end do
 
 #if defined(SPLLT_USE_PARSEC)
     call spllt_compute_dep(akeep, fkeep, fkeep, map)

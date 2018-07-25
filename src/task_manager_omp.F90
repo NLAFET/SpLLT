@@ -2416,7 +2416,7 @@ module task_manager_omp_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_porder
+    p_order     => fkeep%porder
    !print *, "from ", sa, 'to', sa + blkn * blkn - 1, "FOR bcol", bcol
    !print *, "lbound lfact", lbound(fkeep%lfact), "ubound", ubound(fkeep%lfact)
    !print *, "lbound lcol ", lbound(fkeep%lfact(bcol)%lcol), "ubound", ubound(fkeep%lfact(bcol)%lcol)
@@ -2762,7 +2762,7 @@ module task_manager_omp_mod
     ldy       = fkeep%sbc(dblk)%ldu
     
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_porder
+    p_order     => fkeep%porder
    !print *, "Current block column", bcol
    !print *, "sa = ", sa, "to sa + n * n - 1 = ", sa + blkn*blkn-1
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)

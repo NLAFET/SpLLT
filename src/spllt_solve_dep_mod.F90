@@ -1896,7 +1896,7 @@ contains
     allocate(sbc(nblock), stat=st)
    !print *, "Allocate ", nblock, "blocks in sbc"
    !print *, "RHS is :", rhs(1 : fkeep%n)
-    fkeep%sbc => sbc
+   !fkeep%sbc => sbc
 
     iblock = 1
     bcol   = 0

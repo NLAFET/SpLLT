@@ -215,8 +215,8 @@ module spllt_data_mod
      integer(long) :: blk_sa ! identifier of the first block in node
      integer(long) :: blk_en ! identifier of the last block in node
 
-     integer(long) :: sblk_sa ! identifier of the first block in node
-     integer(long) :: sblk_en ! identifier of the last block in node
+     integer(long) :: sblk_sa ! identifier of the first sblock in node
+     integer(long) :: sblk_en ! identifier of the last sblock in node
 
      integer :: nb ! Block size for nodal matrix
      ! If number of cols nc in nodal matrix is less than control%nb but 
@@ -322,7 +322,7 @@ module spllt_data_mod
   ! Data type for data generated in factorise phase
   !
   type spllt_fkeep
-     type(spllt_sblock_t), pointer  :: sbc(:) ! solve blocks
+     type(spllt_sblock_t), allocatable :: sbc(:) ! solve blocks
      type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
      type(spllt_block), allocatable :: workspace(:) ! workspaces
@@ -373,7 +373,7 @@ module spllt_data_mod
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
      integer, allocatable :: assoc_tree(:)
-     integer, pointer     :: p_porder(:)
+     integer, allocatable :: porder(:)
      real(wp), pointer    :: p_y(:)
   end type spllt_fkeep
 
@@ -599,6 +599,14 @@ contains
     end if
     if(allocated(fkeep%indir_rhs)) then
       deallocate(fkeep%indir_rhs, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%porder)) then
+      deallocate(fkeep%porder, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%sbc)) then
+      deallocate(fkeep%sbc, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_fkeep
