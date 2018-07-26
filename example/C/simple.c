@@ -48,11 +48,6 @@ int main(int argc, char ** argv){
   for(int i = 0; i < n; i++) rhs[i] = 1.0;
   memcpy(x, rhs, n * sizeof(double));
 
-  printf("RHS is :\n");
-  for(int i = 0; i < n; i++) printf("%f\n", x[i]);
-  printf("\n");
-  
-
   #pragma omp parallel 
   #pragma omp single
   {
@@ -60,6 +55,7 @@ int main(int argc, char ** argv){
       row, &info, order);
 
   spllt_factor(akeep, fkeep, &options, nnz, val, &info);
+  spllt_wait()
 
   spllt_prepare_solve(akeep, fkeep, nb, nrhs, &worksize, &info);
   printf("Need a workspace of size %ld\n", worksize);
@@ -70,6 +66,7 @@ int main(int argc, char ** argv){
   spllt_set_mem_solve(akeep, fkeep, nb, nrhs, worksize, y, workspace, &info);
 
   spllt_solve(fkeep, &options, order, nrhs, x, &info, 6);
+  spllt_wait()
 
 //spllt_solve(fkeep, &options, order, nrhs, x, &info, 2);
 

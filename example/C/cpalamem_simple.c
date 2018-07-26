@@ -25,7 +25,11 @@ int main(int argc, char ** argv){
   int *order  = NULL;
   double *x   = NULL;
   double *rhs = NULL;
+  double *y   = NULL;
+  double *workspace = NULL;
   int n, nnz, nrhs;
+  int nb = 32;
+  long worksize;
   spllt_inform_t info;
   spllt_options_t options = SPLLT_OPTIONS_NULL();
   int stat;
@@ -35,10 +39,8 @@ int main(int argc, char ** argv){
   int rank      = 0;
   int matrixSet = 0;
   int ncpu      = 1;
-  int nth       = 1;
   long size     = 0;
   char matrixFileName[FILENAMESIZE];
-  double *workspace = NULL;
 
   CPLM_Init(&argc, &argv);
 CPLM_PUSH
@@ -69,7 +71,8 @@ CPLM_OPEN_TIMER
     }
   }
 
-  options.ncpu = ncpu;
+  options.ncpu  = ncpu;
+  options.nb    = nb;
 
   if(!matrixSet)
   {
@@ -78,7 +81,7 @@ CPLM_OPEN_TIMER
 
   ierr = CPLM_LoadMatrixMarket(matrixFileName, &A);CPLM_CHKERR(ierr);
 
-  ierr = CPLM_MatCSRGetTriU(&A, &U);
+  ierr = CPLM_MatCSRGetTriU(&A, &U);CPLM_CHKERR(ierr);
   CPLM_MatCSRConvertTo1BasedIndexing(&U);
 
   nnz = U.info.nnz;
@@ -101,25 +104,34 @@ CPLM_OPEN_TIMER
   {
     spllt_task_manager_init(&tm);
 
+    printf("Analysis\n");
     spllt_analyse(&akeep, &fkeep, &options, n, ptr,
         row, &info, order);
 
+    printf("Factor\n");
     spllt_factor(akeep, fkeep, &options, nnz, val, &info);
+    spllt_wait();
 
-    spllt_prepare_solve(akeep, fkeep, &info);
+    printf("Prepare solve\n");
+    spllt_prepare_solve(akeep, fkeep, nb, nrhs, &worksize, &info);
+    printf("Need a workspace of size %ld\n", worksize);
+    printf("Need a y vector of size %d\n", n * nrhs);
 
-#if 1
-    nth = omp_get_num_threads();
-    spllt_solve_workspace_size(fkeep, nth, nrhs, &size);
-    workspace = calloc(size, sizeof(double));
+    y         = calloc( n * nrhs, sizeof(double));
+    workspace = calloc( worksize, sizeof(double));
+
+    spllt_set_mem_solve(akeep, fkeep, nb, nrhs, worksize, y, workspace, &info);
+#if 0
 
     spllt_solve_worker(fkeep, &options, order, nrhs, x, &info, 1, workspace, size, tm);
 
     spllt_solve_worker(fkeep, &options, order, nrhs, x, &info, 2, workspace, size, tm);
 #else
-    spllt_solve(fkeep, &options, order, nrhs, x, &info, 1);
+    spllt_solve(fkeep, &options, order, nrhs, x, &info, 7);
+    spllt_solve(fkeep, &options, order, nrhs, x, &info, 8);
+    spllt_wait();
 
-    spllt_solve(fkeep, &options, order, nrhs, x, &info, 2);
+  //spllt_solve(fkeep, &options, order, nrhs, x, &info, 2);
 #endif
     spllt_chkerr(n, ptr, row, val, nrhs, x, rhs);
   }

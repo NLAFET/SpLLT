@@ -247,12 +247,20 @@ program spllt_test
   end if
   call task_manager%incr_alloc(st)
 
+  allocate(y(fkeep%n * nrhs), stat=st)
+  print '(a, es10.2)', "Allocation of y vector of size ", real(fkeep%n * nrhs)
+  if(st.ne.0) then
+    write(0,fmt='(a, es10.2)') "Can not allocate y vector of size ", &
+      real(fkeep%n * nrhs)
+    stop
+  end if
+  call task_manager%incr_alloc(st)
+
   call spllt_tic("Reset workspace", 6, task_manager%workerID, timer)
+  y         = zero
   workspace = zero
   call spllt_tac(6, task_manager%workerID, timer)
 
-  allocate(y(fkeep%n * nrhs), stat=st)
-  y = zero
   call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, fkeep%sbc)
 ! fkeep%p_y => y
 

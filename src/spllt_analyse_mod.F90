@@ -90,6 +90,21 @@ contains
     type(ssids_akeep), target :: super_akeep   ! analysis data from SSIDS
     type(numa_region), dimension(:), allocatable :: topology
 
+   !print *,                                &
+   !  "print_level =     ", options%print_level &
+   ! ,"ncpu =            ", options%ncpu &
+   ! ,"nb   =            ", options%nb   &
+   ! ,"nemin =           ", options%nemin &
+   ! ,"prune_tree =      ", options%prune_tree &
+   ! ,"min_width_blas  = ", options%min_width_blas  &
+   ! ,"nb_min =          ", options%nb_min &
+   ! ,"nb_max =          ", options%nb_max &
+   ! ,"nrhs_min =        ", options%nrhs_min &
+   ! ,"nrhs_max =        ", options%nrhs_max &
+   ! ,"nb_linear_comp =  ", options%nb_linear_comp &
+   ! ,"ileave_solve =    ", options%ileave_solve &
+   ! ,"nrhs_linear_comp =", options%nrhs_linear_comp
+
     ! Setup options for analysis in SSIDS
     ssids_opt%ordering = 1 ! use Metis ordering
     ssids_opt%scaling = 0 ! no scaling
@@ -113,7 +128,7 @@ contains
     ! end if
     call ssids_analyse(&
          .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, &
-         order=order, , topology=topology)
+         order=order, topology=topology)
     if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN

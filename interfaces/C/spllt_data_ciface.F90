@@ -103,6 +103,17 @@ end module spllt_data_ciface
 
 
 
+  subroutine spllt_c_wait() &
+      bind(C, name="spllt_wait")
+    use spllt_mod
+    implicit none
+
+    call spllt_wait()
+
+  end subroutine spllt_c_wait
+
+
+
   subroutine spllt_c_analyse(cakeep, cfkeep, coptions, n, cptr, crow, &
       cinfo, corder) bind(C, name="spllt_analyse")
     use spllt_analyse_mod
@@ -209,7 +220,7 @@ end module spllt_data_ciface
     end if
 
     call spllt_factor(fakeep, ffkeep, foptions, fval, finfo)
-    call spllt_wait()
+   !call spllt_wait()
 
     call copy_inform_out(finfo, cinfo)
 
@@ -254,10 +265,13 @@ end module spllt_data_ciface
       write (stderr,*) "Warning, timer environment is not set"
     end if
 
+    print *, "Create subtrees"
     call spllt_create_subtree(fakeep, ffkeep)
 
+    print *, "Compute Sblocks with nb = ", nb, "nrhs = ", nrhs
     call get_solve_blocks(ffkeep, nb, nrhs, fworksize, ffkeep%sbc)
 
+    print *, "Compute dep"
     call spllt_compute_solve_dep(ffkeep, stat = st)
 
     cworksize = fworksize
@@ -398,7 +412,7 @@ end module spllt_data_ciface
     call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
       job, task_manager)
 
-    call spllt_wait()
+   !call spllt_wait()
 
     call task_manager%deallocate()
 

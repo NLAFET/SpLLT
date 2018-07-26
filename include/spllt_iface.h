@@ -98,6 +98,8 @@ extern void spllt_solve_worker( void            *fkeep,
                                 long            worksize,
                                 void            *tm);
 
+extern void spllt_wait();
+
 extern void spllt_chkerr( int n,
                           int *ptr,
                           int *row,
