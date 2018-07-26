@@ -21,9 +21,15 @@ if(ndep_lvl .le. chunk) then
 call spllt_tic("fwd get RHS", 14, threadID, p_timer)
 #endif
   !Gather part of RHS into y
-  do i = 1, blkn
-    p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
-  end do
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+    do i = 1, blkn
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :)
+    end do
+  else
+    do i = 1, blkn
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
+    end do
+  end if
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(14, threadID, p_timer)
 #endif

@@ -1683,7 +1683,7 @@ call spllt_tac(1, threadID, timer, lflops)
 
 
   subroutine slv_fwd_update_ileave2(m, nelim, dest, ldd, &
-      n, nrhs, rhs, ldr, xlocal, ldx)
+      n, nrhs, rhs, ldr, xlocal, ldx, reset)
     use spllt_data_mod
     use timer_mod
  !$ use omp_lib, ONLY : omp_get_thread_num
@@ -1700,11 +1700,14 @@ call spllt_tac(1, threadID, timer, lflops)
     integer,  intent(in)    :: ldr
     real(wp), intent(out)   :: xlocal(*)
     integer,  intent(in)    :: ldx            ! leading dimension of block
+    logical,  intent(in)    :: reset          ! When true, the DGEMM overwrites
+                                              ! xlocal
 
     integer   :: i
     integer   :: j
     integer   :: k
     real(wp)  :: w ! temporary work value
+    real(wp)  :: alpha, beta
     integer   :: threadID
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
     type(spllt_timer_t), save :: timer
@@ -1713,11 +1716,16 @@ call spllt_tac(1, threadID, timer, lflops)
     threadID = 0
  !$ threadID = omp_get_thread_num()
 
+
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)
     call spllt_open_timer(threadID, "slv_fwd_update_ileave2", timer)
 #endif
 
     if(nelim.eq.0) return
+
+    alpha = -one
+    beta  = one
+    if(reset) beta  = zero
 
     ! forward substitution
     if(nrhs.eq.1) then
@@ -1726,7 +1734,7 @@ call spllt_tac(1, threadID, timer, lflops)
        if(m-nelim.gt.10 .and. nelim.gt.4) then
 !!! Single rhs, BLAS 2
 
-          call dgemv('T', nelim, m, -one, dest, ldd, rhs, 1, one, xlocal, 1)
+          call dgemv('T', nelim, m, alpha, dest, ldd, rhs, 1, beta, xlocal, 1)
 
        else
 !!! Single rhs, direct update
@@ -1742,14 +1750,14 @@ call spllt_tac(1, threadID, timer, lflops)
              j = j + 1
            end do
            j = j + (ldd-nelim)
-           xlocal(i) = xlocal(i) + w
+           xlocal(i) = beta * xlocal(i) + w
          end do
        endif
       !print *, "Result DGEMM", xlocal(1 : m)
     else
 !!! Multiple rhs, BLAS 3
-      call dgemm('T', 'N', m, nrhs, nelim, -one, dest, ldd, rhs, ldr, &
-           one, xlocal, ldx)
+      call dgemm('T', 'N', m, nrhs, nelim, alpha, dest, ldd, rhs, ldr, &
+           beta, xlocal, ldx)
     endif
 
 #if defined(SPLLT_SOLVE_KERNEL_SCATTER)

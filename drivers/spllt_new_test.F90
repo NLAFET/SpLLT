@@ -256,13 +256,7 @@ program spllt_test
   end if
   call task_manager%incr_alloc(st)
 
-  call spllt_tic("Reset workspace", 6, task_manager%workerID, timer)
-  y         = zero
-  workspace = zero
-  call spllt_tac(6, task_manager%workerID, timer)
-
   call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, fkeep%sbc)
-! fkeep%p_y => y
 
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine
@@ -302,8 +296,6 @@ program spllt_test
 
  !print *, "Order : ", order
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-   !job=merge(3,0, options%ileave_solve), &
-   !job=merge(3,6, options%ileave_solve), &
     job=6,                                                          &
     workspace=workspace, task_manager=task_manager)
   call spllt_wait()
@@ -314,6 +306,16 @@ program spllt_test
   !!!!!!!!!!!!!!!!!!!!
   ! STATISTICS
   !
+  !Compute the residual for each rhs
+  call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+
+  sol_computed = rhs
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
+    job=7, workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
+    job=8, workspace=workspace, task_manager=task_manager)
+  call spllt_wait()
+
   !Compute the residual for each rhs
   call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
 

@@ -16,6 +16,15 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif 
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update KERNEL", 15, threadID, p_timer)
+#endif
+  call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
+    p_xlocal, ldx, fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer)
+#endif
+
   !Compute the reduction if blk \in L_{:,1}
   if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
 #if defined(SPLLT_TIMER_TASKS)
@@ -29,15 +38,6 @@ call spllt_tic("fwd update UPD", 14, threadID, p_timer)
 call spllt_tac(14, threadID, p_timer)
 #endif
   end if
-
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd update KERNEL", 15, threadID, p_timer)
-#endif
-  call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
-    p_xlocal, ldx)
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(15, threadID, p_timer)
-#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
   flops = 2 * (blkm * nrhs * blkn)

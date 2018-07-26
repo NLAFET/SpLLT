@@ -1229,10 +1229,18 @@ module task_manager_seq_mod
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd get RHS", 1, threadID, timer)
 #endif
+
   !Gather part of RHS into y
-  do i = 1, blkn
-    p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
-  end do
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+    do i = 1, blkn
+     !print *, "p_y(", i, ",:) =", p_y(i,:)
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :)
+    end do
+  else
+    do i = 1, blkn
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
+    end do
+  end if
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(1, threadID, timer)
 #endif
@@ -1300,6 +1308,7 @@ call spllt_tac(3, threadID, timer)
     integer                     :: i, dblk
     double precision            :: flops
     integer                     :: traceID
+    logical                     :: reduction
 
     real(wp), pointer             :: p_lcol(:)
     real(wp)         , pointer    :: p_y(:,:)
@@ -1336,13 +1345,23 @@ call spllt_tac(3, threadID, timer)
     p_wdep    => fkeep%sbc(blk)%fwd_wdep
 
     nwdep     = size(p_wdep)
+    reduction = (fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk)
 
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, task_manager%workerID)
 #endif
 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update KERNEL", 2, task_manager%workerID, timer)
+#endif
+  call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
+    p_xlocal, ldx, reduction)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(2, task_manager%workerID, timer)
+#endif
+
   !Compute the reduction if blk \in L_{:,1}
-  if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
+  if(reduction) then
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update UPD", 1, task_manager%workerID, timer)
 #endif
@@ -1354,15 +1373,6 @@ call spllt_tic("fwd update UPD", 1, task_manager%workerID, timer)
 call spllt_tac(1, task_manager%workerID, timer)
 #endif
   end if
-
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd update KERNEL", 2, task_manager%workerID, timer)
-#endif
-  call slv_fwd_update_ileave2(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
-    p_xlocal, ldx)
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(2, task_manager%workerID, timer)
-#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
     call task_manager%nflop_performed(flops)
