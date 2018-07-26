@@ -26,6 +26,7 @@ contains
     use spral_ssids_akeep, only: ssids_akeep
     use spral_ssids_anal, only: expand_pattern
     use spral_ssids, only: ssids_analyse
+    use spral_hw_topology
     implicit none
 
     type(spllt_akeep), intent(inout) :: akeep ! data related to the analysis
@@ -87,6 +88,7 @@ contains
     type(ssids_options) :: ssids_opt ! SSIDS options
     ! type(ssids_inform) :: inform ! SSDIS stats
     type(ssids_akeep), target :: super_akeep   ! analysis data from SSIDS
+    type(numa_region), dimension(:), allocatable :: topology
 
     ! Setup options for analysis in SSIDS
     ssids_opt%ordering = 1 ! use Metis ordering
@@ -98,6 +100,11 @@ contains
 
     ssids_opt%nemin = nemin
 
+    ! Create topology
+    allocate(topology(1))
+    topology(1)%nproc = 1
+    allocate(topology(1)%gpus(0))
+
     ! Perform analysis with SSIDS.
     ! if (present(order)) then
     !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
@@ -105,7 +112,8 @@ contains
     !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform)
     ! end if
     call ssids_analyse(&
-         .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, order=order)
+         .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, &
+         order=order, , topology=topology)
     if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN
