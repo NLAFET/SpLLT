@@ -412,7 +412,7 @@ contains
     integer :: cur_blk_dep, tmp
 
     p_child_node_index  => fkeep%nodes(child_node)%index
-    nb = fkeep%nodes(child_node)%nb
+    nb = fkeep%nodes(child_node)%snb
     cur_blk_dep = 0 !Impossible value but used as initialization
 
     !Set variables
@@ -474,7 +474,7 @@ contains
    !get_child_dep_blk_id = tmp
 
    !New algorithm based on sbc
-   nb   = fkeep%nodes(child_node)%nb
+   nb   = fkeep%nodes(child_node)%snb
    sa   = fkeep%nodes(child_node)%sa
    en   = fkeep%nodes(child_node)%en
    ncol = en - sa + 1
@@ -519,7 +519,7 @@ contains
     integer :: cur_blk_dep, tmp
 
     p_child_node_index  => fkeep%nodes(child_node)%index
-    nb                  = fkeep%nodes(child_node)%nb
+    nb                  = fkeep%nodes(child_node)%snb
     cur_blk_dep         = 0 !Impossible value but used as initialization
     ndep                = 0
 
@@ -646,7 +646,7 @@ contains
     integer :: ndep
 
     p_child_node_index  => fkeep%nodes(child_node)%index
-    nb                  = fkeep%nodes(child_node)%nb
+    nb                  = fkeep%nodes(child_node)%snb
     cur_blk_dep         = 0 !Impossible value but used as initialization
     ndep                = 1
 
@@ -777,7 +777,7 @@ contains
     integer :: cur_blk_dep, tmp
 
     p_child_node_index  => fkeep%nodes(child_node)%index
-    nb = fkeep%nodes(child_node)%nb
+    nb = fkeep%nodes(child_node)%snb
     cur_blk_dep = 0 !Impossible value but used as initialization
 
     !Set variables
@@ -837,7 +837,7 @@ contains
     integer :: blk_ind_sa  
 
     node        = fkeep%sbc(blk)%node
-    nb          = fkeep%nodes(node)%nb    
+    nb          = fkeep%nodes(node)%snb    
     blkm        = fkeep%sbc(blk)%blkm
     blk_sa      = fkeep%nodes(node)%sblk_sa
     bcol_blk_sa = fkeep%sbc(blk_sa)%bcol
@@ -960,7 +960,7 @@ contains
     bcol_blk_sa = fkeep%sbc(blk_sa)%bcol
     bcol = fkeep%sbc(blk)%bcol
 
-    nb      = fkeep%nodes(node)%nb    
+    nb      = fkeep%nodes(node)%snb    
     blkm    = fkeep%sbc(blk)%blkm
    !local_blk = blk - fkeep%sbc(blk)%dblk
    !offset  = nb * ( local_blk + (bcol - bcol_blk_sa)) + 1
@@ -1179,7 +1179,7 @@ contains
 
    !print *, "Does not belong to last bcol"
     node    = fkeep%sbc(blk)%node
-    nb      = fkeep%nodes(node)%nb    
+    nb      = fkeep%nodes(node)%snb    
     blk_sa  = fkeep%nodes(node)%sblk_sa
     blk_en  = fkeep%nodes(node)%sblk_en
     ncol    = fkeep%nodes(node)%en - fkeep%nodes(node)%sa + 1
@@ -1281,7 +1281,7 @@ contains
     bcol        = fkeep%sbc(blk)%bcol
     nbcol       = bcol_blk_en - bcol_blk_sa + 1
 
-    nb      = fkeep%nodes(node)%nb    
+    nb      = fkeep%nodes(node)%snb    
     blkm    = fkeep%sbc(blk)%blkm
     dblk    = fkeep%sbc(blk)%dblk
     local_blk = blk - dblk
@@ -1482,7 +1482,7 @@ contains
     blk_sa    = fkeep%nodes(node)%sblk_sa
     last_blk  = fkeep%sbc(blk_sa)%last_blk
     nblk      = last_blk - blk_sa + 1
-    nrow      = nblk * fkeep%nodes(node)%nb + fkeep%sbc(last_blk)%blkm
+    nrow      = nblk * fkeep%nodes(node)%snb + fkeep%sbc(last_blk)%blkm
     p_index   => fkeep%nodes(node)%index
     nrow      = size(p_index, 1)
 
@@ -1633,7 +1633,7 @@ contains
       sa    = fkeep%nodes(node)%sa
       en    = fkeep%nodes(node)%en
       ncol  = en - sa + 1
-      nb    = fkeep%nodes(node)%nb
+      nb    = fkeep%nodes(node)%snb
       nlblk = ncol/nb + merge(1, 0, mod(ncol, nb) .gt. 0) ! #local diag block
 !!    print *, "Node ", node, "has", nlblk, "dblk"
       ndblk  = ndblk + nlblk
@@ -1657,7 +1657,7 @@ contains
       sa    = fkeep%nodes(node)%sa
       en    = fkeep%nodes(node)%en
       ncol  = en - sa + 1
-      nb    = fkeep%nodes(node)%nb
+      nb    = fkeep%nodes(node)%snb
       nlblk = ncol/nb + merge(1, 0, mod(ncol, nb) .gt. 0) ! #local diag block
       dblk  = fkeep%nodes(node)%sblk_sa
       do i = 1, nlblk
@@ -2018,6 +2018,7 @@ contains
       ! These two update should be removed
       fkeep%nodes(i)%sblk_sa  = blk_sa
       fkeep%nodes(i)%sblk_en  = iblock - 1
+      fkeep%nodes(i)%snb      = nb
      !call print_node_solve(fkeep, i)
     end do
 

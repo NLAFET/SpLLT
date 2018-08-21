@@ -16,6 +16,7 @@ typedef struct{
   int nrhs_max;
   int nb_linear_comp;
   int nrhs_linear_comp;
+  int chunk;
 } spllt_options_t;
 
 #define SPLLT_OPTIONS_NULL() {.print_level=0,     \
@@ -30,6 +31,7 @@ typedef struct{
                               .nrhs_max=1,        \
                               .nb_linear_comp=0,  \
                               .nrhs_linear_comp=0 \
+                              .chunk=10           \
                               }
 
 typedef struct{

@@ -597,7 +597,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
@@ -687,7 +687,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
@@ -1301,7 +1301,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
@@ -1585,7 +1585,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
@@ -1960,7 +1960,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1
@@ -2051,7 +2051,7 @@ call spllt_tac(1, threadID, timer, lflops)
     end if
 
     ! Get node info
-    s_nb   = fkeep%nodes(node)%nb
+    s_nb   = fkeep%nodes(node)%snb
     sa     = fkeep%nodes(node)%sa
     en     = fkeep%nodes(node)%en
     numcol = en - sa + 1

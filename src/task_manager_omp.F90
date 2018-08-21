@@ -2446,6 +2446,7 @@ module task_manager_omp_mod
 #endif
     else
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      chunk = fkeep%chunk
       lvl   = 1
       alpha = 1
       ndep_lvl = ndep ! #dep local to the lvl
@@ -2621,6 +2622,7 @@ module task_manager_omp_mod
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      chunk = fkeep%chunk
       lvl   = 1
       alpha = 1
       ndep_lvl = ndep ! #dep local to the lvl
@@ -2791,6 +2793,7 @@ module task_manager_omp_mod
 #endif
     else
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      chunk = fkeep%chunk
       lvl   = 1
       alpha = 1
       ndep_lvl = ndep ! #dep local to the lvl
@@ -2970,6 +2973,7 @@ module task_manager_omp_mod
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      chunk = fkeep%chunk
       lvl   = 1
       alpha = 1
       ndep_lvl = ndep ! #dep local to the lvl
@@ -3223,6 +3227,7 @@ module task_manager_omp_mod
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
+      chunk = fkeep%chunk
       lvl   = 1
       alpha = 1
       ndep_lvl = ndep ! #dep local to the lvl

@@ -78,7 +78,12 @@ program spllt_test
   print "(a, a)",   "Matrix format                = ", options%fmt
   print "(a, i4)",  "Number of CPUs               = ", options%ncpu
   print "(a, i4)",  "Block size                   = ", options%nb
+  print "(a, i4)",  "Block size for solve         = ", options%snb
   print "(a, i4)",  "Supernode amalgamation nemin = ", options%nemin
+
+  ! If not provided by the user, set the block size for the solve to 
+  ! the block size of the Factorization
+  if(options%snb .eq. -1) options%snb = options%nb
 
   ! Read in a matrix
   write (*, "(a)") "Reading..."
@@ -136,6 +141,7 @@ program spllt_test
     '# matrix   = ', trim(matfile), ACHAR(10),                                &
     '# nrhs     = ', nrhs, ACHAR(10),                                         &
     '# nb       = ', options%nb, ACHAR(10),                                   &
+    '# snb      = ', options%snb, ACHAR(10),                                  &
     '# nworker  = ', task_manager%nworker, ACHAR(10),                         &
     '# ncpu     = ', options%ncpu, ACHAR(10),                                 &
     '# nemin    = ', options%nemin

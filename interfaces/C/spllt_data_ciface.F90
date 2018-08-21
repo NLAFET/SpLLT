@@ -17,6 +17,7 @@ module spllt_data_ciface
      integer(C_INT)     :: nrhs_max
      integer(C_INT)     :: nb_linear_comp
      integer(C_INT)     :: nrhs_linear_comp
+     integer(C_INT)     :: chunk
   end type spllt_options_t
 
   type, bind(C) :: spllt_inform_t
@@ -54,6 +55,7 @@ contains
     foptions%nrhs_max         = coptions%nrhs_max
     foptions%nb_linear_comp   = (coptions%nb_linear_comp .ne. 0)
     foptions%nrhs_linear_comp = (coptions%nrhs_linear_comp .ne. 0)
+    foptions%chunk            = coptions%chunk
 
   end subroutine copy_options_in
 
