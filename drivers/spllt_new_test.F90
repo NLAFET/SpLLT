@@ -43,11 +43,11 @@ program spllt_test
   type(spllt_fkeep), target           :: fkeep ! Factorization data
 
   ! Solving
-  type(spllt_sblock_t), target, allocatable :: sbc(:)
+! type(spllt_sblock_t), target, allocatable :: sbc(:)
 
   ! stats
   integer, target,   allocatable      :: order(:)     ! Matrix permutation array
-  integer, target,   allocatable      :: porder(:)    ! Matrix permutation array
+! integer, target,   allocatable      :: porder(:)    ! Matrix permutation array
   real(wp),          allocatable      :: workspace(:) ! Workspace
   real(wp), target,  allocatable      :: y(:) ! Workspace
   integer(long)                       :: worksize
@@ -207,11 +207,11 @@ program spllt_test
   endif
  !call spllt_print_atree(akeep, fkeep, options)
 
-  allocate(porder(n))
-  do i = 1, n
-    porder(order(i)) = i
-  end do
-  fkeep%p_porder => porder
+ !allocate(porder(n))
+ !do i = 1, n
+ !  porder(order(i)) = i
+ !end do
+ !fkeep%p_porder => porder
  !print *, "Order : ", order
 
   !!!!!!!!!!!!!!!!!!!!
@@ -230,8 +230,9 @@ program spllt_test
   call spllt_create_subtree(akeep, fkeep)
 
  !call get_solve_blocks(fkeep, options%nb, nrhs, rhs, workspace, sbc)
-  call get_solve_blocks(fkeep, options%snb, nrhs, worksize, sbc)
-  fkeep%sbc => sbc
+ !call get_solve_blocks(fkeep, options%nb, nrhs, worksize, sbc)
+  call get_solve_blocks(fkeep, options%nb, nrhs, worksize, fkeep%sbc)
+ !fkeep%sbc => sbc
 
   call spllt_compute_solve_dep(fkeep, stat = st)
 
@@ -252,19 +253,22 @@ program spllt_test
   end if
   call task_manager%incr_alloc(st)
 
+  allocate(y(fkeep%n * nrhs), stat=st)
+  print '(a, es10.2)', "Allocation of y vector of size ", real(fkeep%n * nrhs)
+  if(st.ne.0) then
+    write(0,fmt='(a, es10.2)') "Can not allocate y vector of size ", &
+      real(fkeep%n * nrhs)
+    stop
+  end if
+  call task_manager%incr_alloc(st)
+
   call spllt_tic("Reset workspace", 6, task_manager%workerID, timer)
+  y         = zero
   workspace = zero
   call spllt_tac(6, task_manager%workerID, timer)
 
-  allocate(y(fkeep%n * nrhs), stat=st)
-  y = zero
-  call sblock_assoc_mem(fkeep, options%snb, nrhs, y, workspace, sbc)
-  fkeep%p_y => y
-
-
-
-
- !stop
+  call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, fkeep%sbc)
+! fkeep%p_y => y
 
   ! Init the computed solution with the rhs that is further updated by
   ! the subroutine
@@ -273,40 +277,44 @@ program spllt_test
   !!!!!!!!!!!!!!!!!!!!
   ! Forward substitution
   !
-  call task_manager%nflop_reset()
-  call spllt_tic("Forward", 4, task_manager%workerID, timer)
+! call task_manager%nflop_reset()
+! call spllt_tic("Forward", 4, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=7, &
-    workspace=workspace, task_manager=task_manager)
+! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=7, &
+!   workspace=workspace, task_manager=task_manager)
+! call spllt_wait()
 
-  call spllt_tac(4, task_manager%workerID, timer)
+! call spllt_tac(4, task_manager%workerID, timer)
 
 
   !!!!!!!!!!!!!!!!!!!!
   ! Backward substitution
   !
-  call task_manager%nflop_reset()
-  call spllt_tic("Backward", 5, task_manager%workerID, timer)
+! call task_manager%nflop_reset()
+! call spllt_tic("Backward", 5, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=8, &
-    workspace=workspace, task_manager=task_manager)
+! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=8, &
+!   workspace=workspace, task_manager=task_manager)
+! call spllt_wait()
 
-  call spllt_tac(5, task_manager%workerID, timer)
+! call spllt_tac(5, task_manager%workerID, timer)
 
   !!!!!!!!!!!!!!!!!!!!
   ! Solve
   !
 ! sol_computed = rhs
 ! call task_manager%nflop_reset()
-! call spllt_tic("Solving", 7, task_manager%workerID, timer)
+  call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
-!!print *, "Order : ", order
-! call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-!  !job=merge(3,0, options%ileave_solve), &
-!   job=merge(3,6, options%ileave_solve), &
-!   workspace=workspace, task_manager=task_manager)
+ !print *, "Order : ", order
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
+   !job=merge(3,0, options%ileave_solve), &
+   !job=merge(3,6, options%ileave_solve), &
+    job=6,                                                          &
+    workspace=workspace, task_manager=task_manager)
+  call spllt_wait()
 
-! call spllt_tac(7, task_manager%workerID, timer)
+  call spllt_tac(7, task_manager%workerID, timer)
 
 
   !!!!!!!!!!!!!!!!!!!!

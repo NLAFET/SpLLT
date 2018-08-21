@@ -62,6 +62,18 @@ extern void spllt_factor( void            *akeep,
 
 extern void spllt_prepare_solve(void            *akeep,
                                 void            *fkeep,
+                                int             nb,
+                                int             nrhs,
+                                long            *worksize,
+                                spllt_inform_t  *info);
+
+extern void spllt_set_mem_solve(void            *akeep,
+                                void            *fkeep,
+                                int             nb,
+                                int             nrhs,
+                                long            worksize,
+                                double          *y,
+                                double          *workspace,
                                 spllt_inform_t  *info);
 
 extern void spllt_solve_workspace_size( void  *fkeep,
@@ -87,6 +99,8 @@ extern void spllt_solve_worker( void            *fkeep,
                                 double          *workspace,
                                 long            worksize,
                                 void            *tm);
+
+extern void spllt_wait();
 
 extern void spllt_chkerr( int n,
                           int *ptr,

@@ -1217,7 +1217,7 @@ module task_manager_seq_mod
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_porder
+    p_order     => fkeep%porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
     p_wdep      => fkeep%sbc(dblk)%fwd_wdep
 
@@ -1437,7 +1437,7 @@ call spllt_tac(2, task_manager%workerID, timer)
     p_y         => fkeep%sbc(dblk)%p_upd
     p_rhs       => rhs
     p_index     => fkeep%sbc(dblk)%p_index
-    p_order     => fkeep%p_porder
+    p_order     => fkeep%porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
 #if defined(SPLLT_OMP_TRACE)
     call trace_event_start(traceID, threadID)

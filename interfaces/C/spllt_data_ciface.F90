@@ -105,6 +105,17 @@ end module spllt_data_ciface
 
 
 
+  subroutine spllt_c_wait() &
+      bind(C, name="spllt_wait")
+    use spllt_mod
+    implicit none
+
+    call spllt_wait()
+
+  end subroutine spllt_c_wait
+
+
+
   subroutine spllt_c_analyse(cakeep, cfkeep, coptions, n, cptr, crow, &
       cinfo, corder) bind(C, name="spllt_analyse")
     use spllt_analyse_mod
@@ -211,7 +222,7 @@ end module spllt_data_ciface
     end if
 
     call spllt_factor(fakeep, ffkeep, foptions, fval, finfo)
-    call spllt_wait()
+   !call spllt_wait()
 
     call copy_inform_out(finfo, cinfo)
 
@@ -219,7 +230,7 @@ end module spllt_data_ciface
 
 
 
-  subroutine spllt_c_prepare_solve(cakeep, cfkeep, cinfo) &
+  subroutine spllt_c_prepare_solve(cakeep, cfkeep, nb, nrhs, cworksize, cinfo) &
       bind(C, name="spllt_prepare_solve")
     use spllt_data_mod
     use spllt_solve_dep_mod
@@ -230,12 +241,16 @@ end module spllt_data_ciface
 
     type(C_PTR),            value         :: cakeep
     type(C_PTR),            value         :: cfkeep
+    integer(C_INT),         value         :: nb
+    integer(C_INT),         value         :: nrhs
+    integer(C_LONG),        intent(out)   :: cworksize
     type(spllt_inform_t),   intent(out)   :: cinfo
 
     type(spllt_akeep),  pointer :: fakeep
     type(spllt_fkeep),  pointer :: ffkeep
     type(spllt_inform)          :: finfo
     integer                     :: st
+    integer(long)               :: fworksize
 
     if(.not. C_ASSOCIATED(cakeep)) then
       write (stderr,*) "Error, akeep provided by the user is empty"
@@ -252,46 +267,106 @@ end module spllt_data_ciface
       write (stderr,*) "Warning, timer environment is not set"
     end if
 
+    print *, "Create subtrees"
     call spllt_create_subtree(fakeep, ffkeep)
+
+    print *, "Compute Sblocks with nb = ", nb, "nrhs = ", nrhs
+    call get_solve_blocks(ffkeep, nb, nrhs, fworksize, ffkeep%sbc)
+
+    print *, "Compute dep"
     call spllt_compute_solve_dep(ffkeep, stat = st)
 
+    cworksize = fworksize
     call copy_inform_out(finfo, cinfo)
 
   end subroutine spllt_c_prepare_solve
 
 
 
-  subroutine spllt_c_solve_workspace_size(cfkeep, nworker, nrhs, csize) &
-      bind(C, name="spllt_solve_workspace_size")
+  subroutine spllt_c_set_mem_solve(cakeep, cfkeep, nb, nrhs, worksize, &
+      cy, cworkspace, cinfo) bind(C, name="spllt_set_mem_solve")
     use spllt_data_mod
-    use spllt_solve_mod
+    use spllt_solve_dep_mod
     use spllt_data_ciface
-    use task_manager_omp_mod
+    use timer_mod
     use ISO_Fortran_env, only: stderr => ERROR_UNIT
     implicit none
 
+    type(C_PTR),            value         :: cakeep
     type(C_PTR),            value         :: cfkeep
-    integer(C_INT),         value         :: nworker
+    integer(C_INT),         value         :: nb
     integer(C_INT),         value         :: nrhs
-   !type(C_PTR),            intent(out)   :: csize
-    integer(C_LONG),        intent(out)   :: csize
+    integer(C_LONG),        value         :: worksize
+    type(C_PTR),            value         :: cy
+    type(C_PTR),            value         :: cworkspace
+    type(spllt_inform_t),   intent(out)   :: cinfo
 
+    type(spllt_akeep),  pointer :: fakeep
     type(spllt_fkeep),  pointer :: ffkeep
-    integer(long)               :: fsize
+    type(spllt_inform)          :: finfo
+    real(wp),           pointer :: fy(:)   
+    real(wp),           pointer :: fw(:)   
+    integer                     :: st
+
+    if(.not. C_ASSOCIATED(cakeep)) then
+      write (stderr,*) "Error, akeep provided by the user is empty"
+    end if
+    call C_F_POINTER(cakeep, fakeep)
 
     if(.not. C_ASSOCIATED(cfkeep)) then
       write (stderr,*) "Error, fkeep provided by the user is empty"
     end if
     call C_F_POINTER(cfkeep, ffkeep)
 
-    call spllt_solve_workspace_size(ffkeep, nworker, nrhs, fsize)
-    csize = fsize
+    if(.not. C_ASSOCIATED(cy)) then
+      write (stderr,*) "Error, y provided by the user is empty"
+    end if
+    call C_F_POINTER(cy, fy, shape=(/ ffkeep%n * nrhs /))
 
-  end subroutine spllt_c_solve_workspace_size
+    if(.not. C_ASSOCIATED(cworkspace)) then
+      write (stderr,*) "Error, workspace provided by the user is empty"
+    end if
+    call C_F_POINTER(cworkspace, fw, shape=(/ worksize /))
+
+    call sblock_assoc_mem(ffkeep, nb, nrhs, fy, fw, ffkeep%sbc)
+
+    call copy_inform_out(finfo, cinfo)
+  end subroutine spllt_c_set_mem_solve
+
+
+
+ !subroutine spllt_c_solve_workspace_size(cfkeep, nworker, nrhs, csize) &
+ !    bind(C, name="spllt_solve_workspace_size")
+ !  use spllt_data_mod
+ !  use spllt_solve_mod
+ !  use spllt_data_ciface
+ !  use task_manager_omp_mod
+ !  use ISO_Fortran_env, only: stderr => ERROR_UNIT
+ !  implicit none
+
+ !  type(C_PTR),            value         :: cfkeep
+ !  integer(C_INT),         value         :: nworker
+ !  integer(C_INT),         value         :: nrhs
+ ! !type(C_PTR),            intent(out)   :: csize
+ !  integer(C_LONG),        intent(out)   :: csize
+
+ !  type(spllt_fkeep),  pointer :: ffkeep
+ !  integer(long)               :: fsize
+
+ !  if(.not. C_ASSOCIATED(cfkeep)) then
+ !    write (stderr,*) "Error, fkeep provided by the user is empty"
+ !  end if
+ !  call C_F_POINTER(cfkeep, ffkeep)
+
+ !  call spllt_solve_workspace_size(ffkeep, nworker, nrhs, fsize)
+ !  csize = fsize
+
+ !end subroutine spllt_c_solve_workspace_size
 
 
   subroutine spllt_c_solve(cfkeep, coptions, corder, nrhs, cx, cinfo, job) &
       bind(C, name="spllt_solve")
+    use spllt_mod
     use spllt_data_mod
     use spllt_solve_mod
     use spllt_data_ciface
@@ -331,12 +406,15 @@ end module spllt_data_ciface
       write (stderr,*) "Error, x/rhs provided by the user is empty"
     end if
 
+   !call C_F_POINTER(cx, fx, shape=(/ ffkeep%n, nrhs/))
     call C_F_POINTER(cx, fx, shape=(/ ffkeep%n /))
 
     call task_manager%init()
 
     call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
       job, task_manager)
+
+   !call spllt_wait()
 
     call task_manager%deallocate()
 
