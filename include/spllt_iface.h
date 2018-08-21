@@ -30,7 +30,7 @@ typedef struct{
                               .nrhs_min=1,        \
                               .nrhs_max=1,        \
                               .nb_linear_comp=0,  \
-                              .nrhs_linear_comp=0 \
+                              .nrhs_linear_comp=0,\
                               .chunk=10           \
                               }
 
