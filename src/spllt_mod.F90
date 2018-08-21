@@ -342,6 +342,10 @@ contains
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, '(a)' ) matfile
+       case("--snb")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%snb
        case("--nb")
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
@@ -350,6 +354,10 @@ contains
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
           read( argval, * ) options%ncpu
+       case("--nworker")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read( argval, * ) options%nworker
        case("--nemin")
           call get_command_argument(argnum, argval)
           argnum = argnum + 1
@@ -395,6 +403,10 @@ contains
           options%nrhs_linear_comp = .false.
         case("--ileave")
           options%ileave_solve = .true.
+        case("--chunk")
+          call get_command_argument(argnum, argval)
+          argnum = argnum + 1
+          read (argval, *) options%chunk
 
        case default
           write(*,'("Unrecognised command line argument: ", a20)') argval

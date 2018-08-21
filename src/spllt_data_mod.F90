@@ -225,6 +225,7 @@ module spllt_data_mod
      ! the numbers of entries in the blocks to be similar to those in the 
      ! normal case. 
 
+     integer :: snb !Block size for the solve phase
      integer :: sa ! index (in pivotal order) of the first column of the node
      integer :: en ! index (in pivotal order) of the last column of the node
 
@@ -271,9 +272,12 @@ module spllt_data_mod
      integer :: nb_max = 32
      integer :: nrhs_min = 1
      integer :: nrhs_max = 1
+     integer :: chunk = 10
      logical :: nb_linear_comp = .false.
      logical :: nrhs_linear_comp = .false.
      logical :: ileave_solve = .false.
+     integer :: snb   = -1            ! Blocking size for the solve
+     integer :: nworker = -1             ! Number of Solve worker
   end type spllt_options
 
   type spllt_tree_t
@@ -375,6 +379,7 @@ module spllt_data_mod
      integer, allocatable :: assoc_tree(:)
      integer, pointer     :: p_porder(:)
      real(wp), pointer    :: p_y(:)
+     integer              :: chunk = 10
   end type spllt_fkeep
 
 
