@@ -393,7 +393,6 @@ contains
     real(wp), dimension(n,nrhs), intent(in)     :: x
     real(wp), dimension(n,nrhs), intent(in)     :: b
 
-    logical           :: bwd_error_ok
     integer           :: i
     real(wp)          :: norm_max
     real(wp)          :: res(n, nrhs)
@@ -401,6 +400,7 @@ contains
     double precision  :: normRHS(nrhs)
     double precision  :: solNorm(nrhs)
     double precision  :: err
+    integer           :: cpt
 
     call compute_residual(n, ptr, row, val, nrhs, x, b, res)
 
@@ -409,19 +409,24 @@ contains
     call vector_norm_2(n,   x, solNorm)
     call matrix_norm_max(n, ptr, row, val, norm_max)
 
-    bwd_error_ok = .true.
+    cpt = 0
     do i = 1, nrhs
       err = normRes(i) / (normRHS(i) + norm_max * solNorm(i))
-     !if(normRes(i) / normRHS(i) .gt. 1e-14) then
-      if(err .gt. 1e-14) then
-        write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
-          "/", nrhs, " : ", err
-        bwd_error_ok = .false.
+      if(err .ne. err) then
+        print '(a, i3, a)', "Backward error of rhs ", i, " is equal to a NAN"
+      else
+       !if(normRes(i) / normRHS(i) .gt. 1e-14) then
+        if(err .gt. 1e-14) then
+          write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
+            "/", nrhs, " : ", err
+        else
+          write(0, "(a, i4, a, i4, a, es10.2)") "Bwd error for ", i, &
+            "/", nrhs, " : ", err
+          cpt = cpt + 1
+        end if
       end if
     end do
-    if(bwd_error_ok) then
-      write(0, "(a)") "Backward error... ok"
-    end if
+    write(0, "(a, i3, a, i3)") "Backward error... ok for ", cpt, "/", nrhs
   end subroutine check_backward_error
 
 
