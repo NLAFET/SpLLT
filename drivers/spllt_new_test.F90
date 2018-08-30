@@ -137,7 +137,10 @@ program spllt_test
   call task_manager%init(stat=st)
 #endif
 
-  write (header, '(a, a, a, a, i4, a, a, i4, a, a, i4, a, a, i4, a, a, i4)')  &
+  write (header, '(a, a, a, a, i4, a,&
+     &a, i4, a, a, i4, a,&
+     &a, i4, a, a, i4, a,&
+     &a, i4)')  &
     '# matrix   = ', trim(matfile), ACHAR(10),                                &
     '# nrhs     = ', nrhs, ACHAR(10),                                         &
     '# nb       = ', options%nb, ACHAR(10),                                   &
