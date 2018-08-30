@@ -241,7 +241,7 @@ contains
    !  task_manager%nworker))
    !p_x(1 : size_nrhs) => x(:,:)
 
-    print *, "Call with Job = ", job
+   !print *, "Call with Job = ", job
 
     select case(job)
       case(0)
@@ -488,7 +488,7 @@ call task_manager%print("fwd end of submitted task", 0)
  !$ call omp_destroy_lock(lock)
 #endif
     
-    call task_manager%print("fwd end of submitted task", 0)
+   !call task_manager%print("fwd end of submitted task", 0)
 
     call task_manager%get_nflop_performed(nflop_en)
 #if defined(SPLLT_TIMER_TASKS)
@@ -978,7 +978,7 @@ call task_manager%print("Release of lock in fwd", 0)
  !$ call omp_destroy_lock(lock)
 #endif
     
-    call task_manager%print("fwd end of submitted task", 0)
+   !call task_manager%print("fwd end of submitted task", 0)
 
     call task_manager%get_nflop_performed(nflop_en)
 #if defined(SPLLT_TIMER_TASKS)
@@ -1091,7 +1091,7 @@ call task_manager%print("Release of lock in fwd", 0)
  !$ call omp_destroy_lock(lock)
 #endif
 
-    call task_manager%print("bwd end of execution task", 0)
+   !call task_manager%print("bwd end of execution task", 0)
 
     call task_manager%get_nflop_performed(nflop_en)
 #if defined(SPLLT_TIMER_TASKS)

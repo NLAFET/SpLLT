@@ -32,7 +32,7 @@ int main(int argc, char ** argv){
   row = malloc(nnz * sizeof(int));
   val = malloc(nnz * sizeof(double));
 
-  nb = 4;
+  options.nb = nb = 4;
 
   ptr[0] = 1; ptr[1] = 3; ptr[2] = 5; ptr[3] = 6;
   row[0] = 1; row[1] = 2; row[2] = 2; row[3] = 3; row[4] = 3;
@@ -47,6 +47,7 @@ int main(int argc, char ** argv){
   rhs   = malloc(n * nrhs * sizeof(double));
   for(int i = 0; i < n; i++) rhs[i] = 1.0;
   memcpy(x, rhs, n * sizeof(double));
+
 
   #pragma omp parallel 
   #pragma omp single
