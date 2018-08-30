@@ -2,7 +2,14 @@
 #define SPLLT_IFACE_H
 
 typedef struct{
+  void *akeep;
+  void *fkeep;
+  void *tm;
+} spllt_data_t;
+
+typedef struct{
   int print_level;
+  int nrhs;
   int ncpu;
   int nb;
 //char mat[100];
@@ -20,6 +27,7 @@ typedef struct{
 } spllt_options_t;
 
 #define SPLLT_OPTIONS_NULL() {.print_level=0,     \
+                              .nrhs=1,            \
                               .ncpu=1,            \
                               .nb=16,             \
                               .nemin=32,          \
@@ -30,7 +38,7 @@ typedef struct{
                               .nrhs_min=1,        \
                               .nrhs_max=1,        \
                               .nb_linear_comp=0,  \
-                              .nrhs_linear_comp=0 \
+                              .nrhs_linear_comp=0,\
                               .chunk=10           \
                               }
 
@@ -120,4 +128,18 @@ extern void spllt_task_manager_deallocate(void  **task_manager,
                                           int   *stat);
 
 extern void spllt_task_manager_init(void  **task_manager);
+
+extern void spllt_all(void **akeep,
+                      void **fkeep,
+                      spllt_options_t *options,
+                      int             n,
+                      int             nnz,
+                      int             nrhs,
+                      int             nb,
+                      int             *ptr,
+                      int             *row,
+                      double          *val,
+                      double          *x,
+                      double          *rhs,
+                      spllt_inform_t  *info);
 #endif

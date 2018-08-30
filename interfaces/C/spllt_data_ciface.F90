@@ -4,6 +4,7 @@ module spllt_data_ciface
 
   type, bind(C) :: spllt_options_t
      integer(C_INT)     :: print_level
+     integer(C_INT)     :: nrhs
      integer(C_INT)     :: ncpu
      integer(C_INT)     :: nb
 !    character(len=100) :: mat
@@ -267,13 +268,13 @@ end module spllt_data_ciface
       write (stderr,*) "Warning, timer environment is not set"
     end if
 
-    print *, "Create subtrees"
+   !print *, "Create subtrees"
     call spllt_create_subtree(fakeep, ffkeep)
 
-    print *, "Compute Sblocks with nb = ", nb, "nrhs = ", nrhs
+   !print *, "Compute Sblocks with nb = ", nb, "nrhs = ", nrhs
     call get_solve_blocks(ffkeep, nb, nrhs, fworksize, ffkeep%sbc)
 
-    print *, "Compute dep"
+   !print *, "Compute dep"
     call spllt_compute_solve_dep(ffkeep, stat = st)
 
     cworksize = fworksize
@@ -414,7 +415,7 @@ end module spllt_data_ciface
     call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
       job, task_manager)
 
-   !call spllt_wait()
+    call spllt_wait()
 
     call task_manager%deallocate()
 
@@ -471,9 +472,9 @@ end module spllt_data_ciface
       write (stderr,*) "Error, x/rhs provided by the user is empty"
     end if
 
-    if(.not. C_ASSOCIATED(cwork)) then
-      write (stderr,*) "Error, the workspace provided by the user is empty"
-    end if
+   !if(.not. C_ASSOCIATED(cwork)) then
+   !  write (stderr,*) "Error, the workspace provided by the user is empty"
+   !end if
 
     if(.not. C_ASSOCIATED(ctask_manager)) then
       write (stderr,*) "Error, the task_manager provided by the user is empty"
@@ -651,3 +652,128 @@ end module spllt_data_ciface
 
 
 
+  subroutine spllt_c_all(cakeep, cfkeep, coptions, n, nnz, nrhs, nb, cptr, &
+    crow, cval, cx, crhs, cinfo) bind(C, name="spllt_all")
+    use spllt_analyse_mod
+    use spllt_solve_dep_mod
+    use spllt_solve_mod
+    use spllt_data_mod
+    use spllt_data_ciface
+    use task_manager_omp_mod
+    use timer_mod
+    use utils_mod
+    use ISO_Fortran_env, only: stderr => ERROR_UNIT
+    implicit none
+
+    type(C_PTR),            intent(inout) :: cakeep
+    type(C_PTR),            intent(inout) :: cfkeep
+    type(spllt_options_t),  intent(in)    :: coptions
+    integer(C_INT),         value         :: n
+    integer(C_INT),         value         :: nnz
+    integer(C_INT),         value         :: nrhs
+    integer(C_INT),         value         :: nb
+    type(C_PTR),            value         :: cptr
+    type(C_PTR),            value         :: crow
+    type(C_PTR),            value         :: cval
+    type(C_PTR),            value         :: cx
+    type(C_PTR),            value         :: crhs
+    type(spllt_inform_t),   intent(out)   :: cinfo
+
+    type(spllt_akeep),  pointer :: fakeep
+    type(spllt_fkeep),  pointer :: ffkeep
+    type(spllt_options)         :: foptions
+    integer,       allocatable  :: forder(:)
+    integer(C_INT),     pointer :: fptr(:)
+    integer(C_INT),     pointer :: frow(:)
+    real(wp),           pointer :: fval(:)
+    type(spllt_inform)          :: finfo
+    integer                     :: st
+    integer(long)               :: fworksize
+    real(wp),     allocatable   :: fy(:)   
+    real(wp),     allocatable   :: fw(:)   
+    real(wp),           pointer :: fx(:)   
+    real(wp),           pointer :: frhs(:)
+    type(task_manager_omp_t)    :: task_manager
+
+    call copy_options_in(coptions, foptions)
+
+    if(C_ASSOCIATED(cakeep)) then
+      call C_F_POINTER(cakeep, fakeep)
+    else
+      allocate(fakeep)
+      cakeep = C_LOC(fakeep)
+    end if
+
+    if(C_ASSOCIATED(cfkeep)) then
+      call C_F_POINTER(cfkeep, ffkeep)
+    else
+      allocate(ffkeep)
+      cfkeep = C_LOC(ffkeep)
+    end if
+
+    if(C_ASSOCIATED(cptr)) then
+      call C_F_POINTER(cptr, fptr, shape=(/ n + 1 /))
+    else
+      nullify(fptr)
+    end if
+
+    if(C_ASSOCIATED(crow)) then
+      call C_F_POINTER(crow, frow, shape=(/ fptr(n + 1) - 1 /))
+    else
+      nullify(frow)
+    end if
+
+    if(C_ASSOCIATED(cval)) then
+      call C_F_POINTER(cval, fval, shape=(/ nnz /))
+    else
+      nullify(fval)
+    end if
+
+    if(.not. C_ASSOCIATED(crhs)) then
+      write (stderr,*) "Error, rhs provided by the user is empty"
+    end if
+
+    call C_F_POINTER(crhs, frhs, shape=(/ n /))
+
+    if(.not. C_ASSOCIATED(cx)) then
+      write (stderr,*) "Error, x/rhs provided by the user is empty"
+    end if
+
+   !call C_F_POINTER(cx, fx, shape=(/ ffkeep%n, nrhs/))
+    call C_F_POINTER(cx, fx, shape=(/ ffkeep%n /))
+
+    print *, "Call of spllt_analyse"
+    call spllt_analyse(fakeep, ffkeep, foptions, n, fptr, frow, finfo, forder)
+
+    print *, "Call of spllt_factor"
+    call spllt_factor(fakeep, ffkeep, foptions, fval, finfo)
+    call spllt_wait()
+
+    call spllt_init_timer(st)
+    if(st .ne. 0) then
+      write (stderr,*) "Warning, timer environment is not set"
+    end if
+
+    print *, "Create subtrees"
+    call spllt_create_subtree(fakeep, ffkeep)
+
+    print *, "Compute Sblocks with nb = ", nb, "nrhs = ", nrhs
+    call get_solve_blocks(ffkeep, nb, nrhs, fworksize, ffkeep%sbc)
+
+    print *, "Compute dep"
+    call spllt_compute_solve_dep(ffkeep, stat = st)
+
+    allocate(fy(n * nrhs), stat=st)
+    allocate(fw(fworksize), stat=st)
+    call sblock_assoc_mem(ffkeep, nb, nrhs, fy, fw, ffkeep%sbc)
+
+    call task_manager%init()
+
+    call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
+      6, task_manager)
+    call spllt_wait()
+
+    call check_backward_error(n, fptr, frow, fval, nrhs, fx, frhs)
+
+    call copy_inform_out(finfo, cinfo)
+  end subroutine spllt_c_all
