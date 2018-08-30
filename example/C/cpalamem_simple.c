@@ -11,7 +11,7 @@
 #include <cpalamem_handler.h>
 #include <cpalamem_instrumentation.h>
 
-#define USAGE "Usage %s -m <matrixFileName>"
+#define USAGE "Usage %s -m <matrixFileName> [--nrhs <integer DEFAULT:%d>] [--nb <integer DEFAULT:%d>] [--ncpu <integer DEFAULT:%d]"
 #define FILENAMESIZE 256
 
 int main(int argc, char ** argv){
@@ -54,7 +54,22 @@ CPLM_OPEN_TIMER
     {
       if(!strcmp(argv[i],"-h"))
       {
-        CPLM_Abort(USAGE,argv[0]);
+        CPLM_Abort(USAGE, argv[0], nrhs, nb);
+      }
+      else if(!strcmp(argv[i],"--nb"))
+      {
+        i++;
+        nb = atoi(argv[i]);
+      }
+      else if(!strcmp(argv[i],"--ncpu"))
+      {
+        i++;
+        ncpu = atoi(argv[i]);
+      }
+      else if(!strcmp(argv[i],"--nrhs"))
+      {
+        i++;
+        nrhs = atoi(argv[i]);
       }
       else if(!strcmp(argv[i],"-m"))
       {
@@ -65,7 +80,7 @@ CPLM_OPEN_TIMER
       else{
         if(!rank)
         {
-          CPLM_Abort(USAGE,argv[0]);
+          CPLM_Abort(USAGE, argv[0], nrhs, nb);
         }
       }
     }
@@ -93,11 +108,13 @@ CPLM_OPEN_TIMER
   order = malloc(n * sizeof(int));
 
   //Create RHS
-  nrhs = 1;
+//nrhs = 1;
   x     = malloc(n * nrhs * sizeof(double));
   rhs   = malloc(n * nrhs * sizeof(double));
-  for(int i = 0; i < n; i++) rhs[i] = 1.0;
-  memcpy(x, rhs, n * sizeof(double));
+  for(int j = 0; j < nrhs; j++)
+    for(int i = 0; i < n; i++) 
+      rhs[i + j * nrhs] = 1.0 * (j + 1);
+  memcpy(x, rhs, n * nrhs * sizeof(double));
 
   #pragma omp parallel 
   #pragma omp single
