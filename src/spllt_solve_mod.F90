@@ -223,8 +223,8 @@ contains
     real(wp), pointer :: p_x(:)
     type(spllt_timer_t), save :: timer
 
-    call spllt_open_timer(task_manager%workerID, &
-      "spllt_solve_mult_double_worker", timer)
+   !call spllt_open_timer(task_manager%workerID, &
+   !  "spllt_solve_mult_double_worker", timer)
 
     ! immediate return if n = 0
     if (fkeep%n == 0) return
@@ -365,7 +365,7 @@ contains
         return
     end select
 
-    call spllt_close_timer(task_manager%workerID, timer)
+   !call spllt_close_timer(task_manager%workerID, timer)
   end subroutine spllt_solve_mult_double_worker
 
 

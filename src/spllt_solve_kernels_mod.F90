@@ -618,20 +618,28 @@ call spllt_tac(1, threadID, timer, lflops)
         !
         ! Backward update with block on diagoanl
         !
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
+#endif
         call task_manager%solve_bwd_update_task(blk, node, nrhs, rhs_local, &
           rhs, ldr, xlocal, fkeep, bwd_update_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tac(1, task_manager%workerID, timer)
+#endif
 
       end do
 
       !
       ! Backward solve with block on diagoanl
       !
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
+#endif
       call task_manager%solve_bwd_block_task(dblk, nrhs, rhs_local, rhs, ldr,&
         xlocal, fkeep, bwd_block_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(2, task_manager%workerID, timer)
+#endif
      
       ! Update diag block in node       
       if (jj .gt. 1) dblk = fkeep%bc(dblk-1)%dblk
@@ -1977,12 +1985,16 @@ call spllt_tac(1, threadID, timer, lflops)
       ! Forward solve with block on diagoanl
       !
  !!   print *, "Submit fwd block ", dblk
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("submit fwd block", 1, task_manager%workerID, timer)
+#endif
       call task_manager%solve_fwd_block_il2_task(dblk, nrhs, n, rhs, &
         fkeep, trace_id)
      !call task_manager%solve_fwd_block_il_task(dblk, nrhs, rhs_local,  &
      !  tdu, rhs, n, xlocal, fkeep, fwd_block_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(1, task_manager%workerID, timer)
+#endif
 
       do blk = dblk + 1, fkeep%sbc(dblk)%last_blk
 
@@ -1992,12 +2004,16 @@ call spllt_tac(1, threadID, timer, lflops)
         ! Forward update with off-diagonal
         !
  !!     print *, "Submit fwd update ", blk
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("submit fwd update", 2, task_manager%workerID, timer)
+#endif
         call task_manager%solve_fwd_update_il2_task(blk, node, nrhs, &
             n, rhs, fkeep, trace_id)
        !call task_manager%solve_fwd_update_il2_task(blk, node, nrhs, rhs_local,&
        !  tdu, rhs, n, xlocal, fkeep, fwd_update_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tac(2, task_manager%workerID, timer)
+#endif
       end do
       
       ! Update diag block in node          
@@ -2071,10 +2087,14 @@ call spllt_tac(1, threadID, timer, lflops)
         !
  !!     print *, "Submit bwd update ", blk
        !print *, "blk", blk, "y INPUT", fkeep%sbc(blk)%p_upd
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tic("submit bwd update", 1, task_manager%workerID, timer)
+#endif
         call task_manager%solve_bwd_update_il2_task(blk, node, nrhs, & 
           n, rhs, fkeep, trace_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
         call spllt_tac(1, task_manager%workerID, timer)
+#endif
        !print *, "blk", blk, "x associated", fkeep%sbc(blk)%p_upd
       end do
 
@@ -2083,10 +2103,14 @@ call spllt_tac(1, threadID, timer, lflops)
       !
  !!   print *, "Submit bwd block ", dblk
      !print *, "dblk", dblk, "y INPUT", fkeep%sbc(dblk)%p_upd
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("submit bwd block", 2, task_manager%workerID, timer)
+#endif
       call task_manager%solve_bwd_block_il2_task(dblk, nrhs, &
         n, rhs, fkeep, trace_id)
+#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tac(2, task_manager%workerID, timer)
+#endif
      !print *, "dblk", dblk, "x associated", fkeep%sbc(dblk)%p_upd
      
       ! Update diag block in node       
