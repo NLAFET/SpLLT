@@ -753,6 +753,31 @@ set(LIBS ${LIBS} stdc++)
 add_subdirectory(src)
 
 ################################################################################
+# Test 
+
+########################################
+# Setup list of test files
+set(test_files)
+
+if(${RUNTIME} MATCHES "OMP")
+  list(APPEND test_files "test/test_solve_phasis.F90")
+endif()
+
+foreach(test_file ${test_files})
+  
+  get_filename_component(test_file_name ${test_file} NAME_WE)
+  add_executable(${test_file_name} ${test_file})
+
+  ########################################
+  # Link test drivers with external libraries
+  target_include_directories(${test_file_name} PUBLIC ${SPRAL_DIR})
+  target_include_directories(${test_file_name} PUBLIC ${CMAKE_BINARY_DIR}/src)
+  target_link_libraries(${test_file_name} ${LIBS})
+
+endforeach()
+
+
+################################################################################
 # Test drivers
 
 ########################################
