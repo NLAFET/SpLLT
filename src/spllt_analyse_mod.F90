@@ -274,13 +274,19 @@ contains
        ! initialise least descendat to self
        fkeep%nodes(node)%least_desc = node
     end do
+    !Init virtual node with odd value
+    fkeep%nodes(num_nodes + 1)%least_desc = -1
     do node = 1, num_nodes
        ! walk up tree from leaves. A parent's least descendant is either this
        ! nodes least descendant (itself in case of a leaf), or its existing
        ! one if that is smaller.
        anode = fkeep%nodes(node)%parent
-       fkeep%nodes(anode)%least_desc = &
-            min(fkeep%nodes(node)%least_desc, fkeep%nodes(anode)%least_desc)
+       if(fkeep%nodes(anode)%least_desc .eq. -1) then
+         fkeep%nodes(anode)%least_desc = fkeep%nodes(node)%least_desc
+       else
+         fkeep%nodes(anode)%least_desc = &
+              min(fkeep%nodes(node)%least_desc, fkeep%nodes(anode)%least_desc)
+       end if
     end do
 
     ! prune tree
