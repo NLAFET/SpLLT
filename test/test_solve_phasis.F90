@@ -230,7 +230,7 @@ program test_solve_phasis
   call task_manager%nflop_reset()
   call spllt_tic("Forward", 4, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=7, &
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
     workspace=workspace, task_manager=task_manager)
   call spllt_wait()
 
@@ -243,7 +243,7 @@ program test_solve_phasis
   call task_manager%nflop_reset()
   call spllt_tic("Backward", 5, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=8, &
+  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
     workspace=workspace, task_manager=task_manager)
   call spllt_wait()
 
@@ -260,7 +260,7 @@ program test_solve_phasis
   call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=6, workspace=workspace, task_manager=task_manager)
+    job=0, workspace=workspace, task_manager=task_manager)
   call spllt_wait()
 
   call spllt_tac(7, task_manager%workerID, timer)
@@ -274,9 +274,9 @@ program test_solve_phasis
 
   sol_computed = rhs
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=7, workspace=workspace, task_manager=task_manager)
+    job=1, workspace=workspace, task_manager=task_manager)
   call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=8, workspace=workspace, task_manager=task_manager)
+    job=2, workspace=workspace, task_manager=task_manager)
   call spllt_wait()
 
   !Compute the residual for each rhs
