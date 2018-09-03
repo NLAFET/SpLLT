@@ -3211,6 +3211,9 @@ module task_manager_omp_mod
     p_dep       => fkeep%sbc(blk_en)%bwd_dep
     ndep        = size(p_dep)
 
+    chunk = fkeep%chunk
+    ndep_lvl = ndep ! #dep local to the lvl
+
     if(ndep .eq. 0) then
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
       call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
