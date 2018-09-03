@@ -1735,6 +1735,11 @@ call spllt_tac(1, threadID, timer, lflops)
     beta  = one
     if(reset) beta  = zero
 
+    ! Fix NaN problem : it may have NaN in 
+    ! the first use of the local x. To fix it, we have to reset it manually.
+    ! In case, BLAS can handle it, this reset can be removed
+    if(reset) xlocal(1 : m) = zero 
+
     ! forward substitution
     if(nrhs.eq.1) then
       !print *, "local RHS", rhs(1:nelim) 
