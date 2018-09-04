@@ -484,13 +484,10 @@ end module spllt_data_ciface
     call C_F_POINTER(cwork, fwork, shape=(/ cworksize /))
     call C_F_POINTER(ctask_manager, ftask_manager)
 
-   !call task_manager%init()
     call ftask_manager%refresh_master()
 
     call spllt_solve_mult_double_worker(ffkeep, foptions, nrhs, fx, &
       job, ftask_manager, finfo)
-
-   !call task_manager%deallocate()
 
     call copy_inform_out(finfo, cinfo)
 

@@ -164,6 +164,7 @@ elseif(${RUNTIME} MATCHES "StarPU")
   set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
 
 elseif(${RUNTIME} MATCHES "OMP")
+  include_directories("./src/include/")
 
   # TODO find_package omp
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")

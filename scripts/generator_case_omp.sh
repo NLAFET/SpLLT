@@ -164,37 +164,53 @@ echo "Generated ${NCASE} cases written in ${output}"
 echo "" > ${output}
 
 write '#include "macro_omp.def"\n'
-for ndep in `seq ${NCASE_MIN} ${NCASE}`; do
-  offset=0
-  nldep=${ndep}
+
+if [ ${NCASE_MIN} -eq 0 ]; then
+  ndep=0
   timer_id=$((ndep + 1))
-  
-  caseOutput="case(${ndep})\n\n"
   caseOutput+="MACRO_SYMBOL if defined(SPLLT_TIMER_TASKS_SUBMISSION)\n"
   caseOutput+="call spllt_tic('CASE(${ndep})',"
   caseOutput+="${timer_id}, task_manager%workerID, timer)\n"
   caseOutput+="MACRO_SYMBOL endif\n"
-  if [ ${ndep} -eq 1 ]; then
-    declareTask ${ndep}
-  else
-    declareTask ${chunk}
-    if [ ${ndep} -gt ${chunk} ]; then
-      ndep=$((ndep - chunk))
-      offset=$((offset + chunk))
-      for nldep in `seq ${chunk} ${chunk} ${ndep}`; do
-        additionalDep ${chunk} ${offset}
-        offset=$((offset + chunk))
-      done
-      if [ $((ndep % chunk)) -ne 0 ]; then
-        additionalDep $((ndep % chunk)) ${offset}
-      fi
-    fi
-  fi
+  caseOutput+='!$omp task &\n'
   addRemainingOMPDecl ${ompDeclFile}
   addWork ${workFile}  
   caseOutput+="\nMACRO_SYMBOL if defined(SPLLT_TIMER_TASKS_SUBMISSION)\n"
   caseOutput+="call spllt_tac(${timer_id}, task_manager%workerID, timer)\n"
   caseOutput+="MACRO_SYMBOL endif\n"
   write "${caseOutput}"
-done
-
+else
+  for ndep in `seq ${NCASE_MIN} ${NCASE}`; do
+    offset=0
+    nldep=${ndep}
+    timer_id=$((ndep + 1))
+    
+    caseOutput="case(${ndep})\n\n"
+    caseOutput+="MACRO_SYMBOL if defined(SPLLT_TIMER_TASKS_SUBMISSION)\n"
+    caseOutput+="call spllt_tic('CASE(${ndep})',"
+    caseOutput+="${timer_id}, task_manager%workerID, timer)\n"
+    caseOutput+="MACRO_SYMBOL endif\n"
+    if [ ${ndep} -eq 1 ]; then
+      declareTask ${ndep}
+    else
+      declareTask ${chunk}
+      if [ ${ndep} -gt ${chunk} ]; then
+        ndep=$((ndep - chunk))
+        offset=$((offset + chunk))
+        for nldep in `seq ${chunk} ${chunk} ${ndep}`; do
+          additionalDep ${chunk} ${offset}
+          offset=$((offset + chunk))
+        done
+        if [ $((ndep % chunk)) -ne 0 ]; then
+          additionalDep $((ndep % chunk)) ${offset}
+        fi
+      fi
+    fi
+    addRemainingOMPDecl ${ompDeclFile}
+    addWork ${workFile}  
+    caseOutput+="\nMACRO_SYMBOL if defined(SPLLT_TIMER_TASKS_SUBMISSION)\n"
+    caseOutput+="call spllt_tac(${timer_id}, task_manager%workerID, timer)\n"
+    caseOutput+="MACRO_SYMBOL endif\n"
+    write "${caseOutput}"
+  done
+fi

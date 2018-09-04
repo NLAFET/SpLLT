@@ -438,18 +438,7 @@ module task_manager_omp_mod
     ndep_lvl  = 0
 
     if(ndep .eq. 0) then
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
-#endif
-      !$omp task                                &
-      include 'include/spllt_solve_fwd_block_omp_decl.F90.inc'
-
-#include "include/spllt_solve_fwd_block_worker.F90.inc"
-
-      !$omp end task
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tac(1, task_manager%workerID, timer)
-#endif
+#include "spllt_fwd_block_nodep.F90"
     else
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
       chunk = fkeep%chunk
@@ -479,7 +468,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_fwd_block_cases.F90.inc"
+#include "include/spllt_fwd_block_cases.F90"
 
           end select
 
@@ -613,18 +602,7 @@ module task_manager_omp_mod
     ndep_lvl    = 0
 
     if(ndep .eq. 0) then
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
-#endif
-      !$omp task                                &
-      include 'include/spllt_solve_fwd_update_omp_decl.F90.inc'
-
-#include "include/spllt_solve_fwd_update_worker.F90.inc"
-
-      !$omp end task
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tac(1, task_manager%workerID, timer)
-#endif
+#include "spllt_fwd_update_nodep.F90"
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
@@ -654,7 +632,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_fwd_update_cases.F90.inc"
+#include "include/spllt_fwd_update_cases.F90"
 
           end select
           beta = beta + chunk_size
@@ -785,18 +763,7 @@ module task_manager_omp_mod
     ndep_lvl  = 0
 
     if(ndep .eq. 0) then
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
-#endif
-      !$omp task                                &
-      include 'include/spllt_solve_bwd_block_omp_decl.F90.inc'
-
-#include "include/spllt_solve_bwd_block_worker.F90.inc"
-
-      !$omp end task
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tac(1, task_manager%workerID, timer)
-#endif
+#include "spllt_bwd_block_nodep.F90"
     else
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
       chunk = fkeep%chunk
@@ -826,7 +793,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_bwd_block_cases.F90.inc"
+#include "include/spllt_bwd_block_cases.F90"
 
           end select
 
@@ -964,18 +931,7 @@ module task_manager_omp_mod
     nbcol     = fkeep%sbc(blk_en)%bcol - fkeep%sbc(blk_sa)%bcol + 1
 
     if(ndep .eq. 0) then
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
-#endif
-      !$omp task                                &
-      include 'include/spllt_solve_bwd_update_omp_decl.F90.inc'
-
-#include "include/spllt_solve_bwd_update_worker.F90.inc"
-
-      !$omp end task
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tac(1, task_manager%workerID, timer)
-#endif
+#include "spllt_bwd_update_nodep.F90"
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
@@ -1006,7 +962,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_bwd_update_cases.F90.inc"
+#include "include/spllt_bwd_update_cases.F90"
 
           end select
 
@@ -1221,18 +1177,7 @@ module task_manager_omp_mod
     ndep_lvl = ndep ! #dep local to the lvl
 
     if(ndep .eq. 0) then
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tic("CASE(0)", 1, task_manager%workerID, timer)
-#endif
-      !$omp task                                &
-      include 'include/spllt_solve_bwd_node_omp_decl.F90.inc'
-
-#include "include/spllt_solve_bwd_node_worker.F90.inc"
-
-      !$omp end task
-#if defined(SPLLT_TIMER_TASKS_SUBMISSION)
-      call spllt_tac(1, task_manager%workerID, timer)
-#endif
+#include "spllt_bwd_node_nodep.F90"
     else
 
       chunk = 10 ! Do not use chunk = 1 ; a non-sence
@@ -1263,7 +1208,7 @@ module task_manager_omp_mod
             !
             !This file contains the remaining cases that are generated through a script
             !
-#include "include/spllt_bwd_node_cases.F90.inc"
+#include "include/spllt_bwd_node_cases.F90"
 
           end select
 
