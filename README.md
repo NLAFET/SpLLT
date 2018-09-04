@@ -36,8 +36,7 @@ In order to install properly SpLLT, some libraries are required.
 The analysis of the matrix is performed through
 [SPRAL](http://www.numerical.rl.ac.uk/spral/).
 This software requires itself a graph partitioner as
-[Metis](http://glaros.dtc.umn.edu/gkhome/) library, 
-and [HWLOC](https://www.open-mpi.org/projects/hwloc/).
+[Metis](http://glaros.dtc.umn.edu/gkhome/) library.
 
 ## Metis 5.1
 
@@ -56,16 +55,6 @@ make install
 The same installation can be done with Intel compiler (changing CC variable in 
 Makefile.in and adapting the name of the created folder).
 
-## HWLOC 2.0
-
-SPRAL requires Hardware Locality library where the sources are [here](https://www.open-mpi.org/software/hwloc/v2.0/).
-
-```bash
-CC=<C_compiler> CXX=<CXX_compiler> ./configure --prefix=<path_to_install>
-make
-make install
-```
-
 ## SPRAL
 
 To install SPRAL, download the sources [here](https://github.com/ralna/spral).
@@ -73,7 +62,8 @@ Then
 
 ```bash
 ./autogen.sh
-CC=icc CXX=icpc FC=ifort ./configure --prefix=<path_to_install> --disable-openmp --disable-gpu --with-blas="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-lapack="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-metis="-L$METIS_LIB -lmetis"
+CC=icc CXX=icpc FC=ifort ./configure --prefix=<path_to_install> --disable-openmp --disable-gpu --with-blas="-L$MKL_LIB -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-lapack="-L$MKL_LIB -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-metis="-L$METIS_LIB -lmetis"
+CC=gcc CXX=g++ FC=gfortran ./configure --prefix=<path_to_install> --disable-openmp --disable-gpu --with-blas="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -lgomp -lm" --with-lapack="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -lgomp -lm" --with-metis="-L$METIS_LIB -lmetis"
 make
 make install
 cp *.mod <path_to_install>/include
