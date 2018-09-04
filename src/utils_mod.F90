@@ -25,6 +25,11 @@ module utils_mod
     module procedure linear_unpack_rhs
     module procedure vector_unpack_rhs
   end interface unpack_rhs
+
+  interface check_backward_error
+    module procedure check_backward_error_one
+    module procedure check_backward_error_multi
+  end interface check_backward_error
 contains
 
   subroutine print_darray(array_name, n, val, display)
@@ -381,7 +386,23 @@ contains
   end subroutine compute_range
   
 
-  subroutine check_backward_error(n, ptr, row, val, nrhs, x, b) 
+  subroutine check_backward_error_one(n, ptr, row, val, x, b) 
+    use spllt_data_mod
+    implicit none
+
+    integer,  intent(in) :: n
+    integer,  intent(in) :: ptr(n+1)
+    integer,  intent(in) :: row(ptr(n+1)-1)
+    real(wp), intent(in) :: val(ptr(n+1)-1)
+    real(wp), intent(in) :: x(n)
+    real(wp), intent(in) :: b(n)
+
+    call check_backward_error_multi(n, ptr, row, val, 1, x, b)
+
+  end subroutine check_backward_error_one
+
+
+  subroutine check_backward_error_multi(n, ptr, row, val, nrhs, x, b) 
     use spllt_data_mod
     implicit none
 
@@ -427,7 +448,7 @@ contains
       end if
     end do
     write(0, "(a, i3, a, i3)") "Backward error... ok for ", cpt, "/", nrhs
-  end subroutine check_backward_error
+  end subroutine check_backward_error_multi
 
 
   !*************************************************

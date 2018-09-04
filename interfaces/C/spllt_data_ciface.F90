@@ -412,8 +412,8 @@ end module spllt_data_ciface
 
     call task_manager%init()
 
-    call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
-      job, task_manager)
+    call spllt_solve_mult_double_worker(ffkeep, foptions, nrhs, fx, &
+      job, task_manager, finfo)
 
     call spllt_wait()
 
@@ -487,8 +487,8 @@ end module spllt_data_ciface
    !call task_manager%init()
     call ftask_manager%refresh_master()
 
-    call spllt_solve_mult_double_worker(ffkeep, foptions, forder, nrhs, fx, &
-      finfo, job, fwork, ftask_manager)
+    call spllt_solve_mult_double_worker(ffkeep, foptions, nrhs, fx, &
+      job, ftask_manager, finfo)
 
    !call task_manager%deallocate()
 
@@ -517,8 +517,8 @@ end module spllt_data_ciface
     integer(C_INT),     pointer :: fptr(:)
     integer(C_INT),     pointer :: frow(:)
     real(wp),           pointer :: fval(:)
-    real(wp),           pointer :: fx(:)
-    real(wp),           pointer :: frhs(:)
+    real(wp),           pointer :: fx(:,:)
+    real(wp),           pointer :: frhs(:,:)
 
     if(.not. C_ASSOCIATED(cptr)) then
       write (stderr,*) "Error, ptr provided by the user is empty"
@@ -543,8 +543,8 @@ end module spllt_data_ciface
     call C_F_POINTER(cptr, fptr, shape=(/ n + 1 /))
     call C_F_POINTER(crow, frow, shape=(/ fptr(n + 1) - 1 /))
     call C_F_POINTER(cval, fval, shape=(/ fptr(n + 1) - 1 /))
-    call C_F_POINTER(cx,   fx,   shape=(/ n /))
-    call C_F_POINTER(crhs, frhs, shape=(/ n /))
+    call C_F_POINTER(cx,   fx,   shape=(/ n, nrhs /))
+    call C_F_POINTER(crhs, frhs, shape=(/ n, nrhs /))
 
     call check_backward_error(n, fptr, frow, fval, nrhs, fx, frhs)
 
@@ -691,8 +691,8 @@ end module spllt_data_ciface
     integer(long)               :: fworksize
     real(wp),     allocatable   :: fy(:)   
     real(wp),     allocatable   :: fw(:)   
-    real(wp),           pointer :: fx(:)   
-    real(wp),           pointer :: frhs(:)
+    real(wp),           pointer :: fx(:,:)   
+    real(wp),           pointer :: frhs(:,:)
     type(task_manager_omp_t)    :: task_manager
 
     call copy_options_in(coptions, foptions)
@@ -733,14 +733,14 @@ end module spllt_data_ciface
       write (stderr,*) "Error, rhs provided by the user is empty"
     end if
 
-    call C_F_POINTER(crhs, frhs, shape=(/ n /))
+    call C_F_POINTER(crhs, frhs, shape=(/ n, nrhs /))
 
     if(.not. C_ASSOCIATED(cx)) then
       write (stderr,*) "Error, x/rhs provided by the user is empty"
     end if
 
    !call C_F_POINTER(cx, fx, shape=(/ ffkeep%n, nrhs/))
-    call C_F_POINTER(cx, fx, shape=(/ ffkeep%n /))
+    call C_F_POINTER(cx, fx, shape=(/ ffkeep%n, nrhs /))
 
     print *, "Call of spllt_analyse"
     call spllt_analyse(fakeep, ffkeep, foptions, n, fptr, frow, finfo, forder)
@@ -769,8 +769,8 @@ end module spllt_data_ciface
 
     call task_manager%init()
 
-    call spllt_solve_mult_double(ffkeep, foptions, forder, nrhs, fx, finfo, &
-      6, task_manager)
+    call spllt_solve_mult_double_worker(ffkeep, foptions, nrhs, fx, &
+      0, task_manager, finfo)
     call spllt_wait()
 
     call check_backward_error(n, fptr, frow, fval, nrhs, fx, frhs)
