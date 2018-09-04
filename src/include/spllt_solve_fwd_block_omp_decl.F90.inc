@@ -1,9 +1,10 @@
 !$omp default(none)                                                       &
-!$omp firstprivate(m, n, nrhs, col, ldr, sa, offset)                      &
-!$omp firstprivate(nthread, trace_id, p_timer)                            &
-!$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)               &
-!$omp firstprivate(p_bc, p_dep)                                           &
+!$omp shared(fkeep)                                                       &
+!$omp firstprivate(blkm, blkn, nrhs, ldy, ndep, nwdep, node)              &
+!$omp firstprivate(trace_id, p_timer)                                     &
+!$omp firstprivate(p_y, p_rhs, p_index, p_order, p_lcol)                  &
+!$omp firstprivate(p_bc, p_dep, p_wdep)                                   &
 !$omp firstprivate(chunk, ndep_lvl, alpha, beta)                          &
 !$omp firstprivate(task_manager)                                          &
-!$omp private(i, j, r, threadID, flops)                                   &
+!$omp private(i, threadID, flops)                                         &
 !$omp firstprivate(dblk) depend(inout: p_bc(dblk))

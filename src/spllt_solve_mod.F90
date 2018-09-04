@@ -237,7 +237,7 @@ contains
     call trace_event_start(fwd_submit_tree_id, -2)
 #endif
     do tree_num = 1, size(fkeep%trees)
-      call task_manager%solve_fwd_subtree_il2_task(nrhs, rhs, n, &
+      call task_manager%solve_fwd_subtree_task(nrhs, rhs, n, &
         fkeep, fkeep%trees(tree_num))
     end do
 #if defined(SPLLT_OMP_TRACE)
@@ -253,7 +253,7 @@ contains
         cycle
       end if
 
-      call solve_fwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
+      call solve_fwd_node(nrhs, rhs, n, fkeep, node, task_manager)
 
     end do
 #if defined(SPLLT_TIMER_TASKS_SUBMISSION)
@@ -319,11 +319,11 @@ contains
      !call print_node_solve(fkeep, node)
 
       if(fkeep%small(node) .eq. 0) then
-        call solve_bwd_node_ileave2(nrhs, rhs, n, fkeep, node, task_manager)
+        call solve_bwd_node(nrhs, rhs, n, fkeep, node, task_manager)
       else if(fkeep%small(node) .eq. 1) then
         tree_num = fkeep%assoc_tree(node)
 
-        call task_manager%solve_bwd_subtree_il2_task(nrhs, rhs, n, fkeep, &
+        call task_manager%solve_bwd_subtree_task(nrhs, rhs, n, fkeep, &
           fkeep%trees(tree_num))
       else
         cycle

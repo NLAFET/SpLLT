@@ -1,5 +1,6 @@
 call task_manager%refresh_worker()
 threadID = task_manager%workerID
+
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("bwd block task", 13, threadID, p_timer)
 #endif
@@ -14,51 +15,29 @@ if(ndep_lvl .le. chunk) then
    print '(a, i3, a, i3)', "SLV-BWD  Task dep of ", dblk, " [in : "
    print *, p_dep
 #endif
- 
-#if 1
-  call solve_bwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
-      p_upd, p_rhs, threadID, nthread, ldr, p_xlocal, flops)
+
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd solve KERNEL", 15, threadID, p_timer)
+#endif
+  call slv_solve(blkn, blkm, p_lcol, 'Non-Transpose', 'Non-unit', &
+    nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer, flops)
+#endif
+
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd set X", 14, threadID, p_timer)
+#endif
+  !Scatter the result into the solution vector
+  do i = 1, blkn
+    p_rhs(p_order(p_index(i)), :) = p_y(i, :)
+  end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, p_timer, flops)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
      call task_manager%nflop_performed(flops)
-#endif
-
-#else
-   ! Perform retangular update from diagonal block
-   if(m .gt. n) then
-     call slv_bwd_update(m - n, n, col, offset + n, p_index,     &
-       p_lcol(sa + n * n : sa + n * m - 1), n, nrhs, p_rhs,      &
-       p_upd(:, threadID + 1), ldr, p_xlocal(:, threadID + 1))
- 
-#if defined(SPLLT_PROFILING_FLOP)
-     call task_manager%nflop_performed(2 * (n * nrhs * (m-n)) + zero)
-#endif
-   endif
- 
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("bwd block task reduction", 14, threadID, p_timer)
-#endif
-   ! Sum contributions to rhs
-   do r = 0, nrhs-1
-     do j = 1, nthread
-       do i = col + r*ldr, col+n-1 + r*ldr
-         p_rhs(i)    = p_rhs(i) + p_upd(i, j)
-         p_upd(i,j)  = zero ! Reset in case of next fwd solve
-       end do
-     end do
-   end do
-#if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(14, threadID, p_timer)
-#endif
- 
-   ! Perform triangular solve
-   call slv_solve(n, n, col, p_lcol(sa : sa + n * n - 1), &
-        'Non-Transpose', 'Non-unit', nrhs, p_rhs, ldr)
- 
-#if defined(SPLLT_PROFILING_FLOP)
-   call task_manager%nflop_performed(n * n * nrhs + zero)
-#endif
-
 #endif
  
 #if defined(SPLLT_OMP_TRACE)

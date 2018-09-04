@@ -1,6 +1,6 @@
- call task_manager%refresh_worker()
- threadID  = task_manager%workerID
-!threadID = omp_get_thread_num()
+call task_manager%refresh_worker()
+threadID  = task_manager%workerID
+
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd update task", 13, threadID, p_timer)
 #endif
@@ -15,22 +15,33 @@ if(ndep_lvl .le. chunk) then
   print '(a, i3, a)', "UPD-FWD  Task dep of ", blk, " [in : ]"
   print *, p_dep
 #endif 
-#if 1
-  call solve_fwd_update_work(m, n, col, offset, p_index, p_lcol, blk_sa, &
-    nrhs, p_upd, p_rhs, threadID, ldr, p_xlocal, flops)
+
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update KERNEL", 15, threadID, p_timer)
+#endif
+  call slv_fwd_update(blkm, blkn, p_lcol, blkn, n, nrhs, p_y, ldy, &
+    p_xlocal, ldx, fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer)
+#endif
+
+  !Compute the reduction if blk \in L_{:,1}
+  if(fkeep%nodes(node)%sblk_sa .eq. fkeep%sbc(blk)%dblk) then
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update UPD", 14, threadID, p_timer)
+#endif
+    do i = 1, nwdep
+      ! reduce children dep into p_y
+      call fwd_update_upd(fkeep, blk, p_wdep(i))
+    end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, p_timer)
+#endif
+  end if
 
 #if defined(SPLLT_PROFILING_FLOP)
+  flops = 2 * (blkm * nrhs * blkn)
   call task_manager%nflop_performed(flops)
-#endif
-#else
-  call slv_fwd_update(m, n, col, offset, p_index,         &
-    p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,         &
-    p_upd(:, threadID + 1), ldr, p_rhs,                   &
-    ldr, p_xlocal(:, threadID + 1))
-
-#if defined(SPLLT_PROFILING_FLOP)
-  call task_manager%nflop_performed(2 * (m * nrhs * n) + zero)
-#endif
 #endif
 
 #if defined(SPLLT_OMP_TRACE)

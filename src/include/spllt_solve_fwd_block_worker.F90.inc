@@ -1,6 +1,6 @@
- call task_manager%refresh_worker()
- threadID  = task_manager%workerID
-!threadID = omp_get_thread_num()
+call task_manager%refresh_worker()
+threadID  = task_manager%workerID
+
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("fwd block task", 13, threadID, p_timer)
 #endif
@@ -17,52 +17,48 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif
 
-
-#if 1
-  call solve_fwd_block_work(m, n, col, offset, p_index, p_lcol, sa, nrhs, &
-      p_upd, p_rhs, threadID, nthread, ldr, p_xlocal, flops)
-
-  call task_manager%nflop_performed(flops)
-#else
-
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tic("fwd block task reduction", 14, threadID, p_timer)
+call spllt_tic("fwd get RHS", 14, threadID, p_timer)
 #endif
-  ! Sum contributions to rhs
-  do r = 0, nrhs-1
-    do j = 1, nthread
-      do i = col + r*ldr, col+n-1 + r*ldr
-        p_rhs(i)    = p_rhs(i) + p_upd(i, j)
-        p_upd(i,j)  = zero ! Reset in case of bwd solve
-      end do
+  !Gather part of RHS into y
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+    do i = 1, blkn
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :)
     end do
-  end do
+  else
+    do i = 1, blkn
+      p_y(i, :) = p_rhs(p_order(p_index(i)), :) + p_y(i, :)
+    end do
+  end if
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tac(14, threadID, p_timer)
 #endif
-
-
-  ! Perform triangular solve
-  call slv_solve(n, n, col, p_lcol(sa:sa+n*n-1),    &
-    'Transpose    ', 'Non-unit', nrhs, p_rhs, ldr)
-#if defined(SPLLT_PROFILING_FLOP)
-  call task_manager%nflop_performed(n * n * nrhs + zero)
+  !Compute the reduction if blk \in L_{:,1}
+  if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd update UPD", 15, threadID, p_timer)
 #endif
-  offset = offset + n
+    do i = 1, nwdep
+      ! reduce children dep into p_y
+      call fwd_update_upd(fkeep, dblk, p_wdep(i))
+    end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer)
+#endif
+  end if
 
-  ! Deal with any left over trapezoidal part of diagonal block
-  m = m - n
-  if(m .gt. 0) then
-    sa = sa + n * n
-    call slv_fwd_update(m, n, col, offset, p_index,             &
-      p_lcol(sa : sa + n * m - 1), n, nrhs,                     &
-      p_upd(:, threadID + 1), ldr, p_rhs,                       &
-      ldr, p_xlocal(:, threadID + 1))
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("fwd solve KERNEL", 16, threadID, p_timer)
+#endif
+  call slv_solve(blkm, blkn, p_lcol, 'Transpose    ', 'Non-unit', &
+    nrhs, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(16, threadID, p_timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
-    call task_manager%nflop_performed(2 * (n * nrhs * m) + zero)
-#endif
-  endif
+  flops = blkn * blkn * nrhs
+  call task_manager%nflop_performed(flops)
 #endif
 
 #if defined(SPLLT_OMP_TRACE)
@@ -71,5 +67,5 @@ call spllt_tac(14, threadID, p_timer)
 end if
 
 #if defined(SPLLT_TIMER_TASKS)
-call spllt_tac(13, threadID, p_timer, flops)
+call spllt_tac(13, threadID, p_timer) !, flops)
 #endif
