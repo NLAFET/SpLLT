@@ -53,6 +53,7 @@ program test_solve_phasis
   character(len=8)                    :: date
   integer                             :: trace_chkerr_id
   integer                             :: ppos
+  integer                             :: check
 
   ! runtime
   type(task_manager_omp_t)            :: task_manager
@@ -63,6 +64,7 @@ program test_solve_phasis
 
   ! If input matrix is not specified then use matrix.rb file. 
   if (matfile .eq. '') matfile = 'matrix.rb'
+  check = 0
 
   ! Print user-supplied options
   print "(a, a)",   "Matrix file                  = ", matfile
@@ -220,75 +222,104 @@ program test_solve_phasis
 
   call sblock_assoc_mem(fkeep, options%nb, nrhs, y, workspace, fkeep%sbc)
 
-  ! Init the computed solution with the rhs that is further updated by
-  ! the subroutine
+  !$omp end single
+  !$omp end parallel
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !
+  !     TEST
+
+  !$omp parallel num_threads(options%nworker)
+  !$omp single
+
+  !======================================================
+  !!!!!!!!!!!!!!!!!!!!!
+  !   Synchronous call
+  sol_computed = rhs
+
+  call spllt_solve(fkeep, options, nrhs, sol_computed, 0, info)
+  call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+  check = check + 1
+
+  sol_computed = rhs
+  call spllt_solve(fkeep, options, nrhs, sol_computed, 1, info)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, 2, info)
+  call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+  check = check + 1
+
+  do i = 1, nrhs
+    sol_computed(:,i) = rhs(:,i)
+    call spllt_solve(fkeep, options, sol_computed(:,i), 0, info)
+    call check_backward_error(n, ptr, row, val, &
+      sol_computed(:,i), rhs(:,i))
+    check = check + 1
+
+    sol_computed(:,i) = rhs(:,i)
+    call spllt_solve(fkeep, options, sol_computed(:,i), 1, info)
+    call spllt_solve(fkeep, options, sol_computed(:,i), 2, info)
+    call check_backward_error(n, ptr, row, val, &
+      sol_computed(:,i), rhs(:,i))
+    check = check + 1
+  end do
+
+  !======================================================
+  !!!!!!!!!!!!!!!!!!!!!
+  !   Asynchronous call
+  !
   sol_computed = rhs
 
   !!!!!!!!!!!!!!!!!!!!
-  ! Forward substitution
+  ! Forward substitution, then Backward substitution
   !
-  call task_manager%nflop_reset()
-  call spllt_tic("Forward", 4, task_manager%workerID, timer)
-
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=1, &
-    workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, 1, &
+    task_manager, info)
   call spllt_wait()
 
-  call spllt_tac(4, task_manager%workerID, timer)
-
-
-  !!!!!!!!!!!!!!!!!!!!
-  ! Backward substitution
-  !
-  call task_manager%nflop_reset()
-  call spllt_tic("Backward", 5, task_manager%workerID, timer)
-
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, job=2, &
-    workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, 2, &
+    task_manager, info)
   call spllt_wait()
-
-  call spllt_tac(5, task_manager%workerID, timer)
 
   !Compute the residual for each rhs
   call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+  check = check + 1
 
   !!!!!!!!!!!!!!!!!!!!
-  ! Solve
+  ! Full Solve
   !
   sol_computed = rhs
- !call task_manager%nflop_reset()
-  call spllt_tic("Solving", 7, task_manager%workerID, timer)
 
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=0, workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, &
+    0, task_manager, info)
   call spllt_wait()
 
-  call spllt_tac(7, task_manager%workerID, timer)
-
+  !Compute the residual for each rhs
+  call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+  check = check + 1
 
   !!!!!!!!!!!!!!!!!!!!
-  ! STATISTICS
+  ! fwd & bwd 
   !
-  !Compute the residual for each rhs
-  call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
 
   sol_computed = rhs
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=1, workspace=workspace, task_manager=task_manager)
-  call spllt_solve(fkeep, options, order, nrhs, sol_computed, info, &
-    job=2, workspace=workspace, task_manager=task_manager)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, &
+    1, task_manager, info)
+  call spllt_solve(fkeep, options, nrhs, sol_computed, &
+    2, task_manager, info)
   call spllt_wait()
 
   !Compute the residual for each rhs
   call check_backward_error(n, ptr, row, val, nrhs, sol_computed, rhs)
+  check = check + 1
+
+  !$omp end single
+  !$omp end parallel
+
+  write (0, '(a, i3)') "[INFO] NTEST : ", check
 
   call spllt_deallocate_akeep(akeep, st)
   deallocate(workspace, stat=st)
   deallocate(y, stat=st)
   call spllt_deallocate_fkeep(fkeep, st)
-
-  !$omp end single
-  !$omp end parallel
 
   call spllt_close_timer(task_manager%workerID, timer)
   call spllt_print_timers()
