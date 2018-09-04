@@ -2413,8 +2413,8 @@ module task_manager_omp_mod
     bcol      = fkeep%sbc(dblk)%bcol ! Current block column
     ldy       = fkeep%sbc(dblk)%ldu
 
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_rhs       => rhs
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_index     => fkeep%sbc(dblk)%p_index
     p_order     => fkeep%porder
    !print *, "from ", sa, 'to', sa + blkn * blkn - 1, "FOR bcol", bcol
@@ -2594,8 +2594,8 @@ module task_manager_omp_mod
     ldx         = fkeep%sbc(blk)%ldu
 
     p_lcol      => fkeep%lfact(bcol)%lcol(blk_sa : blk_sa + blkn * blkm - 1)
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_xlocal    => fkeep%sbc(blk)%p_upd
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_xlocal    => fkeep%sbc(blk)%p_upd(1 : ldx, 1 : nrhs)
     p_bc        => fkeep%sbc
     p_dep       => fkeep%sbc(blk)%fwd_dep
     p_wdep      => fkeep%sbc(blk)%fwd_wdep
@@ -2768,8 +2768,8 @@ module task_manager_omp_mod
    !print *, "Current block column", bcol
    !print *, "sa = ", sa, "to sa + n * n - 1 = ", sa + blkn*blkn-1
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_rhs       => rhs
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_bc        => fkeep%sbc
     p_dep       => fkeep%sbc(dblk)%bwd_dep
 
@@ -2944,8 +2944,8 @@ module task_manager_omp_mod
 
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkm - 1)
     p_bc        => fkeep%sbc
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_xlocal    => fkeep%sbc(blk)%p_upd
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_xlocal    => fkeep%sbc(blk)%p_upd(1 : ldx, 1 : nrhs)
     p_dep       => fkeep%sbc(blk)%bwd_dep
     p_wdep      => fkeep%sbc(blk)%bwd_wdep
 
@@ -3085,7 +3085,7 @@ module task_manager_omp_mod
       "solve_fwd_subtree_il2", timer)
 #endif
 
-    p_rhs       => rhs
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_bc        => fkeep%sbc
     sa          = tree%node_sa
     en          = tree%node_en
@@ -3200,7 +3200,7 @@ module task_manager_omp_mod
       "solve_bwd_subtree_il2_task_worker", timer)
 #endif
 
-    p_rhs       => rhs
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_bc        => fkeep%sbc
     sa          = tree%node_sa
     en          = tree%node_en

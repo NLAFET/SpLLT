@@ -1214,8 +1214,8 @@ module task_manager_seq_mod
     bcol      = fkeep%sbc(dblk)%bcol ! Current block column
     ldy       = fkeep%sbc(dblk)%ldu
 
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_rhs       => rhs
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_index     => fkeep%sbc(dblk)%p_index
     p_order     => fkeep%porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
@@ -1234,6 +1234,7 @@ call spllt_tic("fwd get RHS", 1, threadID, timer)
   if(fkeep%nodes(node)%sblk_sa .eq. dblk) then
     do i = 1, blkn
      !print *, "p_y(", i, ",:) =", p_y(i,:)
+     !print *, "p_rhs(", p_order(p_index(i)), ",:) =", p_rhs(p_order(p_index(i)), :)
       p_y(i, :) = p_rhs(p_order(p_index(i)), :)
     end do
   else
@@ -1444,8 +1445,8 @@ call spllt_tac(1, task_manager%workerID, timer)
     bcol      = fkeep%sbc(dblk)%bcol ! Current block column
     ldy       = fkeep%sbc(dblk)%ldu
 
-    p_y         => fkeep%sbc(dblk)%p_upd
-    p_rhs       => rhs
+    p_y         => fkeep%sbc(dblk)%p_upd(1 : ldy, 1 : nrhs)
+    p_rhs       => rhs(1 : n, 1 : nrhs)
     p_index     => fkeep%sbc(dblk)%p_index
     p_order     => fkeep%porder
     p_lcol      => fkeep%lfact(bcol)%lcol(sa : sa + blkn * blkn - 1)
