@@ -35,7 +35,7 @@ call spllt_tic('CASE(1)',2, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -59,7 +59,7 @@ call spllt_tic('CASE(2)',3, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -84,7 +84,7 @@ call spllt_tic('CASE(3)',4, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -109,7 +109,7 @@ call spllt_tic('CASE(4)',5, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -135,7 +135,7 @@ call spllt_tic('CASE(5)',6, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -161,7 +161,7 @@ call spllt_tic('CASE(6)',7, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -188,7 +188,7 @@ call spllt_tic('CASE(7)',8, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -215,7 +215,7 @@ call spllt_tic('CASE(8)',9, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -243,7 +243,7 @@ call spllt_tic('CASE(9)',10, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
@@ -271,7 +271,7 @@ call spllt_tic('CASE(10)',11, task_manager%workerID, timer)
 !$omp firstprivate(nrhs, n)                       &
 !$omp firstprivate(sub_task_manager)              &
 !$omp firstprivate(p_bc, blk_en)                  &
-!$omp firstprivate(en, sa)                        &
+!$omp firstprivate(en, sa, ndep_lvl, chunk)       &
 !$omp shared(fkeep)                               &
 !$omp depend(inout: p_bc(blk_en))                 &
 !$omp private(i, trace_id)
