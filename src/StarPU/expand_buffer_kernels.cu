@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
 #define EXPAND_BUFFER_NTX 8  // Number of threads x
 #define EXPAND_BUFFER_NTY 8   // Number of threads y
 

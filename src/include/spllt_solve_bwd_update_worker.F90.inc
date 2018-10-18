@@ -1,6 +1,10 @@
- call task_manager%refresh_worker()
- threadID  = task_manager%workerID
-!threadID = omp_get_thread_num()
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
+call task_manager%refresh_worker()
+threadID  = task_manager%workerID
+
 #if defined(SPLLT_TIMER_TASKS)
 call spllt_tic("bwd update task", 13, threadID, p_timer)
 #endif
@@ -16,19 +20,33 @@ if(ndep_lvl .le. chunk) then
   print *, p_dep
 #endif
 
-#if 1
-  call solve_bwd_update_work(m, n, col, offset, p_index, p_lcol, blk_sa, nrhs, &
-    p_upd, p_rhs, threadID, ldr, p_xlocal, flops)
-  call task_manager%nflop_performed(flops)
-#else
-  call  slv_bwd_update(m, n, col, offset, p_index,      &
-        p_lcol(blk_sa : blk_sa + n * m - 1), n, nrhs,   &
-        p_rhs, p_upd(:, threadID + 1), ldr,             &
-        p_xlocal(:, threadID + 1))
+  !Gather data into xlocal if belongs to last block column of L
+  if(fkeep%nodes(node)%sblk_en .eq. fkeep%sbc(blk)%last_blk) then
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd update UPD", 14, threadID, p_timer)
+#endif
+   !print *, "Reduce in blk", blk
+    do i = 1, nwdep
+      ! reduce ancestor dep into p_y
+   !  print *, "with ", p_dep(i)
+      call bwd_update_upd(fkeep, blk, p_wdep(i))
+    end do
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(14, threadID, p_timer)
+#endif
+  end if
+ 
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tic("bwd update KERNEL", 15, threadID, p_timer)
+#endif
+  call slv_bwd_update(blkm, blkn, p_lcol, blkn, n, nrhs, &
+    p_xlocal, ldx, p_y, ldy)
+#if defined(SPLLT_TIMER_TASKS)
+call spllt_tac(15, threadID, p_timer)
+#endif
 
 #if defined(SPLLT_PROFILING_FLOP)
-  call task_manager%nflop_performed(2 * (n * nrhs * m) + zero)
-#endif
+  call task_manager%nflop_performed(flops)
 #endif
 
 #if defined(SPLLT_OMP_TRACE)

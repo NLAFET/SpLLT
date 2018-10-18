@@ -4,6 +4,7 @@ module get_wtime_mod
   interface
      function omp_get_wtime() bind(C)
        use iso_c_binding
+       implicit none
        real(c_double) :: omp_get_wtime 
      end function omp_get_wtime
   end interface

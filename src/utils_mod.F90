@@ -1,5 +1,9 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 module utils_mod
-
+  implicit none
 
   interface print_array
     module procedure print_darray
@@ -15,6 +19,21 @@ module utils_mod
     module procedure flop_log_dump_one
     module procedure flop_log_dump_mult
   end interface flop_log_dump
+
+  interface pack_rhs
+    module procedure linear_pack_rhs
+    module procedure vector_pack_rhs
+  end interface pack_rhs
+
+  interface unpack_rhs
+    module procedure linear_unpack_rhs
+    module procedure vector_unpack_rhs
+  end interface unpack_rhs
+
+  interface check_backward_error
+    module procedure check_backward_error_one
+    module procedure check_backward_error_multi
+  end interface check_backward_error
 contains
 
   subroutine print_darray(array_name, n, val, display)
@@ -137,6 +156,27 @@ contains
       write (*,*) ""
     end do
   end subroutine print_node
+
+  subroutine print_node_solve(fkeep, node_num)
+    use spllt_data_mod
+    type(spllt_fkeep), intent(in) :: fkeep
+    integer, intent(in)           :: node_num
+
+    integer :: ncol, last_blk, first_blk, i, j, nrow
+
+    first_blk = fkeep%nodes(node_num)%sblk_sa
+    last_blk  = fkeep%nodes(node_num)%sblk_en
+    print *, "Node :", node_num, "first blk:", first_blk, "last blk", last_blk
+    ncol      = fkeep%sbc(last_blk)%bcol - fkeep%sbc(first_blk)%bcol + 1
+    nrow      = fkeep%sbc(first_blk)%last_blk - first_blk + 1
+    do i = 1, nrow
+      do j = 1, min(i, ncol)
+        write(*, fmt="(i9)", advance="no") &
+          first_blk + int((j - 1) * ( nrow + 1 - 0.5 * j )) + (i - j)
+      end do
+      write (*,*) ""
+    end do
+  end subroutine print_node_solve
 
   !Compute res = b - Ax 
   subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
@@ -350,7 +390,23 @@ contains
   end subroutine compute_range
   
 
-  subroutine check_backward_error(n, ptr, row, val, nrhs, x, b) 
+  subroutine check_backward_error_one(n, ptr, row, val, x, b) 
+    use spllt_data_mod
+    implicit none
+
+    integer,  intent(in) :: n
+    integer,  intent(in) :: ptr(n+1)
+    integer,  intent(in) :: row(ptr(n+1)-1)
+    real(wp), intent(in) :: val(ptr(n+1)-1)
+    real(wp), intent(in) :: x(n)
+    real(wp), intent(in) :: b(n)
+
+    call check_backward_error_multi(n, ptr, row, val, 1, x, b)
+
+  end subroutine check_backward_error_one
+
+
+  subroutine check_backward_error_multi(n, ptr, row, val, nrhs, x, b) 
     use spllt_data_mod
     implicit none
 
@@ -362,7 +418,6 @@ contains
     real(wp), dimension(n,nrhs), intent(in)     :: x
     real(wp), dimension(n,nrhs), intent(in)     :: b
 
-    logical           :: bwd_error_ok
     integer           :: i
     real(wp)          :: norm_max
     real(wp)          :: res(n, nrhs)
@@ -370,6 +425,7 @@ contains
     double precision  :: normRHS(nrhs)
     double precision  :: solNorm(nrhs)
     double precision  :: err
+    integer           :: cpt
 
     call compute_residual(n, ptr, row, val, nrhs, x, b, res)
 
@@ -378,20 +434,25 @@ contains
     call vector_norm_2(n,   x, solNorm)
     call matrix_norm_max(n, ptr, row, val, norm_max)
 
-    bwd_error_ok = .true.
+    cpt = 0
     do i = 1, nrhs
       err = normRes(i) / (normRHS(i) + norm_max * solNorm(i))
-     !if(normRes(i) / normRHS(i) .gt. 1e-14) then
-      if(err .gt. 1e-14) then
-        write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
-          "/", nrhs, " : ", err
-        bwd_error_ok = .false.
+      if(err .ne. err) then
+        print '(a, i3, a)', "Backward error of rhs ", i, " is equal to a NAN"
+      else
+       !if(normRes(i) / normRHS(i) .gt. 1e-14) then
+        if(err .gt. 1e-14) then
+          write(0, "(a, i4, a, i4, a, es10.2)") "Wrong Bwd error for ", i, &
+            "/", nrhs, " : ", err
+        else
+          write(0, "(a, i4, a, i4, a, es10.2)") "Bwd error for ", i, &
+            "/", nrhs, " : ", err
+          cpt = cpt + 1
+        end if
       end if
     end do
-    if(bwd_error_ok) then
-      write(0, "(a)") "Backward error... ok"
-    end if
-  end subroutine check_backward_error
+    write(0, "(a, i3, a, i3)") "Backward error... ok for ", cpt, "/", nrhs
+  end subroutine check_backward_error_multi
 
 
   !*************************************************
@@ -535,5 +596,172 @@ contains
 !  !end do
 
 ! end subroutine print_csr_matrix
+
+  subroutine linear_pack_rhs(nrhs, rhs, n, ldr, bdr, rhs_pack, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: ldr
+    integer,  intent(in)    :: bdr
+    real(wp), intent(in)    :: rhs(n,nrhs)
+    real(wp), intent(inout) :: rhs_pack(n*nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: last_entry
+
+    size_nrhs   = int(n, long) * nrhs
+    last_entry  = mod(n, bdr)
+    nblk        = n / bdr
+
+!   print *, "Nblk : ", nblk, 'with a rest of ', last_entry
+
+    do blk = 0, nblk - 1
+      do r = 1, nrhs
+!       print *, 'Fill rhs_pack from ', 1 + ldr * blk + bdr * (r - 1),   &
+!         ' to ', ldr * blk + bdr * r, 'with', 1 + bdr * blk, 'to', &
+!         bdr * (blk + 1)
+        rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + bdr * r ) =&
+          rhs(1 + bdr * blk : bdr * (blk + 1), r)
+      end do
+    end do
+    if (last_entry .gt. 0) then
+      do r = 1, nrhs
+        if( r .lt. nrhs) then
+!         print *, 'Fill rhs_pack from ', 1 + ldr * blk + bdr * (r - 1),   &
+!           ' to ', ldr * blk + last_entry * r, ' with ', 1 + bdr * blk,&
+!           ' to ', n
+          rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + last_entry * r) = &
+            rhs(1 + bdr * blk : n, r)
+        else
+!         print *, 'Fill xil from ', 1 + ldr * blk + last_entry * (r - 1), &
+!           ' to ', size_nrhs, ' with ', 1 + bdr * blk, ' to ', n
+          rhs_pack(1 + ldr * blk + last_entry * (r - 1) : size_nrhs) =&
+            rhs(1 + bdr * blk : n, r)
+        end if
+      end do
+    end if
+
+  end subroutine linear_pack_rhs
+
+
+
+  subroutine linear_unpack_rhs(nrhs, rhs_pack, n, ldr, bdr, rhs, st)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: ldr
+    integer,  intent(in)    :: bdr
+    real(wp), intent(in)    :: rhs_pack(n*nrhs)
+    real(wp), intent(inout) :: rhs(n,nrhs)
+    integer,  intent(out)   :: st
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: last_entry
+
+    size_nrhs = int(n, long) * nrhs
+    last_entry  = mod(n, bdr)
+    nblk      = n / bdr
+
+    do blk = 0, nblk - 1!- merge(1, 0, last_blk .gt. 0)
+      do r = 1, nrhs
+!       print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', &
+!         bdr * (blk + 1)
+        rhs(1 + bdr * blk : bdr * (blk + 1), r) = &
+          rhs_pack(1 + ldr * blk + bdr * (r - 1) : ldr * blk + bdr * r )
+      end do
+    end do
+    if (last_entry .gt. 0) then
+      do r = 1, nrhs
+        if( r .lt. nrhs) then
+!         print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', n, &
+!           'with', 1 + ldr * blk + last_entry * (r - 1), 'to', &
+!           ldr * blk + last_entry * r
+          rhs(1 + bdr * blk : n, r) = &
+            rhs_pack(1 + ldr * blk + last_entry * (r - 1) : ldr * blk + last_entry * r )
+        else
+!         print *, 'RHS ', r, 'Fill x from ', 1 + bdr * blk, ' to ', n, &
+!           'with', 1 + ldr * blk + last_entry * (r - 1), 'to', size_nrhs
+          rhs(1 + bdr * blk : n, r) = &
+            rhs_pack(1 + ldr * blk + last_entry * (r - 1) :  size_nrhs )
+        end if
+      end do
+    end if
+
+  end subroutine linear_unpack_rhs
+
+
+
+  subroutine vector_pack_rhs(nrhs, rhs, n, v, rhs_pack)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: v(:)
+    real(wp), intent(in)    :: rhs(n,nrhs)
+    real(wp), intent(inout) :: rhs_pack(n*nrhs)
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: rowPtr, bdr
+
+    size_nrhs   = int(n, long) * nrhs
+    nblk        = size(v) - 1
+
+ !! print *, "Nblk : ", nblk
+
+    do blk = 1, nblk
+      rowPtr  = v(blk) * nrhs
+      bdr     = v(blk + 1) - v(blk)
+      do r = 0, nrhs - 1
+ !!     print *, 'Fill rhs_pack from ', 1 + rowPtr + bdr * r,       &
+ !!       ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+ !!       v(blk) + bdr
+        rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1)) =&
+          rhs(v(blk) + 1: v(blk) + bdr, r + 1)
+      end do
+    end do
+
+  end subroutine vector_pack_rhs
+
+
+
+  subroutine vector_unpack_rhs(nrhs, rhs_pack, n, v, rhs)
+    use spllt_data_mod
+    implicit none
+    integer,  intent(in)    :: nrhs
+    integer,  intent(in)    :: n
+    integer,  intent(in)    :: v(:)
+    real(wp), intent(in)    :: rhs_pack(n*nrhs)
+    real(wp), intent(inout) :: rhs(n,nrhs)
+
+    integer(long) :: size_nrhs
+    integer       :: nblk, blk, r
+    integer       :: bdr, rowPtr
+
+    size_nrhs   = int(n, long) * nrhs
+    nblk        = size(v) - 1
+
+ !! print *, "Nblk : ", nblk
+
+    do blk = 1, nblk
+      rowPtr  = v(blk) * nrhs
+      bdr     = v(blk + 1) - v(blk)
+      do r = 0, nrhs - 1
+ !!     print *, 'Fill x from ', 1 + rowPtr + bdr * r,       &
+ !!       ' to ', rowPtr + bdr * (r + 1), 'with', v(blk) + 1, 'to', &
+ !!       v(blk) + bdr
+        rhs(v(blk) + 1: v(blk) + bdr, r + 1)  = &
+          rhs_pack(1 + rowPtr + bdr * r : rowPtr + bdr * (r + 1))
+      end do
+    end do
+
+  end subroutine vector_unpack_rhs
+
+
 
 end module utils_mod

@@ -26,6 +26,7 @@ contains
     use spral_ssids_akeep, only: ssids_akeep
     use spral_ssids_anal, only: expand_pattern
     use spral_ssids, only: ssids_analyse
+    use spral_hw_topology
     implicit none
 
     type(spllt_akeep), intent(inout) :: akeep ! data related to the analysis
@@ -36,7 +37,7 @@ contains
     integer, intent(in) :: ptr(:) ! col pointers for lower triangular part
     type(spllt_inform), intent(inout) :: info
     ! Optional parameters:
-    integer, dimension(:), optional, intent(inout) :: order
+    integer, dimension(:), intent(inout) :: order
     ! order(i) must hold position of i in the pivot sequence. 
     ! On exit, holds the pivot order to be used by MA87_factor.
     ! type(spllt_keep), target, intent(out) :: keep
@@ -87,6 +88,22 @@ contains
     type(ssids_options) :: ssids_opt ! SSIDS options
     ! type(ssids_inform) :: inform ! SSDIS stats
     type(ssids_akeep), target :: super_akeep   ! analysis data from SSIDS
+    type(numa_region), dimension(:), allocatable :: topology
+
+   !print *,                                &
+   !  "print_level =     ", options%print_level &
+   ! ,"ncpu =            ", options%ncpu &
+   ! ,"nb   =            ", options%nb   &
+   ! ,"nemin =           ", options%nemin &
+   ! ,"prune_tree =      ", options%prune_tree &
+   ! ,"min_width_blas  = ", options%min_width_blas  &
+   ! ,"nb_min =          ", options%nb_min &
+   ! ,"nb_max =          ", options%nb_max &
+   ! ,"nrhs_min =        ", options%nrhs_min &
+   ! ,"nrhs_max =        ", options%nrhs_max &
+   ! ,"nb_linear_comp =  ", options%nb_linear_comp &
+   ! ,"ileave_solve =    ", options%ileave_solve &
+   ! ,"nrhs_linear_comp =", options%nrhs_linear_comp
 
     ! Setup options for analysis in SSIDS
     ssids_opt%ordering = 1 ! use Metis ordering
@@ -98,6 +115,11 @@ contains
 
     ssids_opt%nemin = nemin
 
+    ! Create topology
+    allocate(topology(1))
+    topology(1)%nproc = 1
+    allocate(topology(1)%gpus(0))
+
     ! Perform analysis with SSIDS.
     ! if (present(order)) then
     !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform, order)
@@ -105,7 +127,8 @@ contains
     !    call ssids_analyse(.false., n, ptr, row, akeep, ssids_opt, info%ssids_inform)
     ! end if
     call ssids_analyse(&
-         .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, order=order)
+         .false., n, ptr, row, super_akeep, ssids_opt, info%ssids_inform, &
+         order=order, topology=topology)
     if (info%ssids_inform%flag .lt. 0) then
        ! Problem occured in SSIDS routine.
        info%flag = SPLLT_ERROR_UNKNOWN
@@ -251,13 +274,19 @@ contains
        ! initialise least descendat to self
        fkeep%nodes(node)%least_desc = node
     end do
+    !Init virtual node with odd value
+    fkeep%nodes(num_nodes + 1)%least_desc = -1
     do node = 1, num_nodes
        ! walk up tree from leaves. A parent's least descendant is either this
        ! nodes least descendant (itself in case of a leaf), or its existing
        ! one if that is smaller.
        anode = fkeep%nodes(node)%parent
-       fkeep%nodes(anode)%least_desc = &
-            min(fkeep%nodes(node)%least_desc, fkeep%nodes(anode)%least_desc)
+       if(fkeep%nodes(anode)%least_desc .eq. -1) then
+         fkeep%nodes(anode)%least_desc = fkeep%nodes(node)%least_desc
+       else
+         fkeep%nodes(anode)%least_desc = &
+              min(fkeep%nodes(node)%least_desc, fkeep%nodes(anode)%least_desc)
+       end if
     end do
 
     ! prune tree
@@ -521,6 +550,12 @@ contains
     call spllt_lcol_map(aptr, arow, num_nodes, fkeep%nodes, fkeep%bc, &
          fkeep%lmap, map, amap, st)
     if(st.ne.0) goto 100
+
+    ! Compute invert of order
+    allocate(fkeep%porder(n))
+    do i = 1, n
+      fkeep%porder(order(i)) = i
+    end do
 
 #if defined(SPLLT_USE_PARSEC)
     call spllt_compute_dep(akeep, fkeep, fkeep, map)

@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
 #include "parsec.h"
 #include "parsec_internal.h"
 #include "parsec/constants.h"

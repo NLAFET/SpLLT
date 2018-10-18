@@ -1,8 +1,19 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 #ifndef SPLLT_IFACE_H
 #define SPLLT_IFACE_H
 
 typedef struct{
+  void *akeep;
+  void *fkeep;
+  void *tm;
+} spllt_data_t;
+
+typedef struct{
   int print_level;
+  int nrhs;
   int ncpu;
   int nb;
 //char mat[100];
@@ -16,9 +27,11 @@ typedef struct{
   int nrhs_max;
   int nb_linear_comp;
   int nrhs_linear_comp;
+  int chunk;
 } spllt_options_t;
 
 #define SPLLT_OPTIONS_NULL() {.print_level=0,     \
+                              .nrhs=1,            \
                               .ncpu=1,            \
                               .nb=16,             \
                               .nemin=32,          \
@@ -29,7 +42,8 @@ typedef struct{
                               .nrhs_min=1,        \
                               .nrhs_max=1,        \
                               .nb_linear_comp=0,  \
-                              .nrhs_linear_comp=0 \
+                              .nrhs_linear_comp=0,\
+                              .chunk=10           \
                               }
 
 typedef struct{
@@ -60,6 +74,18 @@ extern void spllt_factor( void            *akeep,
 
 extern void spllt_prepare_solve(void            *akeep,
                                 void            *fkeep,
+                                int             nb,
+                                int             nrhs,
+                                long            *worksize,
+                                spllt_inform_t  *info);
+
+extern void spllt_set_mem_solve(void            *akeep,
+                                void            *fkeep,
+                                int             nb,
+                                int             nrhs,
+                                long            worksize,
+                                double          *y,
+                                double          *workspace,
                                 spllt_inform_t  *info);
 
 extern void spllt_solve_workspace_size( void  *fkeep,
@@ -86,6 +112,8 @@ extern void spllt_solve_worker( void            *fkeep,
                                 long            worksize,
                                 void            *tm);
 
+extern void spllt_wait();
+
 extern void spllt_chkerr( int n,
                           int *ptr,
                           int *row,
@@ -104,4 +132,18 @@ extern void spllt_task_manager_deallocate(void  **task_manager,
                                           int   *stat);
 
 extern void spllt_task_manager_init(void  **task_manager);
+
+extern void spllt_all(void **akeep,
+                      void **fkeep,
+                      spllt_options_t *options,
+                      int             n,
+                      int             nnz,
+                      int             nrhs,
+                      int             nb,
+                      int             *ptr,
+                      int             *row,
+                      double          *val,
+                      double          *x,
+                      double          *rhs,
+                      spllt_inform_t  *info);
 #endif

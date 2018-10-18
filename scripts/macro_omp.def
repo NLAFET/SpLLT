@@ -1,0 +1,30 @@
+#define L_EVALN(_N,_X,_DEP_LIST,_COMPONENT,_A,_B) L/**/_N(_X,_DEP_LIST,_COMPONENT,_A,_B)
+#define L(_N,_X,_DEP_LIST,_COMPONENT,_A,_B) L_EVALN(_N,_X,_DEP_LIST,_COMPONENT,_A,_B)
+                                                                                
+#define L1(X,_DEP_LIST,_COMPONENT,_A,_B) X(_DEP_LIST,_COMPONENT,_A*1+_B)           
+#define L2(X,_DEP_LIST,_COMPONENT,_A,_B) L1(X,_DEP_LIST,_COMPONENT,_A,_B),X(_DEP_LIST,_COMPONENT,_A*2+_B)
+#define L3(X,_DEP_LIST,_COMPONENT,_A,_B) L2(X,_DEP_LIST,_COMPONENT,_A,_B),X(_DEP_LIST,_COMPONENT,_A*3+_B)
+#define L4(X,_DEP_LIST,_COMPONENT,_A,_B) L3(X,_DEP_LIST,_COMPONENT,_A,_B),X(_DEP_LIST,_COMPONENT,_A*4+_B)
+                                                                                   
+#define EVAL_PRAGMA(_X) !$_X                                                    
+#define DO_PRAGMA(_X) EVAL_PRAGMA(_X)                                           
+                                                                                
+#define OMP_DEPS(_VAR,_COMPONENT,_INC) _VAR(_COMPONENT(_INC))                   
+                                                                                   
+#define N_OMP_DEPS(_N,_DEP_LIST,_COMPONENT,_A,_B) L(_N,OMP_DEPS,_DEP_LIST,_COMPONENT,_A,_B)
+                                                                                   
+#define OMP_TASK(_INIT_DEP, _EXTRA) DO_PRAGMA(omp task depend(out: _INIT_DEP) depend(in: _EXTRA))
+#define OMP_CONT_TASK(_EXTRA) DO_PRAGMA(omp depend(in: _EXTRA))                    
+                                                                                   
+#define VARIABLE_OMP_DEP(_N,_DEP_LIST,_COMPONENT,_A,_B)\
+OMP_TASK(OMP_DEPS(_DEP_LIST,_COMPONENT,_A*1+_B),N_OMP_DEPS(_N,_DEP_LIST,_COMPONENT,_A,_B))
+                                                                                   
+#define VAR_OMP_DEP_CONTD(_N,_DEP_LIST,_COMPONENT,_A,_B) OMP_CONT_TASK(N_OMP_DEPS(_N,_DEP_LIST,_COMPONENT,_A,_B))
+                                                                                   
+#define FPRIV_VAR_DECL(_SA) !$omp firstprivate(m, n, nrhs, col, ldr, _SA, offset, threadID)             
+#define FPRIV_ADD_VAR_DECL(_VAR) !$omp firstprivate(_VAR)
+#define FPRIV_PTR_DECL !$omp firstprivate(p_upd, p_rhs, p_lcol, p_index, p_xlocal)
+#define FPRIV_VAR_DEP_DECL !$omp firstprivate(p_bc, p_dep)
+#define FPRIV_VAR_LOOP_DECL !$omp firstprivate(chunk, ndep_lvl, alpha, beta)
+#define RELEASE_BLK(_BLK) !$omp firstprivate(_BLK) depend(inout: p_bc(_BLK))
+#define MACRO_SYMBOL #

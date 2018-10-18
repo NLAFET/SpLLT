@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 module spllt_data_mod
 #if defined(SPLLT_USE_STARPU)
   use, intrinsic :: iso_c_binding
@@ -166,6 +171,43 @@ module spllt_data_mod
 
   end type spllt_block
 
+  ! block type  
+  type spllt_sblock_t
+
+     ! Static info, which is set in ma87_analyse
+     integer :: bcol            ! block column that blk belongs to
+     integer :: blkm            ! height of block (number of rows in blk)
+     integer :: blkn            ! width of block (number of columns in blk)
+     integer(long) :: dblk      ! id of the block on the diagonal within the 
+     ! block column to which blk belongs
+     integer(long) :: id        ! The block identifier (ie, its number blk)
+     integer(long) :: last_blk  ! id of the last block within the
+     ! block column to which blk belongs
+     integer :: node            ! node to which blk belongs
+     integer :: sa              ! posn of the first entry of the
+     ! block blk within the array that holds the block column of L
+     ! that blk belongs to.
+
+     ! Additional components to handle the list of dependencies of the block
+     ! List of blk indices dependencies in :
+     !  - the forward step of the solve
+     integer, pointer :: fwd_dep(:)
+     integer, pointer :: fwd_update_dep(:)
+     integer          :: fwd_solve_dep
+     !  - the backward step of the solve
+     integer          :: bwd_update_dep
+     integer, pointer :: bwd_solve_dep(:)
+     integer, pointer :: bwd_dep(:)
+     !  - the workspace dependencies
+     integer, pointer :: fwd_wdep(:)
+     integer, pointer :: bwd_wdep(:)
+     !  - workspace
+     real(wp), pointer    :: p_upd(:,:)
+     integer              :: ldu
+     integer, pointer     :: p_index(:)
+
+  end type spllt_sblock_t
+
   ! node type
   type spllt_node
      integer :: num ! node id
@@ -178,6 +220,9 @@ module spllt_data_mod
      integer(long) :: blk_sa ! identifier of the first block in node
      integer(long) :: blk_en ! identifier of the last block in node
 
+     integer(long) :: sblk_sa ! identifier of the first sblock in node
+     integer(long) :: sblk_en ! identifier of the last sblock in node
+
      integer :: nb ! Block size for nodal matrix
      ! If number of cols nc in nodal matrix is less than control%nb but 
      ! number of rows is large, the block size for the node is taken as 
@@ -185,6 +230,7 @@ module spllt_data_mod
      ! the numbers of entries in the blocks to be similar to those in the 
      ! normal case. 
 
+     integer :: snb !Block size for the solve phase
      integer :: sa ! index (in pivotal order) of the first column of the node
      integer :: en ! index (in pivotal order) of the last column of the node
 
@@ -231,8 +277,12 @@ module spllt_data_mod
      integer :: nb_max = 32
      integer :: nrhs_min = 1
      integer :: nrhs_max = 1
+     integer :: chunk = 10
      logical :: nb_linear_comp = .false.
      logical :: nrhs_linear_comp = .false.
+     logical :: ileave_solve = .false.
+     integer :: snb   = -1            ! Blocking size for the solve
+     integer :: nworker = -1             ! Number of Solve worker
   end type spllt_options
 
   type spllt_tree_t
@@ -281,6 +331,7 @@ module spllt_data_mod
   ! Data type for data generated in factorise phase
   !
   type spllt_fkeep
+     type(spllt_sblock_t), allocatable :: sbc(:) ! solve blocks
      type(spllt_block), allocatable :: bc(:) ! blocks
 #if defined(SPLLT_USE_OMP)
      type(spllt_block), allocatable :: workspace(:) ! workspaces
@@ -314,6 +365,9 @@ module spllt_data_mod
      integer(long) :: final_blk = 0 ! Number of blocks. Used for destroying
      ! locks in finalise
      type(spllt_inform) :: info ! Holds copy of info
+     integer :: ndblk
+     integer, allocatable :: rhsPtr(:)
+     integer, allocatable :: indir_rhs(:)
      integer :: maxmn ! holds largest block dimension
      integer :: n  ! Order of the system.
      ! type(node_type), dimension(:), allocatable :: nodes ! nodal info
@@ -328,6 +382,9 @@ module spllt_data_mod
     !type(spllt_akeep), pointer :: p_akeep(:)
      integer, allocatable :: small(:)
      integer, allocatable :: assoc_tree(:)
+     integer, allocatable :: porder(:)
+     real(wp), pointer    :: p_y(:)
+     integer              :: chunk = 10
   end type spllt_fkeep
 
 
@@ -544,6 +601,22 @@ contains
     end if
     if(allocated(fkeep%assoc_tree)) then
       deallocate(fkeep%assoc_tree, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%rhsPtr)) then
+      deallocate(fkeep%rhsPtr, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%indir_rhs)) then
+      deallocate(fkeep%indir_rhs, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%porder)) then
+      deallocate(fkeep%porder, stat=st)
+      stat = stat + st
+    end if
+    if(allocated(fkeep%sbc)) then
+      deallocate(fkeep%sbc, stat=st)
       stat = stat + st
     end if
   end subroutine spllt_deallocate_fkeep

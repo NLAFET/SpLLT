@@ -36,32 +36,24 @@ In order to install properly SpLLT, some libraries are required.
 The analysis of the matrix is performed through
 [SPRAL](http://www.numerical.rl.ac.uk/spral/).
 This software requires itself a graph partitioner as
-[Metis](http://glaros.dtc.umn.edu/gkhome/) library, 
-and [HWLOC](https://www.open-mpi.org/projects/hwloc/).
+[Metis](http://glaros.dtc.umn.edu/gkhome/) library.
 
-## Metis 4.0
+## Metis 5.1
 
 During the analyse, a graph partitioner as Metis needs to be linked to SPRAL.
-The latest current version supported by SPRAL is Metis-4.0 available 
-[here](http://glaros.dtc.umn.edu/gkhome/fsroot/sw/metis/OLD).
+The latest current version supported by SPRAL is Metis-5.1 available 
+[here](http://glaros.dtc.umn.edu/gkhome/metis/metis/download).
 Download the source code, open Makefile.in, and set the variable CC to gcc.
 Then,
 
 ```bash
+make config prefix=<path_to_install> shared=1 cc=<compiler_requested>
 make
+make install
 ```
 
 The same installation can be done with Intel compiler (changing CC variable in 
 Makefile.in and adapting the name of the created folder).
-
-## HWLOC 2.0
-
-SPRAL requires Hardware Locality library where the sources are [here](https://www.open-mpi.org/software/hwloc/v2.0/).
-
-```bash
-./configure
-make
-```
 
 ## SPRAL
 
@@ -70,10 +62,11 @@ Then
 
 ```bash
 ./autogen.sh
-./configure --disable-openmp --disable-gpu --disable-openmp --with-blas="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-lapack="-L$MKL_LIB -lmkl_core -lmkl_intel_lp64" --with-metis="-L$METIS_LIB -lmetis"
+CC=icc CXX=icpc FC=ifort ./configure --prefix=<path_to_install> --disable-openmp --disable-gpu --with-blas="-L$MKL_LIB -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-lapack="-L$MKL_LIB -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -liomp5 -lm" --with-metis="-L$METIS_LIB -lmetis"
+CC=gcc CXX=g++ FC=gfortran ./configure --prefix=<path_to_install> --disable-openmp --disable-gpu --with-blas="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -lgomp -lm" --with-lapack="-L$MKL_LIB -lmkl_gf_lp64 -lmkl_core -lmkl_gnu_thread -lgomp -lm" --with-metis="-L$METIS_LIB -lmetis"
 make
-mkdir lib_gcc-<compiler_version>
-cp libspral.a lib_gcc-<compiler_version>
+make install
+cp *.mod <path_to_install>/include
 ```
 
 # RUNTIME

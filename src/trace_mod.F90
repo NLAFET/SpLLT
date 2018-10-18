@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 module trace_mod
   use get_wtime_mod
   use iso_c_binding
@@ -102,9 +107,6 @@ contains
     integer :: id, thn, old_id
 
     if(id .eq. 0) return
-  !   print *, "Ignored started event"
-  !   return
-  ! end if
 
     if(pendings(id, thn)) then
       write(*,'("Tracing error!!! events nesting not supported")')
@@ -141,9 +143,6 @@ contains
     integer :: id, thn, old_id
 
     if(id .eq. 0) return
-  !   print *, "Ignored stopped event"
-  !   return
-  ! end if
     
     stops(thn)                                = omp_get_wtime()
     nevents(thn)                              = nevents(thn) + 1
