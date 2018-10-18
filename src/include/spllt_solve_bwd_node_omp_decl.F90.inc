@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 !!$omp default(none)                              &
 !$omp firstprivate(p_rhs)                         &
 !$omp firstprivate(nrhs, n)                       &

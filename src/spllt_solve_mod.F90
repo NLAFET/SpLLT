@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 module spllt_solve_mod
 
    interface spllt_solve
@@ -13,6 +18,17 @@ contains
   !
   ! Solve phase. simplified interface for a single rhs
   !
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the solve phase for a single rhs
+  !>
+  !> Performs the solve phase for a single rhs by creating an OMP task
+  !> manager. The job parameter determines either a forward, a backward,
+  !> or a forward and a backward is performed.
+  !> @param fkeep Factorization data
+  !> @param options User-supplied options
+  !> @param x The input rhs
+  !> @param job The job to do : 0 = forward, 1 = backward, 2 = both
+  !> @param info Stats/information returned to user.
   subroutine spllt_solve_one_double(fkeep, options, x, job, info)
     use spllt_mod
     use spllt_data_mod
@@ -67,6 +83,18 @@ contains
 
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the solve phase for multiple rhs
+  !>
+  !> Performs the solve phase for multiple rhs by creating an OMP task
+  !> manager. The job parameter determines either a forward, a backward,
+  !> or a forward and a backward is performed.
+  !> @param fkeep Factorization data
+  !> @param options User-supplied options
+  !> @param nrhs The number of rhs to solve
+  !> @param x The input rhs
+  !> @param job The job to do : 0 = forward, 1 = backward, 2 = both
+  !> @param info Stats/information returned to user.
   subroutine spllt_solve_mult_double(fkeep, options, nrhs, x, job, info)
     use spllt_mod
     use spllt_data_mod
@@ -123,6 +151,19 @@ contains
 
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the solve phase for multiple rhs
+  !>
+  !> Performs the solve phase for multiple rhs by using any task
+  !> manager. The job parameter determines either a forward, a backward,
+  !> or a forward and a backward is performed.
+  !> @param fkeep Factorization data
+  !> @param options User-supplied options. 
+  !> @param nrhs The number of rhs to solve
+  !> @param x The input rhs
+  !> @param job The job to do : 0 = forward, 1 = backward, 2 = both
+  !> @param task_manager The task manager that handles the submission of the tasks
+  !> @param info Stats/information returned to user.
   subroutine spllt_solve_mult_double_worker(fkeep, options, nrhs, x, &
       job, task_manager, info)
     use spllt_data_mod
@@ -189,6 +230,17 @@ contains
   !*************************************************
   !
   ! Forward solve routine
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the forward phase for multiple rhs
+  !>
+  !> Performs the forward phase for multiple rhs by using any task
+  !> manager. The result is stored internally in fkeep.
+  !> @param nrhs The number of rhs to solve
+  !> @param rhs The input rhs
+  !> @param n The size of the problem, i.e, the number of rows of the system
+  !> @param fkeep Factorization data
+  !> @param task_manager The task manager that handles the submission of the tasks
+  !> @param info Stats/information returned to user.
   subroutine solve_fwd(nrhs, rhs, n, fkeep, task_manager, info)
     use spllt_data_mod
     use spllt_solve_kernels_mod
@@ -275,6 +327,17 @@ contains
 
 
 
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !> @brief Performs the backward phase for multiple rhs
+  !>
+  !> Performs the backward phase for multiple rhs by using any task
+  !> manager. The result is stored internally in fkeep.
+  !> @param nrhs The number of rhs to solve
+  !> @param rhs The output solution
+  !> @param n The size of the problem, i.e, the number of rows of the system
+  !> @param fkeep Factorization data
+  !> @param task_manager The task manager that handles the submission of the tasks
+  !> @param info Stats/information returned to user.
   subroutine solve_bwd(nrhs, rhs, n, fkeep, task_manager, info)
     use spllt_data_mod
     use spllt_solve_kernels_mod

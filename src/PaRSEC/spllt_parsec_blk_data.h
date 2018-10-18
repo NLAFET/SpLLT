@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
 #ifndef __SPLLT_PARSEC_BLK_DATA_H__
 #define __SPLLT_PARSEC_BLK_DATA_H__
 

@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
 #include <starpu.h>
 #include <starpu_cuda.h>
 #include <starpu_profiling.h>

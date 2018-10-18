@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 module timer_mod
   use get_wtime_mod
   use iso_c_binding

@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 program spllt_test
   use spllt_data_mod
   implicit none

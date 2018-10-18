@@ -1,5 +1,9 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 module utils_mod
-
+  implicit none
 
   interface print_array
     module procedure print_darray

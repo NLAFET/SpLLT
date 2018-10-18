@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 module task_manager_seq_mod
   use task_manager_mod
   use worker_info_mod

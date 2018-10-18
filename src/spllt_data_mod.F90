@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 module spllt_data_mod
 #if defined(SPLLT_USE_STARPU)
   use, intrinsic :: iso_c_binding

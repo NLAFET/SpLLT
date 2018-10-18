@@ -1,3 +1,8 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Florent Lopez
+!> \author    Sebastien Cayrols
 
 program spllt_omp
   use spral_rutherford_boeing

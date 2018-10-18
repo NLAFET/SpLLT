@@ -1,3 +1,7 @@
+!> \file
+!> \copyright 2018 The Science and Technology Facilities Council (STFC)
+!> \licence   BSD licence, see LICENCE file for details
+!> \author    Sebastien Cayrols
 module spllt_solve_dep_mod
 
 ! subroutine spllt_compute_blk_solve_dep(fkeep, blk, stat)
