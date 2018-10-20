@@ -1,6 +1,9 @@
 language: fortran
 sudo: required
 
+git:
+   depth: 10
+
 addons:
   apt:
     sources:
