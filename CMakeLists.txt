@@ -577,9 +577,9 @@ else(HWLOC_LIB AND HWLOC_INC)
     message(STATUS "HWLOC_DIR used: " ${HWLOC_DIR})
     set(HWLOC_LIB_PATH ${HWLOC_DIR}/hwloc/.libs CACHE PATH 
       "Location of HWLOC library")
-  else(HWLOC_DIR)
-    message(ERROR " You should provide both HWLOC_LIB and HWLOC_INC, "
-      "or HWLOC_DIR.")
+  # else(HWLOC_DIR)
+  #   message(ERROR " You should provide both HWLOC_LIB and HWLOC_INC, "
+  #     "or HWLOC_DIR.")
   endif(HWLOC_DIR)
 endif(HWLOC_LIB AND HWLOC_INC)
 
@@ -596,9 +596,9 @@ if(HWLOC_LIB_PATH)
   endif(HWLOC_LIBRARIES)
 
   unset(LIB_TO_FIND)
-else(HWLOC_LIB_PATH)
-  message(FATAL_ERROR "No Path for HWLOC library provided. "
-    "Define either both HWLOC_LIB and HWLOC_INC, or HWLOC_DIR.")
+# else(HWLOC_LIB_PATH)
+#   message(FATAL_ERROR "No Path for HWLOC library provided. "
+#     "Define either both HWLOC_LIB and HWLOC_INC, or HWLOC_DIR.")
 endif(HWLOC_LIB_PATH)
 
 #if(HWLOC_LIB)

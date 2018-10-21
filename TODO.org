@@ -1,3 +1,7 @@
-* TODO Use spral instead of HSL packages
+* DONE Use spral instead of HSL packages
   - generation of random problems for testing purposes
   - analyses phase spral? currently MC78
+* TODO Fix bug when generating the doc with Sphinx version >= 1.7 
+  - Extension error: Could not import extension
+    sphinxfortran.fortran_domain (exception: cannot import name
+    Directive)
