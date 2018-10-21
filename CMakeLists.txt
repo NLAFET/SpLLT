@@ -497,9 +497,9 @@ else(METIS_LIB AND METIS_INC)
     include_directories(${METIS_DIR}/Lib)
     message(STATUS "METIS_DIR used: " ${METIS_DIR})
     set(METIS_LIB_PATH ${METIS_DIR} CACHE PATH "Location of METIS library")
-  else(METIS_DIR)
-    message(ERROR " You should provide both METIS_LIB and METIS_INC, "
-      "or METIS_DIR.")
+  # else(METIS_DIR)
+  #   message(ERROR " You should provide both METIS_LIB and METIS_INC, "
+  #     "or METIS_DIR.")
   endif(METIS_DIR)
 endif(METIS_LIB AND METIS_INC)
 
@@ -516,9 +516,9 @@ if(METIS_LIB_PATH)
   endif(METIS_LIBRARIES)
 
   unset(LIB_TO_FIND)
-else(METIS_LIB_PATH)
-  message(FATAL_ERROR "No Path for METIS library provided. "
-    "Define either both METIS_LIB and METIS_INC, or METIS_DIR.")
+# else(METIS_LIB_PATH)
+#   message(FATAL_ERROR "No Path for METIS library provided. "
+#     "Define either both METIS_LIB and METIS_INC, or METIS_DIR.")
 endif(METIS_LIB_PATH)
 
 #if(METIS_LIB)
