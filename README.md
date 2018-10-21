@@ -1,10 +1,8 @@
 # SpLLT - sparse Cholesky solver
 
-[![Documentation](https://readthedocs.org/projects/spllt/badge/?version=latest)](https://spllt.readthedocs.io/en/latest/?badge=latest)
-
-|OpenMP|
-|------|
-|[![Build Status](https://travis-ci.com/NLAFET/SpLLT.svg?token=UwhpFb953M8N7PyHRDWG&branch=master)](https://travis-ci.com/NLAFET/SpLLT)|
+| Documentation |SpLLT-OpenMP|
+|---------------|------------|
+| [![Documentation](https://readthedocs.org/projects/spllt/badge/?version=latest)](https://spllt.readthedocs.io/en/latest/?badge=latest)              |[![Build Status](https://travis-ci.com/NLAFET/SpLLT.svg?token=UwhpFb953M8N7PyHRDWG&branch=master)](https://travis-ci.com/NLAFET/SpLLT)|
 
 SpLLT is a sparse direct solver for computing the solution of
 [symmetric positive
