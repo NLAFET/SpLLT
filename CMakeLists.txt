@@ -795,8 +795,8 @@ set(test_drivers)
 
 if(${RUNTIME} MATCHES "OMP")
   list(APPEND test_drivers "drivers/spllt_omp.F90")
-  list(APPEND test_drivers "drivers/spllt_new_test.F90")
-  list(APPEND test_drivers "drivers/spllt_omp_bench.F90")
+  # list(APPEND test_drivers "drivers/spllt_new_test.F90")
+  # list(APPEND test_drivers "drivers/spllt_omp_bench.F90")
 endif()
 
 
