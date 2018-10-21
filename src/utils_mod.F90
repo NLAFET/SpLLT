@@ -34,10 +34,13 @@ module utils_mod
     module procedure check_backward_error_one
     module procedure check_backward_error_multi
   end interface check_backward_error
+
 contains
 
   subroutine print_darray(array_name, n, val, display)
     use spllt_data_mod
+    implicit none
+
     character(len=*),       intent(in)    :: array_name
     integer,                intent(in)    :: n
     real(wp), dimension(n), intent(in)    :: val
@@ -67,6 +70,8 @@ contains
   end subroutine print_darray
 
   subroutine print_iarray(array_name, n, val, display)
+    implicit none
+
     character(len=*),       intent(in)    :: array_name
     integer,                intent(in)    :: n
     integer, dimension(n),  intent(in)    :: val
@@ -96,6 +101,8 @@ contains
   end subroutine print_iarray
 
   subroutine print_blk_index(array_name, n, val, display)
+    implicit none
+
     character(len=*)                      :: array_name
     integer,                intent(in)    :: n
     integer, dimension(n),  intent(in)    :: val
@@ -159,6 +166,8 @@ contains
 
   subroutine print_node_solve(fkeep, node_num)
     use spllt_data_mod
+    implicit none
+
     type(spllt_fkeep), intent(in) :: fkeep
     integer, intent(in)           :: node_num
 
@@ -181,6 +190,8 @@ contains
   !Compute res = b - Ax 
   subroutine compute_residual(n, ptr, row, val, nrhs, x, b, res)
     use spllt_data_mod
+    implicit none
+
     integer, intent(in)                         :: n
     integer, dimension(n+1), intent(in)         :: ptr
     integer, dimension(ptr(n+1)-1), intent(in)  :: row
@@ -201,6 +212,8 @@ contains
   !Compute Ax
   subroutine compute_Ax(n, ptr, row, val, nrhs, x, res)
     use spllt_data_mod
+    implicit none
+
     integer, intent(in)                         :: n
     integer, dimension(n+1), intent(in)         :: ptr
     integer, dimension(ptr(n+1)-1), intent(in)  :: row
@@ -225,6 +238,8 @@ contains
 
   subroutine matrix_norm_1(n, ptr, row, val, norm)
     use spllt_data_mod
+    implicit none
+
     integer, intent(in)                         :: n
     integer, dimension(n+1), intent(in)         :: ptr
     integer, dimension(ptr(n+1)-1), intent(in)  :: row    ! Unused
@@ -262,6 +277,8 @@ contains
 
   subroutine matrix_norm_max(n, ptr, row, val, norm)
     use spllt_data_mod
+    implicit none
+
     integer, intent(in)                         :: n
     integer, dimension(n+1), intent(in)         :: ptr
     integer, dimension(ptr(n+1)-1), intent(in)  :: row    ! Unused
@@ -279,6 +296,7 @@ contains
 
 
   subroutine timer_log_dump_mult(header, timer, ofile)
+    implicit none
 
     character, intent(in)         :: header*(*)
     double precision, intent(in)  :: timer(:,:)
@@ -299,6 +317,7 @@ contains
   end subroutine timer_log_dump_mult
 
   subroutine timer_log_dump_one(header, timer, ofile)
+    implicit none
 
     character, intent(in)         :: header*(*)
     double precision, intent(in)  :: timer(:)
@@ -321,6 +340,7 @@ contains
 
 
   subroutine flop_log_dump_one(header, flop, ofile)
+    implicit none
 
     character, intent(in)         :: header*(*)
     double precision, intent(in)  :: flop(:)
@@ -365,13 +385,16 @@ contains
 
 
   subroutine compute_range(vmin, vmax, linear_mode, val)
+    implicit none
+    
     integer, intent(in)               :: vmin
     integer, intent(in)               :: vmax
     logical, intent(in)               :: linear_mode
     integer, allocatable, intent(out) :: val(:)
 
     integer :: nval, offset
-
+    integer :: i
+    
     if(linear_mode) then
       nval = int((vmax + 0.0) / vmin)
       allocate(val(nval))
