@@ -25,7 +25,7 @@ before_script:
   - export CXX=g++-6
   - export FC=gfortran-6
   - ./installspral.sh
-  - export SPRALDIR=$PWD/spral-build
+  - export SPRAL_DIR=$PWD/spral-build
 
 script:
   - ./makebuild.sh
