@@ -1,6 +1,6 @@
 # SpLLT - sparse Cholesky solver
 
-[![Documentation](https://readthedocs.org/projects/spllt//badge/?version=latest)](https://spllt.readthedocs.io/en/latest/?badge=latest)
+[![Documentation](https://readthedocs.org/projects/spllt/badge/?version=latest)](https://spllt.readthedocs.io/en/latest/?badge=latest)
 
 |OpenMP|
 |------|
