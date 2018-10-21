@@ -4,7 +4,7 @@
 mkdir builds
 mkdir builds/omp
 cd builds/omp
-cmake ../.. -DRUNTIME=OMP -DBLAS_LAPACK=Ref
+cmake ../.. -DRUNTIME=OMP
 make
 
 # make
