@@ -504,22 +504,25 @@ else(METIS_LIB AND METIS_INC)
 endif(METIS_LIB AND METIS_INC)
 
 # Search library
+
+unset(METIS_LIBRARIES)
+
 if(METIS_LIB_PATH)
-  set(LIB_TO_FIND "metis")
 
-  find_library(METIS_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${METIS_LIB_PATH})
+  find_library(METIS_LIBRARIES NAMES "metis" PATHS ${METIS_LIB_PATH})
 
-  if(METIS_LIBRARIES)
-    set(LIBS ${LIBS} ${METIS_LIBRARIES})
-  else(METIS_LIBRARIES)
-    message(FATAL_ERROR "${METIS_LIB_PATH} does not contain lib${LIB_TO_FIND}")
-  endif(METIS_LIBRARIES)
+else()
 
-  unset(LIB_TO_FIND)
-# else(METIS_LIB_PATH)
-#   message(FATAL_ERROR "No Path for METIS library provided. "
-#     "Define either both METIS_LIB and METIS_INC, or METIS_DIR.")
+  find_library(METIS_LIBRARIES NAMES "metis")
+
 endif(METIS_LIB_PATH)
+
+if(METIS_LIBRARIES)
+  set(LIBS ${LIBS} ${METIS_LIBRARIES})
+else(METIS_LIBRARIES)
+  message(FATAL_ERROR "${METIS_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+endif(METIS_LIBRARIES)
+
 
 #if(METIS_LIB)
 #  set(METIS_LIB_PATH CACHE PATH ${METIS_LIB} "Location of METIS library")
@@ -584,22 +587,25 @@ else(HWLOC_LIB AND HWLOC_INC)
 endif(HWLOC_LIB AND HWLOC_INC)
 
 # Search library
+
+unset(HWLOC_LIBRARIES)
+
 if(HWLOC_LIB_PATH)
-  set(LIB_TO_FIND "hwloc")
 
-  find_library(HWLOC_LIBRARIES NAMES ${LIB_TO_FIND} PATHS ${HWLOC_LIB_PATH})
+  find_library(HWLOC_LIBRARIES NAMES "hwloc" PATHS ${HWLOC_LIB_PATH})
+  
+else()
 
-  if(HWLOC_LIBRARIES)
-    set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
-  else(HWLOC_LIBRARIES)
-    message(FATAL_ERROR "${HWLOC_LIB_PATH} does not contain lib${LIB_TO_FIND}")
-  endif(HWLOC_LIBRARIES)
-
-  unset(LIB_TO_FIND)
-# else(HWLOC_LIB_PATH)
-#   message(FATAL_ERROR "No Path for HWLOC library provided. "
-#     "Define either both HWLOC_LIB and HWLOC_INC, or HWLOC_DIR.")
+  find_library(HWLOC_LIBRARIES NAMES "hwloc")
+  
 endif(HWLOC_LIB_PATH)
+
+if(HWLOC_LIBRARIES)
+  set(LIBS ${LIBS} ${HWLOC_LIBRARIES})
+else(HWLOC_LIBRARIES)
+  message(FATAL_ERROR "${HWLOC_LIB_PATH} does not contain lib${LIB_TO_FIND}")
+endif(HWLOC_LIBRARIES)
+
 
 #if(HWLOC_LIB)
 #  set(HWLOC_LIB_PATH CACHE PATH ${HWLOC_LIB} "Location of HWLOC library")
