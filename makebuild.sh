@@ -5,7 +5,7 @@ mkdir builds
 mkdir builds/omp
 cd builds/omp
 cmake ../.. -DRUNTIME=OMP
-make
+make spllt
 
 # make
 RESULT=$?
