@@ -233,7 +233,7 @@ program test_solve_phasis
   !
   !     TEST
 
-  !$omp parallel num_threads(options%nworker)
+  !$omp parallel num_threads(task_manager%nworker)
   !$omp single
 
   !======================================================
